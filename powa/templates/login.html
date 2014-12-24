@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+  <div class="center row">
+    <h2 class="welcome">Login</h2>
+    <form method="POST" action="{{ reverse_url('login') }}">
+        {% apply field(name="username", label=_("Username")) %}{% end %}
+        {% apply field(name="password", label=_("Password"), type="password") %}{% end %}
+        {% apply field(name="server", label=_("Server"), tag="select") %}
+          {% for opt in servers().keys() %}
+          <option value="{{opt}}">{{opt}}</option>
+          {% end %}
+        {% end %}
+        <input type="submit" name="login" class="button right" id="Login"
+                                                                  value="Login"/>
+  </div>
+</div>
+{% end %}

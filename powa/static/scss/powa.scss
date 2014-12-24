@@ -1,0 +1,129 @@
+@import '_settings.scss';
+@import '../bower_components/foundation/scss/foundation.scss';
+@import '../bower_components/rickshaw/src/css/graph.scss';
+@import '../bower_components/rickshaw/src/css/detail.scss';
+@import '../bower_components/foundation-daterangepicker/daterangepicker.scss';
+@import '../bower_components/backgrid/src/backgrid.scss';
+@import '../bower_components/backgrid-filter/backgrid-filter.scss';
+@import '../bower_components/backgrid-paginator/backgrid-paginator.scss';
+
+
+.widget {
+    padding: 1em;
+}
+
+.sidebar {
+    background-color: #333;
+    height: 100%;
+}
+
+body {
+    background-color: #333;
+}
+
+footer {
+    background-color: #333;
+    color: white;
+}
+
+.main {
+    background-color: #ededed;
+    min-height: 12em;
+    padding-left: 3em;
+    padding-right: 3em;
+}
+
+.daterangepicker select {
+    height: inherit;
+    padding: 0;
+}
+
+.rickshaw_graph .x_tick.plain {
+    bottom: 0em;
+}
+
+.rickshaw_graph .x_tick.plain .title {
+    opacity: 1;
+}
+
+.rickshaw_graph {
+   margin-bottom: 2em;
+}
+
+.rickshaw_legend {
+	font-family: Arial;
+	font-size: 0.8em;
+	color: black;
+	background: none;
+	display: inline-block;
+	border-radius: 2px;
+	position: relative;
+}
+
+.rickshaw_legend:hover {
+	z-index: 10;
+}
+.rickshaw_legend .swatch {
+	width: 10px;
+	height: 10px;
+	border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.rickshaw_legend ul {
+    display: inline-block;
+}
+
+.rickshaw_legend .line {
+	line-height: 10%;
+	padding-right: 4px;
+    list-style: outside none none;
+    float: left;
+    margin-left: 1.375rem;
+    display: inline-block;
+}
+.rickshaw_legend .line .swatch {
+	display: inline-block;
+	margin-right: 3px;
+	border-radius: 2px;
+}
+.rickshaw_legend .label {
+	margin: 0;
+	white-space: nowrap;
+	display: inline;
+	font-size: inherit;
+	background-color: transparent;
+	color: inherit;
+	font-weight: normal;
+	line-height: normal;
+	padding: 0px;
+	text-shadow: none;
+}
+.rickshaw_legend .action:hover {
+	opacity: 1;
+}
+.rickshaw_legend .action {
+	margin-right: 0.2em;
+	opacity: 0.8;
+	cursor: pointer;
+}
+.rickshaw_legend .line.disabled {
+	opacity: 0.4;
+}
+.rickshaw_legend ul {
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+	cursor: pointer;
+}
+.rickshaw_legend li {
+	padding: 0 0 0 2px;
+	white-space: nowrap;
+}
+.rickshaw_legend li:hover {
+	background: rgba(255, 255, 255, 0.08);
+	border-radius: 3px;
+}
+.rickshaw_legend li:active {
+	background: rgba(255, 255, 255, 0.2);
+	border-radius: 3px;
+}

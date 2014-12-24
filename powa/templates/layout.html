@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <title>{{ title }}</title>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <link rel="stylesheet" media="all" type="text/css" href="{{
+      static_url('css/powa-all.min.css')}}" />
+      <link rel="icon" type="image/x-icon" href="{{ static_url('img/favicon/favicon.ico') }}">
+      <link rel="shortcut icon" href="{{static_url('img/favicon/favicon.ico') }}" type="image/x-icon" />
+      <meta name="msapplication-TileColor" content="#2b5797">
+      <meta name="msapplication-TileImage" content="{{ static_url('img/favicon/mstile-144x144.png') }}">
+      {% block header %} {% end %}
+   </head>
+   <body>
+    <nav class="top-bar" data-topbar role="navigation">
+        <ul class="title-area">
+            <li class="name powa-text">
+                <h1><a href="#"><img src="{{
+                        static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA</a></h1>
+            </li>
+            <li class="toggle-topbar menu-icon">
+                <a href="#"><span>Menu</span></a>
+            </li>
+        </ul>
+        <section class="top-bar-section">
+            {% if current_user %}
+        <ul class="right">
+            <li>
+                <a href="{{ reverse_url('logout')}}">Logout</a>
+            </li>
+        </ul>
+
+            {% end %}
+        </section>
+    </nav>
+
+
+    <div class="row full-width">
+        <div class="large-9 medium-8 small-12 large-push-3 medium-push-4 columns  main">
+            <div>
+            {% for cat, messages in flashed_messages().items() %}
+                <div data-alert class="alert-box {{cat}}">
+                    <ul class="unstyled">
+                        {% for message in messages %}
+                        <li>{{message}}</li>
+                        {% end %}
+                    </ul>
+                    <a href="#" class="close">&times;</a>
+                </div>
+            {% end %}
+            </div>
+            {% block content %} {% end %}
+        </div>
+        <div class="hide-for-small">
+            <nav class="large-3  medium-4 large-pull-9 medium-pull-8 columns sidebar">
+                {% module SideBar() %}
+            </nav>
+        </div>
+    </div>
+
+    <footer class="row full-width" >
+        <div class="large-12 columns" >
+            <div class="row hide-for-small">
+                <div class="large-6 columns">
+                        <ul class="inline-list ">
+                            <li>Version {{version()}}</li>
+                            <li>&copy; 2014 Dalibo</li>
+                            <li><a href="http://dalibo.github.io/powa">http://dalibo.github.io/powa</a></li>
+                        </ul>
+                </div>
+                <div class="large-6 columns">
+                    <ul class="inline-list right">
+                        <li><a href="http://www.dalibo.com"><i class="fa fa-stethoscope"></i>Get support</a></li>
+                        <li><a href="https://twitter.com/dalibo"><i class="fa fa-twitter"></i>Follow us</a></li>
+                        <li><a href="https://github.com/dalibo/powa/issues"><i class="fa fa-bug"></i>Report a bug</a></li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+    </footer>
+    {% if handler.application.settings['debug'] %}
+    <script data-main="{{ static_url('js/config.js')}}" src="{{static_url('bower_components/requirejs/require.js')}}"></script>
+    {% else %}
+    <script data-main="{{ static_url('js/powa.min-all.js')}}" src="{{static_url('bower_components/requirejs/require.js')}}"></script>
+    <script>
+      require(["powa/main"]);
+    </script>
+    {% end %}
+   </body>
+</html>

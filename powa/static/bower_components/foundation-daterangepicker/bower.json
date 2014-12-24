@@ -1,0 +1,26 @@
+{
+  "name": "foundation-daterangepicker",
+  "version": "1.0.0",
+  "homepage": "https://github.com/davejlong/foundation-daterangepicker",
+  "authors": [
+    "David Long <dave@davejlong.com>"
+  ],
+  "description": "Date range picker, ported from Bootstrap Date Range Picker for Foundation 5",
+  "main": "daterangepicker.js",
+  "keywords": [
+    "date",
+    "picker",
+    "date-range"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "moment": "~2.5.1"
+  }
+}

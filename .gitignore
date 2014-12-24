@@ -1,0 +1,6 @@
+node_modules/
+**/.sass-cache/
+powa/static/build/
+.ropeproject
+**/*.pyc
+**/__pycache__/

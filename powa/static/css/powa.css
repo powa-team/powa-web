@@ -1,0 +1,41 @@
+
+@import '../bower_components/foundation/css/foundation.css';
+@import '../bower_components/rickshaw/src/css/graph.css';
+
+.sidebar {
+    background-color: #333;
+    height: 100%;
+}
+
+body {
+    background-color: #333;
+}
+
+footer {
+    background-color: #333;
+    color: white;
+}
+
+.main {
+    background-color: #ededed;
+    min-height: 12em;
+    padding-left: 3em;
+    padding-right: 3em;
+}
+
+.daterangepicker select {
+    height: inherit;
+    padding: 0;
+}
+
+.rickshaw_graph .x_tick.plain {
+    bottom: 0em;
+}
+
+.rickshaw_graph .x_tick.plain .title {
+    opacity: 1;
+}
+
+.rickshaw_graph {
+   margin-bottom: 2em;
+}
