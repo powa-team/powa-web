@@ -9,11 +9,9 @@ class Detail(MetricGroupDef):
     total_blks_dirtied = MetricDef(label="Blocks dirtied", type="size")
     total_blks_written = MetricDef(label="Blocks written", type="size")
     total_temp_blks_written = MetricDef(label="Temp Blocks written", type="size")
-    io_time = MetricDef(label="I/O time")
 
 
 class Totals(MetricGroupDef):
-    avg_runtime = MetricDef(label="Total runtime")
-    total_blks_hit = MetricDef(label="Total hit")
-    total_blks_read = MetricDef(label="Total read")
-
+    avg_runtime = MetricDef(label="Total runtime", type="duration")
+    total_blks_hit = MetricDef(label="Total hit", type="sizerate")
+    total_blks_read = MetricDef(label="Total read", type="sizerate")

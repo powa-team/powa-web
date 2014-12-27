@@ -6,7 +6,35 @@
 @import '../bower_components/backgrid/src/backgrid.scss';
 @import '../bower_components/backgrid-filter/backgrid-filter.scss';
 @import '../bower_components/backgrid-paginator/backgrid-paginator.scss';
+@import '../libs/highlight/styles/solarized_light.scss';
 
+
+
+.row.graph .columns {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+
+.graph_container {
+    display: inline-block;
+}
+
+.graph_left_axis {
+//    position: absolute;
+}
+
+.graph_right_axis {
+//    position: absolute;
+    right: 0;
+}
+
+.tooltip {
+    max-width: none;
+    pre {
+        font-size: 0.7em;
+    }
+}
 
 .widget {
     padding: 1em;
@@ -47,7 +75,6 @@ footer {
 }
 
 .rickshaw_graph {
-   margin-bottom: 2em;
 }
 
 .rickshaw_legend {

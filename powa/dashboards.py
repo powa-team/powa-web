@@ -1,20 +1,28 @@
 from powa.json import JSONizable, to_json
 from abc import ABCMeta
 from powa.framework import AuthHandler
-from powa.compat import with_metaclass
+from powa.compat import with_metaclass, classproperty
 from tornado.web import URLSpec
 from operator import attrgetter
+from collections import OrderedDict
 
 GLOBAL_COUNTER = 0
 
-class MetricGroup(JSONizable):
+
+class DataSource(JSONizable):
+
+    def __init__(self, name=None, query=None, data_url=None):
+        self.name = name
+        self.query = query
+        self.data_url = data_url
+
+class MetricGroup(DataSource):
 
     def __init__(self, name=None, query=None, data_url=None,
                  xaxis="ts", metrics=None, axis_type="time",
                  category_attr=None, **kwargs):
-        self.name = name
+        super(MetricGroup, self).__init__(name, query, data_url)
         self.xaxis = xaxis
-        self.data_url = data_url
         self.axis_type = axis_type
         self.metrics = metrics or {}
         self.category_attr = category_attr
@@ -25,6 +33,15 @@ class MetricGroup(JSONizable):
         vals = super(MetricGroup, self).to_json()
         vals['metrics'] = list(self.metrics.values())
         return vals
+
+    @classmethod
+    def process(cls, handler, val, **kwargs):
+        return dict(val)
+
+    @classproperty
+    def url_name(cls):
+        return "metric_%s" % cls.__name__
+
 
 
 class Metric(JSONizable):
@@ -79,15 +96,51 @@ class Dashboard(JSONizable):
 
 
 class Widget(JSONizable):
-    pass
+
+    def parameterized_json(self, handler, **params):
+        base = params.copy()
+        base.update(self.to_json())
+        base["title"] = base["title"] % params
+        return base
+
+
+class ContentWidget(Widget):
+
+
+    def __init__(self, title, url, **kwargs):
+        self.title = title
+        self.url = url
+
+
+    def parameterized_json(self, handler, **params):
+        base = super(ContentWidget, self).parameterized_json(handler, **params)
+        base["url"] = handler.reverse_url(base["url"], *params.values())
+        return base
+
+    def to_json(self):
+        values = self.__dict__.copy()
+        values['type'] = 'content'
+        return values
+
 
 class Grid(Widget):
 
-    def __init__(self, title, metrics=None, **kwargs):
+    def __init__(self, title, columns=None, metrics=None, **kwargs):
         self.title = title
         self.metrics = metrics or []
+        self.columns = columns or []
         for key, value in kwargs.items():
             setattr(self, key, value)
+        self._validate()
+
+    def _validate(self):
+        if len(self.metrics) > 0:
+            mg1 = self.metrics[0]._group
+            if any(m._group != mg1 for m in self.metrics):
+                raise ValueError(
+                    "A grid is not allowed to have metrics from different "
+                    "groups. (title: %s)" % self.title)
+
 
     def to_json(self):
         values = self.__dict__.copy()
@@ -140,21 +193,18 @@ class DashboardHandler(AuthHandler):
         self.params = params
 
     def get(self, *args):
-        params = dict(zip(self.dashboardpage.params,
+        params = OrderedDict(zip(self.dashboardpage.params,
                           args))
         param_rows = []
         for row in self.dashboardpage.dashboard.widgets:
             param_row = []
             for widget in row:
-                base = params.copy()
-                base.update(widget.to_json())
-                base["title"] = base["title"] % params
-                param_row.append(base)
+                param_row.append(widget.parameterized_json(self, **params))
             param_rows.append(param_row)
         param_metric = []
         for metric in self.dashboardpage.metric_groups:
             value = metric.to_json()
-            value['data_url'] = self.reverse_url("metric_%s" % metric.__name__,
+            value['data_url'] = self.reverse_url(metric.url_name,
                                                  *args)
             param_metric.append(value)
         return self.render(self.template,
@@ -170,6 +220,7 @@ class MetricGroupHandler(AuthHandler):
     def initialize(self, metric_group, params):
         self.query = metric_group.query
         self.params = params
+        self.metric_group = metric_group
 
     def get(self, *params):
         url_params = dict(zip(self.params, params))
@@ -180,7 +231,8 @@ class MetricGroupHandler(AuthHandler):
         url_params.update(url_query_params)
         query = self.query
         values = self.execute(query, params=url_params)
-        data = {"data": [dict(val) for val in values]}
+        data = {"data": [self.metric_group.process(self, val,
+                                                   **url_params) for val in values]}
         self.render_json(data)
 
 
@@ -190,7 +242,7 @@ class Declarative(object):
         self.args = args
         self.kwargs = kwargs
         global GLOBAL_COUNTER
-        self.kwargs['order'] = GLOBAL_COUNTER
+        self.kwargs.setdefault('_order', GLOBAL_COUNTER)
         GLOBAL_COUNTER += 1
 
 
@@ -238,20 +290,22 @@ class MetricGroupDef(with_metaclass(MetaMetricGroup, MetricGroup)):
 
     @classmethod
     def all(cls):
-        return sorted(cls.metrics.values(), key=attrgetter("order"))
+        return sorted(cls.metrics.values(), key=attrgetter("_order"))
 
 
 class DashboardPage(object):
 
     template = "fullpage_dashboard.html"
     params = []
+    metric_handler_cls = MetricGroupHandler
+    dashboard_handler_cls = DashboardHandler
 
     @classmethod
     def url_specs(cls):
         url_specs = []
         url_specs.append(URLSpec(
             r"%s/" % cls.base_url.rstrip("/"),
-            DashboardHandler, {
+            cls.dashboard_handler_cls, {
                 "dashboardpage": cls,
                 "template": cls.template,
                 "params": cls.params},
@@ -259,8 +313,8 @@ class DashboardPage(object):
         for metric_group in cls.metric_groups:
             url_specs.append(URLSpec(
                 metric_group.data_url,
-                MetricGroupHandler, {
+                cls.metric_handler_cls, {
                     "metric_group": metric_group,
                     "params": cls.params
-                }, name="metric_%s" % metric_group.__name__))
+                }, name=metric_group.url_name))
         return url_specs

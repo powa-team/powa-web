@@ -16,9 +16,9 @@ module.exports = function(grunt) {
             files: [
             {
                 expand: true,
-                cwd: 'powa/static/bower_components',
-                src: ['**/*.css', '!**/*.min.css'],
-                dest: 'powa/static/bower_components',
+                cwd: 'powa/static/',
+                src: ['bower_components/**/*.css', 'libs/**/*.css', '!**/*.min.css'],
+                dest: 'powa/static/',
                 filter: 'isFile',
                 ext: ".scss"
             }

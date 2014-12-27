@@ -1,5 +1,5 @@
-define(['backbone', 'powa/models/Metric', 'powa/models/MetricCollection'], function(Backbone, Metric, MetricCollection){
-    return Backbone.Model.extend({
+define(['backbone', 'powa/models/DataSource', 'powa/models/Metric', 'powa/models/MetricCollection'], function(Backbone, DataSource Metric, MetricCollection){
+    return DataSource.extend({
 
         initialize: function(){
 
@@ -29,14 +29,15 @@ define(['backbone', 'powa/models/Metric', 'powa/models/MetricCollection'], funct
                 self.trigger("metricgroup:dataload", response.data);
                 $.each(response.data, function(){
                     var row = this,
-                        group = this[grouper] || "default";
+                        group = this[grouper] || "";
                     self.get("metrics").each(function(metric){
                         var series = series_by_metric[metric.get("name")],
                             current_group = series[group];
                         if(current_group === undefined){
                             current_group = series[group] = {
-                                metric: metric.get("name"),
-                                name: metric.get("name") + group,
+                                metric: metric,
+                                id: metric.get("name") + group,
+                                name: metric.get("label") + group,
                                 label: metric.label_template(),
                                 data: []
                             }

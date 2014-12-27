@@ -1,4 +1,6 @@
 define([
+        'jquery',
+        'foundation',
         'backbone',
         'powa/views/WidgetView',
         'powa/models/Grid',
@@ -6,10 +8,11 @@ define([
         'moment',
         'tpl!powa/templates/grid.html',
         'powa/utils/size',
+        'highlight',
         'powa/utils/duration',
         'backgrid-filter',
         'backgrid-paginator'],
-        function(Backbone, WidgetView, Grid, Backgrid, moment, template, size){
+        function(jquery, foundation, Backbone, WidgetView, Grid, Backgrid, moment, template, size, highlight){
 
     var DurationFormatter = {
         fromRaw: function(rawData){
@@ -26,9 +29,34 @@ define([
         formatter: size.SizeFormatter
     });
 
-    Backgrid.Extension.SizeCell = Backgrid.Cell.extend({
+    Backgrid.Extension.SizerateCell = Backgrid.Cell.extend({
         className: "sizerate",
         formatter: new size.SizeFormatter({suffix: 'ps'})
+    });
+
+    Backgrid.Extension.QueryCell= Backgrid.Cell.extend({
+        className: "query",
+        render: function(){
+            this.$el.empty();
+            var model = this.model,
+                raw_value = model.get(this.column.get("name")),
+                value = raw_value.replace(/^\s+/g,"").replace(/\n\s+/, "\n"),
+                code_elem = $("<pre>").addClass("has-tip").addClass("tip-top").attr("data-tooltip", "")
+                            .html(highlight.highlight("sql", value.substring(0, 35), true).value),
+                base = this.$el;
+            if(value === undefined){
+                return this;
+            }
+            if(this.column.get("url_attr")){
+                base = $("<a>").attr("href", model.get(this.column.get("url_attr")));
+                this.$el.append(base);
+            }
+            base.append(code_elem);
+            code_elem.attr("title", "<pre>" + highlight.highlight("sql", raw_value, true).value + "</pre>");
+            this.$el.foundation('tooltip', 'reflow');
+            this.delegateEvents();
+            return this;
+        }
     });
 
     return WidgetView.extend({
@@ -53,19 +81,20 @@ define([
             },
 
             getColumnDefinitions: function(){
-                var columns = [{name: this.model.get("common_group").get("xaxis"),
-                                label: this.model.get("x_label"),
-                                cell: "string",
-                                editable: false}];
+                var columns = this.model.get("columns");
                 this.model.get("metrics").each(function(metric){
-                    var default_cols = {
-                        "cell": metric.get("type") || "string"
-                    };
-                    columns.push($.extend(default_cols, metric.attributes, {
-                        name: metric.get("name"),
-                        label: metric.get("label"),
+                    columns.push($.extend({}, metric.attributes, {
                         editable: false,
+                        cell: metric.get("type")
                     }));
+                });
+                _.each(columns, function(c){
+                    if(c.cell === undefined){
+                        c.cell = "string";
+                    }
+                    if(c.editable === undefined){
+                        c.editable = false;
+                    }
                 });
                 return columns;
             },

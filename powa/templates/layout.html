@@ -39,16 +39,7 @@
     <div class="row full-width">
         <div class="large-9 medium-8 small-12 large-push-3 medium-push-4 columns  main">
             <div>
-            {% for cat, messages in flashed_messages().items() %}
-                <div data-alert class="alert-box {{cat}}">
-                    <ul class="unstyled">
-                        {% for message in messages %}
-                        <li>{{message}}</li>
-                        {% end %}
-                    </ul>
-                    <a href="#" class="close">&times;</a>
-                </div>
-            {% end %}
+                {% module Messages() %}
             </div>
             {% block content %} {% end %}
         </div>

@@ -1,22 +1,36 @@
 define([
         'backbone',
+        'd3',
         'rickshaw',
         'powa/views/WidgetView',
         'powa/models/Graph',
-        'tpl!powa/templates/graph.html'],
-        function(Backbone, Rickshaw, WidgetView, Graph, template){
+        'tpl!powa/templates/graph.html',
+        'powa/utils/duration',
+        'powa/utils/size'
+],
+        function(Backbone, d3, Rickshaw, WidgetView, Graph, template, duration, size){
+
+
+    var axisFormats = {
+        "number": Rickshaw.Fixtures.Number.formatKMBT,
+        "size": new size.SizeFormatter().fromRaw,
+        "sizerate": function(value){ return new size.SizeFormatter({suffix: "ps"}).fromRaw(value)},
+        "duration": function(data){ return moment(parseInt(data, 10)).preciseDiff(moment(0))}
+    }
+
     var GraphView = WidgetView.extend({
             template: template,
             tag: "div",
             model: Graph,
 
             initialize: function(){
-                var self = this;
+                var self = this, graph_elem;
                 this.$el.html(this.template(this.model.toJSON()));
+                graph_elem = this.$el.find(".graph_container");
                 this.graph = new Rickshaw.Graph({
-                            element: this.$el.find(".graph_container").get(0),
-                            innerWidth: this.$el.innerWidth(),
-                            height: this.$el.height(),
+                            element: graph_elem.get(0),
+                            height: this.$el.innerHeight(),
+                            width: this.$el.innerWidth(),
                             xScale: d3.time.scale(),
                             renderer: "line",
                             series: []
@@ -34,20 +48,40 @@ define([
                 this.x_axis = new Rickshaw.Graph.Axis.Time( {
                     graph: this.graph,
                     tickFormat: this.graph.x.tickFormat(),
-                } );
 
-                this.y_axis = new Rickshaw.Graph.Axis.Y( {
-                    graph: this.graph,
-                    min: 0,
-                    tickFormat: Rickshaw.Fixtures.Number.formatKMBT
                 } );
+                // TODO: allow multiple axes
+                this.y_axes = {};
+                this.model.get("metrics").each(function(metric, index){
+                    var type = metric.get("type") || "number";
+                    if(this.y_axes[type] == undefined){
+                        var formatter = axisFormats[type];
+                        var orientation = index % 2 == 0 ? "left" : "right";
+                        this.y_axes[type] = new Rickshaw.Graph.Axis.Y({
+                            element: this.$el.find(".graph_" + orientation + "_axis").get(0),
+                            graph: this.graph,
+                            min: 0,
+                            orientation: orientation,
+                            tickFormat: formatter
+                        });
+                    }
+                }, this);
                 this.legend = new Rickshaw.Graph.Legend( {
                     graph: this.graph,
                     element: this.$el.find('.graph_legend').get(0)
                 });
 
                 var hoverDetail = new Rickshaw.Graph.HoverDetail( {
-                    graph: this.graph
+                    graph: this.graph,
+                    formatter: function(series, x, y){
+                        var type = series.metric.get("type") || "number";
+                        var formatter = axisFormats[type];
+                        var date = '<span class="date">' + new Date(x * 1000).toUTCString() + '</span>';
+                        var swatch = '<span class="detail_swatch" style="background-color: ' + series.color + '"></span>';
+                        var content = swatch + series.label + ": " + formatter(y) + '<br/>' + date;
+                        return content;
+
+                    }
                 } );
 
                 var highlighter = new Rickshaw.Graph.Behavior.Series.Highlight( {
@@ -70,6 +104,14 @@ define([
                 }
             },
 
+            _resize: function(){
+               this.graph.setSize(this.$el.width(), this.$el.innerHeight());
+                _.each(this.y_axes, function(axis){
+                    var width = axis.orientation === "left" ? 0 : this.$el.width();
+                    axis.setSize({height: this.graph.height + 4, auto: true});
+                }, this);
+            },
+
             update: function(newseries){
                 if(newseries.length == 0){
                     this.hideload();
@@ -83,8 +125,8 @@ define([
                 });
                 this.graph.series.splice(0, this.graph.series.length + 1);
                 this.graph.series.push.apply(this.graph.series, newseries);
-                this.graph.setSize(this.$el.innerWidth(), this.$el.height());
-                this.graph.validateSeries(this.graph.series);
+                         this.graph.validateSeries(this.graph.series);
+                this._resize();
                 this.graph.update();
                 this.legend.render();
                 var shelving = new Rickshaw.Graph.Behavior.Series.Toggle( {
@@ -96,7 +138,7 @@ define([
             },
 
             render: function(){
-                this.graph.setSize(this.$el.innerWidth(), this.$el.height());
+                this._resize();
                 this.graph.render();
                 return this;
             }

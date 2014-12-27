@@ -15,3 +15,9 @@ class SideBar(UIModule):
                                       current_database=self.handler.database)
         else:
             return ""
+
+
+class Messages(UIModule):
+
+    def render(self):
+        return self.render_string("messages.html")

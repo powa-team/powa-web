@@ -1,5 +1,4 @@
 from powa import __VERSION__
-from powa import queries
 from powa.json import JSONEncoder
 from tornado.options import options
 import pickle
@@ -12,9 +11,6 @@ def version(self):
 def servers(self):
     return options.servers
 
-
-def databases(self):
-    return self.execute(queries.DBLIST)
 
 
 def field(self, **kwargs):

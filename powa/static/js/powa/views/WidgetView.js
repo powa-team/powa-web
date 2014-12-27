@@ -18,7 +18,9 @@ define([
         },
 
         hideload: function(){
-            this.spinner.stop();
+            if(this.spinner){
+                this.spinner.stop();
+            }
         }
 
 

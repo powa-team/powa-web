@@ -5,6 +5,7 @@ require.config({
     backbone: "../bower_components/backbone/backbone",
     d3: "../bower_components/d3/d3",
     foundation: "../bower_components/foundation/js/foundation",
+    modernizr: "../bower_components/modernizr/modernizr",
     "foundation-daterangepicker": "../bower_components/foundation-daterangepicker/daterangepicker",
     jquery: "../bower_components/jquery/dist/jquery",
     moment: "../bower_components/moment/moment",
@@ -13,6 +14,7 @@ require.config({
     "requirejs-tpl": "../bower_components/requirejs-tpl/tpl",
     tpl: "../bower_components/requirejs-tpl/tpl",
     rickshaw: "../bower_components/rickshaw/rickshaw",
+    highlight: "../libs/highlight/highlight",
     underscore: "../bower_components/underscore/underscore",
     backgrid: "../bower_components/backgrid/lib/backgrid",
     spin: "../bower_components/spin.js/spin",
@@ -24,7 +26,12 @@ require.config({
   wrapShim: true,
   shim: {
     highlight: {
-      exports: "highlight"
+      exports: "hljs"
+    },
+    foundation: {
+      deps: [
+        "jquery"
+      ]
     },
     backgrid: {
       deps: [

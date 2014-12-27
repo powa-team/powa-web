@@ -3,7 +3,7 @@
     <li class="heading">
       Database
       <form method="GET" id="db_selector" action="{{reverse_url('database_selector')}}">
-          <select name="database">
+          <select name="database" value="{{current_database}}">
             {% for db in databases %}
             <option {{ 'selected' if db == current_database else ""}} value="{{db}}">{{db}}</option>
             {% end %}

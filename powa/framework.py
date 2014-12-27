@@ -1,7 +1,7 @@
 from tornado.web import RequestHandler, authenticated, HTTPError
 from powa import ui_methods
 from powa.json import to_json
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine.url import URL
 from tornado.options import options
 import pickle
@@ -61,6 +61,12 @@ class BaseHandler(RequestHandler):
             return engine
         except Exception:
             raise HTTPError(403)
+
+    def has_extension(self, extname):
+        return self.execute(text(
+            """
+            SELECT true FROM pg_extension WHERE extname = :extname
+            """), params={"extname": extname}).rowcount > 0
 
     def write_error(self, status_code, **kwargs):
         if status_code == 403:

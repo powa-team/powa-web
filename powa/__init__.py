@@ -19,13 +19,15 @@ URLS = [
     U(r"/login/", LoginHandler, name="login"),
     U(r"/logout/", LogoutHandler, name="logout"),
     U(r"/database/select", DatabaseSelector, name="database_selector"),
+    U(r"/database/(\w+)/query/(\w+)/indexes", QueryIndexes, name="QueryIndexes"),
     U(r"/", IndexHandler, name="index")
 ]
 
 
 
 for dashboard in (Overview,
-                  DatabaseOverview):
+                  DatabaseOverview,
+                  QueryOverview):
     URLS.extend(dashboard.url_specs())
 
 

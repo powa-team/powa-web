@@ -1,6 +1,6 @@
 define(['moment'], function(moment){
     var STRINGS = {
-        nodiff: '',
+        nodiff: '0',
         year: 'year',
         years: 'years',
         month: 'month',

@@ -10,12 +10,11 @@ define(['backbone', 'powa/models/MetricGroupCollection', 'powa/models/MetricColl
         update: function(){
             var new_series = [];
             var self = this;
-            console.log("UPDATE?");
             self.get("metrics").each(function(metric){
                 var series = metric.get("series");
                 if(series != undefined){
                     $.each(series, function(key, serie){
-                        var new_serie = $.extend({}, serie, metric.attributes);
+                        var new_serie = $.extend({}, metric.attributes, serie);
                         new_series.push(new_serie);
                     });
                 }

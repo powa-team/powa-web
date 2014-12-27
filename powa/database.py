@@ -37,9 +37,12 @@ class DatabaseOverviewMetricGroup(Totals, MetricGroupDef):
         """ % {"tmi": TOTAL_MEASURE_INTERVAL})
 
 class ByQueryMetricGroup(Detail, MetricGroupDef):
-    name = "database_overview"
+    name = "all_queries"
     xaxis = "md5query"
-    data_url = r"/metrics/database_overview/(\w+)/"
+    axis_type = "category"
+    data_url = r"/metrics/database_all_queries/(\w+)/"
+    total_blk_read_time = MetricDef(label="Block read time", type="duration")
+    total_blk_write_time = MetricDef(label="Block write time", type="duration")
     # TODO: refactor with GlobalDatabasesMetricGroup
     query = text("""
         SELECT total_calls, total_runtime,
@@ -50,9 +53,8 @@ class ByQueryMetricGroup(Detail, MetricGroupDef):
             total_blks_written * b.blocksize AS total_blks_written,
             total_temp_blks_read * b.blocksize AS total_temp_blks_read,
             total_temp_blks_written * b.blocksize AS total_temp_blks_written,
-            total_blk_read_time AS total_blk_read_time,
-            total_blk_write_time AS total_blk_write_time,
-            CASE WHEN length(query) > 35 THEN substr(query,1,35) || '...' ELSE query END AS short_query,
+            coalesce(total_blk_read_time, 0) AS total_blk_read_time,
+            coalesce(total_blk_write_time, 0) AS total_blk_write_time,
             md5query,
             query
                  FROM powa_getstatdata_detailed_db(:from, :to, :database) s
@@ -60,10 +62,16 @@ class ByQueryMetricGroup(Detail, MetricGroupDef):
         ORDER BY total_calls DESC
     """)
 
+    @classmethod
+    def process(cls, handler, val, database=None, **kwargs):
+        val = dict(val)
+        val["url"] = handler.reverse_url("QueryOverview", database, val["md5query"])
+        return val
+
 
 class DatabaseOverview(DashboardPage):
     base_url = r"/database/(\w+)/overview"
-    metric_groups = [DatabaseOverviewMetricGroup]
+    metric_groups = [DatabaseOverviewMetricGroup, ByQueryMetricGroup]
     params = ["database"]
     dashboard = Dashboard(
         "Database overview for %(database)s",
@@ -71,7 +79,13 @@ class DatabaseOverview(DashboardPage):
                 metrics=[DatabaseOverviewMetricGroup.avg_runtime]),
           Graph("Blocks (On database %(database)s)",
                 metrics=[DatabaseOverviewMetricGroup.total_blks_read,
-                        DatabaseOverviewMetricGroup.total_blks_hit])]])
-"""         [Grid("Details for all databases",
+                        DatabaseOverviewMetricGroup.total_blks_hit])],
+         [Grid("Details for all queries",
                x_label="Query",
-               metrics=ByQueryMetricGroup.all())]])"""
+               columns=[{
+                "name": "query",
+                "label": "Query",
+                "cell": "query",
+                "url_attr": "url"
+               }],
+               metrics=ByQueryMetricGroup.all())]])

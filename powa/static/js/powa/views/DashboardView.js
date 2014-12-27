@@ -1,16 +1,11 @@
 define([
     'backbone',
-    'powa/models/MetricGroupCollection',
-    'powa/models/Graph',
-    'powa/models/Grid',
-    'powa/models/Metric',
-    'powa/models/MetricGroup',
-    'powa/models/MetricCollection',
     'powa/views/GraphView',
     'powa/views/GridView',
+    'powa/views/ContentView',
     'foundation-daterangepicker',
     'moment'
-], function(Backbone, MetricGroupCollection, Graph, Grid, Metric, MetricGroup, MetricCollection, GraphView, GridView, daterangepicker, moment){
+], function(Backbone, GraphView, GridView, ContentView, daterangepicker, moment){
     return Backbone.View.extend({
         tagName: "div",
         events: {
@@ -39,10 +34,12 @@ define([
             this.daterangepicker = this.$daterangepicker.data('daterangepicker');
             this.daterangepicker.hide();
             this.daterangepicker.container.removeClass('hide');
-            this.$daterangepicker.on("apply.daterangepicker", function(){dashboard.updatePeriodFromDateRange.apply(dashboard, arguments)});
+            this.$daterangepicker.on("apply.daterangepicker", function(){
+                dashboard.updatePeriodFromDateRange.apply(dashboard, arguments)}
+            );
             this.views = [];
-            this.layout();
             this.updatePeriod(moment().subtract('hour', 1), moment());
+            this.layout();
         },
 
         layout: function(){
@@ -62,11 +59,16 @@ define([
                         from_date: this.from_date,
                         to_date: this.to_date
                     });
-                    view = this.makeView(widget);
-                    view.from_date = this.from_date;
-                    view.to_date = this.to_date;
-                    this.views.push(view);
-                    widgetcontainer.append(view.render().el);
+                    try{
+                        view = this.makeView(widget);
+                        view.from_date = this.from_date;
+                        view.to_date = this.to_date;
+                        widgetcontainer.append(view.render().el);
+                        this.views.push(view);
+                    } catch(e) {
+                        console.error("Could not instantiate widget " + widget.get("title"), e);
+                        return;
+                    }
                 }, this);
             }
         },
@@ -77,6 +79,8 @@ define([
                 return new GraphView({model: widget});
             } else if (widget.get("type") == "grid"){
                 return new GridView({model: widget});
+            } else if (widget.get("type") == "content"){
+                return new ContentView({model: widget});
             }
         },
 
@@ -88,8 +92,10 @@ define([
             this.from_date = startDate;
             this.to_date = endDate;
             _.each(this.views, function(widget){
+                widget.from_date = this.from_date;
+                widget.to_date = this.to_date;
                 widget.showload();
-            });
+            }, this);
             this.metric_groups.each(function(metric_group){
                 metric_group.update(startDate, endDate);
             });

@@ -12,6 +12,7 @@ class ByDatabaseMetricGroup(Detail, MetricGroupDef):
     xaxis = "datname"
     data_url = r"/metrics/by_databases/"
     axis_type = "category"
+    io_time = MetricDef(label="I/O time")
     query = text("""
         SELECT datname, sum(total_calls) AS total_calls,
             sum(total_runtime) AS total_runtime,
@@ -62,5 +63,8 @@ class Overview(DashboardPage):
                metrics=[GlobalDatabasesMetricGroup.total_blks_hit,
                         GlobalDatabasesMetricGroup.total_blks_read])],
          [Grid("Details for all databases",
-               x_label="Database",
+               columns=[{
+                 "name": "datname",
+                 "label": "Database",
+               }],
                metrics=ByDatabaseMetricGroup.all())]])
