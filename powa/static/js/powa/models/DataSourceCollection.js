@@ -1,10 +1,10 @@
-define(['backbone', 'powa/models/MetricGroup'], function(Backbone, MetricGroup){
+define(['backbone', 'powa/models/DataSource'], function(Backbone, DataSource){
     return Backbone.Collection.extend({
-        model: MetricGroup,
+        model: DataSource,
 
         update: function(from_date, to_date){
-            this.each(function(metricgroup){
-                metricgroup.update(from_date, to_date);
+            this.each(function(datasource){
+                datasource.update(from_date, to_date);
             });
         }
 

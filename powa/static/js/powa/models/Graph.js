@@ -1,15 +1,21 @@
-define(['backbone', 'powa/models/MetricGroupCollection', 'powa/models/MetricCollection'],
-        function(Backbone, MetricGroupCollection, MetricCollection){
+define(['backbone', 'powa/models/DataSourceCollection', 'powa/models/MetricCollection'],
+        function(Backbone, DataSourceCollection, MetricCollection){
     return Backbone.Model.extend({
 
         initialize: function(){
             var self = this;
+            this.hasloading = 0;
             this.listenTo(this.get("metrics"), "change:series", self.update);
+            this.listenTo(this.get("metrics"), "startload", function(){self.hasloading +=1});
         },
 
         update: function(){
             var new_series = [];
             var self = this;
+            self.hasloading -= 1;
+            if(self.hasloading != 0){
+                return;
+            }
             self.get("metrics").each(function(metric){
                 var series = metric.get("series");
                 if(series != undefined){
@@ -19,17 +25,24 @@ define(['backbone', 'powa/models/MetricGroupCollection', 'powa/models/MetricColl
                     });
                 }
             });
-            this.trigger("graph:needrefresh", new_series);
+            this.trigger("widget:needrefresh", new_series);
         }
     }, {
         fromJSON: function(jsonobj){
-            var group = MetricGroupCollection.get_instance(),
+            var ds = DataSourceCollection.get_instance(),
                 metrics = jsonobj.metrics.map(function(metric){
-                var splittedname = metric.split(".");
-                return group.findWhere({name: splittedname[0]})
-                        .get("metrics")
-                        .findWhere({name: splittedname[1]});
-            });
+                    var metric,
+                        splittedname = metric.split("."),
+                        group = ds.findWhere({name: splittedname[0]});
+                    if(group === undefined){
+                        throw ("The metric group " + splittedname[0] + " could not be found.");
+                    }
+                    metric = group.get("metrics").findWhere({name: splittedname[1]});
+                    if (metric === undefined){
+                        throw("The metric " + splittedname[1] + " could not be found in group " + splittedname[1]);
+                    }
+                    return metric
+                });
             jsonobj.metrics = new MetricCollection(metrics);
             return new this(jsonobj);
         }

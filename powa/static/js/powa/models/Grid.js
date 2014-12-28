@@ -1,7 +1,7 @@
-define(['backbone',  'powa/models/MetricGroupCollection', 'powa/models/MetricCollection',
+define(['backbone',  'powa/models/DataSourceCollection', 'powa/models/MetricCollection',
         'backbone-pageable'
 ],
-        function(Backbone, MetricGroupCollection, MetricCollection){
+        function(Backbone, DataSourceCollection, MetricCollection){
     return Backbone.Model.extend({
 
         initialize: function(){
@@ -12,13 +12,13 @@ define(['backbone',  'powa/models/MetricGroupCollection', 'powa/models/MetricCol
 
         update: function(data){
             this.get("collection").reset(data);
-            this.trigger("grid:needrefresh");
+            this.trigger("widget:needrefresh");
         }
 
 
     }, {
         fromJSON: function(jsonobj){
-            var group = MetricGroupCollection.get_instance(),
+            var group = DataSourceCollection.get_instance(),
                 metrics = jsonobj.metrics.map(function(metric){
                 var splittedname = metric.split(".");
                 var common_group = group.findWhere({name: splittedname[0]});

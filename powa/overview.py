@@ -54,7 +54,7 @@ class GlobalDatabasesMetricGroup(Totals, MetricGroupDef):
 
 class Overview(DashboardPage):
     base_url = r"/overview/"
-    metric_groups = [GlobalDatabasesMetricGroup, ByDatabaseMetricGroup]
+    datasources = [GlobalDatabasesMetricGroup, ByDatabaseMetricGroup]
     dashboard = Dashboard(
         "Overview",
         [[Graph("Query runtime per second (all databases)",

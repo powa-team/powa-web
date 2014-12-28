@@ -77,7 +77,7 @@ define([
                       collection: this.model.get("collection")
                 });
 
-                this.listenTo(this.model, "grid:needrefresh", this.update);
+                this.listenTo(this.model, "widget:needrefresh", this.update);
             },
 
             getColumnDefinitions: function(){
@@ -101,6 +101,7 @@ define([
 
             update: function(){
                 this.hideload();
+                this.trigger("widget:update");
             },
 
             render: function(){

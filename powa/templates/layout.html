@@ -15,7 +15,7 @@
    <body>
     <nav class="top-bar" data-topbar role="navigation">
         <ul class="title-area">
-            <li class="name powa-text">
+            <li class="name">
                 <h1><a href="#"><img src="{{
                         static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA</a></h1>
             </li>
@@ -26,6 +26,13 @@
         <section class="top-bar-section">
             {% if current_user %}
         <ul class="right">
+            <li>
+              <input class="" type="text" id="daterangepicker"/>
+            </li>
+            <li class="title powa-text">
+                <a href="#"><span>{{title}}</span></a>
+            </li>
+
             <li>
                 <a href="{{ reverse_url('logout')}}">Logout</a>
             </li>

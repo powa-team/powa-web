@@ -24,11 +24,11 @@ define([
             model: Graph,
 
             initialize: function(){
-                var self = this, graph_elem;
+                var self = this;
                 this.$el.html(this.template(this.model.toJSON()));
-                graph_elem = this.$el.find(".graph_container");
+                this.graph_elem = this.$el.find(".graph_container");
                 this.graph = new Rickshaw.Graph({
-                            element: graph_elem.get(0),
+                            element: this.graph_elem.get(0),
                             height: this.$el.innerHeight(),
                             width: this.$el.innerWidth(),
                             xScale: d3.time.scale(),
@@ -88,12 +88,17 @@ define([
                     graph: this.graph,
                     legend: this.legend
                 } );
-                this.listenTo(this.model, "graph:needrefresh", this.update);
+                this.preview = new Rickshaw.Graph.RangeSlider.Preview({
+                	graph: this.graph,
+                	element: this.$el.find(".graph_preview").get(0)
+                });
+                this.listenTo(this.model, "widget:needrefresh", this.update);
+                this.render();
             },
 
 
             nodata: function(){
-                this.$nodata_el.width(this.$el.width());
+                this.$nodata_el.width(this.$el.innerWidth());
                 this.$nodata_el.height(this.$el.height());
                 this.el.insertBefore(this.nodata_el, this.el.firstChild||null);
             },
@@ -105,9 +110,10 @@ define([
             },
 
             _resize: function(){
-               this.graph.setSize(this.$el.width(), this.$el.innerHeight());
+               this.graph.setSize({width: this.graph_elem.parent().innerWidth()});
+               this.preview.configure({width: this.graph.width});
                 _.each(this.y_axes, function(axis){
-                    var width = axis.orientation === "left" ? 0 : this.$el.width();
+                    var width = axis.orientation === "left" ? 0 : this.$el.innerWidth();
                     axis.setSize({height: this.graph.height + 4, auto: true});
                 }, this);
             },
@@ -134,12 +140,11 @@ define([
                     legend: this.legend
                 } );
                 this.hideload();
-
+                this.trigger("widget:update");
             },
 
             render: function(){
-                this._resize();
-                this.graph.render();
+                this.legend.render();
                 return this;
             }
         });

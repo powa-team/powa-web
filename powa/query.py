@@ -4,6 +4,7 @@ from powa.dashboards import (
     DashboardPage, ContentWidget)
 from powa.metrics import Detail, Totals
 from powa.framework import AuthHandler
+from tornado.web import HTTPError
 
 from powa.sql import *
 
@@ -74,8 +75,9 @@ class QueryQualsMetricGroup(MetricGroupDef):
     """)
 
 
-class QueryIndexes(AuthHandler):
+class QueryIndexes(ContentWidget):
 
+    data_url = r"/metrics/database/(\w+)/query/(\w+)/indexes"
 
     def get(self, database, query):
         if not self.has_extension("pg_qualstats"):
@@ -85,13 +87,44 @@ class QueryIndexes(AuthHandler):
         self.render("database/query/indexes.html")
 
 
+class QueryDetail(ContentWidget):
+
+    data_url = r"/metrics/database/(\w+)/query/(\w+)/detail"
+
+    DETAIL_QUERY = text("""
+        SELECT query,
+             sum(total_calls) as total_calls,
+             to_timestamp(sum(total_runtime)) as total_runtime,
+             sum(shared_blks_read * blksize) as total_read_blocks,
+             sum(shared_blks_hit * blksize) as total_hit_blocks,
+             sum((shared_blks_read + shared_blks_hit) * blksize) as total_blocks
+        FROM powa_statements,
+        powa_getstatdata_sample(:from, :to, :query, 300),
+        (SELECT current_setting('block_size')::int AS blksize) b
+        WHERE md5query = :query AND dbname = :database
+        GROUP BY query
+    """)
+
+    def get(self, database, query):
+        value = self.execute(self.DETAIL_QUERY, params={
+            "query": query,
+            "database": database,
+            "from": self.get_argument("from"),
+            "to": self.get_argument("to")
+        })
+        if value.rowcount < 1:
+            raise HTTPError(404)
+        self.render("database/query/detail.html", stats=value.first())
+
+
 class QueryOverview(DashboardPage):
     base_url = r"/database/(\w+)/query/(\w+)/overview"
     params = ["database", "query"]
-    metric_groups = [QueryOverviewMetricGroup, QueryQualsMetricGroup]
+    datasources = [QueryOverviewMetricGroup, QueryQualsMetricGroup, QueryDetail,
+                   QueryIndexes]
     dashboard = Dashboard(
         "Query %(query)s on database %(database)s",
-        [[ContentWidget("Query detail", "QueryDetail")],
+        [[QueryDetail("Query Detail")],
             [Graph("General",
                 metrics=[QueryOverviewMetricGroup.avg_runtime,
                          QueryOverviewMetricGroup.rows
@@ -112,4 +145,5 @@ class QueryOverview(DashboardPage):
           Graph("Read / Write time",
                 metrics=[QueryOverviewMetricGroup.blk_read_time,
                          QueryOverviewMetricGroup.blk_write_time])],
-         [ContentWidget("WHERE clauses", "QueryIndexes")]])
+         [QueryIndexes("Query Indexes")]
+         ])

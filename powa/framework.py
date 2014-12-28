@@ -13,6 +13,7 @@ class BaseHandler(RequestHandler):
         super(BaseHandler, self).__init__(*args, **kwargs)
         self._flashed_messages = {}
         self._databases = None
+        self._connections = {}
 
     def render_json(self, value):
         self.set_header('Content-Type', 'application/json')
@@ -22,7 +23,12 @@ class BaseHandler(RequestHandler):
     def current_user(self):
         raw = self.get_secure_cookie('username')
         if raw:
-            return raw.decode('utf8')
+            user = raw.decode('utf8')
+            try:
+                self.connect()
+                return user
+            except Exception as e:
+                return None
 
     @property
     def database(self):
@@ -43,7 +49,7 @@ class BaseHandler(RequestHandler):
 
     def connect(self, server=None, username=None, password=None):
         server = server or self.get_secure_cookie('server').decode('utf8')
-        username = username or self.current_user
+        username = username or self.get_secure_cookie('username').decode('utf8')
         password = (password or
                     self.get_secure_cookie('password').decode('utf8'))
         if server not in options.servers:
@@ -55,11 +61,14 @@ class BaseHandler(RequestHandler):
         if self.application.settings['debug']:
             engineoptions['echo'] = True
         url = URL("postgresql+psycopg2", **connoptions)
+        if url in self._connections:
+            return self._connections.get(url)
         try:
             engine = create_engine(url, **engineoptions)
             engine.connect()
+            self._connections[url] = engine
             return engine
-        except Exception:
+        except Exception as e:
             raise HTTPError(403)
 
     def has_extension(self, extname):

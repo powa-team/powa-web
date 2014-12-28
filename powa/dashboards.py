@@ -1,7 +1,7 @@
 from powa.json import JSONizable, to_json
 from abc import ABCMeta
 from powa.framework import AuthHandler
-from powa.compat import with_metaclass, classproperty
+from powa.compat import with_metaclass, classproperty, hybridmethod
 from tornado.web import URLSpec
 from operator import attrgetter
 from collections import OrderedDict
@@ -9,14 +9,77 @@ from collections import OrderedDict
 GLOBAL_COUNTER = 0
 
 
+class DashboardHandler(AuthHandler):
+    """
+    Handler for a specific dashboard
+    """
+
+    def initialize(self, template, dashboardpage, params):
+        self.template = template
+        self.dashboardpage = dashboardpage
+        self.params = params
+
+    def get(self, *args):
+        params = OrderedDict(zip(self.dashboardpage.params,
+                          args))
+        param_rows = []
+        for row in self.dashboardpage.dashboard.widgets:
+            param_row = []
+            for widget in row:
+                param_row.append(widget.parameterized_json(self, **params))
+            param_rows.append(param_row)
+        param_datasource = []
+        for datasource in self.dashboardpage.datasources:
+            value = datasource.to_json()
+            value['data_url'] = self.reverse_url(datasource.url_name,
+                                                 *args)
+            param_datasource.append(value)
+        return self.render(self.template,
+                           widgets=param_rows,
+                           datasources=param_datasource,
+                           title=self.dashboardpage.dashboard.title % params)
+
+class MetricGroupHandler(AuthHandler):
+    """
+    Handler for a metric group.
+    """
+
+    def initialize(self, datasource, params):
+        self.query = datasource.query
+        self.params = params
+        self.metric_group = datasource
+
+    def get(self, *params):
+        url_params = dict(zip(self.params, params))
+        url_query_params = {
+            key: value[0].decode('utf8')
+            for key, value
+            in self.request.arguments.items()}
+        url_params.update(url_query_params)
+        query = self.query
+        values = self.execute(query, params=url_params)
+        data = {"data": [self.metric_group.process(self, val,
+                                                   **url_params) for val in values]}
+        self.render_json(data)
+
+
+
+
 class DataSource(JSONizable):
 
     def __init__(self, name=None, query=None, data_url=None):
         self.name = name
-        self.query = query
+        self._query = query
         self.data_url = data_url
 
+    @classproperty
+    def url_name(cls):
+        return "datasource_%s" % cls.__name__
+
+
 class MetricGroup(DataSource):
+
+    datasource_handler_cls = MetricGroupHandler
 
     def __init__(self, name=None, query=None, data_url=None,
                  xaxis="ts", metrics=None, axis_type="time",
@@ -32,16 +95,12 @@ class MetricGroup(DataSource):
     def to_json(self):
         vals = super(MetricGroup, self).to_json()
         vals['metrics'] = list(self.metrics.values())
+        vals['type'] = 'metric_group'
         return vals
 
     @classmethod
     def process(cls, handler, val, **kwargs):
         return dict(val)
-
-    @classproperty
-    def url_name(cls):
-        return "metric_%s" % cls.__name__
-
 
 
 class Metric(JSONizable):
@@ -104,22 +163,43 @@ class Widget(JSONizable):
         return base
 
 
-class ContentWidget(Widget):
+class ContentHandler(object):
+
+    def initialize(self, datasource=None, params=None):
+        self.params = params
+
+class ContentWidget(Widget, DataSource):
 
 
-    def __init__(self, title, url, **kwargs):
+    def __init__(self, title, content=None, **kwargs):
         self.title = title
-        self.url = url
+        self.content = content
+        super(ContentWidget, self).__init__(title, content, **kwargs)
 
 
-    def parameterized_json(self, handler, **params):
-        base = super(ContentWidget, self).parameterized_json(handler, **params)
-        base["url"] = handler.reverse_url(base["url"], *params.values())
-        return base
+    @classproperty
+    def datasource_handler_cls(cls):
+        return type("%sHandler" % cls.__name__,
+                    (ContentHandler, AuthHandler,), dict(cls.__dict__))
 
+
+    @hybridmethod
+    def to_json(cls):
+        return {
+            'data_url': cls.data_url,
+            'name': cls.__name__,
+            'type': 'contentsource'
+        }
+
+    def initialize(self, datasource=None, params=None):
+        self.params = params
+
+    @to_json.instance_method
     def to_json(self):
-        values = self.__dict__.copy()
+        values = {}
+        values['title'] = self.title
         values['type'] = 'content'
+        values['content'] = self.__class__.__name__
         return values
 
 
@@ -180,60 +260,6 @@ class Graph(Widget):
         for metric in self.metrics:
             values['metrics'].append(metric._fqn())
         return values
-
-
-class DashboardHandler(AuthHandler):
-    """
-    Handler for a specific dashboard
-    """
-
-    def initialize(self, template, dashboardpage, params):
-        self.template = template
-        self.dashboardpage = dashboardpage
-        self.params = params
-
-    def get(self, *args):
-        params = OrderedDict(zip(self.dashboardpage.params,
-                          args))
-        param_rows = []
-        for row in self.dashboardpage.dashboard.widgets:
-            param_row = []
-            for widget in row:
-                param_row.append(widget.parameterized_json(self, **params))
-            param_rows.append(param_row)
-        param_metric = []
-        for metric in self.dashboardpage.metric_groups:
-            value = metric.to_json()
-            value['data_url'] = self.reverse_url(metric.url_name,
-                                                 *args)
-            param_metric.append(value)
-        return self.render(self.template,
-                           widgets=param_rows,
-                           metrics=param_metric,
-                           title=self.dashboardpage.dashboard.title % params)
-
-class MetricGroupHandler(AuthHandler):
-    """
-    Handler for a metric group.
-    """
-
-    def initialize(self, metric_group, params):
-        self.query = metric_group.query
-        self.params = params
-        self.metric_group = metric_group
-
-    def get(self, *params):
-        url_params = dict(zip(self.params, params))
-        url_query_params = {
-            key: value[0].decode('utf8')
-            for key, value
-            in self.request.arguments.items()}
-        url_params.update(url_query_params)
-        query = self.query
-        values = self.execute(query, params=url_params)
-        data = {"data": [self.metric_group.process(self, val,
-                                                   **url_params) for val in values]}
-        self.render_json(data)
 
 
 class Declarative(object):
@@ -297,7 +323,7 @@ class DashboardPage(object):
 
     template = "fullpage_dashboard.html"
     params = []
-    metric_handler_cls = MetricGroupHandler
+    datasource_handler_cls = MetricGroupHandler
     dashboard_handler_cls = DashboardHandler
 
     @classmethod
@@ -310,11 +336,11 @@ class DashboardPage(object):
                 "template": cls.template,
                 "params": cls.params},
             name=cls.__name__))
-        for metric_group in cls.metric_groups:
+        for datasource in cls.datasources:
             url_specs.append(URLSpec(
-                metric_group.data_url,
-                cls.metric_handler_cls, {
-                    "metric_group": metric_group,
+                datasource.data_url,
+                datasource.datasource_handler_cls, {
+                    "datasource": datasource,
                     "params": cls.params
-                }, name=metric_group.url_name))
+                }, name=datasource.url_name))
         return url_specs

@@ -39,7 +39,6 @@ Rickshaw.Graph.Axis.Y = Rickshaw.Class.create( {
 	},
 
 	setSize: function(args) {
-
 		args = args || {};
 
 		if (!this.element) return;
@@ -48,12 +47,10 @@ Rickshaw.Graph.Axis.Y = Rickshaw.Class.create( {
 
 			var style = window.getComputedStyle(this.element.parentNode, null);
 			var elementWidth = parseInt(style.getPropertyValue('width'), 10);
-
 			if (!args.auto) {
 				var elementHeight = parseInt(style.getPropertyValue('height'), 10);
 			}
 		}
-
 		this.width = args.width || elementWidth || this.graph.width * this.berthRate;
 		this.height = args.height || elementHeight || this.graph.height;
 

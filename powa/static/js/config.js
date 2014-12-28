@@ -28,11 +28,13 @@ require.config({
     highlight: {
       exports: "hljs"
     },
-    foundation: {
-      deps: [
-        "jquery"
-      ]
-    },
+    foundation: [
+      "jquery"
+    ],
+    "foundation-daterangepicker": [
+      "jquery",
+      "foundation"
+    ],
     backgrid: {
       deps: [
         "jquery",

@@ -1,0 +1,13 @@
+{% extends "../../xhr.html" %}
+{% block content %}
+<div>
+<ul class="pricing-table">
+    <li class="title"><pre class="sql">{{ stats['query'] }}</pre></li>
+    <li class="bullet-item"># of execution: {{ stats['total_calls'] }}</li>
+    <li class="bullet-item">Total runtime: <span class="duration">{{
+        stats['total_runtime'] }}</span></li>
+    <li class="bullet-item">Hit ratio: {{ (str(round(stats['total_hit_blocks'] * 100
+      / stats['total_blocks'], 2)) + "%") if stats['total_blocks'] > 0 else 'N/A' }} </li>
+</ul>
+</div>
+{% end %}

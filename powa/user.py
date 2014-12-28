@@ -13,7 +13,9 @@ class LoginHandler(BaseHandler):
         server = self.get_argument('server')
         try:
             self.connect(username=username, password=password, server=server)
-        except:
+        except Exception as e:
+            import pdb
+            pdb.set_trace()
             self.flash("Auth failed", "alert")
             self.get()
             return

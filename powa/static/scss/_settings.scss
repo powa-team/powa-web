@@ -1,3 +1,6 @@
-
-$primary-color: #859145;
+$powa_color: #859145;
+$primary-color: $powa_color;
+$body-bg: $powa_color;
 $row-width: 100%;
+$header-font-color: $powa_color;
+$form-label-font-color: scale-color($powa_color, $lightness: -10%);

@@ -71,7 +71,7 @@ class ByQueryMetricGroup(Detail, MetricGroupDef):
 
 class DatabaseOverview(DashboardPage):
     base_url = r"/database/(\w+)/overview"
-    metric_groups = [DatabaseOverviewMetricGroup, ByQueryMetricGroup]
+    datasources = [DatabaseOverviewMetricGroup, ByQueryMetricGroup]
     params = ["database"]
     dashboard = Dashboard(
         "Database overview for %(database)s",
