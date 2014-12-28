@@ -8,7 +8,11 @@
 @import '../bower_components/backgrid-paginator/backgrid-paginator.scss';
 @import '../libs/highlight/styles/solarized_light.scss';
 
-
+.indexes {
+    pre {
+        white-space: pre-wrap;
+    }
+}
 
 .row.graph {
     .columns, .row {

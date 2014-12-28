@@ -7082,6 +7082,9 @@ pre .deletion {
 pre .tex .formula {
   background: #eee8d5; }
 
+.indexes pre {
+  white-space: pre-wrap; }
+
 .row.graph .columns, .row.graph .row {
   padding-left: 0;
   padding-right: 0;

@@ -78,13 +78,35 @@ class QueryQualsMetricGroup(MetricGroupDef):
 class QueryIndexes(ContentWidget):
 
     data_url = r"/metrics/database/(\w+)/query/(\w+)/indexes"
+    # FIXME: aggregate over the selected period
+    QUALS_QUERY = text("""
+    SELECT s.dbname, qs.queryid,s.query,
+                       to_json(qnc.most_filtering[1]) as "most filtering",
+                       to_json(qnc.least_filtering[1]) as "least filtering",
+                       to_json(qnc.most_executed[1]) as "most executed"
+    FROM powa_statements s
+    JOIN powa_qualstats_statements qs ON s.md5query = qs.md5query
+    JOIN powa_qualstats_nodehash qn ON qs.md5query = qn.md5query
+    JOIN powa_qualstats_nodehash_constvalues qnc
+        ON qn.nodehash = qnc.nodehash AND qn.md5query = qnc.md5query
+    WHERE s.dbname = :database AND s.md5query = :query
+    """)
 
     def get(self, database, query):
         if not self.has_extension("pg_qualstats"):
             self.flash("Install the pg_qualstats extension for more info !")
             self.render("xhr.html")
             return
-        self.render("database/query/indexes.html")
+        quals = self.execute(self.QUALS_QUERY, params={"database": database, "query": query})
+        plans = []
+        if quals.rowcount > 0:
+            row = quals.first()
+            for key in ('most filtering', 'least filtering', 'most executed'):
+                vals = row[key]
+                query = format_jumbled_query(row['query'], vals['constants'])
+                plan = self.execute("EXPLAIN %s" % query , database=database).scalar()
+                plans.append(Plan(key, vals['constants'], query, plan, vals["filter_ratio"], vals['count']))
+        self.render("database/query/indexes.html", plans=plans)
 
 
 class QueryDetail(ContentWidget):

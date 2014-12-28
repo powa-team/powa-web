@@ -47,7 +47,11 @@ class BaseHandler(RequestHandler):
                 **kwargs)
             return [d[0] for d in self._databases]
 
-    def connect(self, server=None, username=None, password=None):
+    def on_finish(self):
+        for engine in self._connections.values():
+            engine.dispose()
+
+    def connect(self, server=None, username=None, password=None, database=None):
         server = server or self.get_secure_cookie('server').decode('utf8')
         username = username or self.get_secure_cookie('username').decode('utf8')
         password = (password or
@@ -57,6 +61,8 @@ class BaseHandler(RequestHandler):
         connoptions = options.servers[server].copy()
         connoptions['username'] = username
         connoptions['password'] = password
+        if database is not None:
+            connoptions['database'] = database
         engineoptions = {'_initialize': False}
         if self.application.settings['debug']:
             engineoptions['echo'] = True
@@ -86,10 +92,11 @@ class BaseHandler(RequestHandler):
         super(BaseHandler, self).write_error(status_code, **kwargs)
 
     def execute(self, query, params=None, server=None, username=None,
+                database=None,
                 password=None):
         if params is None:
             params = {}
-        engine = self.connect(server, username, password)
+        engine = self.connect(server, username, password, database)
         return engine.execute(query, **params)
 
     def get_pickle_cookie(self, name):
