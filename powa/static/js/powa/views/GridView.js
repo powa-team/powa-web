@@ -25,7 +25,7 @@ define([
             BaseCell.__super__.initialize.apply(this, arguments);
            var innerCell = $("<div>");
            var cellClass = Backgrid.resolveNameToClass(this.cell || "string", "Cell");
-           this.cell = new cellClass($.extend({}, options, {$el: innerCell}));
+           this.cell = new cellClass($.extend({}, options, {$el: innerCell, tagName: "div"}));
         },
 
         render: function(){
@@ -63,7 +63,7 @@ define([
                 raw_value = model.get(this.column.get("name")),
                 value = raw_value.replace(/^\s+/g,"").replace(/\n\s+/, "\n"),
                 code_elem = $("<pre>").addClass("has-tip").addClass("tip-top").attr("data-tooltip", "")
-                            .html(highlight.highlight("sql", value.substring(0, 35), true).value),
+                            .html(highlight.highlight("sql", value.substring(0, this.column.get("max_length") || 35), true).value),
                 base = this.$el;
             if(value === undefined){
                 return this;

@@ -1,3 +1,6 @@
+"""
+Utilities for the basis of Powa
+"""
 from tornado.web import RequestHandler, authenticated, HTTPError
 from powa import ui_methods
 from powa.json import to_json
@@ -8,50 +11,67 @@ import pickle
 
 
 class BaseHandler(RequestHandler):
+    """
+    Subclass of Tornado RequestHandler adding a bunch
+    of utility methods.
+    """
 
     def __init__(self, *args, **kwargs):
         super(BaseHandler, self).__init__(*args, **kwargs)
-        self._flashed_messages = {}
+        self.flashed_messages = {}
         self._databases = None
         self._connections = {}
 
     def render_json(self, value):
+        """
+        Render the object as json response.
+        """
         self.set_header('Content-Type', 'application/json')
         self.write(to_json(value))
 
     @property
     def current_user(self):
+        """
+        Return the current_user if he is allowed to connect
+        to his server of choice.
+        """
         raw = self.get_secure_cookie('username')
         if raw:
             user = raw.decode('utf8')
             try:
                 self.connect()
                 return user
-            except Exception as e:
+            except Exception as _:
                 return None
 
     @property
     def database(self):
+        """Return the current database."""
         return None
-
-    @database.setter
-    def database_setter(self, dbname):
-        return self.set_secure_cookie("database", dbname)
 
     @property
     def databases(self, **kwargs):
+        """
+        Return the list of databases in this instance.
+        """
         if self.current_user:
             if self._databases is None:
                 self._databases = self.execute(
-                "SELECT datname FROM pg_database ORDER BY DATNAME",
-                **kwargs)
+                    "SELECT datname FROM pg_database ORDER BY DATNAME",
+                    **kwargs)
             return [d[0] for d in self._databases]
 
     def on_finish(self):
         for engine in self._connections.values():
             engine.dispose()
 
-    def connect(self, server=None, username=None, password=None, database=None):
+    def connect(self, server=None, username=None, password=None,
+                database=None):
+        """
+        Connect to a specific database.
+        Parameters default values are taken from the cookies and the server
+        configuration file.
+        """
         server = server or self.get_secure_cookie('server').decode('utf8')
         username = username or self.get_secure_cookie('username').decode('utf8')
         password = (password or
@@ -74,10 +94,13 @@ class BaseHandler(RequestHandler):
             engine.connect()
             self._connections[url] = engine
             return engine
-        except Exception as e:
+        except Exception as _:
             raise HTTPError(403)
 
     def has_extension(self, extname):
+        """
+        Returns whether the database has the specific extension installed.
+        """
         return self.execute(text(
             """
             SELECT true FROM pg_extension WHERE extname = :extname
@@ -94,23 +117,35 @@ class BaseHandler(RequestHandler):
     def execute(self, query, params=None, server=None, username=None,
                 database=None,
                 password=None):
+        """
+        Execute a query against a database, with specific bind parameters.
+        """
         if params is None:
             params = {}
         engine = self.connect(server, username, password, database)
         return engine.execute(query, **params)
 
     def get_pickle_cookie(self, name):
+        """
+        Deserialize a cookie value using the pickle protocol.
+        """
         value = self.get_secure_cookie(name)
         if value:
             return pickle.loads(value)
 
     def set_pickle_cookie(self, name, value):
+        """
+        Serialize a cookie value using the pickle protocol.
+        """
         self.set_secure_cookie(name, pickle.dumps(value))
 
     flash = ui_methods.flash
 
 
 class AuthHandler(BaseHandler):
+    """
+    Base handler for urls needing authentifications.
+    """
 
     @authenticated
     def prepare(self):

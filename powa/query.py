@@ -1,18 +1,24 @@
+"""
+Dashboard for the by-query page.
+"""
+
 from powa.dashboards import (
     Dashboard, Graph, Grid,
     MetricGroupDef, MetricDef,
     DashboardPage, ContentWidget)
-from powa.metrics import Detail, Totals
-from powa.framework import AuthHandler
+from powa.metrics import Totals
 from tornado.web import HTTPError
 
-from powa.sql import *
+from powa.sql import text, Plan, format_jumbled_query, resolve_quals
 
 MEASURE_INTERVAL = """
 extract (epoch FROM CASE WHEN total_mesure_interval = '0 second' THEN '1 second'::interval ELSE total_mesure_interval END)
 """
 
 class QueryOverviewMetricGroup(Totals, MetricGroupDef):
+    """
+    Metric Group for the graphs on the by query page.
+    """
     name = "query_overview"
     xaxis = "ts"
     data_url = r"/metrics/database/(\w+)/query/(\w+)"
@@ -59,23 +65,10 @@ class QueryOverviewMetricGroup(Totals, MetricGroupDef):
         """ % {"mi": MEASURE_INTERVAL})
 
 
-
-class QueryQualsMetricGroup(MetricGroupDef):
-    name = "query_quals_overview"
-    xaxis = "ts"
-    data_url = r"/metrics/database/(\w+)/query/(\w+)/quals"
-    avg_exec_by_call = MetricDef(label="Avg number of qual execution by query execution")
-
-    query = text("""
-        SELECT extract(epoch from pgqs.ts) as ts,
-                 (CASE WHEN sum(total_calls) = 0 THEN 0 ELSE sum(count) / sum(total_calls) END)::float as avg_exec_by_call
-        FROM powa_qualstats_getstatdata_sample(tstzrange(:from, :to), :query, 300) as pgqs
-        JOIN powa_getstatdata_sample(:from, :to, :query, 300) as pgss ON pgss.ts = pgqs.ts
-        GROUP BY pgqs.ts
-    """)
-
-
 class QueryIndexes(ContentWidget):
+    """
+    Content widget showing explain plans for various const values.
+    """
 
     data_url = r"/metrics/database/(\w+)/query/(\w+)/indexes"
     # FIXME: aggregate over the selected period
@@ -104,27 +97,48 @@ class QueryIndexes(ContentWidget):
             for key in ('most filtering', 'least filtering', 'most executed'):
                 vals = row[key]
                 query = format_jumbled_query(row['query'], vals['constants'])
-                plan = self.execute("EXPLAIN %s" % query , database=database).scalar()
-                plans.append(Plan(key, vals['constants'], query, plan, vals["filter_ratio"], vals['count']))
+                plan = "N/A"
+                try:
+                    result = self.execute("EXPLAIN %s" % query,
+                                          database=database)
+                    plan = "\n".join(v[0] for v in result)
+                except:
+                    pass
+                plans.append(Plan(key, vals['constants'], query,
+                                  plan, vals["filter_ratio"], vals['count']))
         self.render("database/query/indexes.html", plans=plans)
 
 
 class QualList(MetricGroupDef):
+    """
+    Datasource used for the Qual table.
+    """
     name = "query_quals"
     xaxis = "quals"
     axis_type = "category"
     data_url = r"/metrics/database/(\w+)/query/(\w+)/quals"
+    filter_ratio = MetricDef(label="Avg filter_ratio")
 
     query = text("""
         SELECT
-            quals,
+            to_json(quals) as quals,
             filter_ratio,
             count
-        FROM powa_qualstats_getstadata_sample(tstzrange(:from, :to), :query, 300)
+        FROM powa_qualstats_getstatdata_sample(tstzrange(:from, :to), :query, 1)
     """)
+
+    @classmethod
+    def post_process(cls, handler, data, database, query, **kwargs):
+        conn = handler.connect(database=database)
+        data["data"] = resolve_quals(conn, data["data"])
+        return data
+
 
 
 class QueryDetail(ContentWidget):
+    """
+    Detail widget showing summarized information for the query.
+    """
 
     data_url = r"/metrics/database/(\w+)/query/(\w+)/detail"
 
@@ -155,23 +169,25 @@ class QueryDetail(ContentWidget):
 
 
 class QueryOverview(DashboardPage):
+    """
+    Dashboard page for a query.
+    """
     base_url = r"/database/(\w+)/query/(\w+)/overview"
     params = ["database", "query"]
-    datasources = [QueryOverviewMetricGroup, QueryQualsMetricGroup, QueryDetail,
-                   QueryIndexes]
+    datasources = [QueryOverviewMetricGroup, QueryDetail,
+                   QueryIndexes, QualList]
     dashboard = Dashboard(
         "Query %(query)s on database %(database)s",
         [[QueryDetail("Query Detail")],
-            [Graph("General",
+         [Graph("General",
                 metrics=[QueryOverviewMetricGroup.avg_runtime,
-                         QueryOverviewMetricGroup.rows
-                         ]),
+                         QueryOverviewMetricGroup.rows]),
           Graph("Shared block (in Bps)",
                 metrics=[QueryOverviewMetricGroup.shared_blks_read,
                          QueryOverviewMetricGroup.shared_blks_hit,
                          QueryOverviewMetricGroup.shared_blks_dirtied,
                          QueryOverviewMetricGroup.shared_blks_written])],
-          [Graph("Local block (in Bps)",
+         [Graph("Local block (in Bps)",
                 metrics=[QueryOverviewMetricGroup.local_blks_read,
                          QueryOverviewMetricGroup.local_blks_hit,
                          QueryOverviewMetricGroup.local_blks_dirtied,
@@ -184,8 +200,10 @@ class QueryOverview(DashboardPage):
                          QueryOverviewMetricGroup.blk_write_time])],
          [Grid("Predicates used by this query",
                columns=[{
-                   "name": "quals",
-                   "label": "Predicate"
-               }])],
-         [QueryIndexes("Query Indexes")]
-         ])
+                   "name": "where_clause",
+                   "label": "Predicate",
+                   "type": "query",
+                   "max_length": 60
+               }],
+               metrics=QualList.all())],
+         [QueryIndexes("Query Indexes")]])

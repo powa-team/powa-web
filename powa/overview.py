@@ -1,13 +1,20 @@
+"""
+Index page presenting an overview of the cluster stats.
+"""
+
 from powa.dashboards import (
     Dashboard, Graph, Grid,
     MetricGroupDef, MetricDef,
     DashboardPage)
 from powa.metrics import Detail, Totals
 
-from powa.sql import *
+from powa.sql import text, TOTAL_MEASURE_INTERVAL
 
 
 class ByDatabaseMetricGroup(Detail, MetricGroupDef):
+    """
+    Metric group used by the "by database" grid
+    """
     name = "by_database"
     xaxis = "datname"
     data_url = r"/metrics/by_databases/"
@@ -38,7 +45,11 @@ class ByDatabaseMetricGroup(Detail, MetricGroupDef):
         val["url"] = handler.reverse_url("DatabaseOverview", val["datname"])
         return val
 
+
 class GlobalDatabasesMetricGroup(Totals, MetricGroupDef):
+    """
+    Metric group used by summarized graphs.
+    """
     name = "all_databases"
     data_url = r"/metrics/databases_globals/"
 
@@ -59,19 +70,22 @@ class GlobalDatabasesMetricGroup(Totals, MetricGroupDef):
 
 
 class Overview(DashboardPage):
+    """
+    Overview dashboard page.
+    """
     base_url = r"/overview/"
     datasources = [GlobalDatabasesMetricGroup, ByDatabaseMetricGroup]
     dashboard = Dashboard(
         "Overview",
         [[Graph("Query runtime per second (all databases)",
-               metrics=[GlobalDatabasesMetricGroup.avg_runtime]),
-         Graph("Block access in Bps",
-               metrics=[GlobalDatabasesMetricGroup.total_blks_hit,
-                        GlobalDatabasesMetricGroup.total_blks_read])],
+                metrics=[GlobalDatabasesMetricGroup.avg_runtime]),
+          Graph("Block access in Bps",
+                metrics=[GlobalDatabasesMetricGroup.total_blks_hit,
+                         GlobalDatabasesMetricGroup.total_blks_read])],
          [Grid("Details for all databases",
                columns=[{
-                 "name": "datname",
-                 "label": "Database",
-                  "url_attr": "url"
+                   "name": "datname",
+                   "label": "Database",
+                   "url_attr": "url"
                }],
                metrics=ByDatabaseMetricGroup.all())]])

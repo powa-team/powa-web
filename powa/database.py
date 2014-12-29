@@ -1,24 +1,28 @@
+"""
+Module containing the by-database dashboard.
+"""
 from powa.framework import AuthHandler
 from powa.dashboards import (
     Dashboard, Graph, Grid,
     MetricGroupDef, MetricDef,
-    DashboardPage,
-    DashboardHandler)
-from tornado.web import URLSpec
+    DashboardPage)
 
-from powa.sql import *
+from powa.sql import text, TOTAL_MEASURE_INTERVAL
 
 from powa.metrics import Detail, Totals
 
 
 class DatabaseSelector(AuthHandler):
+    """Page allowing to choose a database."""
 
     def get(self):
         self.redirect(self.reverse_url(
             'DatabaseOverview',
-             self.get_argument("database")))
+            self.get_argument("database")))
+
 
 class DatabaseOverviewMetricGroup(Totals, MetricGroupDef):
+    """Metric group for the database global graphs."""
     name = "database_overview"
     xaxis = "ts"
     data_url = r"/metrics/database_overview/(\w+)/"
@@ -27,7 +31,8 @@ class DatabaseOverviewMetricGroup(Totals, MetricGroupDef):
         SELECT
         extract(epoch from ts) AS ts,
         sum(total_runtime) /  %(tmi)s as avg_runtime,
-        sum(shared_blks_read+local_blks_read+temp_blks_read)*blksize/ %(tmi)s  as total_blks_read,
+        sum(shared_blks_read+local_blks_read+temp_blks_read)*blksize/ %(tmi)s
+                 as total_blks_read,
         sum(shared_blks_hit+local_blks_hit)*blksize/ %(tmi)s as total_blks_hit
         FROM
           powa_getstatdata_sample_db(:from, :to, :database, 300)
@@ -36,7 +41,9 @@ class DatabaseOverviewMetricGroup(Totals, MetricGroupDef):
         ORDER BY ts
         """ % {"tmi": TOTAL_MEASURE_INTERVAL})
 
+
 class ByQueryMetricGroup(Detail, MetricGroupDef):
+    """Metric group for indivual query stats (displayed on the grid)."""
     name = "all_queries"
     xaxis = "md5query"
     axis_type = "category"
@@ -65,11 +72,13 @@ class ByQueryMetricGroup(Detail, MetricGroupDef):
     @classmethod
     def process(cls, handler, val, database=None, **kwargs):
         val = dict(val)
-        val["url"] = handler.reverse_url("QueryOverview", database, val["md5query"])
+        val["url"] = handler.reverse_url(
+            "QueryOverview", database, val["md5query"])
         return val
 
 
 class DatabaseOverview(DashboardPage):
+    """DatabaseOverview Dashboard."""
     base_url = r"/database/(\w+)/overview"
     datasources = [DatabaseOverviewMetricGroup, ByQueryMetricGroup]
     params = ["database"]
@@ -79,12 +88,12 @@ class DatabaseOverview(DashboardPage):
                 metrics=[DatabaseOverviewMetricGroup.avg_runtime]),
           Graph("Blocks (On database %(database)s)",
                 metrics=[DatabaseOverviewMetricGroup.total_blks_read,
-                        DatabaseOverviewMetricGroup.total_blks_hit])],
+                         DatabaseOverviewMetricGroup.total_blks_hit])],
          [Grid("Details for all queries",
                columns=[{
-                "name": "query",
-                "label": "Query",
-                "type": "query",
-                "url_attr": "url"
+                   "name": "query",
+                   "label": "Query",
+                   "type": "query",
+                   "url_attr": "url"
                }],
                metrics=ByQueryMetricGroup.all())]])

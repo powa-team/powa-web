@@ -1,3 +1,9 @@
+"""
+Dashboard definition classes.
+
+This module provides several classes to define a Dashboard.
+"""
+
 from powa.json import JSONizable, to_json
 from abc import ABCMeta
 from powa.framework import AuthHandler
@@ -21,7 +27,7 @@ class DashboardHandler(AuthHandler):
 
     def get(self, *args):
         params = OrderedDict(zip(self.dashboardpage.params,
-                          args))
+                                 args))
         param_rows = []
         for row in self.dashboardpage.dashboard.widgets:
             param_row = []
@@ -65,12 +71,22 @@ class MetricGroupHandler(AuthHandler):
         values = self.execute(query, params=url_params)
         data = {"data": [self.metric_group.process(self, val,
                                                    **url_params) for val in values]}
+        data = self.metric_group.post_process(self, data, **url_params)
         self.render_json(data)
 
 
 
 
 class DataSource(JSONizable):
+    """
+    Base class for various datasources
+
+    Attributes:
+        datasource_handler_cls (type):
+            a subclass of RequestHandler used to process this DataSource.
+
+    """
+    datasource_hanlder_cls = None
 
     def __init__(self, name=None, query=None, data_url=None):
         self.name = name
@@ -79,23 +95,46 @@ class DataSource(JSONizable):
 
     @classproperty
     def url_name(cls):
+        """
+        Returns the default url_name for this data source.
+        """
         return "datasource_%s" % cls.__name__
 
 
 class MetricGroup(DataSource):
+    """
+    A metric group associates a set of Metrics, retrieved
+    by one sql query at once.
 
+    Attributes:
+        name (str):
+            The name of the metric
+        query (sqlalchemy.sql.base.Executable):
+            The sql query used to fetch the metrics
+        metrics (dict):
+            a dictionary mapping metric names to their definition.
+        data_url (str):
+            a regular expression defining the url for this metricgroup
+        xaxis (str):
+            the name of the column serving as an xaxis
+        axis_type (str):
+            the type of the axis
+        category_attr (str):
+            an attribute defining multiple series for the same metric.
+
+    """
     datasource_handler_cls = MetricGroupHandler
 
     def __init__(self, name=None, query=None, data_url=None,
                  xaxis="ts", metrics=None, axis_type="time",
-                 category_attr=None, **kwargs):
+                 category_attr=None):
         super(MetricGroup, self).__init__(name, query, data_url)
         self.xaxis = xaxis
         self.axis_type = axis_type
         self.metrics = metrics or {}
         self.category_attr = category_attr
-        for key, metric in self.metrics.items():
-            metric._bind(self)
+        for metric in self.metrics.values():
+            metric.bind(self)
 
     def to_json(self):
         vals = super(MetricGroup, self).to_json()
@@ -105,10 +144,46 @@ class MetricGroup(DataSource):
 
     @classmethod
     def process(cls, handler, val, **kwargs):
+        """
+        Callback used to process each individual row fetched from the query.
+
+        Arguments:
+            handler (tornado.web.RequestHandler):
+                the current request handler
+            val (sqlalchemy.engine.result.RowProxy):
+                the row to process
+            kwargs (dict):
+                the current url_parameters
+        Returns:
+            A dictionary containing the processed values.
+        """
         return dict(val)
+
+    @classmethod
+    def post_process(cls, handler, data, **kwargs):
+        """
+        Callback used to process the whole set of rows before returning
+        it to the browser.
+
+        Arguments:
+            handler (tornado.web.RequestHandler):
+                the current request handler
+            val (sqlalchemy.engine.result.RowProxy):
+                the row to process
+            kwargs (dict):
+                the current url_parameters
+        Returns:
+            A dictionary containing the processed values.
+        """
+        return data
+
 
 
 class Metric(JSONizable):
+    """
+    An indivudal Metric.
+    A Metric is an abstraction for a series of data.
+    """
 
     def __init__(self, name, label=None, yaxis=None, **kwargs):
         self.name = name
@@ -119,27 +194,48 @@ class Metric(JSONizable):
             setattr(self, key, value)
 
 
-    def _bind(self, group):
+    def bind(self, group):
+        """
+        Bind the metric to a metric group. Each metric belong to
+        only one MetricGroup.
+        """
+
         if self._group is not None:
             raise ValueError("Already bound to %s" % self._group)
         self._group = group
 
     def _fqn(self):
+        """
+        Return the fully qualified name of this metric.
+        """
         return "%s.%s" % (self._group.name, self.name)
 
 
 class Dashboard(JSONizable):
+    """
+    A Dashboard definition.
+
+    Attributes:
+        title (str):
+            the dashboard title
+        _widgets (list of list):
+            A list of rows, with each row containing a list of widgets.
+    """
+
 
     def __init__(self, title, widgets=None):
         self.title = title
         self._widgets = widgets or []
-        self._validate_layout(self._widgets)
+        self._validate_layout()
 
 
-    def _validate_layout(self, widgets):
-        if not isinstance(widgets, list):
+    def _validate_layout(self):
+        """
+        Validate that the layout is consistent.
+        """
+        if not isinstance(self._widgets, list):
             raise ValueError("Widgets must be a list of list of widgets")
-        for row in widgets:
+        for row in self._widgets:
             if (12 % len(row)) != 0:
                 raise ValueError(
                     "Each widget row length must be a "
@@ -147,12 +243,18 @@ class Dashboard(JSONizable):
 
     @property
     def widgets(self):
+        """
+        Returns this dashboard widgets.
+        """
         return self._widgets
 
     @widgets.setter
     def set_widgets(self, widgets):
-       self._validate_layout(widgets)
-       self._widgets = widgets
+        """
+        Widgets setter.
+        """
+        self._validate_layout()
+        self._widgets = widgets
 
     def to_json(self):
         return {'title': self.title,
@@ -160,44 +262,60 @@ class Dashboard(JSONizable):
 
 
 class Widget(JSONizable):
+    """
+    Base class for every Widget.
+    """
 
-    def parameterized_json(self, handler, **params):
+    def parameterized_json(self, _, **params):
         base = params.copy()
         base.update(self.to_json())
         base["title"] = base["title"] % params
         return base
 
 
-class ContentHandler(object):
+class ContentHandler(AuthHandler):
+    """
+    Base class for ContentHandlers.
+
+    ContentHandler subclasses are generated on the fly by ContentWidgets,
+    when they are registered.
+    """
 
     def initialize(self, datasource=None, params=None):
         self.params = params
 
-class ContentWidget(Widget, DataSource):
+class ContentWidget(Widget, DataSource, AuthHandler):
+    """
+    A widget showing HTML fetched from the server.
+
+    This widget acts as both a Widget and DataSource, since the Data used is
+    simplistic.
+    """
 
 
-    def __init__(self, title, content=None, **kwargs):
+    def __init__(self, title, **kwargs):
         self.title = title
-        self.content = content
-        super(ContentWidget, self).__init__(title, content, **kwargs)
+        super(ContentWidget, self).__init__(title, **kwargs)
 
+    def initialize(self, datasource=None, params=None):
+        self.params = params
 
     @classproperty
     def datasource_handler_cls(cls):
         return type("%sHandler" % cls.__name__,
-                    (ContentHandler, AuthHandler,), dict(cls.__dict__))
-
+                    (ContentHandler,), dict(cls.__dict__))
 
     @hybridmethod
     def to_json(cls):
+        """
+        to_json is an hybridmethod, the goal is to provide two different implementations
+        when it is used as a class (DataSource) or as an instance (Widget).
+        """
         return {
             'data_url': cls.data_url,
             'name': cls.__name__,
             'type': 'contentsource'
         }
-
-    def initialize(self, datasource=None, params=None):
-        self.params = params
 
     @to_json.instance_method
     def to_json(self):
@@ -209,6 +327,15 @@ class ContentWidget(Widget, DataSource):
 
 
 class Grid(Widget):
+    """
+    A rich table Widget, backed by a BackGrid component.
+
+    Attributes:
+        columns (list):
+            a list of column definitions, excluding metrics
+        metrics (list):
+            a list of metrics to be included as columns
+    """
 
     def __init__(self, title, columns=None, metrics=None, **kwargs):
         self.title = title
@@ -219,6 +346,9 @@ class Grid(Widget):
         self._validate()
 
     def _validate(self):
+        """
+        Validate that the metrics are coherent.
+        """
         if len(self.metrics) > 0:
             mg1 = self.metrics[0]._group
             if any(m._group != mg1 for m in self.metrics):
@@ -237,6 +367,9 @@ class Grid(Widget):
 
 
 class Graph(Widget):
+    """
+    A widget backed by a Rickshaw graph.
+    """
 
     def __init__(self, title, grouper=None,
                  axistype="time",
@@ -268,6 +401,9 @@ class Graph(Widget):
 
 
 class Declarative(object):
+    """
+    Base class for declarative classes.
+    """
 
     def __init__(self, *args, **kwargs):
         self.args = args
@@ -278,24 +414,31 @@ class Declarative(object):
 
 
 class MetricDef(Declarative):
+    """
+    A metric definition.
+    """
     _cls = Metric
 
 
 
 class MetaMetricGroup(type, JSONizable):
-
+    """
+    Meta class for Metric Groups.
+    This meta class parses its MetricDef attributes, and instantiates
+    real Metrics from them.
+    """
 
     def __new__(meta, name, bases, dct):
         dct['metrics'] = {}
-        dct['stubs'] = {}
+        dct['_stubs'] = {}
         for base in bases:
-            if hasattr(base, 'stubs'):
-                for key, stub in base.stubs.items():
+            if hasattr(base, '_stubs'):
+                for key, stub in base._stubs.items():
                     dct[key] = stub.__class__(*stub.args,
                                               **stub.kwargs)
         for key, val in list(dct.items()):
             if isinstance(val, Declarative):
-                dct['stubs'][key] = val
+                dct['_stubs'][key] = val
                 val.kwargs['name'] = key
                 dct[key] = val = val._cls(*val.args, **val.kwargs)
             if isinstance(val, Metric):
@@ -305,7 +448,7 @@ class MetaMetricGroup(type, JSONizable):
             dct['_inst'] = MetricGroup(
                 **{key: val
                    for key, val in dct.items()
-                   if not isinstance(val, classmethod) and not key.startswith('__')})
+                   if not isinstance(val, classmethod) and not key.startswith('_')})
         return super(MetaMetricGroup, meta).__new__(meta, name, bases, dct)
 
     def __getattr__(cls, key):
@@ -313,7 +456,15 @@ class MetaMetricGroup(type, JSONizable):
 
 
 class MetricGroupDef(with_metaclass(MetaMetricGroup, MetricGroup)):
+    """
+    Base class for MetricGroupDef.
+
+    A MetricGroupDef provides syntactic sugar for instantiating MetricGroups.
+    """
     _cls = MetricGroup
+
+    _inst = None
+    metrics = {}
 
     @classmethod
     def to_json(cls):
@@ -325,14 +476,36 @@ class MetricGroupDef(with_metaclass(MetaMetricGroup, MetricGroup)):
 
 
 class DashboardPage(object):
+    """
+    A Dashboard page ties together a set of datasources, and a dashboard.
+
+    Attributes:
+        template (str):
+            the template to use to render the dashboard
+        params (list):
+            a list of parameter names mapped to groups in the url regexp
+        base_url (str):
+            the url to this page
+        dashboard_handler_cls (RequestHandler):
+            the RequestHandler class used to display this page
+        datasources (list):
+            the list of datasources to include in the page.
+    """
 
     template = "fullpage_dashboard.html"
     params = []
-    datasource_handler_cls = MetricGroupHandler
     dashboard_handler_cls = DashboardHandler
+    base_url = None
+    datasources = []
 
     @classmethod
     def url_specs(cls):
+        """
+        Return the URLSpecs to be register on the application.
+        This usually includes one URLSpec for the page itself, and one for
+        each datasource.
+        """
+
         url_specs = []
         url_specs.append(URLSpec(
             r"%s/" % cls.base_url.rstrip("/"),
