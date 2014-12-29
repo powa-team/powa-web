@@ -20,6 +20,27 @@ define([
         }
     };
 
+    var BaseCell = Backgrid.Cell.extend({
+        initialize: function(options){
+            BaseCell.__super__.initialize.apply(this, arguments);
+           var innerCell = $("<div>");
+           var cellClass = Backgrid.resolveNameToClass(this.cell || "string", "Cell");
+           this.cell = new cellClass($.extend({}, options, {$el: innerCell}));
+        },
+
+        render: function(){
+            var cell = this.cell.render(),
+                model = this.model,
+                base = this.$el;
+            if(this.column.get("url_attr")){
+                base = $("<a>").attr("href", model.get(this.column.get("url_attr")));
+                this.$el.append(base);
+            }
+            base.append(cell.$el);
+            return this;
+        }
+    });
+
     Backgrid.Extension.DurationCell = Backgrid.Cell.extend({
         className: "duration",
         formatter: DurationFormatter
@@ -46,10 +67,6 @@ define([
                 base = this.$el;
             if(value === undefined){
                 return this;
-            }
-            if(this.column.get("url_attr")){
-                base = $("<a>").attr("href", model.get(this.column.get("url_attr")));
-                this.$el.append(base);
             }
             base.append(code_elem);
             code_elem.attr("title", "<pre>" + highlight.highlight("sql", raw_value, true).value + "</pre>");
@@ -85,12 +102,16 @@ define([
                 this.model.get("metrics").each(function(metric){
                     columns.push($.extend({}, metric.attributes, {
                         editable: false,
-                        cell: metric.get("type")
+                        cell: BaseCell.extend({
+                            cell: metric.get("type")
+                        })
                     }));
                 });
                 _.each(columns, function(c){
                     if(c.cell === undefined){
-                        c.cell = "string";
+                        c.cell = BaseCell.extend({
+                            cell: c.type
+                        });
                     }
                     if(c.editable === undefined){
                         c.editable = false;

@@ -32,6 +32,12 @@ class ByDatabaseMetricGroup(Detail, MetricGroupDef):
         ORDER BY sum(total_calls) DESC
     """)
 
+    @classmethod
+    def process(cls, handler, val, **kwargs):
+        val = dict(val)
+        val["url"] = handler.reverse_url("DatabaseOverview", val["datname"])
+        return val
+
 class GlobalDatabasesMetricGroup(Totals, MetricGroupDef):
     name = "all_databases"
     data_url = r"/metrics/databases_globals/"
@@ -66,5 +72,6 @@ class Overview(DashboardPage):
                columns=[{
                  "name": "datname",
                  "label": "Database",
+                  "url_attr": "url"
                }],
                metrics=ByDatabaseMetricGroup.all())]])

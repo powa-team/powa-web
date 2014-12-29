@@ -81,11 +81,10 @@ class DatabaseOverview(DashboardPage):
                 metrics=[DatabaseOverviewMetricGroup.total_blks_read,
                         DatabaseOverviewMetricGroup.total_blks_hit])],
          [Grid("Details for all queries",
-               x_label="Query",
                columns=[{
                 "name": "query",
                 "label": "Query",
-                "cell": "query",
+                "type": "query",
                 "url_attr": "url"
                }],
                metrics=ByQueryMetricGroup.all())]])

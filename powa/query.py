@@ -109,6 +109,21 @@ class QueryIndexes(ContentWidget):
         self.render("database/query/indexes.html", plans=plans)
 
 
+class QualList(MetricGroupDef):
+    name = "query_quals"
+    xaxis = "quals"
+    axis_type = "category"
+    data_url = r"/metrics/database/(\w+)/query/(\w+)/quals"
+
+    query = text("""
+        SELECT
+            quals,
+            filter_ratio,
+            count
+        FROM powa_qualstats_getstadata_sample(tstzrange(:from, :to), :query, 300)
+    """)
+
+
 class QueryDetail(ContentWidget):
 
     data_url = r"/metrics/database/(\w+)/query/(\w+)/detail"
@@ -167,5 +182,10 @@ class QueryOverview(DashboardPage):
           Graph("Read / Write time",
                 metrics=[QueryOverviewMetricGroup.blk_read_time,
                          QueryOverviewMetricGroup.blk_write_time])],
+         [Grid("Predicates used by this query",
+               columns=[{
+                   "name": "quals",
+                   "label": "Predicate"
+               }])],
          [QueryIndexes("Query Indexes")]
          ])
