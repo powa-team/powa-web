@@ -32,7 +32,7 @@ class BaseHandler(RequestHandler):
 
     @property
     def database(self):
-        return self.get_secure_cookie("database")
+        return None
 
     @database.setter
     def database_setter(self, dbname):

@@ -12,7 +12,6 @@ def servers(self):
     return options.servers
 
 
-
 def field(self, **kwargs):
     kwargs.setdefault('id', kwargs.get('username'))
     kwargs.setdefault('tag', 'input')

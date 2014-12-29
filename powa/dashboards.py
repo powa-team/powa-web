@@ -39,6 +39,11 @@ class DashboardHandler(AuthHandler):
                            datasources=param_datasource,
                            title=self.dashboardpage.dashboard.title % params)
 
+    @property
+    def database(self):
+        params = dict(zip(self.params, self.path_args))
+        return params.get("database", None)
+
 class MetricGroupHandler(AuthHandler):
     """
     Handler for a metric group.

@@ -3,13 +3,16 @@
     <li class="heading">
       Database
       <form method="GET" id="db_selector" action="{{reverse_url('database_selector')}}">
-          <select name="database" value="{{current_database}}">
+          <select name="database" selected="{{current_database}}" placeholder="lol">
+            <option {{ 'selected' if current_database is None else ''}}
+                                                                  disabled>Choose
+                                                                  database</option>
             {% for db in databases %}
             <option {{ 'selected' if db == current_database else ""}} value="{{db}}">{{db}}</option>
             {% end %}
           </select>
       </form></li>
     {% if current_database %}
-    <li><a href="{{ reverse_url('database_overview', database=current_database) }}"></li>
+    <li><a href="{{ reverse_url('DatabaseOverview', current_database) }}"></li>
     {% end %}
 </ul>
