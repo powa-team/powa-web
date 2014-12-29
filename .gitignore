@@ -4,3 +4,4 @@ powa/static/build/
 .ropeproject
 **/*.pyc
 **/__pycache__/
+powa.conf
