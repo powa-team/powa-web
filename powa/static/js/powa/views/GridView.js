@@ -87,8 +87,9 @@ define([
                 var self = this;
                 this.grid = new Backgrid.Grid({
                     columns: this.getColumnDefinitions(),
-                    collection: this.model.get("collection")
+                    collection: this.model.get("collection"),
                 });
+                this.grid.body.emptyText = "No data";
                 this.filter = new Backgrid.Extension.ClientSideFilter({
                       collection: this.model.get("collection")
                 });

@@ -25,16 +25,9 @@ define([
 
             initialize: function(){
                 var self = this;
-                this.$el.html(this.template(this.model.toJSON()));
-                this.graph_elem = this.$el.find(".graph_container");
-                this.graph = new Rickshaw.Graph({
-                            element: this.graph_elem.get(0),
-                            height: this.$el.innerHeight(),
-                            width: this.$el.innerWidth(),
-                            xScale: d3.time.scale(),
-                            renderer: "line",
-                            series: []
-                });
+                this.listenTo(this.model, "widget:needrefresh", this.update);
+                this.listenTo(this.model, "widget:dataload-failed", this.fail);
+                this.render();
                 this.$nodata_el = $("<div>").html("No data").css({
                     position: "absolute",
                     left: "50%",
@@ -43,12 +36,32 @@ define([
                     height: "100%"
                 }).addClass("nodata");
                 this.nodata_el = this.$nodata_el.get(0);
+                this.$el.addClass("graph");
+            },
+
+            getGraph: function(){
+                if(this.graph === undefined){
+                    this.makeGraph();
+                }
+                return this.graph;
+            },
+
+            makeGraph: function(){
+                this.$el.html(this.template(this.model.toJSON()));
+                this.graph_elem = this.$el.find(".graph_container");
+                this.graph = new Rickshaw.Graph({
+                            element: this.graph_elem.get(0),
+                            height: this.$el.innerHeight(),
+                            width: this.$el.innerWidth() - 40,
+                            xScale: d3.time.scale(),
+                            renderer: "line",
+                            series: []
+                });
                 var time = new Rickshaw.Fixtures.Time();
                 var seconds = time.unit('second');
                 this.x_axis = new Rickshaw.Graph.Axis.Time( {
                     graph: this.graph,
                     tickFormat: this.graph.x.tickFormat(),
-
                 } );
                 // TODO: allow multiple axes
                 this.y_axes = {};
@@ -92,14 +105,12 @@ define([
                 	graph: this.graph,
                 	element: this.$el.find(".graph_preview").get(0)
                 });
-                this.listenTo(this.model, "widget:needrefresh", this.update);
-                this.render();
             },
 
 
             nodata: function(){
                 this.$nodata_el.width(this.$el.innerWidth());
-                this.$nodata_el.height(this.$el.height());
+                this.$nodata_el.height(this.$el.innerHeight());
                 this.el.insertBefore(this.nodata_el, this.el.firstChild||null);
             },
 
@@ -119,6 +130,7 @@ define([
             },
 
             update: function(newseries){
+                this.getGraph();
                 if(newseries.length == 0){
                     this.hideload();
                     this.nodata();
@@ -144,7 +156,6 @@ define([
             },
 
             render: function(){
-                this.legend.render();
                 return this;
             }
         });
