@@ -62,6 +62,7 @@ class MetricGroupHandler(AuthHandler):
 
     def get(self, *params):
         url_params = dict(zip(self.params, params))
+        self.metric_group.prepare(self, **url_params)
         url_query_params = {
             key: value[0].decode('utf8')
             for key, value
@@ -141,6 +142,11 @@ class MetricGroup(DataSource):
         vals['metrics'] = list(self.metrics.values())
         vals['type'] = 'metric_group'
         return vals
+
+    @classmethod
+    def prepare(cls, handler, **kwargs):
+        """Callback before handling the metric group method."""
+        pass
 
     @classmethod
     def process(cls, handler, val, **kwargs):

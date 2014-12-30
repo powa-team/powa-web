@@ -10,6 +10,7 @@ function(WidgetView, Content, highlight, moment, duration){
 
         initialize: function(args){
             this.model = args.model;
+            this.listenTo(this.model, "widget:dataload-failed", this.fail);
             this.listenTo(this.model, "widget:needrefresh", this.update);
             this.$el.addClass("content-widget");
         },

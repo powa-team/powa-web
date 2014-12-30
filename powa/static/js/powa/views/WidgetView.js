@@ -17,6 +17,12 @@ define([
             this.spinner.spin(this.el);
         },
 
+        fail: function(message){
+            this.hideload();
+            this.$el.html('<div class="alert-box info">An error occured while loading this widget <br/>' +
+                    message + '</div>');
+        },
+
         hideload: function(){
             if(this.spinner){
                 this.spinner.stop();

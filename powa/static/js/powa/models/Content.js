@@ -2,6 +2,9 @@ define(['backbone', 'powa/models/DataSourceCollection'], function(Backbone, Data
     return Backbone.Model.extend({
         initialize: function(){
             this.listenTo(this.get("contentsource"), "contentsource:dataload", this.update);
+            this.listenTo(this.get("contentsource"), "contentsource:dataload-failed", function(message){
+              this.trigger("widget:dataload-failed", message);
+            });
         },
         update: function(content){
             this.trigger("widget:needrefresh", content);

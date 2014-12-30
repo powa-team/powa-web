@@ -44,6 +44,9 @@ define(['backbone', 'powa/models/DataSource', 'powa/models/Metric', 'powa/models
                     var series = series_by_metric[metric.get("name")];
                     metric.set("series", series);
                 });
+            }).fail(function(response){
+                var value = response.status != 500 ? response.responseText: ""
+                self.trigger("metricgroup:dataload-failed", value);
             });
         }
 

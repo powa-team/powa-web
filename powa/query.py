@@ -129,9 +129,7 @@ class QueryIndexes(ContentWidget):
 
     def get(self, database, query):
         if not self.has_extension("pg_qualstats"):
-            self.flash("Install the pg_qualstats extension for more info !")
-            self.render("xhr.html")
-            return
+            raise HTTPError(501, "PG qualstats is not installed")
         quals = self.execute(self.QUALS_QUERY, params={"database": database, "query": query,
                                                        "from": self.get_argument("from"),
                                                        "to": self.get_argument("to")})
@@ -174,11 +172,16 @@ class QualList(MetricGroupDef):
     """)
 
     @classmethod
+    def prepare(cls, handler, **kwargs):
+        if not handler.has_extension("pg_qualstats"):
+            raise HTTPError(501, "PG Qualstats is not available")
+
+
+    @classmethod
     def post_process(cls, handler, data, database, query, **kwargs):
         conn = handler.connect(database=database)
         data["data"] = resolve_quals(conn, data["data"])
         return data
-
 
 
 class QueryDetail(ContentWidget):

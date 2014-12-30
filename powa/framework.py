@@ -108,9 +108,14 @@ class BaseHandler(RequestHandler):
 
     def write_error(self, status_code, **kwargs):
         if status_code == 403:
+            self._status_code = status_code
             self.clear_all_cookies()
             self.flash("Authentification failed", "alert")
             self.render("login.html", title="Login")
+            return
+        if status_code == 501:
+            self._status_code = status_code
+            self.render("xhr.html", content=kwargs["exc_info"][1].log_message)
             return
         super(BaseHandler, self).write_error(status_code, **kwargs)
 

@@ -97,6 +97,7 @@ define([
                 });
 
                 this.listenTo(this.model, "widget:needrefresh", this.update);
+                this.listenTo(this.model, "widget:dataload-failed", this.fail);
             },
 
             getColumnDefinitions: function(){

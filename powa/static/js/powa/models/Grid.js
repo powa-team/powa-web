@@ -8,6 +8,9 @@ define(['backbone',  'powa/models/DataSourceCollection', 'powa/models/MetricColl
             var self = this;
             this.set("collection", new (Backbone.PageableCollection.extend({mode: "client"})));
             this.listenTo(this.get("common_group"), "metricgroup:dataload", this.update);
+            this.listenTo(this.get("common_group"), "metricgroup:dataload-failed", function(response){
+                this.trigger("widget:dataload-failed", response);
+            });
         },
 
         update: function(data){

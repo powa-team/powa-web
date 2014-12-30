@@ -9,7 +9,8 @@ define(['powa/models/DataSource'], function(DataSource){
             }).done(function(response){
                 self.trigger("contentsource:dataload", response);
             }).fail(function(response){
-                self.trigger("contentsource:dataload", "An error occured");
+                var value = response.status != 500 ? response.responseText: ""
+                self.trigger("contentsource:dataload-failed", value);
             });
         }
     }, {
