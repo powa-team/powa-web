@@ -94,6 +94,7 @@ class DatabaseOverview(DashboardPage):
                    "name": "query",
                    "label": "Query",
                    "type": "query",
-                   "url_attr": "url"
+                   "url_attr": "url",
+                   "max_length": 70
                }],
                metrics=ByQueryMetricGroup.all())]])

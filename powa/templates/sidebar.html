@@ -13,6 +13,7 @@
           </select>
       </form></li>
     {% if current_database %}
-    <li><a href="{{ reverse_url('DatabaseOverview', current_database) }}"></li>
+    <li><a href="{{ reverse_url('DatabaseOverview', current_database)
+    }}">Overview</a></li>
     {% end %}
 </ul>

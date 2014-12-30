@@ -1,13 +1,11 @@
 {% extends "../../xhr.html" %}
 {% block content %}
 <div>
-<ul class="pricing-table">
-    <li class="title"><pre class="sql">{{ stats['query'] }}</pre></li>
-    <li class="bullet-item"># of execution: {{ stats['total_calls'] }}</li>
-    <li class="bullet-item">Total runtime: <span class="duration">{{
-        stats['total_runtime'] }}</span></li>
-    <li class="bullet-item">Hit ratio: {{ (str(round(stats['total_hit_blocks'] * 100
-      / stats['total_blocks'], 2)) + "%") if stats['total_blocks'] > 0 else 'N/A' }} </li>
-</ul>
+  <h4><pre class="sql"><code>{{ stats['query'] }}</code></pre></h4>
+<dl>
+  <dt># of execution:</dt><dl> {{ stats['total_calls'] }}</dl>
+  <dt>Total runtime:</dt><dl><span class="duration">{{ stats['total_runtime'] }}</span></dl>
+  <dt>Hit ratio:</dt><dl>{{ (str(round(stats['total_hit_blocks'] * 100 / stats['total_blocks'], 2)) + "%") if stats['total_blocks'] > 0 else 'N/A' }} </dl>
+</dl>
 </div>
 {% end %}

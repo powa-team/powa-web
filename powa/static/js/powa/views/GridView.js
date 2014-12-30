@@ -62,8 +62,10 @@ define([
             var model = this.model,
                 raw_value = model.get(this.column.get("name")),
                 value = raw_value.replace(/^\s+/g,"").replace(/\n\s+/, "\n"),
+                max_length = this.column.get("max_length"),
+                truncated_value = max_length ? value.substring(0, max_length) : value;
                 code_elem = $("<pre>").addClass("has-tip").addClass("tip-top").attr("data-tooltip", "")
-                            .html(highlight.highlight("sql", value.substring(0, this.column.get("max_length") || 35), true).value),
+                            .html(highlight.highlight("sql", truncated_value, true).value),
                 base = this.$el;
             if(value === undefined){
                 return this;
@@ -127,7 +129,7 @@ define([
 
             render: function(){
                 this.$el.html(this.template(this.model.toJSON()));
-                this.$el.find(".grid_container").append(this.grid.render().el);
+                this.$el.find(".backgrid-container").append(this.grid.render().el);
                 this.$el.find(".grid_filter").append(this.filter.render().el);
                 this.$el.find(".grid_paginator").append(this.paginator.render().el);
                 return this;

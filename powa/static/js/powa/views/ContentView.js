@@ -11,6 +11,7 @@ function(WidgetView, Content, highlight, moment, duration){
         initialize: function(args){
             this.model = args.model;
             this.listenTo(this.model, "widget:needrefresh", this.update);
+            this.$el.addClass("content-widget");
         },
 
         render: function(){
@@ -22,7 +23,7 @@ function(WidgetView, Content, highlight, moment, duration){
 
         update: function(newcontent){
             this.$el.html(newcontent);
-            this.$el.find("pre.sql").each(function(i, block){
+            this.$el.find("pre.sql code").each(function(i, block){
                 highlight.highlightBlock(block);
             });
             this.$el.find("span.duration").each(function(i, block){
