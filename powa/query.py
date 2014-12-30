@@ -168,7 +168,9 @@ class QualList(MetricGroupDef):
             to_json(quals) as quals,
             filter_ratio,
             count
-        FROM powa_qualstats_getstatdata_sample(tstzrange(:from, :to), :query, 1)
+        FROM powa_qualstats_statements,
+        LATERAL powa_qualstats_getstatdata_sample(tstzrange(:from, :to), queryid, 1)
+        WHERE md5query = :query
     """)
 
     @classmethod
