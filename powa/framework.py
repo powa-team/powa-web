@@ -57,7 +57,7 @@ class BaseHandler(RequestHandler):
         if self.current_user:
             if self._databases is None:
                 self._databases = self.execute(
-                    "SELECT datname FROM pg_database ORDER BY DATNAME",
+                    "SELECT datname FROM pg_database WHERE datallowconn ORDER BY DATNAME",
                     **kwargs)
             return [d[0] for d in self._databases]
 
