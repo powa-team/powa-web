@@ -149,4 +149,4 @@ class AuthHandler(BaseHandler):
 
     @authenticated
     def prepare(self):
-        pass
+        super(AuthHandler, self).prepare()
