@@ -10,6 +10,15 @@
 @import '../libs/highlight/styles/solarized_dark.scss';
 
 
+.alert {
+    ul {
+        list-style: none;
+        li {
+            color: $white;
+        }
+    }
+}
+
 pre {
     white-space: pre-wrap;
 
@@ -24,18 +33,20 @@ footer {
 
 
 .panel {
-
-  .widget {
+  &.widget {
     margin: 8px;
     padding: 1em;
-  }
-  .widget.content-widget {
-    title {
-      color: $powa-color;
+    min-height: 200px;
+    .content-widget {
+        title {
+        color: $powa-color;
+        }
     }
-  }
 
+  }
   .row.graph {
+      padding-left: 3rem;
+      padding-right: 1.5rem;
       .columns, .row {
           padding-left: 0;
           padding-right: 0;
@@ -47,9 +58,14 @@ footer {
       .graph_container {
           display: inline-block;
           margin: 0 0;
+          height: 300px;
       }
       .graph_right_axis {
           right: 0;
+      }
+
+      .y_axis {
+        overflow: visible;
       }
   }
 }

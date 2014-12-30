@@ -58,7 +58,6 @@
     overflow: hidden;
     text-align: left;
     text-overflow: ellipsis;
-    white-space: nowrap;
     vertical-align: middle;
     border-bottom: 1px solid #DDD;
     &.renderable {
@@ -78,7 +77,6 @@
     font-weight: bold;
     text-align: center;
     &.sortable a {
-      white-space: nowrap;
       cursor: pointer;
       text-decoration: none;
     }
