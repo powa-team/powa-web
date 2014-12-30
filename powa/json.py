@@ -10,7 +10,7 @@ class JSONEncoder(BaseJSONEncoder):
     """
     def default(self, obj):
         if isinstance(obj, Decimal):
-            return str(obj)
+            return float(obj)
         if isinstance(obj, datetime):
             return obj.strftime("%Y-%m-%d %H:%M:%S%z")
         if isinstance(obj, JSONizable):

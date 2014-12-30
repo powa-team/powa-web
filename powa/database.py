@@ -52,8 +52,8 @@ class ByQueryMetricGroup(Detail, MetricGroupDef):
     total_blk_write_time = MetricDef(label="Block write time", type="duration")
     # TODO: refactor with GlobalDatabasesMetricGroup
     query = text("""
-        SELECT total_calls, total_runtime,
-            total_runtime/total_calls AS avg_runtime,
+            SELECT total_calls, total_runtime::numeric,
+            total_runtime/total_calls::numeric AS avg_runtime,
             total_blks_read * b.blocksize AS total_blks_read,
             total_blks_hit * b.blocksize AS total_blks_hit,
             total_blks_dirtied * b.blocksize AS total_blks_dirtied,
