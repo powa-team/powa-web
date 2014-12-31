@@ -7030,6 +7030,15 @@ pre .tex .formula {
 .sidebar .side-nav li {
   background-color: #353535; }
 
+[data-magellan-expedition] {
+  min-width: inherit;
+  padding: 0; }
+  [data-magellan-expedition] ul {
+    margin-bottom: 0; }
+
+.magellan-container {
+  padding: 1.5rem; }
+
 .side-nav li a.dropdown {
   position: relative;
   outline: none;

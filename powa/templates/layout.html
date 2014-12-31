@@ -44,8 +44,20 @@
 
     <div class="row full-width">
       <div class="large-10 medium-9 small-12 large-push-2 medium-push-3 columns  main">
+        <div class="row magellan-container">
+        <div data-magellan-expedition="fixed">
+          <ul class="breadcrumbs">
+            {% set last = len(handler.menu.get_breadcrumb()) - 1 %}
+            {% for i, crumb_item in enumerate(handler.menu.get_breadcrumb()) %}
+            <li data-magellan-arrival="#" class="{{'current' if last == i else ''}}">
+            <a href="{{ reverse_url(crumb_item.url_name, *crumb_item.url_params.values())}}">{{crumb_item.title}}</a>
+            </li>
+            {% end %}
+          </ul>
+        </div>
+        </div>
         <div>
-          {% module Messages() %}
+        {% module Messages() %}
         </div>
         {% block content %} {% end %}
       </div>

@@ -47,3 +47,11 @@ class MenuEntry(UIModule):
     def render(self, handler):
         return handler.render_string("menuitem.html",
                            menu=self)
+
+    def get_breadcrumb(self):
+        base = []
+        if self.active:
+            base.append(self)
+        for child in self.children:
+            base.extend(child.get_breadcrumb())
+        return base
