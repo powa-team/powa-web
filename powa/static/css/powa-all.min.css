@@ -2299,7 +2299,7 @@ button::-moz-focus-inner {
   width: 100%;
   max-height: none;
   height: auto;
-  background: #FFFFFF;
+  background: #333333;
   border: solid 1px #cccccc;
   font-size: 0.875rem;
   z-index: 89;
@@ -2348,7 +2348,7 @@ button::-moz-focus-inner {
     width: 100%;
     max-height: none;
     height: auto;
-    background: #FFFFFF;
+    background: #333333;
     border: solid 1px #cccccc;
     font-size: 0.875rem;
     z-index: 89;
@@ -2392,7 +2392,7 @@ button::-moz-focus-inner {
     width: 100%;
     max-height: none;
     height: auto;
-    background: #FFFFFF;
+    background: #333333;
     border: solid 1px #cccccc;
     font-size: 0.875rem;
     z-index: 89;
@@ -2438,7 +2438,7 @@ button::-moz-focus-inner {
     width: 100%;
     max-height: none;
     height: auto;
-    background: #FFFFFF;
+    background: #333333;
     border: solid 1px #cccccc;
     font-size: 0.875rem;
     z-index: 89;
@@ -2500,7 +2500,7 @@ button::-moz-focus-inner {
     width: 100%;
     height: auto;
     max-height: none;
-    background: #FFFFFF;
+    background: #333333;
     border: solid 1px #cccccc;
     font-size: 0.875rem;
     z-index: 89;
@@ -3930,14 +3930,14 @@ dialog {
     font-weight: normal; }
     .side-nav li a:not(.button) {
       display: block;
-      color: #859145;
+      color: #97a54f;
       margin: 0;
       padding: 0.4375rem 0.875rem; }
       .side-nav li a:not(.button):hover, .side-nav li a:not(.button):focus {
-        background: rgba(0, 0, 0, 0.025);
-        color: #b1bc73; }
+        background: #5c5c5c;
+        color: #b8c381; }
     .side-nav li.active > a:first-child:not(.button) {
-      color: #b1bc73;
+      color: #b8c381;
       font-weight: normal;
       font-family: "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif; }
     .side-nav li.divider {
@@ -3945,9 +3945,9 @@ dialog {
       height: 0;
       padding: 0;
       list-style: none;
-      border-top-color: white; }
+      border-top-color: #97a54f; }
     .side-nav li.heading {
-      color: #859145;
+      color: #97a54f;
       font-size: 0.875rem;
       font-weight: bold;
       text-transform: uppercase; }
@@ -7026,6 +7026,31 @@ pre .deletion {
 
 pre .tex .formula {
   background: #073642; }
+
+.sidebar .side-nav li {
+  background-color: #353535; }
+
+.side-nav li a.dropdown {
+  position: relative;
+  outline: none;
+  padding-right: 3.0625rem; }
+  .side-nav li a.dropdown::after {
+    position: absolute;
+    content: "";
+    width: 0;
+    height: 0;
+    display: block;
+    border-style: solid;
+    border-color: #FFFFFF transparent transparent transparent;
+    top: 50%; }
+  .side-nav li a.dropdown::after {
+    border-width: 0.4375rem;
+    right: 1.3125rem;
+    margin-top: -0.15625rem; }
+  .side-nav li a.dropdown::after {
+    border-color: #FFFFFF transparent transparent transparent; }
+.side-nav li.active {
+  background: none repeat scroll #474747; }
 
 .alert ul {
   list-style: none; }

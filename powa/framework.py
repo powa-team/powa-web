@@ -45,6 +45,10 @@ class BaseHandler(RequestHandler):
                 return None
 
     @property
+    def menu(self):
+        return []
+
+    @property
     def database(self):
         """Return the current database."""
         return None
@@ -56,10 +60,10 @@ class BaseHandler(RequestHandler):
         """
         if self.current_user:
             if self._databases is None:
-                self._databases = self.execute(
+                self._databases = [d[0] for d in self.execute(
                     "SELECT datname FROM pg_database WHERE datallowconn ORDER BY DATNAME",
-                    **kwargs)
-            return [d[0] for d in self._databases]
+                    **kwargs)]
+            return self._databases
 
     def on_finish(self):
         for engine in self._connections.values():

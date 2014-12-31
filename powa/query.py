@@ -225,6 +225,7 @@ class QueryOverview(DashboardPage):
     params = ["database", "query"]
     datasources = [QueryOverviewMetricGroup, QueryDetail,
                    QueryIndexes, QualList]
+    parent = DatabaseOverview
     dashboard = Dashboard(
         "Query %(query)s on database %(database)s",
         [[QueryDetail("Query Detail")],
@@ -256,3 +257,7 @@ class QueryOverview(DashboardPage):
                }],
                metrics=QualList.all())],
          [QueryIndexes("Query Indexes")]])
+
+    @classmethod
+    def get_menutitle(cls, handler, params):
+        return "Query detail"

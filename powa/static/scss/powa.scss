@@ -9,6 +9,23 @@
 @import '../bower_components/backgrid-paginator/backgrid-paginator.scss';
 @import '../libs/highlight/styles/solarized_dark.scss';
 
+.sidebar .side-nav li {
+  background-color: scale-color($oil, $lightness: 1%);
+}
+
+.side-nav {
+  
+  li a.dropdown {
+  @include dropdown-button(
+    $padding: small
+  );
+  }
+
+  li.active {
+    background: none repeat scroll scale-color($oil, $lightness: 10%);
+  }
+}
+
 
 .alert {
     ul {

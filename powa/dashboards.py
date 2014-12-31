@@ -7,6 +7,7 @@ This module provides several classes to define a Dashboard.
 from powa.json import JSONizable, to_json
 from abc import ABCMeta
 from powa.framework import AuthHandler
+from powa.ui_modules import MenuEntry
 from powa.compat import with_metaclass, classproperty, hybridmethod
 from tornado.web import URLSpec
 from operator import attrgetter
@@ -49,6 +50,11 @@ class DashboardHandler(AuthHandler):
     def database(self):
         params = dict(zip(self.params, self.path_args))
         return params.get("database", None)
+
+    @property
+    def menu(self):
+        params = OrderedDict(zip(self.params, self.path_args))
+        return self.dashboardpage.get_menu(self, params)
 
 class MetricGroupHandler(AuthHandler):
     """
@@ -503,6 +509,7 @@ class DashboardPage(object):
     dashboard_handler_cls = DashboardHandler
     base_url = None
     datasources = []
+    parent = None
 
     @classmethod
     def url_specs(cls):
@@ -528,3 +535,34 @@ class DashboardPage(object):
                     "params": cls.params
                 }, name=datasource.url_name))
         return url_specs
+
+    @classmethod
+    def get_menutitle(cls, handler, params):
+        return cls.__name__
+
+    @classmethod
+    def get_childmenu(cls, handler, params):
+        return []
+
+    @classmethod
+    def get_selfmenu(cls, handler, params):
+        my_params = OrderedDict((key, params.get(key))
+                                 for key in cls.params)
+        return MenuEntry(cls.get_menutitle(handler, params),
+                         cls.__name__,
+                         my_params)
+
+    @classmethod
+    def get_menu(cls, handler, params, parent=None):
+        if cls.parent is not None:
+            base = cls.parent.get_menu(handler, params)
+            self_entry = base.findMenu(cls.__name__, params)
+            if self_entry is None:
+                self_entry = cls.get_selfmenu(handler, params)
+                parent = base.findMenu(cls.parent.__name__, params)
+                parent.children.append(self_entry)
+        else:
+            self_entry = base = cls.get_selfmenu(handler, params)
+        self_entry.active = True
+        self_entry.children.extend(cls.get_childmenu(handler, params))
+        return base

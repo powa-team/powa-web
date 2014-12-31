@@ -8,6 +8,7 @@ from powa.dashboards import (
     DashboardPage)
 
 from powa.sql import text, TOTAL_MEASURE_INTERVAL
+from powa.overview import Overview
 
 from powa.metrics import Detail, Totals
 
@@ -82,6 +83,7 @@ class DatabaseOverview(DashboardPage):
     base_url = r"/database/(\w+)/overview"
     datasources = [DatabaseOverviewMetricGroup, ByQueryMetricGroup]
     params = ["database"]
+    parent = Overview
     dashboard = Dashboard(
         "Database overview for %(database)s",
         [[Graph("Calls (On database %(database)s)",
@@ -98,3 +100,7 @@ class DatabaseOverview(DashboardPage):
                    "max_length": 70
                }],
                metrics=ByQueryMetricGroup.all())]])
+
+    @classmethod
+    def get_menutitle(cls, handler, params):
+        return params.get("database")
