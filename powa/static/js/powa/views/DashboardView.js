@@ -1,13 +1,14 @@
 define([
+    'jquery',
+    'foundation',
     'backbone',
     'powa/views/GraphView',
     'powa/views/GridView',
     'powa/views/ContentView',
     'foundation-daterangepicker',
     'moment',
-    'jquery',
-    'foundation'
-], function(Backbone, GraphView, GridView, ContentView, daterangepicker, moment, foundation){
+    'powa/utils/timeurls'
+], function(jquery, foundation, Backbone, GraphView, GridView, ContentView, daterangepicker, moment, timeurls){
     return Backbone.View.extend({
         tagName: "div",
 
@@ -17,7 +18,9 @@ define([
             this.data_sources = args.data_sources;
             this.views = [];
             this.layout();
-            this.updatePeriod(moment().subtract('hour', 1), moment());
+            this.picker = args.picker;
+            this.listenTo(this.picker, "pickerChanged", this.updatePeriod, this);
+            this.updatePeriod(this.picker.start_date, this.picker.end_date);
         },
 
         layout: function(){
@@ -44,9 +47,7 @@ define([
                         view = this.makeView(widget);
                         view.from_date = this.from_date;
                         view.to_date = this.to_date;
-                        this.listenTo(view, "widget:update", function(){
-                            this.$el.foundation('equalizer', 'reflow');
-                        }, this);
+                        this.listenTo(view, "widget:update", this.postRender, this);
                         widgetcontainer.append(view.render().el);
                         this.views.push(view);
                     } catch(e) {
@@ -58,6 +59,10 @@ define([
             this.$el.foundation('equalizer', 'reflow');
         },
 
+        postRender: function(){
+            this.$el.foundation();
+            this.picker.updateUrls(this.from_date, this.to_date);
+        },
 
         makeView: function(widget){
             if(widget.get("type") == "graph"){

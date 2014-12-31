@@ -1,5 +1,5 @@
 <li class="{{ 'active' if menu.active else '' }}">
-  <a href="{{reverse_url(menu.url_name,
+  <a data-url-has-params href="{{reverse_url_with_params(menu.url_name,
   *menu.url_params.values())}}">{{menu.title}}</a>
 </li>
 {% if menu.active and menu.children %}

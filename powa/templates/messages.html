@@ -1,6 +1,6 @@
 {% for cat, messages in flashed_messages().items() %}
     <div data-alert class="alert-box {{cat}}">
-        <ul class="unstyled">
+        <ul>
             {% for message in messages %}
             <li>{{message}}</li>
             {% end %}

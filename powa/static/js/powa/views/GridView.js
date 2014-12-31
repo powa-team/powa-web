@@ -33,7 +33,7 @@ define([
                 model = this.model,
                 base = this.$el;
             if(this.column.get("url_attr")){
-                base = $("<a>").attr("href", model.get(this.column.get("url_attr")));
+                base = $("<a>").attr("data-url-has-params", "").attr("href", model.get(this.column.get("url_attr")));
                 this.$el.append(base);
             }
             base.append(cell.$el);

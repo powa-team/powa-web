@@ -6,6 +6,10 @@ from powa import __VERSION__
 from powa.json import JSONEncoder
 from tornado.options import options
 import pickle
+try:
+    from urllib import urlencode  # py2
+except ImportError:
+    from urllib.parse import urlencode  # py3
 
 
 def version(_):
@@ -82,3 +86,14 @@ def to_json(_, value):
     Utility function to render json in templates.
     """
     return JSONEncoder().encode(value)
+
+def reverse_url_with_params(self, url_name, *args, params=None):
+    """
+    Append given parameters, or those from the request, to the url.
+    """
+    if params == None:
+        params = self.request.arguments
+    url = self.reverse_url(url_name, *args)
+    if params:
+        url += "?%s" % urlencode(params)
+    return url

@@ -130,12 +130,12 @@ define([
             },
 
             update: function(newseries){
-                this.getGraph();
                 if(newseries.length == 0){
                     this.hideload();
                     this.nodata();
                     return;
                 }
+                this.getGraph();
                 this.remove_nodata();
                 var palette = new Rickshaw.Color.Palette({scheme: this.model.get("color_scheme"), interpolatedStopCount: 1});
                 $.each(newseries, function(){

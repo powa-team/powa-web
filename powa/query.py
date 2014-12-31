@@ -7,9 +7,12 @@ from powa.dashboards import (
     MetricGroupDef, MetricDef,
     DashboardPage, ContentWidget)
 from powa.metrics import Totals
+from powa.database import DatabaseOverview
+from sqlalchemy.sql import literal_column, bindparam, func, text
 from tornado.web import HTTPError
 
-from powa.sql import text, Plan, format_jumbled_query, resolve_quals
+from powa.sql import (Plan, format_jumbled_query,
+                      resolve_quals, aggregate_qual_values)
 
 MEASURE_INTERVAL = """
 extract (epoch FROM CASE WHEN total_mesure_interval = '0 second' THEN '1 second'::interval ELSE total_mesure_interval END)
@@ -72,67 +75,17 @@ class QueryIndexes(ContentWidget):
 
     data_url = r"/metrics/database/(\w+)/query/(\w+)/indexes"
 
-    QUALS_QUERY = text("""
-    WITH sample AS (
-    SELECT query, quals as quals, t.*
-        FROM powa_statements s
-        JOIN powa_qualstats_statements qs ON s.md5query = qs.md5query
-        JOIN powa_qualstats_nodehash qn ON qs.queryid = qn.queryid
-        JOIN powa_qualstats_nodehash_constvalues qnc
-            ON qn.nodehash = qnc.nodehash AND qn.queryid = qnc.queryid,
-        LATERAL
-                unnest(least_filtering, most_filtering, most_executed) as t(
-                lf_nodehash,lf_constants,lf_ts,lf_filter_ratio,lf_count,
-                mf_nodehash, mf_constants,mf_ts,mf_filter_ratio,mf_count,
-                me_nodehash, me_constants,me_ts,me_filter_ratio,me_count)
-        WHERE s.dbname = :database AND s.md5query = :query
-        AND coalesce_range && tstzrange(:from, :to)
-    ),
-    mf AS (SELECT query, quals, mf_constants as constants,
-                        CASE
-                            WHEN sum(mf_count) = 0 THEN 0
-                            ELSE sum(mf_count * mf_filter_ratio) / sum(mf_count)
-                        END as filter_ratio,
-                        sum(mf_count) as count
-        FROM sample
-    GROUP BY mf_constants, quals, query
-    ORDER BY 3 DESC
-    LIMIT 1),
-    lf AS (SELECT
-        quals, lf_constants as constants,
-                        CASE
-                            WHEN sum(lf_count) = 0 THEN 0
-                            ELSE sum(lf_count * lf_filter_ratio) / sum(lf_count)
-                        END as filter_ratio,
-                        sum(lf_count) as count
-        FROM sample
-    GROUP BY lf_constants, quals
-    ORDER BY 3
-    LIMIT 1),
-    me AS (SELECT quals, me_constants as constants,
-                        CASE
-                            WHEN sum(me_count) = 0 THEN 0
-                            ELSE sum(me_count * me_filter_ratio) / sum(me_count)
-                        END as filter_ratio,
-                        sum(me_count) as count
-        FROM sample
-    GROUP BY me_constants, quals
-    ORDER BY 4
-    LIMIT 1)
-    SELECT
-    mf.query,
-    to_json(mf) as "most filtering",
-    to_json(lf) as "least filtering",
-    to_json(me) as "most executed"
-    FROM mf, lf, me
-    """)
-
     def get(self, database, query):
         if not self.has_extension("pg_qualstats"):
             raise HTTPError(501, "PG qualstats is not installed")
-        quals = self.execute(self.QUALS_QUERY, params={"database": database, "query": query,
-                                                       "from": self.get_argument("from"),
-                                                       "to": self.get_argument("to")})
+
+        sql = aggregate_qual_values(
+            text("""s.dbname = :database AND s.md5query = :query
+                 AND coalesce_range && tstzrange(:from, :to)"""))
+        params = {"database": database, "query": query,
+                  "from": self.get_argument("from"),
+                  "to": self.get_argument("to")}
+        quals = self.execute(sql, params=params)
         plans = []
         if quals.rowcount > 0:
             row = quals.first()
@@ -148,6 +101,10 @@ class QueryIndexes(ContentWidget):
                     pass
                 plans.append(Plan(key, vals['constants'], query,
                                   plan, vals["filter_ratio"], vals['count']))
+        if len(plans) == 0:
+            self.flash("No quals found for this query", "warning");
+            self.render("xhr.html", content="");
+            return
         self.render("database/query/indexes.html", plans=plans)
 
 
