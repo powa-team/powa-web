@@ -7061,6 +7061,9 @@ pre .tex .formula {
 .side-nav li.active {
   background: none repeat scroll #474747; }
 
+ul.unstyled {
+  list-style: none; }
+
 .alert-box ul {
   list-style: none; }
   .alert-box ul li {

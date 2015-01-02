@@ -11,6 +11,7 @@ define([
         'powa/models/MetricGroup',
         'powa/models/ContentSource',
         'powa/utils/timeurls',
+        'highlight',
         'modernizr',
         'foundation/foundation.tooltip'],
         function($, Foundation, _, BackBone, DashboardView,
@@ -20,7 +21,8 @@ define([
             DataSourceCollection,
             MetricGroup,
             ContentSource,
-            timeurls) {
+            timeurls,
+            highlight) {
     $(function(){
         $(document).foundation();
         var colors = ["#c05020", "#30c020", "#6060c0"];

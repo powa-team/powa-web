@@ -116,13 +116,15 @@ class QualList(MetricGroupDef):
     xaxis = "quals"
     axis_type = "category"
     data_url = r"/metrics/database/(\w+)/query/(\w+)/quals"
-    filter_ratio = MetricDef(label="Avg filter_ratio")
+    filter_ratio = MetricDef(label="Avg filter_ratio (excluding index)")
+    count = MetricDef(label="Execution count (excluding index)")
 
     query = text("""
         SELECT
             to_json(quals) as quals,
             filter_ratio,
-            count
+            count,
+            nodehash
         FROM powa_qualstats_statements,
         LATERAL powa_qualstats_getstatdata_sample(tstzrange(:from, :to), queryid, 1)
         WHERE md5query = :query
@@ -132,6 +134,13 @@ class QualList(MetricGroupDef):
     def prepare(cls, handler, **kwargs):
         if not handler.has_extension("pg_qualstats"):
             raise HTTPError(501, "PG Qualstats is not available")
+
+    @classmethod
+    def process(cls, handler, val, database=None, query=None, **kwargs):
+        row = dict(val)
+        row['url'] = handler.reverse_url('QualOverview', database, query,
+                                         row['nodehash'])
+        return row
 
 
     @classmethod
@@ -210,7 +219,11 @@ class QueryOverview(DashboardPage):
                    "name": "where_clause",
                    "label": "Predicate",
                    "type": "query",
-                   "max_length": 60
+                   "max_length": 60,
+                   "url_attr": "url"
+               }, {
+                   "name": "eval_type",
+                   "label": "Eval Type"
                }],
                metrics=QualList.all())],
          [QueryIndexes("Query Indexes")]])

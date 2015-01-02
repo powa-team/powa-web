@@ -34,12 +34,20 @@ RESOLVE_ATTNAME = text("""
 """)
 
 
-def resolve_quals(conn, quallist, attribute="quals", store="where_clause"):
+def resolve_quals(conn, quallist, attribute="quals"):
+    """
+    Resolve quals definition (as dictionary coming from a to_json(quals)
+    sql query.
+
+    Arguments:
+        conn: a connection to the database against which the qual was executed
+        quallist: an iterable of rows, each storing quals in the attributes
+        attribute: the attribute containing the qual list itself in each row
+    """
     operator_to_look = set()
     attname_to_look = set()
     operators = {}
     attnames = {}
-    print(quallist)
     for row in quallist:
         values = row[attribute]
         if not isinstance(values, list):
@@ -55,7 +63,10 @@ def resolve_quals(conn, quallist, attribute="quals", store="where_clause"):
         attnames = conn.execute(
             RESOLVE_ATTNAME,
             {"att_list": tuple(attname_to_look)}).scalar()
+    new_qual_list = []
     for row in quallist:
+        row = dict(row)
+        new_qual_list.append(row)
         values = row[attribute]
         if not isinstance(values, list):
             values = [values]
@@ -65,8 +76,11 @@ def resolve_quals(conn, quallist, attribute="quals", store="where_clause"):
             v["attname"] = attname[1]
             v["opname"] = operators[v["opno"]]
             v["repr"] = "%s.%s %s ?" % (attname[0], attname[1], operators[v["opno"]])
-        row[store] = "WHERE %s" % (" AND ".join(v["repr"] for v in values))
-    return quallist
+
+        row["where_clause"] = "WHERE %s" % (" AND ".join(v["repr"] for v in values))
+        row["eval_type"] = ", ".join("by index" if v["eval_type"] == 'i' else 'post-scan'
+                                     for v in values)
+    return new_qual_list
 
 
 Plan = namedtuple(

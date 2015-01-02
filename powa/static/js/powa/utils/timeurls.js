@@ -87,10 +87,12 @@ define(["jquery", "foundation-daterangepicker"], function($){
                 $.each(pairs, function(){
                     var kv = this.split("="),
                     key = kv[0],
-                    value = decodeURIComponent(kv[1]);
+                    value = kv[1];
                     if(key.length == 0){
                         return;
                     }
+                    value = value.replace("+", " ");
+                    value = decodeURIComponent(value);
                     if(params[key]){
                         if(!$.isArray(params[key])){
                             params[key] = [params[key]];
