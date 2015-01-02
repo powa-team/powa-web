@@ -46,7 +46,7 @@ class BaseHandler(RequestHandler):
 
     @property
     def menu(self):
-        return []
+        return None
 
     @property
     def database(self):
