@@ -7,7 +7,7 @@ define(["jquery", "foundation-daterangepicker"], function($){
         },
 
         initialize: function(args){
-            var now = moment(),
+            var now = this.now = moment(),
                 self = this,
                 params = this.parseUrl(window.location.search);
             this.format = "YYYY-MM-DD HH:mm:ss";
@@ -29,8 +29,8 @@ define(["jquery", "foundation-daterangepicker"], function($){
             this.daterangepicker = this.$el.data('daterangepicker');
             this.daterangepicker.hide();
             this.daterangepicker.container.removeClass('hide');
-            this.daterangepicker.startDate = params["from"] ? moment(params["from"]) : moment().subtract("hour", 1);
-            this.daterangepicker.endDate = params["to"] ? moment(params["to"]) : moment();
+            this.daterangepicker.startDate = params["from"] ? moment(params["from"]) : now.clone().subtract("hour", 1);
+            this.daterangepicker.endDate = params["to"] ? moment(params["to"]) : now;
             this.start_date = this.daterangepicker.startDate;
             this.end_date = this.daterangepicker.endDate;
             this.startInput = this.$el.find('[data-role="start_date"]');
@@ -40,7 +40,12 @@ define(["jquery", "foundation-daterangepicker"], function($){
         },
         updateUrls : function(start_date, end_date){
                 var params = this.parseUrl(window.location.search),
-                    self = this;
+                    self = this,
+                    defaultrange = this.daterangepicker.ranges['hour'];
+                // If the range is the default range, ignore
+                if(start_date.isSame(defaultrange[0]) && end_date.isSame(defaultrange[1])){
+                    return;
+                }
                 params["from"] = start_date.format();
                 params["to"] = end_date.format();
                 history.pushState({}, "", window.location.pathname + "?" + decodeURIComponent($.param(params, true)));
