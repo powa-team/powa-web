@@ -87,13 +87,14 @@ def to_json(_, value):
     """
     return JSONEncoder().encode(value)
 
-def reverse_url_with_params(self, url_name, *args, params=None):
+def reverse_url_with_params(self, url_name, params=None, url_args=None):
     """
     Append given parameters, or those from the request, to the url.
     """
     if params == None:
         params = self.request.arguments
-    url = self.reverse_url(url_name, *args)
+    url_args = url_args or []
+    url = self.reverse_url(url_name, *url_args)
     if params:
         url += "?%s" % urlencode(params)
     return url

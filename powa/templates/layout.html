@@ -53,7 +53,8 @@
             {% set last = len(handler.menu.get_breadcrumb()) - 1 %}
             {% for i, crumb_item in enumerate(handler.menu.get_breadcrumb()) %}
             <li data-magellan-arrival="#" class="{{'current' if last == i else ''}}">
-            <a data-url-has-params href="{{ reverse_url_with_params(crumb_item.url_name, *crumb_item.url_params.values())}}">{{crumb_item.title}}</a>
+            <a data-url-has-params href="{{
+              reverse_url_with_params(crumb_item.url_name, url_args=crumb_item.url_params.values())}}">{{crumb_item.title}}</a>
             </li>
             {% end %}
           </ul>
