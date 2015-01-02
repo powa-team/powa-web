@@ -487,7 +487,9 @@ class MetricGroupDef(with_metaclass(MetaMetricGroup, MetricGroup)):
 
     @classmethod
     def to_json(cls):
-        return cls._inst.to_json()
+        if cls._inst:
+            return cls._inst.to_json()
+        return {}
 
     @classmethod
     def all(cls):
