@@ -1,5 +1,11 @@
 define(["jquery", "foundation-daterangepicker"], function($){
     return Backbone.View.extend({
+
+        events: {
+            'change [data-role="start_date"]': "inputChange",
+            'change [data-role="enddate"]': "inputChange"
+        },
+
         initialize: function(args){
             var now = moment(),
                 self = this,
@@ -25,9 +31,12 @@ define(["jquery", "foundation-daterangepicker"], function($){
             this.daterangepicker.container.removeClass('hide');
             this.daterangepicker.startDate = params["from"] ? moment(params["from"]) : moment().subtract("hour", 1);
             this.daterangepicker.endDate = params["to"] ? moment(params["to"]) : moment();
-            this.daterangepicker.notify();
             this.start_date = this.daterangepicker.startDate;
             this.end_date = this.daterangepicker.endDate;
+            this.startInput = this.$el.find('[data-role="start_date"]');
+            this.endInput = this.$el.find('[data-role="end_date"]');
+            this.daterangepicker.notify();
+            this.daterangepicker.updateCalendars();
         },
         updateUrls : function(start_date, end_date){
                 var params = this.parseUrl(window.location.search),
@@ -40,16 +49,32 @@ define(["jquery", "foundation-daterangepicker"], function($){
                         var params = self.parseUrl(this.search);
                         params["from"] = start_date.format();
                         params["to"] = end_date.format();
-                        $('#daterangepicker [data-role="start_date"]').val(start_date.format(self.format));
-                        $('#daterangepicker [data-role="end_date"]').val(end_date.format(self.format));
+                        self.startInput.val(start_date.format(self.format));
+                        self.endInput.val(end_date.format(self.format));
                         this.search = $.param(params, true);
                 });
         },
+
+        inputChange: function(){
+            var start_date =  moment(this.startInput.val()),
+                end_date = moment(this.endInput.val());
+            if(start_date.isValid() && end_date.isValid()){
+                this.start_date = this.daterangepicker.startDate = start_date;
+                this.end_date = this.daterangepicker.endDate = end_date;
+                this.daterangepicker.updateView();
+                this.daterangepicker.updateCalendars();
+                this.pickerChanged(start_date, end_date);
+            }
+        },
+
         pickerChanged: function(start_date, end_date){
-            this.start_date = this.daterangepicker.start_date;
-            this.end_date = this.daterangepicker.end_date;
-            this.updateUrls(start_date, end_date);
-            this.trigger("pickerChanged", start_date, end_date);
+            this.start_date = this.daterangepicker.startDate;
+            this.end_date = this.daterangepicker.endDate;
+            if(moment.isMoment(this.start_date) && moment.isMoment(this.end_date)
+                    && this.start_date.isValid() && this.end_date.isValid()){
+                this.updateUrls(start_date, end_date);
+                this.trigger("pickerChanged", start_date, end_date);
+            }
         },
         parseUrl : function(search){
                 var params = {},
