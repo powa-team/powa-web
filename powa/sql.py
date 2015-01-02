@@ -99,7 +99,7 @@ def aggregate_qual_values(filter_clause):
                         sum(mf_count) as count
         FROM sample
     GROUP BY mf_constants, quals, query
-    ORDER BY 3 DESC
+    ORDER BY 4 DESC
     LIMIT 1),
     lf AS (SELECT
         quals, lf_constants as constants,
@@ -120,7 +120,7 @@ def aggregate_qual_values(filter_clause):
                         sum(me_count) as count
         FROM sample
     GROUP BY me_constants, quals
-    ORDER BY 4
+    ORDER BY 4 DESC
     LIMIT 1)
     SELECT
     mf.query,
