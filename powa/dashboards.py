@@ -93,7 +93,8 @@ class DataSource(JSONizable):
             a subclass of RequestHandler used to process this DataSource.
 
     """
-    datasource_hanlder_cls = None
+    datasource_handler_cls = None
+    data_url = None
 
     def __init__(self, name=None, query=None, data_url=None):
         self.name = name
@@ -528,6 +529,9 @@ class DashboardPage(object):
                 "params": cls.params},
             name=cls.__name__))
         for datasource in cls.datasources:
+            if datasource.data_url is None:
+                raise KeyError("A Datasource must have a data_url: %s" %
+                               datasource.__name__)
             url_specs.append(URLSpec(
                 datasource.data_url,
                 datasource.datasource_handler_cls, {
