@@ -196,6 +196,12 @@ class Metric(JSONizable):
     """
     An indivudal Metric.
     A Metric is an abstraction for a series of data.
+
+    Attributes:
+        name: the name of the metric
+        label: its label, as displayed in the ui
+        type: a type of unit, as referenced in the widget using the type.
+              See GraphView.js for example
     """
 
     def __init__(self, name, label=None, yaxis=None, **kwargs):
