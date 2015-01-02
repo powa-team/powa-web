@@ -6669,7 +6669,7 @@ th.hide-for-touch {
     display: none;
     padding: 4px 5px;
     overflow: hidden;
-    text-align: left;
+    text-align: center;
     text-overflow: ellipsis;
     vertical-align: middle;
     border-bottom: 1px solid #DDD; }
@@ -6703,7 +6703,7 @@ th.hide-for-touch {
   .backgrid .string-cell.editor input[type=text],
   .backgrid .uri-cell.editor input[type=text],
   .backgrid .email-cell.editor input[type=text] {
-    text-align: left; }
+    text-align: center; }
   .backgrid .date-cell,
   .backgrid .time-cell,
   .backgrid .datetime-cell,
@@ -6716,7 +6716,7 @@ th.hide-for-touch {
   .backgrid .number-cell.editor input[type=text],
   .backgrid .integer-cell.editor input[type=text],
   .backgrid .percent-cell.editor input[type=text] {
-    text-align: right; }
+    text-align: center; }
   .backgrid .boolean-cell,
   .backgrid .boolean-cell.editor input[type=checkbox] {
     text-align: center; }
