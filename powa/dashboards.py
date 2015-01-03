@@ -4,8 +4,7 @@ Dashboard definition classes.
 This module provides several classes to define a Dashboard.
 """
 
-from powa.json import JSONizable, to_json
-from abc import ABCMeta
+from powa.json import JSONizable
 from powa.framework import AuthHandler
 from powa.ui_modules import MenuEntry
 from powa.compat import with_metaclass, classproperty, hybridmethod
@@ -56,6 +55,7 @@ class DashboardHandler(AuthHandler):
         params = OrderedDict(zip(self.params, self.path_args))
         return self.dashboardpage.get_menu(self, params)
 
+
 class MetricGroupHandler(AuthHandler):
     """
     Handler for a metric group.
@@ -76,12 +76,11 @@ class MetricGroupHandler(AuthHandler):
         url_params.update(url_query_params)
         query = self.query
         values = self.execute(query, params=url_params)
-        data = {"data": [self.metric_group.process(self, val,
-                                                   **url_params) for val in values]}
+        data = {"data": [self.metric_group.process(
+            self, val,
+            **url_params) for val in values]}
         data = self.metric_group.post_process(self, data, **url_params)
         self.render_json(data)
-
-
 
 
 class DataSource(JSONizable):
@@ -191,7 +190,6 @@ class MetricGroup(DataSource):
         return data
 
 
-
 class Metric(JSONizable):
     """
     An indivudal Metric.
@@ -211,7 +209,6 @@ class Metric(JSONizable):
         self._group = None
         for key, value in kwargs.items():
             setattr(self, key, value)
-
 
     def bind(self, group):
         """
@@ -241,12 +238,10 @@ class Dashboard(JSONizable):
             A list of rows, with each row containing a list of widgets.
     """
 
-
     def __init__(self, title, widgets=None):
         self.title = title
         self._widgets = widgets or []
         self._validate_layout()
-
 
     def _validate_layout(self):
         """
@@ -303,6 +298,7 @@ class ContentHandler(AuthHandler):
     def initialize(self, datasource=None, params=None):
         self.params = params
 
+
 class ContentWidget(Widget, DataSource, AuthHandler):
     """
     A widget showing HTML fetched from the server.
@@ -310,7 +306,6 @@ class ContentWidget(Widget, DataSource, AuthHandler):
     This widget acts as both a Widget and DataSource, since the Data used is
     simplistic.
     """
-
 
     def __init__(self, title, **kwargs):
         self.title = title
@@ -327,8 +322,9 @@ class ContentWidget(Widget, DataSource, AuthHandler):
     @hybridmethod
     def to_json(cls):
         """
-        to_json is an hybridmethod, the goal is to provide two different implementations
-        when it is used as a class (DataSource) or as an instance (Widget).
+        to_json is an hybridmethod, the goal is to provide two different
+        implementations when it is used as a class (DataSource) or as
+        an instance (Widget).
         """
         return {
             'data_url': cls.data_url,
@@ -374,7 +370,6 @@ class Grid(Widget):
                 raise ValueError(
                     "A grid is not allowed to have metrics from different "
                     "groups. (title: %s)" % self.title)
-
 
     def to_json(self):
         values = self.__dict__.copy()
@@ -439,7 +434,6 @@ class MetricDef(Declarative):
     _cls = Metric
 
 
-
 class MetaMetricGroup(type, JSONizable):
     """
     Meta class for Metric Groups.
@@ -467,7 +461,8 @@ class MetaMetricGroup(type, JSONizable):
             dct['_inst'] = MetricGroup(
                 **{key: val
                    for key, val in dct.items()
-                   if not isinstance(val, classmethod) and not key.startswith('_')})
+                   if not isinstance(val, classmethod)
+                   and not key.startswith('_')})
         return super(MetaMetricGroup, meta).__new__(meta, name, bases, dct)
 
     def __getattr__(cls, key):
@@ -559,7 +554,7 @@ class DashboardPage(object):
     @classmethod
     def get_selfmenu(cls, handler, params):
         my_params = OrderedDict((key, params.get(key))
-                                 for key in cls.params)
+                                for key in cls.params)
         return MenuEntry(cls.get_menutitle(handler, params),
                          cls.__name__,
                          my_params)

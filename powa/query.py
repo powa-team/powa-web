@@ -88,6 +88,7 @@ class QueryExplains(ContentWidget):
         quals = self.execute(sql, params=params)
         plans = []
         if quals.rowcount > 0:
+
             row = quals.first()
             for key in ('most filtering', 'least filtering', 'most executed'):
                 vals = row[key]

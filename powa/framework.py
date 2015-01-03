@@ -81,7 +81,7 @@ class BaseHandler(RequestHandler):
         password = (password or
                     self.get_secure_cookie('password').decode('utf8'))
         if server not in options.servers:
-            raise HTTPError(403)
+            raise HTTPError(404)
         connoptions = options.servers[server].copy()
         connoptions['username'] = username
         connoptions['password'] = password
@@ -93,13 +93,10 @@ class BaseHandler(RequestHandler):
         url = URL("postgresql+psycopg2", **connoptions)
         if url in self._connections:
             return self._connections.get(url)
-        try:
-            engine = create_engine(url, **engineoptions)
-            engine.connect()
-            self._connections[url] = engine
-            return engine
-        except Exception as _:
-            raise HTTPError(403)
+        engine = create_engine(url, **engineoptions)
+        engine.connect()
+        self._connections[url] = engine
+        return engine
 
     def has_extension(self, extname):
         """

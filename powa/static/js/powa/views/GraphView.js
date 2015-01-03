@@ -54,7 +54,7 @@ define([
                             height: this.$el.innerHeight(),
                             width: this.$el.innerWidth() - 40,
                             xScale: d3.time.scale(),
-                            renderer: "line",
+                            renderer: this.model.get("renderer") || "line",
                             series: []
                 });
                 var time = new Rickshaw.Fixtures.Time();

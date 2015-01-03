@@ -12,12 +12,20 @@ class QualConstantsMetricGroup(MetricGroupDef):
     """
     Metric group used for the qual charts.
     """
+    name = "QualConstants"
     data_url = r"/metrics/database/(\w+)/query/(\w+)/qual/(\w+)/constants"
+    xaxis = "rownumber"
+    most_frequents = MetricDef(label="")
     query = aggregate_qual_values(text("""
         s.dbname = :database AND
         s.md5query = :query AND
-        qn.nodehash = :nodehash AND
-        coalesce_range && tstzrange(:from, :to)"""))
+        qn.nodehash = :qual AND
+        coalesce_range && tstzrange(:from, :to)"""), top=10)
+
+    @classmethod
+    def post_process(self, handler, data, database, query, qual, **kwargs):
+        conn = handler.connect(database=database)
+        return data
 
 
 class QualDetail(ContentWidget):
@@ -67,13 +75,10 @@ class QualOverview(DashboardPage):
 
     parent = QueryOverview
 
-    datasources = [QualDetail]
+    datasources = [QualDetail, QualConstantsMetricGroup]
 
     dashboard = Dashboard(
         "Qual %(qual)s",
-        [[QualDetail("Detail for this Qual")]])
-
-
-
-
-
+        [[QualDetail("Detail for this Qual")],
+         [Graph("Most frequent values",
+               metrics=[QualConstantsMetricGroup.most_frequents])]])

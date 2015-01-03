@@ -88,7 +88,7 @@ Plan = namedtuple(
     ("title", "values", "query", "plan", "filter_ratio", "exec_count"))
 
 
-def aggregate_qual_values(filter_clause):
+def aggregate_qual_values(filter_clause, top=1):
     filter_clause = filter_clause.compile()
     return text("""
     WITH sample AS (
@@ -110,36 +110,49 @@ def aggregate_qual_values(filter_clause):
                             WHEN sum(mf_count) = 0 THEN 0
                             ELSE sum(mf_count * mf_filter_ratio) / sum(mf_count)
                         END as filter_ratio,
-                        sum(mf_count) as count
+                        sum(mf_count) as count,
+                        row_number() over (ORDER BY  CASE
+                            WHEN sum(mf_count) = 0 THEN 0
+                            ELSE sum(mf_count * mf_filter_ratio) / sum(mf_count)
+                        END DESC NULLS LAST) as rownumber
         FROM sample
     GROUP BY mf_constants, quals, query
     ORDER BY 4 DESC NULLS LAST
-    LIMIT 1),
+    LIMIT :top_value),
     lf AS (SELECT
         quals, lf_constants as constants,
                         CASE
                             WHEN sum(lf_count) = 0 THEN 0
                             ELSE sum(lf_count * lf_filter_ratio) / sum(lf_count)
                         END as filter_ratio,
-                        sum(lf_count) as count
+                        sum(lf_count) as count,
+                        row_number() over (ORDER BY                          CASE
+                            WHEN sum(lf_count) = 0 THEN 0
+                            ELSE sum(lf_count * lf_filter_ratio) / sum(lf_count)
+                        END NULLS LAST) as rownumber
         FROM sample
     GROUP BY lf_constants, quals
     ORDER BY 3 NULLS LAST
-    LIMIT 1),
+    LIMIT :top_value),
     me AS (SELECT quals, me_constants as constants,
-                        CASE
-                            WHEN sum(me_count) = 0 THEN 0
-                            ELSE sum(me_count * me_filter_ratio) / sum(me_count)
-                        END as filter_ratio,
-                        sum(me_count) as count
+            CASE
+                WHEN sum(me_count) = 0 THEN 0
+                ELSE sum(me_count * me_filter_ratio) / sum(me_count)
+            END as filter_ratio,
+            sum(me_count) as count,
+            row_number() over (ORDER BY sum(me_count) DESC NULLS LAST) as rownumber
         FROM sample
     GROUP BY me_constants, quals
     ORDER BY 4 DESC NULLS LAST
-    LIMIT 1)
+    LIMIT :top_value)
     SELECT
+    rownumber,
     mf.query,
+    mf.quals,
     to_json(mf) as "most filtering",
     to_json(lf) as "least filtering",
     to_json(me) as "most executed"
-    FROM mf, lf, me
-    """ % filter_clause.statement).params(**filter_clause.params)
+    FROM mf inner join lf using(quals, rownumber)
+        inner join me using(quals, rownumber)
+    ORDER BY mf.rownumber
+    """ % filter_clause.statement).params(top_value=top, **filter_clause.params)
