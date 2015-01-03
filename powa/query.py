@@ -68,12 +68,12 @@ class QueryOverviewMetricGroup(Totals, MetricGroupDef):
         """ % {"mi": MEASURE_INTERVAL})
 
 
-class QueryIndexes(ContentWidget):
+class QueryExplains(ContentWidget):
     """
     Content widget showing explain plans for various const values.
     """
 
-    data_url = r"/metrics/database/(\w+)/query/(\w+)/indexes"
+    data_url = r"/metrics/database/(\w+)/query/(\w+)/explains"
 
     def get(self, database, query):
         if not self.has_extension("pg_qualstats"):
@@ -105,7 +105,8 @@ class QueryIndexes(ContentWidget):
             self.flash("No quals found for this query", "warning");
             self.render("xhr.html", content="");
             return
-        self.render("database/query/indexes.html", plans=plans)
+
+        self.render("database/query/explains.html", plans=plans)
 
 
 class QualList(MetricGroupDef):
@@ -190,7 +191,7 @@ class QueryOverview(DashboardPage):
     base_url = r"/database/(\w+)/query/(\w+)/overview"
     params = ["database", "query"]
     datasources = [QueryOverviewMetricGroup, QueryDetail,
-                   QueryIndexes, QualList]
+                   QueryExplains, QualList]
     parent = DatabaseOverview
     dashboard = Dashboard(
         "Query %(query)s on database %(database)s",
@@ -226,7 +227,7 @@ class QueryOverview(DashboardPage):
                    "label": "Eval Type"
                }],
                metrics=QualList.all())],
-         [QueryIndexes("Query Indexes")]])
+         [QueryExplains("Query Explains")]])
 
     @classmethod
     def get_menutitle(cls, handler, params):
