@@ -69,6 +69,40 @@ class QueryOverviewMetricGroup(Totals, MetricGroupDef):
         """ % {"mi": MEASURE_INTERVAL})
 
 
+class KcacheMetricGroup(MetricGroupDef):
+    """
+    Metric Group for the kcache graphs on the by query page.
+    """
+    name = "kcache_query_overview"
+    xaxis = "ts"
+    data_url = r"/metrics/database/(\w+)/query/(\w+)/kcache"
+    reads = MetricDef(label="Physical read", type="sizerate")
+    writes = MetricDef(label="Physical writes", type="sizerate")
+    user_time = MetricDef(label="CPU user time", type="percent")
+    system_time = MetricDef(label="CPU system time", type="percent")
+
+    # FIXME: remove useless code to retrieve md5query when powa will use queryid
+    query = text("""
+        WITH src AS (
+            SELECT md5(r.rolname||d.datname||s.query) AS md5query, queryid
+            FROM pg_stat_statements s
+                JOIN pg_database d ON d.oid = s.dbid
+                JOIN pg_roles r ON r.oid = s.userid
+            WHERE md5(r.rolname||d.datname||s.query) = :query
+        )
+        SELECT extract(EPOCH FROM ts) AS ts,
+            reads_raw*512/setting.blksize as reads,
+            writes_raw*512/setting.blksize as writes,
+            user_time,
+            system_time
+        FROM src
+        JOIN (SELECT current_setting('block_size')::numeric AS blksize) setting ON true,
+        LATERAL (SELECT * FROM public.powa_kcache_getstatdata_sample(tstzrange(:from, :to), src.queryid, 300)) sample
+        WHERE reads_raw IS NOT NULL
+        ORDER BY 1
+        """)
+
+
 class QueryIndexes(ContentWidget):
     """
     Content widget showing index creation suggestion.
@@ -214,7 +248,8 @@ class QueryOverview(DashboardPage):
     base_url = r"/database/(\w+)/query/(\w+)/overview"
     params = ["database", "query"]
     datasources = [QueryOverviewMetricGroup, QueryDetail,
-                   QueryExplains, QueryIndexes, QualList]
+                   QueryExplains, QueryIndexes, QualList,
+                   KcacheMetricGroup]
     parent = DatabaseOverview
 
     def __init__(self, *args, **kwargs):
@@ -232,6 +267,12 @@ class QueryOverview(DashboardPage):
                          QueryOverviewMetricGroup.shared_blks_hit,
                          QueryOverviewMetricGroup.shared_blks_dirtied,
                          QueryOverviewMetricGroup.shared_blks_written])],
+         [Graph("Physical block (in Bps)",
+                metrics=[KcacheMetricGroup.reads,
+                         KcacheMetricGroup.writes]),
+         Graph("CPU time",
+             metrics=[KcacheMetricGroup.user_time,
+                      KcacheMetricGroup.system_time])],
          [Graph("Local block (in Bps)",
                 metrics=[QueryOverviewMetricGroup.local_blks_read,
                          QueryOverviewMetricGroup.local_blks_hit,
@@ -288,6 +329,14 @@ class QueryOverview(DashboardPage):
               Graph("Read / Write time",
                     metrics=[QueryOverviewMetricGroup.blk_read_time,
                              QueryOverviewMetricGroup.blk_write_time])]])
+        if self.has_extension("pg_stat_kcache"):
+            self._dashboard.widgets.extend([[
+                Graph("Physical block (in Bps)",
+                    metrics=[KcacheMetricGroup.reads,
+                             KcacheMetricGroup.writes]),
+                Graph("CPU time",
+                    metrics=[KcacheMetricGroup.user_time,
+                             KcacheMetricGroup.system_time])]]),
         if self.has_extension("pg_qualstats"):
             self._dashboard.widgets.extend([[
                 Grid("Predicates used by this query",

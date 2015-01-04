@@ -18,7 +18,8 @@ define([
                 "number": Rickshaw.Fixtures.Number.formatKMBT,
                 "size": new size.SizeFormatter().fromRaw,
                 "sizerate": function(value){ return new size.SizeFormatter({suffix: "ps"}).fromRaw(value)},
-                "duration": function(data){ return moment(parseInt(data, 10)).preciseDiff(moment(0))}
+                "duration": function(data){ return moment(parseInt(data, 10)).preciseDiff(moment(0))},
+                "percent": function(value){ return value + '%'}
             },
 
 
