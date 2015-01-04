@@ -159,3 +159,73 @@ def aggregate_qual_values(filter_clause, top=1):
     ) agg_constvalues
     """ % filter_clause.statement).params(top_value=top, **filter_clause.params)
     return select(["*"]).select_from(base)
+
+def suggest_indexes(handler, database, query):
+    # Find suitable indexes for a given query
+    # TODO :
+    # - handle all fields and ops, not only the first row
+    # - exclude already existing indexes
+    # - add intelligence, like indexes on multiple columns, functional indexes...
+
+    # first, find the fields and operators used, on powa database
+    sql = text("""
+        SELECT * FROM
+        (
+            SELECT dbname, relid, attnum, opno,
+            avg(filter_ratio) as filter_ratio,
+            avg(count) as count
+            FROM (
+                SELECT s.md5query,dbname,(unnest(qn.quals)).*
+                -- work on most executed quals
+                ,(unnest(most_executed)).*
+                FROM powa_statements s
+                JOIN powa_qualstats_statements qs ON qs.md5query = s.md5query
+                JOIN powa_qualstats_nodehash qn ON qn.queryid = qs.queryid
+                JOIN (SELECT * FROM powa_qualstats_nodehash_constvalues c1
+                    UNION ALL
+                    SELECT * FROM powa_qualstats_view_current c2
+                ) qnc ON qnc.nodehash = qn.nodehash AND qnc.queryid = qn.queryid
+
+                WHERE s.dbname = :database AND s.md5query = :query
+                -- compute all available data or filter ?
+                --AND tstzrange(now() - interval '20 hours',now(),'[)') && coalesce_range
+            ) quals
+            -- Only quals accessed by a full scan
+            WHERE eval_type = 'f'
+            GROUP by dbname, relid, attnum, opno
+        ) class
+        -- only quals filtering half the rows
+        WHERE filter_ratio > 0.5
+    """)
+    params = {"database": database, "query": query}
+    qual_fields = handler.execute(sql, params=params)
+
+    if qual_fields.rowcount == 0:
+        return []
+
+    row = qual_fields.first()
+
+    # then find indexes for this fields and ops
+    sql = text("""
+        SELECT 'CREATE INDEX ON ' || quote_ident(nspname) || '.' || quote_ident(relname) || ' USING ' || amname || '(' || string_agg(attname,',') || ')' as query
+        FROM (
+            SELECT DISTINCT am.amname,nsp.nspname,c.relname,a.attname
+            FROM pg_class c
+            JOIN pg_attribute a ON a.attrelid = c.oid
+            JOIN pg_namespace nsp on nsp.oid = c.relnamespace
+            JOIN pg_amop amop ON amop.amoplefttype = a.atttypid
+            JOIN pg_am am ON am.oid = amop.amopmethod
+            --JOIN pg_opfamily of ON of.oid = amop.amopfamily
+            JOIN pg_operator o ON o.oid = amop.amopopr
+            --JOIN powa_qualstats_nodehash_constvalues nc ON nc.nodehash = nh.nodehash AND nc.md5query = nh.md5query
+            WHERE c.oid in ( :relid )
+            AND amop.amopopr = :opno
+            AND a.attnum IN ( :attnum )
+            AND am.amname != 'hash'
+        ) idx
+        GROUP by amname,nspname,relname
+    """)
+    params = {"database": row['dbname'], "relid": row['relid'], "opno": row['opno'], "attnum": row['attnum']}
+    result = handler.execute(sql, database=row['dbname'], params=params)
+    indexes = result.fetchall()
+    return indexes

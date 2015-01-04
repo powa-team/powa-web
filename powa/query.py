@@ -12,7 +12,8 @@ from sqlalchemy.sql import literal_column, bindparam, func, text
 from tornado.web import HTTPError
 
 from powa.sql import (Plan, format_jumbled_query,
-                      resolve_quals, aggregate_qual_values)
+                      resolve_quals, aggregate_qual_values,
+                      suggest_indexes)
 
 MEASURE_INTERVAL = """
 extract (epoch FROM CASE WHEN total_mesure_interval = '0 second' THEN '1 second'::interval ELSE total_mesure_interval END)
@@ -66,6 +67,22 @@ class QueryOverviewMetricGroup(Totals, MetricGroupDef):
         , (SELECT current_setting('block_size')::int AS blksize) b
         ORDER BY ts
         """ % {"mi": MEASURE_INTERVAL})
+
+
+class QueryIndexes(ContentWidget):
+    """
+    Content widget showing index creation suggestion.
+    """
+
+    data_url = r"/metrics/database/(\w+)/query/(\w+)/indexes"
+
+    def get(self, database, query):
+        if not self.has_extension("pg_qualstats"):
+            raise HTTPError(501, "PG qualstats is not installed")
+
+        indexes = suggest_indexes(self, database, query)
+
+        self.render("database/query/indexes.html", indexes=indexes)
 
 
 class QueryExplains(ContentWidget):
@@ -197,13 +214,49 @@ class QueryOverview(DashboardPage):
     base_url = r"/database/(\w+)/query/(\w+)/overview"
     params = ["database", "query"]
     datasources = [QueryOverviewMetricGroup, QueryDetail,
-                   QueryExplains, QualList]
+                   QueryExplains, QueryIndexes, QualList]
     parent = DatabaseOverview
 
     def __init__(self, *args, **kwargs):
         self._dashboard = None
         super(QueryOverview, self).__init__(*args, **kwargs)
 
+    dashboard = Dashboard(
+        "Query %(query)s on database %(database)s",
+        [[QueryDetail("Query Detail")],
+         [Graph("General",
+                metrics=[QueryOverviewMetricGroup.avg_runtime,
+                         QueryOverviewMetricGroup.rows]),
+          Graph("Shared block (in Bps)",
+                metrics=[QueryOverviewMetricGroup.shared_blks_read,
+                         QueryOverviewMetricGroup.shared_blks_hit,
+                         QueryOverviewMetricGroup.shared_blks_dirtied,
+                         QueryOverviewMetricGroup.shared_blks_written])],
+         [Graph("Local block (in Bps)",
+                metrics=[QueryOverviewMetricGroup.local_blks_read,
+                         QueryOverviewMetricGroup.local_blks_hit,
+                         QueryOverviewMetricGroup.local_blks_dirtied,
+                         QueryOverviewMetricGroup.local_blks_written]),
+          Graph("Temp block (in Bps)",
+                metrics=[QueryOverviewMetricGroup.temp_blks_read,
+                         QueryOverviewMetricGroup.temp_blks_written]),
+          Graph("Read / Write time",
+                metrics=[QueryOverviewMetricGroup.blk_read_time,
+                         QueryOverviewMetricGroup.blk_write_time])],
+         [Grid("Predicates used by this query",
+               columns=[{
+                   "name": "where_clause",
+                   "label": "Predicate",
+                   "type": "query",
+                   "max_length": 60,
+                   "url_attr": "url"
+               }, {
+                   "name": "eval_type",
+                   "label": "Eval Type"
+               }],
+               metrics=QualList.all())],
+         [QueryIndexes("Query Indexes")],
+         [QueryExplains("Query Explains")]])
 
     @classmethod
     def get_menutitle(cls, handler, params):
@@ -249,5 +302,6 @@ class QueryOverview(DashboardPage):
                          "label": "Eval Type"
                      }],
                      metrics=QualList.all())],
+                [QueryIndexes("Query Indexes")],
                 [QueryExplains("Query Explains")]])
         return self._dashboard
