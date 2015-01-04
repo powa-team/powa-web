@@ -2,13 +2,15 @@ define([
     'jquery',
     'foundation',
     'backbone',
-    'powa/views/GraphView',
+    'powa/views/LineGraphView',
+    'powa/views/BarGraphView',
     'powa/views/GridView',
     'powa/views/ContentView',
     'foundation-daterangepicker',
     'moment',
     'powa/utils/timeurls'
-], function(jquery, foundation, Backbone, GraphView, GridView, ContentView, daterangepicker, moment, timeurls){
+], function(jquery, foundation, Backbone, LineGraphView, BarGraphView, GridView, ContentView, daterangepicker,
+    moment, timeurls){
     return Backbone.View.extend({
         tagName: "div",
 
@@ -65,8 +67,15 @@ define([
         },
 
         makeView: function(widget){
+            // TODO: refactor this abomination
             if(widget.get("type") == "graph"){
-                return new GraphView({model: widget});
+                var renderer = widget.get("renderer") || "line";
+                if(renderer == "line"){
+                    return new LineGraphView({model: widget});
+                }
+                if(renderer == "bar"){
+                    return new BarGraphView({model: widget});
+                }
             } else if (widget.get("type") == "grid"){
                 return new GridView({model: widget});
             } else if (widget.get("type") == "content"){

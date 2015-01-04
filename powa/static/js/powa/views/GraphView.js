@@ -10,23 +10,23 @@ define([
 ],
         function(Backbone, d3, Rickshaw, WidgetView, Graph, template, duration, size){
 
-
-    var axisFormats = {
-        "number": Rickshaw.Fixtures.Number.formatKMBT,
-        "size": new size.SizeFormatter().fromRaw,
-        "sizerate": function(value){ return new size.SizeFormatter({suffix: "ps"}).fromRaw(value)},
-        "duration": function(data){ return moment(parseInt(data, 10)).preciseDiff(moment(0))}
-    }
-
     var GraphView = WidgetView.extend({
             template: template,
             tag: "div",
             model: Graph,
+            axisFormats: {
+                "number": Rickshaw.Fixtures.Number.formatKMBT,
+                "size": new size.SizeFormatter().fromRaw,
+                "sizerate": function(value){ return new size.SizeFormatter({suffix: "ps"}).fromRaw(value)},
+                "duration": function(data){ return moment(parseInt(data, 10)).preciseDiff(moment(0))}
+            },
+
 
             initialize: function(){
                 var self = this;
                 this.listenTo(this.model, "widget:needrefresh", this.update);
                 this.listenTo(this.model, "widget:dataload-failed", this.fail);
+                this.listenTo(this, "graph:resize", this.onResize);
                 this.render();
                 this.$nodata_el = $("<div>").html("No data").css({
                     position: "absolute",
@@ -39,36 +39,44 @@ define([
                 this.$el.addClass("graph");
             },
 
-            getGraph: function(){
+            getGraph: function(series){
+                var palette = new Rickshaw.Color.Palette({scheme: this.model.get("color_scheme"), interpolatedStopCount: 1});
+                $.each(series, function(){
+                    this.color = palette.color();
+                });
                 if(this.graph === undefined){
-                    this.makeGraph();
+                    this.makeGraph(series);
+                } else {
+                    // update series
+                    this.graph.series.splice(0, this.graph.series.length + 1);
+                    this.graph.series.push.apply(this.graph.series, series);
+                                this.graph.validateSeries(this.graph.series);
+                    this.adaptGraph(series);
                 }
                 return this.graph;
             },
 
-            makeGraph: function(){
+            adaptGraph: function(series){},
+
+            makeGraph: function(series){
+                // TODO: split this in subclasses for each type
+                // of graph
+                var renderer = this.model.get("renderer") || "line";
                 this.$el.html(this.template(this.model.toJSON()));
-                this.graph_elem = this.$el.find(".graph_container");
-                this.graph = new Rickshaw.Graph({
-                            element: this.graph_elem.get(0),
-                            height: this.$el.innerHeight(),
-                            width: this.$el.innerWidth() - 40,
-                            xScale: d3.time.scale(),
-                            renderer: this.model.get("renderer") || "line",
-                            series: []
-                });
-                var time = new Rickshaw.Fixtures.Time();
-                var seconds = time.unit('second');
-                this.x_axis = new Rickshaw.Graph.Axis.Time( {
-                    graph: this.graph,
-                    tickFormat: this.graph.x.tickFormat(),
-                } );
-                // TODO: allow multiple axes
+                this.$graph_elem = this.$el.find(".graph_container");
+                this.graph_elem = this.$graph_elem.get(0);
                 this.y_axes = {};
+                this.initGraph(series);
+                this.initAxes();
+                this.initGoodies();
+            },
+
+            initAxes: function(){
+                var self = this;
                 this.model.get("metrics").each(function(metric, index){
                     var type = metric.get("type") || "number";
                     if(this.y_axes[type] == undefined){
-                        var formatter = axisFormats[type];
+                        var formatter = self.axisFormats[type];
                         var orientation = index % 2 == 0 ? "left" : "right";
                         this.y_axes[type] = new Rickshaw.Graph.Axis.Y({
                             element: this.$el.find(".graph_" + orientation + "_axis").get(0),
@@ -79,31 +87,18 @@ define([
                         });
                     }
                 }, this);
+            },
+
+            initGoodies: function(){
                 this.legend = new Rickshaw.Graph.Legend( {
                     graph: this.graph,
                     element: this.$el.find('.graph_legend').get(0)
                 });
 
-                var hoverDetail = new Rickshaw.Graph.HoverDetail( {
-                    graph: this.graph,
-                    formatter: function(series, x, y){
-                        var type = series.metric.get("type") || "number";
-                        var formatter = axisFormats[type];
-                        var date = '<span class="date">' + new Date(x * 1000).toUTCString() + '</span>';
-                        var swatch = '<span class="detail_swatch" style="background-color: ' + series.color + '"></span>';
-                        var content = swatch + series.label + ": " + formatter(y) + '<br/>' + date;
-                        return content;
-
-                    }
-                } );
 
                 var highlighter = new Rickshaw.Graph.Behavior.Series.Highlight( {
                     graph: this.graph,
                     legend: this.legend
-                } );
-                this.preview = new Rickshaw.Graph.RangeSlider.Preview({
-                	graph: this.graph,
-                	element: this.$el.find(".graph_preview").get(0)
                 });
             },
 
@@ -121,13 +116,15 @@ define([
             },
 
             _resize: function(){
-               this.graph.setSize({width: this.graph_elem.parent().innerWidth()});
-               this.preview.configure({width: this.graph.width});
-                _.each(this.y_axes, function(axis){
-                    var width = axis.orientation === "left" ? 0 : this.$el.innerWidth();
-                    axis.setSize({height: this.graph.height + 4, auto: true});
-                }, this);
+               this.graph.setSize({width: this.$graph_elem.parent().innerWidth()});
+               _.each(this.y_axes, function(axis){
+                   var width = axis.orientation === "left" ? 0 : this.$el.innerWidth();
+                   axis.setSize({height: this.graph.height + 4, auto: true});
+               }, this);
+               this.trigger("graph:resize");
             },
+
+            onResize: function(){},
 
             update: function(newseries){
                 if(newseries.length == 0){
@@ -135,15 +132,8 @@ define([
                     this.nodata();
                     return;
                 }
-                this.getGraph();
+                this.getGraph(newseries);
                 this.remove_nodata();
-                var palette = new Rickshaw.Color.Palette({scheme: this.model.get("color_scheme"), interpolatedStopCount: 1});
-                $.each(newseries, function(){
-                    this.color = palette.color();
-                });
-                this.graph.series.splice(0, this.graph.series.length + 1);
-                this.graph.series.push.apply(this.graph.series, newseries);
-                         this.graph.validateSeries(this.graph.series);
                 this._resize();
                 this.graph.update();
                 this.legend.render();

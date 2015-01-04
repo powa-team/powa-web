@@ -40,7 +40,9 @@ define(['backbone', 'powa/models/DataSource', 'powa/models/Metric', 'powa/models
                         if(row[xaxis] === undefined){
                             throw "Data is lacking for xaxis. Did you include " + xaxis + " column in your query ?";
                         }
-                        current_group.data.push({x: row[xaxis], y: row[metric.get("yaxis")]});
+                        current_group.data.push($.extend({},
+                                    {x: row[xaxis], y: row[metric.get("yaxis")]},
+                                    row));
                     });
                 });
                 self.get("metrics").each(function(metric){
