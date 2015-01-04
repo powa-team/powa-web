@@ -79,9 +79,14 @@ class QueryExplains(ContentWidget):
         if not self.has_extension("pg_qualstats"):
             raise HTTPError(501, "PG qualstats is not installed")
 
-        sql = aggregate_qual_values(
-            text("""s.dbname = :database AND s.md5query = :query
-                 AND coalesce_range && tstzrange(:from, :to)"""))
+        sql = (aggregate_qual_values(
+                text("""s.dbname = :database AND s.md5query = :query
+                    AND coalesce_range && tstzrange(:from, :to)"""))
+                .with_only_columns(['quals',
+                                    'query',
+                                    'to_json(mf) as "most filtering"',
+                                    'to_json(lf) as "least filtering"',
+                                    'to_json(me) as "most executed"']))
         params = {"database": database, "query": query,
                   "from": self.get_argument("from"),
                   "to": self.get_argument("to")}

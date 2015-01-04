@@ -2,7 +2,7 @@
 Utilities for commonly used SQL constructs.
 """
 import re
-from sqlalchemy.sql import text
+from sqlalchemy.sql import text, select
 from collections import namedtuple
 
 TOTAL_MEASURE_INTERVAL = """
@@ -90,7 +90,8 @@ Plan = namedtuple(
 
 def aggregate_qual_values(filter_clause, top=1):
     filter_clause = filter_clause.compile()
-    return text("""
+    base = text("""
+    (
     WITH sample AS (
     SELECT query, quals as quals, t.*
         FROM powa_statements s
@@ -149,10 +150,12 @@ def aggregate_qual_values(filter_clause, top=1):
     rownumber,
     mf.query,
     mf.quals,
-    to_json(mf) as "most filtering",
-    to_json(lf) as "least filtering",
-    to_json(me) as "most executed"
+    mf,
+    lf,
+    me
     FROM mf inner join lf using(quals, rownumber)
         inner join me using(quals, rownumber)
     ORDER BY mf.rownumber
+    ) agg_constvalues
     """ % filter_clause.statement).params(top_value=top, **filter_clause.params)
+    return select(["*"]).select_from(base)

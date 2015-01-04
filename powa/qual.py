@@ -15,12 +15,22 @@ class QualConstantsMetricGroup(MetricGroupDef):
     name = "QualConstants"
     data_url = r"/metrics/database/(\w+)/query/(\w+)/qual/(\w+)/constants"
     xaxis = "rownumber"
-    most_frequents = MetricDef(label="")
-    query = aggregate_qual_values(text("""
+    mffr = MetricDef(label="Most Filtering")
+    lffr = MetricDef(label="Least Filtering")
+    mec = MetricDef(label="Most Executed")
+    query = (aggregate_qual_values(text("""
         s.dbname = :database AND
         s.md5query = :query AND
         qn.nodehash = :qual AND
         coalesce_range && tstzrange(:from, :to)"""), top=10)
+             .with_only_columns(['rownumber',
+                                '(mf).filter_ratio as mffr',
+                                '(mf).constants as mfconstants',
+                                '(lf).filter_ratio as lffr',
+                                '(lf).constants as lfconstants',
+                                '(me).count as mec',
+                                '(me).constants as meconstants']))
+
 
     @classmethod
     def post_process(self, handler, data, database, query, qual, **kwargs):
@@ -80,5 +90,7 @@ class QualOverview(DashboardPage):
     dashboard = Dashboard(
         "Qual %(qual)s",
         [[QualDetail("Detail for this Qual")],
-         [Graph("Most frequent values",
-               metrics=[QualConstantsMetricGroup.most_frequents])]])
+         [Graph("Most executed values",
+               metrics=[QualConstantsMetricGroup.lffr, QualConstantsMetricGroup.mffr],
+               x_label_attr="mfconstants",
+               renderer="bar")]])
