@@ -20,22 +20,21 @@ class DashboardHandler(AuthHandler):
     Handler for a specific dashboard
     """
 
-    def initialize(self, template, dashboardpage, params):
+    def initialize(self, template, params):
         self.template = template
-        self.dashboardpage = dashboardpage
         self.params = params
 
     def get(self, *args):
-        params = OrderedDict(zip(self.dashboardpage.params,
+        params = OrderedDict(zip(self.params,
                                  args))
         param_rows = []
-        for row in self.dashboardpage.dashboard.widgets:
+        for row in self.dashboard.widgets:
             param_row = []
             for widget in row:
                 param_row.append(widget.parameterized_json(self, **params))
             param_rows.append(param_row)
         param_datasource = []
-        for datasource in self.dashboardpage.datasources:
+        for datasource in self.datasources:
             value = datasource.to_json()
             value['data_url'] = self.reverse_url(datasource.url_name,
                                                  *args)
@@ -43,7 +42,7 @@ class DashboardHandler(AuthHandler):
         return self.render(self.template,
                            widgets=param_rows,
                            datasources=param_datasource,
-                           title=self.dashboardpage.dashboard.title % params)
+                           title=self.dashboard.title % params)
 
     @property
     def database(self):
@@ -53,7 +52,7 @@ class DashboardHandler(AuthHandler):
     @property
     def menu(self):
         params = OrderedDict(zip(self.params, self.path_args))
-        return self.dashboardpage.get_menu(self, params)
+        return self.get_menu(self, params)
 
 
 class MetricGroupHandler(AuthHandler):
@@ -526,8 +525,7 @@ class DashboardPage(object):
         url_specs = []
         url_specs.append(URLSpec(
             r"%s/" % cls.base_url.rstrip("/"),
-            cls.dashboard_handler_cls, {
-                "dashboardpage": cls,
+            type(cls.__name__, (cls.dashboard_handler_cls, cls), {}),{
                 "template": cls.template,
                 "params": cls.params},
             name=cls.__name__))
