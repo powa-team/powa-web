@@ -32,9 +32,8 @@ class QualConstantsMetricGroup(MetricGroupDef):
                                 '(me).constants as meconstants']))
 
 
-    @classmethod
-    def post_process(self, handler, data, database, query, qual, **kwargs):
-        conn = handler.connect(database=database)
+    def post_process(self, data, database, query, qual, **kwargs):
+        conn = self.connect(database=database)
         return data
 
 
@@ -42,7 +41,7 @@ class QualDetail(ContentWidget):
     """
     Content widget showing detail for a specific qual.
     """
-
+    title = "Detail for this Qual"
     data_url = r"/database/(\w+)/query/(\w+)/qual/(\w+)/detail"
 
     QUAL_DEF_QUERY = text("""
@@ -89,7 +88,7 @@ class QualOverview(DashboardPage):
 
     dashboard = Dashboard(
         "Qual %(qual)s",
-        [[QualDetail("Detail for this Qual")],
+        [[QualDetail],
          [Graph("Most executed values",
                metrics=[QualConstantsMetricGroup.mec],
                x_label_attr="mfconstants",

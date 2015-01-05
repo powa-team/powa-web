@@ -36,7 +36,7 @@ define([
                 try{
                     if(this.type == "metric_group"){
                         ds.add(MetricGroup.fromJSON(this));
-                    } else if (this.type == "contentsource") {
+                    } else if (this.type == "content") {
                         ds.add(ContentSource.fromJSON(this));
                     }
                 }

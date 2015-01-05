@@ -109,6 +109,7 @@ class QueryIndexes(ContentWidget):
     """
 
     data_url = r"/metrics/database/(\w+)/query/(\w+)/indexes"
+    title = "Query Indexes"
 
     def get(self, database, query):
         if not self.has_extension("pg_qualstats"):
@@ -123,7 +124,7 @@ class QueryExplains(ContentWidget):
     """
     Content widget showing explain plans for various const values.
     """
-
+    title = "Query Explains"
     data_url = r"/metrics/database/(\w+)/query/(\w+)/explains"
 
     def get(self, database, query):
@@ -188,22 +189,16 @@ class QualList(MetricGroupDef):
         WHERE md5query = :query
     """)
 
-    @classmethod
-    def prepare(cls, handler, **kwargs):
-        if not handler.has_extension("pg_qualstats"):
-            raise HTTPError(501, "PG Qualstats is not available")
 
-    @classmethod
-    def process(cls, handler, val, database=None, query=None, **kwargs):
+    def process(self, val, database=None, query=None, **kwargs):
         row = dict(val)
-        row['url'] = handler.reverse_url('QualOverview', database, query,
+        row['url'] = self.reverse_url('QualOverview', database, query,
                                          row['nodehash'])
         return row
 
 
-    @classmethod
-    def post_process(cls, handler, data, database, query, **kwargs):
-        conn = handler.connect(database=database)
+    def post_process(self, data, database, query, **kwargs):
+        conn = self.connect(database=database)
         data["data"] = resolve_quals(conn, data["data"])
         return data
 
@@ -212,7 +207,7 @@ class QueryDetail(ContentWidget):
     """
     Detail widget showing summarized information for the query.
     """
-
+    title = "Query Detail"
     data_url = r"/metrics/database/(\w+)/query/(\w+)/detail"
 
     DETAIL_QUERY = text("""
@@ -266,7 +261,7 @@ class QueryOverview(DashboardPage):
             return self._dashboard
         self._dashboard = Dashboard(
             "Query %(query)s on database %(database)s",
-            [[QueryDetail("Query Detail")],
+            [[QueryDetail],
              [Graph("General",
                     metrics=[QueryOverviewMetricGroup.avg_runtime,
                              QueryOverviewMetricGroup.rows]),
@@ -308,6 +303,6 @@ class QueryOverview(DashboardPage):
                          "label": "Eval Type"
                      }],
                      metrics=QualList.all())],
-                [QueryIndexes("Query Indexes")],
-                [QueryExplains("Query Explains")]])
+                [QueryIndexes],
+                [QueryExplains]])
         return self._dashboard

@@ -28,6 +28,8 @@ class DatabaseOverviewMetricGroup(Totals, MetricGroupDef):
     xaxis = "ts"
     data_url = r"/metrics/database_overview/(\w+)/"
     # TODO: refactor with GlobalDatabasesMetricGroup
+
+
     query = text("""
         SELECT
         extract(epoch from ts) AS ts,
@@ -70,10 +72,9 @@ class ByQueryMetricGroup(Detail, MetricGroupDef):
         ORDER BY total_calls DESC
     """)
 
-    @classmethod
-    def process(cls, handler, val, database=None, **kwargs):
+    def process(self, val, database=None, **kwargs):
         val = dict(val)
-        val["url"] = handler.reverse_url(
+        val["url"] = self.reverse_url(
             "QueryOverview", database, val["md5query"])
         return val
 

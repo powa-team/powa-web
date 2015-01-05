@@ -11,6 +11,7 @@ from powa.compat import with_metaclass, classproperty, hybridmethod
 from tornado.web import URLSpec
 from operator import attrgetter
 from collections import OrderedDict
+from inspect import isfunction
 
 GLOBAL_COUNTER = 0
 
@@ -67,7 +68,6 @@ class MetricGroupHandler(AuthHandler):
 
     def get(self, *params):
         url_params = dict(zip(self.params, params))
-        self.metric_group.prepare(self, **url_params)
         url_query_params = {
             key: value[0].decode('utf8')
             for key, value
@@ -75,86 +75,11 @@ class MetricGroupHandler(AuthHandler):
         url_params.update(url_query_params)
         query = self.query
         values = self.execute(query, params=url_params)
-        data = {"data": [self.metric_group.process(
-            self, val,
-            **url_params) for val in values]}
-        data = self.metric_group.post_process(self, data, **url_params)
+        data = {"data": [self.process(val, **url_params) for val in values]}
+        data = self.post_process(data, **url_params)
         self.render_json(data)
 
-
-class DataSource(JSONizable):
-    """
-    Base class for various datasources
-
-    Attributes:
-        datasource_handler_cls (type):
-            a subclass of RequestHandler used to process this DataSource.
-
-    """
-    datasource_handler_cls = None
-    data_url = None
-
-    def __init__(self, name=None, query=None, data_url=None):
-        self.name = name
-        self._query = query
-        self.data_url = data_url
-
-    @classproperty
-    def url_name(cls):
-        """
-        Returns the default url_name for this data source.
-        """
-        return "datasource_%s" % cls.__name__
-
-
-class MetricGroup(DataSource):
-    """
-    A metric group associates a set of Metrics, retrieved
-    by one sql query at once.
-
-    Attributes:
-        name (str):
-            The name of the metric
-        query (sqlalchemy.sql.base.Executable):
-            The sql query used to fetch the metrics
-        metrics (dict):
-            a dictionary mapping metric names to their definition.
-        data_url (str):
-            a regular expression defining the url for this metricgroup
-        xaxis (str):
-            the name of the column serving as an xaxis
-        axis_type (str):
-            the type of the axis
-        category_attr (str):
-            an attribute defining multiple series for the same metric.
-
-    """
-    datasource_handler_cls = MetricGroupHandler
-
-    def __init__(self, name=None, query=None, data_url=None,
-                 xaxis="ts", metrics=None, axis_type="time",
-                 category_attr=None):
-        super(MetricGroup, self).__init__(name, query, data_url)
-        self.xaxis = xaxis
-        self.axis_type = axis_type
-        self.metrics = metrics or {}
-        self.category_attr = category_attr
-        for metric in self.metrics.values():
-            metric.bind(self)
-
-    def to_json(self):
-        vals = super(MetricGroup, self).to_json()
-        vals['metrics'] = list(self.metrics.values())
-        vals['type'] = 'metric_group'
-        return vals
-
-    @classmethod
-    def prepare(cls, handler, **kwargs):
-        """Callback before handling the metric group method."""
-        pass
-
-    @classmethod
-    def process(cls, handler, val, **kwargs):
+    def process(self, val, **kwargs):
         """
         Callback used to process each individual row fetched from the query.
 
@@ -170,8 +95,7 @@ class MetricGroup(DataSource):
         """
         return dict(val)
 
-    @classmethod
-    def post_process(cls, handler, data, **kwargs):
+    def post_process(self, data, **kwargs):
         """
         Callback used to process the whole set of rows before returning
         it to the browser.
@@ -187,6 +111,28 @@ class MetricGroup(DataSource):
             A dictionary containing the processed values.
         """
         return data
+
+
+
+class DataSource(JSONizable):
+    """
+    Base class for various datasources
+
+    Attributes:
+        datasource_handler_cls (type):
+            a subclass of RequestHandler used to process this DataSource.
+
+    """
+    datasource_handler_cls = None
+    data_url = None
+
+    @classproperty
+    def url_name(cls):
+        """
+        Returns the default url_name for this data source.
+        """
+        return "datasource_%s" % cls.__name__
+
 
 
 class Metric(JSONizable):
@@ -306,19 +252,13 @@ class ContentWidget(Widget, DataSource, AuthHandler):
     simplistic.
     """
 
-    def __init__(self, title, **kwargs):
-        self.title = title
-        super(ContentWidget, self).__init__(title, **kwargs)
+    datasource_handler_cls = ContentHandler
 
     def initialize(self, datasource=None, params=None):
         self.params = params
 
-    @classproperty
-    def datasource_handler_cls(cls):
-        return type("%sHandler" % cls.__name__,
-                    (ContentHandler,), dict(cls.__dict__))
 
-    @hybridmethod
+    @classmethod
     def to_json(cls):
         """
         to_json is an hybridmethod, the goal is to provide two different
@@ -328,16 +268,15 @@ class ContentWidget(Widget, DataSource, AuthHandler):
         return {
             'data_url': cls.data_url,
             'name': cls.__name__,
-            'type': 'contentsource'
+            'type': 'content',
+            'content': cls.__name__,
+            'title': cls.title
         }
 
-    @to_json.instance_method
-    def to_json(self):
-        values = {}
-        values['title'] = self.title
-        values['type'] = 'content'
-        values['content'] = self.__class__.__name__
-        return values
+    @classmethod
+    def parameterized_json(cls,  _, **params):
+        return cls.to_json()
+
 
 
 class Grid(Widget):
@@ -456,34 +395,44 @@ class MetaMetricGroup(type, JSONizable):
             if isinstance(val, Metric):
                 dct.pop(key)
                 dct['metrics'][key] = val
-        if dct['metrics']:
-            dct['_inst'] = MetricGroup(
-                **{key: val
-                   for key, val in dct.items()
-                   if not isinstance(val, classmethod)
-                   and not key.startswith('_')})
         return super(MetaMetricGroup, meta).__new__(meta, name, bases, dct)
 
+
+    def __init__(cls, name, bases, dct):
+        for metric in dct.get("metrics").values():
+            metric.bind(cls)
+        super(MetaMetricGroup, cls).__init__(name, bases, dct)
+
     def __getattr__(cls, key):
-        return cls.metrics[key]
+        if key not in cls.metrics:
+            raise AttributeError
+        return cls.metrics.get(key)
+
+    def __hasattr__(cls, key):
+        return key in cls.metrics
 
 
-class MetricGroupDef(with_metaclass(MetaMetricGroup, MetricGroup)):
+
+
+class MetricGroupDef(with_metaclass(MetaMetricGroup, DataSource)):
     """
     Base class for MetricGroupDef.
 
     A MetricGroupDef provides syntactic sugar for instantiating MetricGroups.
     """
-    _cls = MetricGroup
-
     _inst = None
     metrics = {}
+    datasource_handler_cls = MetricGroupHandler
 
     @classmethod
     def to_json(cls):
-        if cls._inst:
-            return cls._inst.to_json()
-        return {}
+        values = {key: val for key, val in cls.__dict__.items()
+                if not key.startswith("_") and not isfunction(val)}
+        values['type'] = 'metric_group'
+        values.setdefault("xaxis", "ts")
+        values['metrics'] = list(cls.metrics.values())
+        values.pop("query")
+        return values
 
     @classmethod
     def all(cls):
@@ -535,10 +484,9 @@ class DashboardPage(object):
                                datasource.__name__)
             url_specs.append(URLSpec(
                 datasource.data_url,
-                datasource.datasource_handler_cls, {
-                    "datasource": datasource,
-                    "params": cls.params
-                }, name=datasource.url_name))
+                type(datasource.__name__, (datasource, datasource.datasource_handler_cls),
+                    dict(datasource.__dict__)),
+                {"datasource": datasource, "params": cls.params}, name=datasource.url_name))
         return url_specs
 
     @classmethod

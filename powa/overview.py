@@ -39,10 +39,9 @@ class ByDatabaseMetricGroup(Detail, MetricGroupDef):
         ORDER BY sum(total_calls) DESC
     """)
 
-    @classmethod
-    def process(cls, handler, val, **kwargs):
+    def process(self, val, **kwargs):
         val = dict(val)
-        val["url"] = handler.reverse_url("DatabaseOverview", val["datname"])
+        val["url"] = self.reverse_url("DatabaseOverview", val["datname"])
         return val
 
 

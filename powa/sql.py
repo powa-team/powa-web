@@ -2,7 +2,7 @@
 Utilities for commonly used SQL constructs.
 """
 import re
-from sqlalchemy.sql import text, select
+from sqlalchemy.sql import text, select, func
 from collections import namedtuple
 
 TOTAL_MEASURE_INTERVAL = """
@@ -235,3 +235,57 @@ def suggest_indexes(handler, database, query):
     result = handler.execute(sql, database=row['dbname'], params=row)
     indexes = result.fetchall()
     return indexes
+
+
+CURRENT_BLOCK = func.current_setting('block_size').label('blocksize')
+
+def powa_getstatdata_sample_db():
+    base_query = text("""SELECT *
+        FROM (SELECT
+            row_number() over (order by statements_history.ts) as number,
+            count(*) OVER () as total,
+            *
+            FROM (
+                SELECT (unnested.records).*
+                FROM (
+                    SELECT psh.coalesce_range, unnest(records) AS records
+                    FROM powa_statements_history_db psh
+                    WHERE dbname=:database
+                    AND coalesce_range && tstzrange(:from, :to,'[]')
+                ) AS unnested
+                WHERE tstzrange(:from, :to,'[]') @> (records).ts
+                UNION ALL
+                SELECT (record).*
+                FROM powa_statements_history_current_db
+                WHERE dbname=:database
+                  AND tstzrange(:from, :to,'[]') @> (record).ts
+            ) as statements_history
+        ) as sh
+        WHERE number % (int8larger((total)/(:samples+1),1) )=0
+    """)
+
+    def biggest(var, minval=0, alias=None):
+        alias = alias or var
+        return func.greatest(
+            func.lead(column(var)).over(order_by="ts") - column(var),
+            minval).alias(alias)
+
+    query = select([
+        "ts",
+        biggest("calls"),
+        biggest("total_time"),
+        biggest("mesure_interval", '0 s'),
+        biggest("rows"),
+        biggest("shared_blks_read"),
+        biggest("shared_blks_hit"),
+        biggest("shared_blks_dirtied"),
+        biggest("shared_blks_written"),
+        biggest("local_blks_read"),
+        biggest("local_blks_hit"),
+        biggest("local_blks_dirtied"),
+        biggest("local_blks_written"),
+        biggest("temp_blks_read"),
+        biggest("temp_blks_written"),
+        biggest("blk_read_time"),
+        biggest("blk_write_time")]).select_from(base_query)
+    return query
