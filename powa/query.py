@@ -256,49 +256,6 @@ class QueryOverview(DashboardPage):
         self._dashboard = None
         super(QueryOverview, self).__init__(*args, **kwargs)
 
-    dashboard = Dashboard(
-        "Query %(query)s on database %(database)s",
-        [[QueryDetail("Query Detail")],
-         [Graph("General",
-                metrics=[QueryOverviewMetricGroup.avg_runtime,
-                         QueryOverviewMetricGroup.rows]),
-          Graph("Shared block (in Bps)",
-                metrics=[QueryOverviewMetricGroup.shared_blks_read,
-                         QueryOverviewMetricGroup.shared_blks_hit,
-                         QueryOverviewMetricGroup.shared_blks_dirtied,
-                         QueryOverviewMetricGroup.shared_blks_written])],
-         [Graph("Physical block (in Bps)",
-                metrics=[KcacheMetricGroup.reads,
-                         KcacheMetricGroup.writes]),
-         Graph("CPU time",
-             metrics=[KcacheMetricGroup.user_time,
-                      KcacheMetricGroup.system_time])],
-         [Graph("Local block (in Bps)",
-                metrics=[QueryOverviewMetricGroup.local_blks_read,
-                         QueryOverviewMetricGroup.local_blks_hit,
-                         QueryOverviewMetricGroup.local_blks_dirtied,
-                         QueryOverviewMetricGroup.local_blks_written]),
-          Graph("Temp block (in Bps)",
-                metrics=[QueryOverviewMetricGroup.temp_blks_read,
-                         QueryOverviewMetricGroup.temp_blks_written]),
-          Graph("Read / Write time",
-                metrics=[QueryOverviewMetricGroup.blk_read_time,
-                         QueryOverviewMetricGroup.blk_write_time])],
-         [Grid("Predicates used by this query",
-               columns=[{
-                   "name": "where_clause",
-                   "label": "Predicate",
-                   "type": "query",
-                   "max_length": 60,
-                   "url_attr": "url"
-               }, {
-                   "name": "eval_type",
-                   "label": "Eval Type"
-               }],
-               metrics=QualList.all())],
-         [QueryIndexes("Query Indexes")],
-         [QueryExplains("Query Explains")]])
-
     @classmethod
     def get_menutitle(cls, handler, params):
         return "Query detail"
