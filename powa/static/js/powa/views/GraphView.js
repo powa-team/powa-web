@@ -137,11 +137,13 @@ define([
                 this.remove_nodata();
                 this._resize();
                 this.graph.update();
-                this.legend.render();
-                var shelving = new Rickshaw.Graph.Behavior.Series.Toggle( {
-                    graph: this.graph,
-                    legend: this.legend
-                } );
+                if(this.legend){
+                    this.legend.render();
+                    var shelving = new Rickshaw.Graph.Behavior.Series.Toggle( {
+                        graph: this.graph,
+                        legend: this.legend
+                    } );
+                }
                 this.hideload();
                 this.trigger("widget:update");
             },

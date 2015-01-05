@@ -91,6 +91,6 @@ class QualOverview(DashboardPage):
         "Qual %(qual)s",
         [[QualDetail("Detail for this Qual")],
          [Graph("Most executed values",
-               metrics=[QualConstantsMetricGroup.lffr, QualConstantsMetricGroup.mffr],
+               metrics=[QualConstantsMetricGroup.mec],
                x_label_attr="mfconstants",
-               renderer="bar")]])
+               renderer="pie")]])
