@@ -74,11 +74,12 @@ define([
 
             initAxes: function(){
                 var self = this;
+                var i = 0;
                 this.model.get("metrics").each(function(metric, index){
                     var type = metric.get("type") || "number";
                     if(this.y_axes[type] == undefined){
                         var formatter = self.axisFormats[type];
-                        var orientation = index % 2 == 0 ? "left" : "right";
+                        var orientation = i % 2 == 0 ? "left" : "right";
                         this.y_axes[type] = new Rickshaw.Graph.Axis.Y({
                             element: this.$el.find(".graph_" + orientation + "_axis").get(0),
                             graph: this.graph,
@@ -86,6 +87,7 @@ define([
                             orientation: orientation,
                             tickFormat: formatter
                         });
+                        i++;
                     }
                 }, this);
             },

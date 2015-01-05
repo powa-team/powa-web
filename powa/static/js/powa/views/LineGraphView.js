@@ -24,11 +24,12 @@ define(["rickshaw", "d3", "powa/views/GraphView"], function(rickshaw, d3, GraphV
 
         initGoodies: function(){
             GraphView.prototype.initGoodies.call(this);
+            var self = this;
             var hoverDetail = new Rickshaw.Graph.HoverDetail( {
                 graph: this.graph,
                 formatter: function(series, x, y){
                     var type = series.metric.get("type") || "number";
-                    var formatter = this.axisFormats[type];
+                    var formatter = self.axisFormats[type];
                     var date = '<span class="date">' + new Date(x * 1000).toUTCString() + '</span>';
                     var swatch = '<span class="detail_swatch" style="background-color: ' + series.color + '"></span>';
                     var content = swatch + series.label + ": " + formatter(y) + '<br/>' + date;
