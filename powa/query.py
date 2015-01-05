@@ -8,7 +8,7 @@ from powa.dashboards import (
     DashboardPage, ContentWidget)
 from powa.metrics import Totals
 from powa.database import DatabaseOverview
-from sqlalchemy.sql import literal_column, bindparam, func, text
+from sqlalchemy.sql import bindparam, text
 from tornado.web import HTTPError
 
 from powa.sql import (Plan, format_jumbled_query,
