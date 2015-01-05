@@ -1,0 +1,17 @@
+{% extends "../../xhr.html" %}
+{% block content %}
+<div class="indexes">
+    <h4>Index suggestion</h4>
+    <div class="row">
+        {% if len(indexes) > 0 %}
+            <div class="columns large-6">
+                {% for index in indexes %}
+                    <pre class="sql"><code>{{index}}</code></pre>
+                {% end %}
+            </div>
+        {% else %}
+            No suitable index to suggest.
+        {% end %}
+    </div>
+</div>
+{% end %}
