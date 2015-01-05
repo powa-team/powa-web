@@ -161,7 +161,14 @@ def aggregate_qual_values(filter_clause, top=1):
     return select(["*"]).select_from(base)
 
 def suggest_indexes(handler, database, query):
-    # Find suitable indexes for a given query
+    """
+    Find suitable indexes for a given query
+
+    Arguments:
+        handler: a request handler, allowing to get a connection
+        database: the database name where this query has been executed
+        query: the md5query of the query to look indexes for.
+    """
     # TODO :
     # - handle all fields and ops, not only the first row
     # - exclude already existing indexes
@@ -225,7 +232,6 @@ def suggest_indexes(handler, database, query):
         ) idx
         GROUP by amname,nspname,relname
     """)
-    params = {"database": row['dbname'], "relid": row['relid'], "opno": row['opno'], "attnum": row['attnum']}
-    result = handler.execute(sql, database=row['dbname'], params=params)
+    result = handler.execute(sql, database=row['dbname'], params=row)
     indexes = result.fetchall()
     return indexes
