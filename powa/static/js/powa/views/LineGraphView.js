@@ -2,14 +2,14 @@ define(["rickshaw", "d3", "powa/views/GraphView"], function(rickshaw, d3, GraphV
     return GraphView.extend({
 
         initGraph: function(series){
-            this.graph = new Rickshaw.Graph({
+            this.graph = new Rickshaw.Graph($.extend({}, this.model.attributes, {
                         element: this.graph_elem,
                         height: this.$el.innerHeight(),
                         width: this.$el.innerWidth() - 40,
                         xScale: d3.time.scale(),
                         renderer: "line",
                         series: series || []
-            });
+            }));
             var time = new Rickshaw.Fixtures.Time();
             var seconds = time.unit('second');
             this.x_axis = new Rickshaw.Graph.Axis.Time( {

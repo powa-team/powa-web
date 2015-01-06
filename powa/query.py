@@ -47,9 +47,9 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     kwrites = MetricDef(label="Physical writes", type="sizerate")
     kuser_time = MetricDef(label="CPU user time", type="percent")
     ksystem_time = MetricDef(label="CPU system time", type="percent")
-    hit_ratio = MetricDef(label="PG Hit ratio", type="percent")
-    khit_ratio = MetricDef(label="System hit ratio", type="percent")
-    total_hit_ratio = MetricDef(label="Total hit ratio", type="percent")
+    hit_ratio = MetricDef(label="Shared buffers hit ratio", type="percent")
+    sys_hit_ratio = MetricDef(label="System cache hit ratio", type="percent")
+    disk_hit_ratio = MetricDef(label="Disk hit ratio", type="percent")
 
     total_temp_blks_written = MetricDef(label="Temp Blocks written",
                                         type="size")
@@ -80,7 +80,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
         base = cls.metrics.copy()
         if not handler.has_extension("pg_stat_kcache"):
             for key in ("kreads", "kwrites", "kuser_time", "ksystem_time",
-                        "khit_ratio", "total_hit_ratio"):
+                        "sys_hit_ratio", "disk_hit_ratio"):
                 base.pop(key)
         return base
 
@@ -117,19 +117,20 @@ class QueryOverviewMetricGroup(MetricGroupDef):
         if self.has_extension("pg_stat_kcache"):
             sys_hits = (greatest(mulblock(c.shared_blks_read) -
                               literal_column("kcache.kreads"), 0)
-                        .label("kcache.hitblocks"))
-            total_hit_ratio = ((cast(sys_hits, Numeric) + mulblock(c.shared_blks_hit)) * 100 /
-                               mulblock(total_blocks))
-            k_hitratio = (cast(sys_hits, Numeric) * 100) / mulblock(c.shared_blks_read)
+                        .label("kcache_hitblocks"))
+            sys_hitratio = (cast(sys_hits, Numeric) * 100 /
+                            mulblock(total_blocks))
+            disk_hit_ratio = (literal_column("kcache.kreads") /
+                              mulblock(total_blocks))
             cols.extend([
                 literal_column("kcache.kreads"),
                 literal_column("kcache.kwrites"),
                 literal_column("kcache.kuser_time"),
                 literal_column("kcache.ksystem_time"),
-                case([(total_blocks == 0, 100)],
-                     else_=total_hit_ratio).label("total_hit_ratio"),
-                case([(c.shared_blks_read == 0, 100)],
-                     else_=k_hitratio).label("khit_ratio")])
+                case([(total_blocks == 0, 0)],
+                     else_=disk_hit_ratio).label("disk_hit_ratio"),
+                case([(total_blocks == 0, 0)],
+                     else_=sys_hitratio).label("sys_hit_ratio")])
             from_clause = query.join(
                 self._KCACHE_QUERY,
                 literal_column("kcache.ts") == c.ts)
@@ -302,7 +303,9 @@ class QueryOverview(DashboardPage):
         if self._dashboard:
             return self._dashboard
         hit_ratio_graph = Graph("Hit ratio",
-                                metrics=[QueryOverviewMetricGroup.hit_ratio])
+                                metrics=[QueryOverviewMetricGroup.hit_ratio],
+                                renderer="bar",
+                                stack=True)
         self._dashboard = Dashboard(
             "Query %(query)s on database %(database)s",
             [[QueryDetail],
@@ -334,8 +337,8 @@ class QueryOverview(DashboardPage):
                 Graph("CPU time",
                       metrics=[QueryOverviewMetricGroup.kuser_time,
                                QueryOverviewMetricGroup.ksystem_time])]])
-            hit_ratio_graph.metrics.append(QueryOverviewMetricGroup.khit_ratio)
-            hit_ratio_graph.metrics.append(QueryOverviewMetricGroup.total_hit_ratio)
+            hit_ratio_graph.metrics.append(QueryOverviewMetricGroup.sys_hit_ratio)
+            hit_ratio_graph.metrics.append(QueryOverviewMetricGroup.disk_hit_ratio)
         if self.has_extension("pg_qualstats"):
             self._dashboard.widgets.extend([[
                 Grid("Predicates used by this query",

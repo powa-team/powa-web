@@ -15,7 +15,6 @@ define(["rickshaw", "d3", "powa/views/GraphView"], function(rickshaw, d3, GraphV
             this.x_axis = new Rickshaw.Graph.Axis.X({
                 graph: this.graph,
                 tickFormat: function(x, index){
-                    console.log(arguments);
                     var value = self.graph.series[0].data[x - 1.5];
                     if(value){
                         return value[self.model.get("x_label_attr")];
