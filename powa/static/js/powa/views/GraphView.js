@@ -49,12 +49,41 @@ define([
                     this.makeGraph(series);
                 } else {
                     // update series
+                    this.updateScales();
                     this.graph.series.splice(0, this.graph.series.length + 1);
                     this.graph.series.push.apply(this.graph.series, series);
-                                this.graph.validateSeries(this.graph.series);
                     this.adaptGraph(series);
+                    this.graph.validateSeries(this.graph.series);
                 }
                 return this.graph;
+            },
+
+            updateScales: function(series){
+                var self = this;
+                $.each(this.y_axes, function(key, axis){
+                    var unit = key;
+                    var ymin = +Infinity,
+                        ymax = -Infinity;
+                    var all_series = [];
+                    _.each(this.graph.series, function(serie){
+                        var metric = serie.metric;
+                        if(metric.get("type") === key){
+                            _.each(serie.data, function(datum){
+                                ymin = Math.min(datum.y, ymin);
+                                ymax = Math.max(datum.y, ymax);
+                                serie.scale = axis.scale;
+                                all_series.push(serie);
+                            });
+                        };
+                    });
+                    ymin = 0.8 * ymin;
+                    ymax = 1.2 * ymax;
+                    axis.scale = axis.scale.domain([ymin, ymax]).nice();
+                    _.each(all_series, function(serie){
+                        serie.scale = axis.scale;
+                    });
+                });
+                this.graph.update();
             },
 
             adaptGraph: function(series){},
@@ -68,11 +97,12 @@ define([
                 this.graph_elem = this.$graph_elem.get(0);
                 this.y_axes = {};
                 this.initGraph(series);
-                this.initAxes();
+                this.initAxes(series);
+                this.updateScales();
                 this.initGoodies();
             },
 
-            initAxes: function(){
+            initAxes: function(series){
                 var self = this;
                 var i = 0;
                 this.model.get("metrics").each(function(metric, index){
@@ -80,10 +110,11 @@ define([
                     if(this.y_axes[type] == undefined){
                         var formatter = self.axisFormats[type];
                         var orientation = i % 2 == 0 ? "left" : "right";
-                        this.y_axes[type] = new Rickshaw.Graph.Axis.Y({
+                        this.y_axes[type] = new Rickshaw.Graph.Axis.Y.Scaled({
                             element: this.$el.find(".graph_" + orientation + "_axis").get(0),
                             graph: this.graph,
                             min: 0,
+                            scale: d3.scale.linear(),
                             orientation: orientation,
                             tickFormat: formatter
                         });
