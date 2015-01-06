@@ -79,9 +79,6 @@ define([
                     });
                     ymin = 0.8 * ymin;
                     ymax = 1.2 * ymax;
-                    if(key == "percent"){
-                        console.log(ymin, ymax);
-                    }
                     axis.scale = axis.scale.domain([ymin, ymax]).range([0, 1]);
                     _.each(all_series, function(serie){
                         serie.scale = axis.scale;
