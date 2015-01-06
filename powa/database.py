@@ -7,10 +7,14 @@ from powa.dashboards import (
     MetricGroupDef, MetricDef,
     DashboardPage)
 
-from powa.sql import text, TOTAL_MEASURE_INTERVAL
+from powa.sql.views import (powa_getstatdata_sample_db, total_measure_interval, block_size,
+                            powa_getstatdata_detailed_db, mulblock,
+                            compute_total_statdata_db_samples)
 from powa.overview import Overview
+from sqlalchemy.sql import extract, ColumnCollection, bindparam, column, select
+from sqlalchemy.sql.functions import sum, text
 
-from powa.metrics import Detail, Totals
+from powa.metrics import Totals
 
 
 class DatabaseSelector(AuthHandler):
@@ -29,48 +33,59 @@ class DatabaseOverviewMetricGroup(Totals, MetricGroupDef):
     data_url = r"/metrics/database_overview/(\w+)/"
     # TODO: refactor with GlobalDatabasesMetricGroup
 
-
-    query = text("""
-        SELECT
-        extract(epoch from ts) AS ts,
-        sum(total_runtime) /  %(tmi)s as avg_runtime,
-        sum(shared_blks_read+local_blks_read+temp_blks_read)*blksize/ %(tmi)s
-                 as total_blks_read,
-        sum(shared_blks_hit+local_blks_hit)*blksize/ %(tmi)s as total_blks_hit
-        FROM
-          powa_getstatdata_sample_db(:from, :to, :database, 300)
-        , (SELECT current_setting('block_size')::int AS blksize) b
-        GROUP BY ts, blksize
-        ORDER BY ts
-        """ % {"tmi": TOTAL_MEASURE_INTERVAL})
+    @property
+    def query(self):
+        bs = block_size.c.block_size
+        # Fetch the base query for sample, and filter them on the database
+        return compute_total_statdata_db_samples(
+            inner_filter=(column("datname") == bindparam("database")))
 
 
-class ByQueryMetricGroup(Detail, MetricGroupDef):
+
+class ByQueryMetricGroup(MetricGroupDef):
     """Metric group for indivual query stats (displayed on the grid)."""
     name = "all_queries"
     xaxis = "md5query"
     axis_type = "category"
     data_url = r"/metrics/database_all_queries/(\w+)/"
-    total_blk_read_time = MetricDef(label="Block read time", type="duration")
-    total_blk_write_time = MetricDef(label="Block write time", type="duration")
+    blk_read_time = MetricDef(label="Block read time", type="duration")
+    blk_write_time = MetricDef(label="Block write time", type="duration")
+    calls = MetricDef(label="#Calls", type="string")
+    runtime = MetricDef(label="Runtime", type="duration")
+    avg_runtime = MetricDef(label="Avg runtime", type="duration")
+    shared_blks_read = MetricDef(label="Blocks read", type="size")
+    shared_blks_hit = MetricDef(label="Blocks hit", type="size")
+    shared_blks_dirtied = MetricDef(label="Blocks dirtied", type="size")
+    shared_blks_written = MetricDef(label="Blocks written", type="size")
+    temp_blks_read = MetricDef(label="Temp Blocks written", type="size")
+    temp_blks_written = MetricDef(label="Temp Blocks written", type="size")
+
     # TODO: refactor with GlobalDatabasesMetricGroup
-    query = text("""
-            SELECT total_calls, total_runtime::numeric,
-            total_runtime/total_calls::numeric AS avg_runtime,
-            total_blks_read * b.blocksize AS total_blks_read,
-            total_blks_hit * b.blocksize AS total_blks_hit,
-            total_blks_dirtied * b.blocksize AS total_blks_dirtied,
-            total_blks_written * b.blocksize AS total_blks_written,
-            total_temp_blks_read * b.blocksize AS total_temp_blks_read,
-            total_temp_blks_written * b.blocksize AS total_temp_blks_written,
-            coalesce(total_blk_read_time, 0) AS total_blk_read_time,
-            coalesce(total_blk_write_time, 0) AS total_blk_write_time,
-            md5query,
-            query
-                 FROM powa_getstatdata_detailed_db(:from, :to, :database) s
-        JOIN (SELECT current_setting('block_size')::int AS blocksize) b ON true
-        ORDER BY total_calls DESC
-    """)
+
+    @property
+    def query(self):
+        bs = block_size.c.block_size
+        inner_query = powa_getstatdata_detailed_db()
+        c = ColumnCollection(*inner_query.inner_columns)
+        return (inner_query
+                .with_only_columns([
+                    c.md5query,
+                    c.query,
+                    c.calls,
+                    c.runtime,
+                    mulblock(c.shared_blks_read),
+                    mulblock(c.shared_blks_hit),
+                    mulblock(c.shared_blks_dirtied),
+                    mulblock(c.shared_blks_written),
+                    mulblock(c.temp_blks_read),
+                    mulblock(c.temp_blks_written),
+                    (c.runtime/ c.calls).label("avg_runtime"),
+                    c.blk_read_time,
+                    c.blk_write_time])
+                .order_by(c.calls.desc())
+                .group_by(bs))
+
+
 
     def process(self, val, database=None, **kwargs):
         val = dict(val)

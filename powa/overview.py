@@ -8,7 +8,13 @@ from powa.dashboards import (
     DashboardPage)
 from powa.metrics import Detail, Totals
 
-from powa.sql import text, TOTAL_MEASURE_INTERVAL
+from powa.sql import text, TOTAL_MEASURE_INTERVAL, round
+from powa.sql.views import (
+    block_size, powa_getstatdata_db, mulblock, total_measure_interval,
+    compute_total_statdata_db_samples)
+from sqlalchemy.sql.functions import sum
+from sqlalchemy.sql import select, cast
+from sqlalchemy.types import Numeric
 
 
 class ByDatabaseMetricGroup(Detail, MetricGroupDef):
@@ -16,32 +22,35 @@ class ByDatabaseMetricGroup(Detail, MetricGroupDef):
     Metric group used by the "by database" grid
     """
     name = "by_database"
-    xaxis = "datname"
+    xaxis = "dbname"
     data_url = r"/metrics/by_databases/"
     axis_type = "category"
     io_time = MetricDef(label="I/O time")
-    query = text("""
-        SELECT datname, sum(total_calls) AS total_calls,
-            sum(total_runtime) AS total_runtime,
-            round(sum(total_runtime)/sum(total_calls),2) AS avg_runtime,
-            sum(total_blks_read) * b.blocksize AS total_blks_read,
-            sum(total_blks_hit) * b.blocksize AS total_blks_hit,
-            sum(total_blks_dirtied) * b.blocksize AS total_blks_dirtied,
-            sum(total_blks_written) * b.blocksize AS total_blks_written,
-            sum(total_temp_blks_written) * b.blocksize AS total_temp_blks_written,
-            round(sum(total_blk_read_time+total_blk_write_time)::numeric,2) AS io_time
-        FROM (
-                 SELECT datname, (powa_getstatdata_db(:from, :to, datname)).*
-            FROM pg_database
-        ) s
-        JOIN (SELECT current_setting('block_size')::int AS blocksize) b ON true
-        GROUP BY datname, b.blocksize
-        ORDER BY sum(total_calls) DESC
-    """)
+
+    @property
+    def query(self):
+        bs = block_size.c.block_size
+        inner_query = powa_getstatdata_db().alias()
+        c = inner_query.c
+        return (select([
+                    c.dbname,
+                    sum(c.calls).label("calls"),
+                    sum(c.runtime).label("runtime"),
+                    round(cast(sum(c.runtime), Numeric) / sum(c.calls), 2).label("avg_runtime"),
+                    mulblock(sum(c.shared_blks_read).label("shared_blks_read")),
+                    mulblock(sum(c.shared_blks_hit).label("shared_blks_hit")),
+                    mulblock(sum(c.shared_blks_dirtied).label("shared_blks_dirtied")),
+                    mulblock(sum(c.shared_blks_written).label("shared_blks_written")),
+                    mulblock(sum(c.temp_blks_written).label("temp_blks_written")),
+                    round(cast(sum(c.blk_read_time + c.blk_write_time), Numeric), 2).label("io_time")
+                ])
+                .order_by(sum(c.calls).desc())
+                .group_by(c.dbname, bs))
+
 
     def process(self, val, **kwargs):
         val = dict(val)
-        val["url"] = self.reverse_url("DatabaseOverview", val["datname"])
+        val["url"] = self.reverse_url("DatabaseOverview", val["dbname"])
         return val
 
 
@@ -52,7 +61,12 @@ class GlobalDatabasesMetricGroup(Totals, MetricGroupDef):
     name = "all_databases"
     data_url = r"/metrics/databases_globals/"
 
-    query = text("""
+    @property
+    def query(self):
+        return compute_total_statdata_db_samples()
+
+
+    _query = text("""
         SELECT
         extract(epoch from ts) AS ts,
         sum(total_runtime) /  %(tmi)s as avg_runtime,
@@ -83,7 +97,7 @@ class Overview(DashboardPage):
                          GlobalDatabasesMetricGroup.total_blks_read])],
          [Grid("Details for all databases",
                columns=[{
-                   "name": "datname",
+                   "name": "dbname",
                    "label": "Database",
                    "url_attr": "url"
                }],
