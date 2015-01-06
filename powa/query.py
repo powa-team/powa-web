@@ -100,7 +100,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                         .label("total_blocks"))
         cols = [to_epoch(c.ts),
                 c.rows,
-                case([(total_blocks == 0, 100)],
+                case([(total_blocks == 0, 0)],
                      else_=cast(c.shared_blks_hit, Numeric) * 100 / total_blocks
                      ).label("hit_ratio"),
                 mulblock(c.shared_blks_read),
@@ -119,6 +119,8 @@ class QueryOverviewMetricGroup(MetricGroupDef):
 
         from_clause = query
         if self.has_extension("pg_stat_kcache"):
+            # Add system metrics from pg_stat_kcache,
+            # and detailed hit ratio.
             sys_hits = (greatest(mulblock(c.shared_blks_read) -
                               literal_column("kcache.kreads"), 0)
                         .label("kcache_hitblocks"))
