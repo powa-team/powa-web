@@ -23,6 +23,7 @@ require.config({
     "backgrid-paginator": "../bower_components/backgrid-paginator/backgrid-paginator",
     "backbone-pageable": "../bower_components/backbone-pageable/lib/backbone-pageable"
   },
+  urlArgs: new Date(),
   wrapShim: true,
   shim: {
     highlight: {
