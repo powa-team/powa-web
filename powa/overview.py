@@ -8,9 +8,9 @@ from powa.dashboards import (
     DashboardPage)
 from powa.metrics import Detail, Totals
 
-from powa.sql import text, TOTAL_MEASURE_INTERVAL, round
+from powa.sql import round
 from powa.sql.views import (
-    block_size, powa_getstatdata_db, mulblock, total_measure_interval,
+    block_size, powa_getstatdata_db, mulblock,
     compute_total_statdata_db_samples)
 from sqlalchemy.sql.functions import sum
 from sqlalchemy.sql import select, cast
@@ -33,19 +33,19 @@ class ByDatabaseMetricGroup(Detail, MetricGroupDef):
         inner_query = powa_getstatdata_db().alias()
         c = inner_query.c
         return (select([
-                    c.dbname,
-                    sum(c.calls).label("calls"),
-                    sum(c.runtime).label("runtime"),
-                    round(cast(sum(c.runtime), Numeric) / sum(c.calls), 2).label("avg_runtime"),
-                    mulblock(sum(c.shared_blks_read).label("shared_blks_read")),
-                    mulblock(sum(c.shared_blks_hit).label("shared_blks_hit")),
-                    mulblock(sum(c.shared_blks_dirtied).label("shared_blks_dirtied")),
-                    mulblock(sum(c.shared_blks_written).label("shared_blks_written")),
-                    mulblock(sum(c.temp_blks_written).label("temp_blks_written")),
-                    round(cast(sum(c.blk_read_time + c.blk_write_time), Numeric), 2).label("io_time")
-                ])
-                .order_by(sum(c.calls).desc())
-                .group_by(c.dbname, bs))
+            c.dbname,
+            sum(c.calls).label("calls"),
+            sum(c.runtime).label("runtime"),
+            round(cast(sum(c.runtime), Numeric) / sum(c.calls), 2).label("avg_runtime"),
+            mulblock(sum(c.shared_blks_read).label("shared_blks_read")),
+            mulblock(sum(c.shared_blks_hit).label("shared_blks_hit")),
+            mulblock(sum(c.shared_blks_dirtied).label("shared_blks_dirtied")),
+            mulblock(sum(c.shared_blks_written).label("shared_blks_written")),
+            mulblock(sum(c.temp_blks_written).label("temp_blks_written")),
+            round(cast(sum(c.blk_read_time + c.blk_write_time), Numeric), 2).label("io_time")
+        ])
+            .order_by(sum(c.calls).desc())
+            .group_by(c.dbname, bs))
 
 
     def process(self, val, **kwargs):
@@ -64,22 +64,6 @@ class GlobalDatabasesMetricGroup(Totals, MetricGroupDef):
     @property
     def query(self):
         return compute_total_statdata_db_samples()
-
-
-    _query = text("""
-        SELECT
-        extract(epoch from ts) AS ts,
-        sum(total_runtime) /  %(tmi)s as avg_runtime,
-        sum(shared_blks_read+local_blks_read+temp_blks_read)*blksize/ %(tmi)s  as total_blks_read,
-        sum(shared_blks_hit+local_blks_hit)*blksize/ %(tmi)s as total_blks_hit
-        FROM (
-        SELECT datname, (powa_getstatdata_sample_db(:from, :to, datname::text, 300)).*
-        FROM pg_database
-        ) s
-        , (SELECT current_setting('block_size')::int AS blksize) b
-        GROUP BY ts, blksize
-        ORDER BY ts
-        """ % {"tmi": TOTAL_MEASURE_INTERVAL})
 
 
 class Overview(DashboardPage):
