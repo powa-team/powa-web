@@ -6,18 +6,17 @@ from powa.dashboards import (
     Dashboard, Graph, Grid,
     MetricGroupDef, MetricDef,
     DashboardPage)
-from powa.metrics import Detail, Totals
 
-from powa.sql import round
 from powa.sql.views import (
-    block_size, powa_getstatdata_db, mulblock,
-    compute_total_statdata_db_samples)
+    block_size, powa_getstatdata_db,
+    powa_getstatdata_sample)
 from sqlalchemy.sql.functions import sum
-from sqlalchemy.sql import select, cast
+from sqlalchemy.sql import select, cast, extract
 from sqlalchemy.types import Numeric
+from powa.sql.utils import total_read, total_hit, mulblock, round, greatest
 
 
-class ByDatabaseMetricGroup(Detail, MetricGroupDef):
+class ByDatabaseMetricGroup(MetricGroupDef):
     """
     Metric group used by the "by database" grid
     """
@@ -25,6 +24,14 @@ class ByDatabaseMetricGroup(Detail, MetricGroupDef):
     xaxis = "dbname"
     data_url = r"/metrics/by_databases/"
     axis_type = "category"
+    calls = MetricDef(label="#Calls", type="string")
+    runtime = MetricDef(label="Runtime", type="duration")
+    avg_runtime = MetricDef(label="Avg runtime", type="duration")
+    shared_blks_read = MetricDef(label="Blocks read", type="size")
+    shared_blks_hit = MetricDef(label="Blocks hit", type="size")
+    shared_blks_dirtied = MetricDef(label="Blocks dirtied", type="size")
+    shared_blks_written = MetricDef(label="Blocks written", type="size")
+    temp_blks_written = MetricDef(label="Temp Blocks written", type="size")
     io_time = MetricDef(label="I/O time")
 
     @property
@@ -36,7 +43,7 @@ class ByDatabaseMetricGroup(Detail, MetricGroupDef):
             c.dbname,
             sum(c.calls).label("calls"),
             sum(c.runtime).label("runtime"),
-            round(cast(sum(c.runtime), Numeric) / sum(c.calls), 2).label("avg_runtime"),
+            round(cast(sum(c.runtime), Numeric) / greatest(sum(c.calls), 1), 2).label("avg_runtime"),
             mulblock(sum(c.shared_blks_read).label("shared_blks_read")),
             mulblock(sum(c.shared_blks_hit).label("shared_blks_hit")),
             mulblock(sum(c.shared_blks_dirtied).label("shared_blks_dirtied")),
@@ -54,16 +61,32 @@ class ByDatabaseMetricGroup(Detail, MetricGroupDef):
         return val
 
 
-class GlobalDatabasesMetricGroup(Totals, MetricGroupDef):
+class GlobalDatabasesMetricGroup(MetricGroupDef):
     """
     Metric group used by summarized graphs.
     """
     name = "all_databases"
     data_url = r"/metrics/databases_globals/"
+    avg_runtime = MetricDef(label="Total runtime", type="duration")
+    total_blks_hit = MetricDef(label="Total hit", type="sizerate")
+    total_blks_read = MetricDef(label="Total read", type="sizerate")
 
     @property
     def query(self):
-        return compute_total_statdata_db_samples()
+        bs = block_size.c.block_size
+        query = powa_getstatdata_sample("db")
+        query = query.alias()
+        c = query.c
+        return (select([
+                extract("epoch", c.ts).label("ts"),
+                (sum(c.runtime) / greatest(sum(c.calls), 1)).label("avg_runtime"),
+                total_read(c),
+                total_hit(c)])
+            .where(c.calls != None)
+            .group_by(c.ts, bs)
+            .order_by(c.ts)
+            .params(samples=100))
+
 
 
 class Overview(DashboardPage):

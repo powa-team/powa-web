@@ -9,11 +9,13 @@ from powa.dashboards import (
 
 from powa.sql.views import (block_size,
                             powa_getstatdata_detailed_db, mulblock,
-                            compute_total_statdata_db_samples)
+                            powa_getstatdata_sample, total_read, total_hit,
+                            total_measure_interval,
+                            to_epoch)
 from powa.overview import Overview
-from sqlalchemy.sql import ColumnCollection, bindparam, column
-
-from powa.metrics import Totals
+from sqlalchemy.sql import ColumnCollection, bindparam, column, select
+from sqlalchemy.sql.functions import sum
+from powa.sql.utils import greatest
 
 
 class DatabaseSelector(AuthHandler):
@@ -25,18 +27,33 @@ class DatabaseSelector(AuthHandler):
             self.get_argument("database")))
 
 
-class DatabaseOverviewMetricGroup(Totals, MetricGroupDef):
+class DatabaseOverviewMetricGroup(MetricGroupDef):
     """Metric group for the database global graphs."""
     name = "database_overview"
     xaxis = "ts"
     data_url = r"/metrics/database_overview/(\w+)/"
-    # TODO: refactor with GlobalDatabasesMetricGroup
+    avg_runtime = MetricDef(label="Total runtime", type="duration")
+    total_blks_hit = MetricDef(label="Total hit", type="sizerate")
+    total_blks_read = MetricDef(label="Total read", type="sizerate")
 
     @property
     def query(self):
         # Fetch the base query for sample, and filter them on the database
-        return compute_total_statdata_db_samples(
-            inner_filter=(column("datname") == bindparam("database")))
+        bs = block_size.c.block_size
+        query = powa_getstatdata_sample("db")
+        query = query.where(column("datname") == bindparam("database"))
+        query = query.alias()
+        c = query.c
+        return (select([
+                to_epoch(c.ts),
+                (sum(c.runtime) / greatest(sum(c.calls), 1.)).label("avg_runtime"),
+                total_read(c),
+                total_hit(c)])
+            .where(c.calls != None)
+            .group_by(c.ts, bs)
+            .order_by(c.ts)
+            .params(samples=100))
+
 
 
 class ByQueryMetricGroup(MetricGroupDef):
@@ -76,7 +93,7 @@ class ByQueryMetricGroup(MetricGroupDef):
                     mulblock(c.shared_blks_written),
                     mulblock(c.temp_blks_read),
                     mulblock(c.temp_blks_written),
-                    (c.runtime / c.calls).label("avg_runtime"),
+                    (c.runtime / greatest(c.calls, 1)).label("avg_runtime"),
                     c.blk_read_time,
                     c.blk_write_time])
                 .order_by(c.calls.desc())

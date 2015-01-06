@@ -2,22 +2,7 @@ from sqlalchemy.sql import (select, cast, func, column, text, extract, case,
                             bindparam)
 from sqlalchemy.types import Numeric
 from sqlalchemy.sql.functions import max, min, sum
-from powa.sql import round
-
-block_size = select([cast(func.current_setting('block_size'), Numeric)
-                     .label('block_size')]).alias('block_size')
-
-def mulblock(column):
-    return (column * block_size.c.block_size).label(column.name)
-
-def total_measure_interval(column):
-    return extract(
-        "epoch",
-        case([(min(column) == '0 second', '1 second')],
-             else_= min(column)))
-
-def diff(var):
-    return (max(column(var)) - min(column(var))).label(var)
+from powa.sql.utils import *
 
 
 def powa_base_statdata_detailed_db():
@@ -109,9 +94,7 @@ def powa_getstatdata_db():
             .having(max(column("calls")) - min(column("calls")) > 0))
 
 
-
-def powa_getstatdata_sample_db():
-    base_query = text("""(SELECT datname, base.* FROM pg_database, LATERAL (SELECT *
+BASE_QUERY_SAMPLE_DB = text("""(SELECT datname, base.* FROM pg_database, LATERAL (SELECT *
         FROM (SELECT
             row_number() over (partition by dbname order by statements_history.ts) as number,
             count(*) OVER (partition by dbname) as total,
@@ -133,16 +116,52 @@ def powa_getstatdata_sample_db():
             ) as statements_history
         ) as sh
         WHERE number % (int8larger((total)/(:samples+1),1) )=0) as base) as by_db
-    """)
+""")
+
+BASE_QUERY_SAMPLE = text("""(
+SELECT dbname, md5query, base.* FROM powa_statements, LATERAL (SELECT *
+        FROM (SELECT
+            row_number() over (partition by md5query order by statements_history.ts) as number,
+            count(*) OVER (partition by md5query) as total,
+            *
+            FROM (
+                SELECT (unnested.records).*
+                FROM (
+                    SELECT psh.md5query, psh.coalesce_range, unnest(records) AS records
+                    FROM powa_statements_history psh
+                    WHERE coalesce_range && tstzrange(:from, :to,'[]')
+                    AND psh.md5query = powa_statements.md5query
+                ) AS unnested
+                WHERE tstzrange(:from, :to,'[]') @> (records).ts
+                UNION ALL
+                SELECT (record).*
+                FROM powa_statements_history_current_db
+                WHERE tstzrange(:from, :to,'[]') @> (record).ts
+                AND md5query = powa_statements.md5query
+                AND dbname = powa_statements.dbname
+            ) as statements_history
+        ) as sh
+        WHERE number % (int8larger((total)/(:samples+1),1) )=0) as base) as by_db
+""")
+
+
+def powa_getstatdata_sample(mode):
+    if mode == "db":
+        base_query = BASE_QUERY_SAMPLE_DB
+        base_columns = ["dbname"]
+
+    elif mode == "query":
+        base_query = BASE_QUERY_SAMPLE
+        base_columns = ["dbname", "md5query"]
+
 
     def biggest(var, minval=0, label=None):
         label = label or var
         return func.greatest(
-            func.lead(column(var)).over(order_by="ts", partition_by="datname") - column(var),
+            func.lead(column(var)).over(order_by="ts", partition_by=base_columns) - column(var),
             minval).label(label)
 
-    return select([
-        "dbname",
+    return select(base_columns + [
         "ts",
         biggest("ts", '0 s', "mesure_interval"),
         biggest("calls"),
@@ -160,23 +179,3 @@ def powa_getstatdata_sample_db():
         biggest("temp_blks_written"),
         biggest("blk_read_time"),
         biggest("blk_write_time")]).select_from(base_query)
-
-
-def compute_total_statdata_db_samples(inner_filter=None):
-    bs = block_size.c.block_size
-    query = powa_getstatdata_sample_db()
-    if inner_filter is not None:
-        query = query.where(inner_filter)
-    query = query.alias()
-    c = query.c
-    tmi = total_measure_interval(c.mesure_interval)
-    return (select([
-                extract("epoch", c.ts).label("ts"),
-                (sum(c.runtime) / tmi).label("avg_runtime"),
-                (sum(c.shared_blks_read + c.local_blks_read
-                            + c.temp_blks_read) * bs).label("total_blks_read"),
-                (sum(c.shared_blks_hit + c.local_blks_hit) * bs).label("total_blks_hit")])
-            .where(c.calls != None)
-            .group_by(c.ts, bs)
-            .order_by(c.ts)
-            .params(samples=100))

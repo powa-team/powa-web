@@ -36,7 +36,7 @@ class DashboardHandler(AuthHandler):
             param_rows.append(param_row)
         param_datasource = []
         for datasource in self.datasources:
-            value = datasource.to_json()
+            value = datasource.parameterized_json(self, **params)
             value['data_url'] = self.reverse_url(datasource.url_name,
                                                  *args)
             param_datasource.append(value)
@@ -131,6 +131,11 @@ class DataSource(JSONizable):
         Returns the default url_name for this data source.
         """
         return "datasource_%s" % cls.__name__
+
+
+    @classproperty
+    def parameterized_json(cls, handler, **parms):
+        return cls.to_json()
 
 
 
@@ -434,8 +439,23 @@ class MetricGroupDef(with_metaclass(MetaMetricGroup, DataSource)):
         return values
 
     @classmethod
+    def _get_metrics(cls, handler, **params):
+        return cls.metrics
+
+    @classmethod
+    def parameterized_json(cls, handler, **params):
+        base = cls.to_json()
+        base["metrics"] = list(cls._get_metrics(handler, **params).values())
+        return base
+
+
+    @classmethod
     def all(cls):
         return sorted(cls.metrics.values(), key=attrgetter("_order"))
+
+    @property
+    def metrics(self):
+        return self._metrics
 
 
 class DashboardPage(object):

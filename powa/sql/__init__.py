@@ -236,5 +236,3 @@ def suggest_indexes(handler, database, query):
     result = handler.execute(sql, database=row['dbname'], params=row)
     indexes = result.fetchall()
     return indexes
-
-round = func.round

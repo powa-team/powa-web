@@ -2,24 +2,26 @@
 Dashboard for the by-query page.
 """
 
+from tornado.web import HTTPError
+from sqlalchemy.sql import (
+    bindparam, text, column, select, table,
+    literal_column, case)
+from sqlalchemy.sql.functions import sum
+
 from powa.dashboards import (
     Dashboard, Graph, Grid,
     MetricGroupDef, MetricDef,
     DashboardPage, ContentWidget)
-from powa.metrics import Totals
 from powa.database import DatabaseOverview
-from sqlalchemy.sql import bindparam, text
-from tornado.web import HTTPError
 
 from powa.sql import (Plan, format_jumbled_query,
                       resolve_quals, aggregate_qual_values,
                       suggest_indexes)
+from powa.sql.views import powa_getstatdata_sample
+from powa.sql.utils import block_size, mulblock, greatest, to_epoch
 
-MEASURE_INTERVAL = """
-extract (epoch FROM CASE WHEN total_mesure_interval = '0 second' THEN '1 second'::interval ELSE total_mesure_interval END)
-"""
 
-class QueryOverviewMetricGroup(Totals, MetricGroupDef):
+class QueryOverviewMetricGroup(MetricGroupDef):
     """
     Metric Group for the graphs on the by query page.
     """
@@ -39,50 +41,20 @@ class QueryOverviewMetricGroup(Totals, MetricGroupDef):
     temp_blks_written = MetricDef(label="Temp written", type="sizerate")
     blk_read_time = MetricDef(label="Read time", type="duration")
     blk_write_time = MetricDef(label="Write time", type="duration")
+    avg_runtime = MetricDef(label="Avg runtime", type="duration")
+    kreads = MetricDef(label="Physical read", type="sizerate")
+    kwrites = MetricDef(label="Physical writes", type="sizerate")
+    kuser_time = MetricDef(label="CPU user time", type="percent")
+    ksystem_time = MetricDef(label="CPU system time", type="percent")
+    hit_ratio = MetricDef(label="PG Hit ratio", type="percent")
+    khit_ratio = MetricDef(label="System hit ratio", type="percent")
+    total_hit_ratio = MetricDef(label="Total hit ratio", type="percent")
 
+    total_temp_blks_written = MetricDef(label="Temp Blocks written",
+                                        type="size")
 
-    total_temp_blks_written = MetricDef(label="Temp Blocks written", type="size")
-    # TODO: refactor with GlobalDatabasesMetricGroup
-    query = text("""
-        SELECT
-        extract(epoch from ts) AS ts,
-        rows as rows,
-        total_calls as total_calls,
-        total_runtime as total_runtime,
-        round((total_runtime/CASE total_calls WHEN 0 THEN 1 ELSE total_calls END)::numeric,2)::float as avg_runtime,
-        (shared_blks_read * blksize) / %(mi)s  as shared_blks_read,
-        (shared_blks_hit * blksize) / %(mi)s  as shared_blks_hit,
-        (shared_blks_dirtied * blksize) / %(mi)s  as shared_blks_dirtied,
-        (shared_blks_written * blksize) / %(mi)s  as shared_blks_written,
-        (local_blks_read * blksize) / %(mi)s  as local_blks_read,
-        (local_blks_hit * blksize) / %(mi)s  as local_blks_hit,
-        (local_blks_dirtied * blksize) / %(mi)s  as local_blks_dirtied,
-        (local_blks_written * blksize) / %(mi)s  as local_blks_written,
-        (temp_blks_read * blksize) / %(mi)s  as temp_blks_read,
-        (temp_blks_written * blksize) / %(mi)s  as temp_blks_written,
-        blk_read_time as blk_read_time,
-        blk_write_time as blk_write_time
-        FROM
-          powa_getstatdata_sample(:from, :to, :query, 300)
-        , (SELECT current_setting('block_size')::int AS blksize) b
-        ORDER BY ts
-        """ % {"mi": MEASURE_INTERVAL})
-
-
-class KcacheMetricGroup(MetricGroupDef):
-    """
-    Metric Group for the kcache graphs on the by query page.
-    """
-    name = "kcache_query_overview"
-    xaxis = "ts"
-    data_url = r"/metrics/database/(\w+)/query/(\w+)/kcache"
-    reads = MetricDef(label="Physical read", type="sizerate")
-    writes = MetricDef(label="Physical writes", type="sizerate")
-    user_time = MetricDef(label="CPU user time", type="percent")
-    system_time = MetricDef(label="CPU system time", type="percent")
-
-    # FIXME: remove useless code to retrieve md5query when powa will use queryid
-    query = text("""
+    _KCACHE_QUERY = text("""
+    (
         WITH src AS (
             SELECT md5(r.rolname||d.datname||s.query) AS md5query, queryid
             FROM pg_stat_statements s
@@ -90,17 +62,80 @@ class KcacheMetricGroup(MetricGroupDef):
                 JOIN pg_roles r ON r.oid = s.userid
             WHERE md5(r.rolname||d.datname||s.query) = :query
         )
-        SELECT extract(EPOCH FROM ts) AS ts,
-            reads_raw*512/setting.blksize as reads,
-            writes_raw*512/setting.blksize as writes,
-            user_time,
-            system_time
+        SELECT ts,
+            reads_raw as kreads,
+            writes_raw as kwrites,
+            user_time as kuser_time,
+            system_time as ksystem_time
         FROM src
         JOIN (SELECT current_setting('block_size')::numeric AS blksize) setting ON true,
         LATERAL (SELECT * FROM public.powa_kcache_getstatdata_sample(tstzrange(:from, :to), src.queryid, 300)) sample
         WHERE reads_raw IS NOT NULL
-        ORDER BY 1
-        """)
+    ) as kcache
+    """)
+
+    @classmethod
+    def _get_metrics(cls, handler, **params):
+        base = cls.metrics.copy()
+        if not handler.has_extension("pg_stat_kcache"):
+            for key in ("kreads", "kwrites", "kuser_time", "ksystem_time",
+                        "khit_ratio", "total_hit_ratio"):
+                base.pop(key)
+        return base
+
+    @property
+    def query(self):
+        query = powa_getstatdata_sample("query")
+        query = query.where(
+            (column("dbname") == bindparam("database")) &
+            (column("md5query") == bindparam("query")))
+        query = query.alias()
+        c = query.c
+        total_blocks = ((c.shared_blks_read + c.shared_blks_hit)
+                        .label("total_blocks"))
+        cols = [to_epoch(c.ts),
+                c.rows,
+                case([(total_blocks == 0, 0)],
+                     else_=c.shared_blks_hit * 100 / total_blocks
+                     ).label("hit_ratio"),
+                mulblock(c.shared_blks_read),
+                mulblock(c.shared_blks_hit),
+                mulblock(c.shared_blks_dirtied),
+                mulblock(c.shared_blks_written),
+                mulblock(c.local_blks_read),
+                mulblock(c.local_blks_hit),
+                mulblock(c.local_blks_dirtied),
+                mulblock(c.local_blks_written),
+                mulblock(c.temp_blks_read),
+                mulblock(c.temp_blks_written),
+                c.blk_read_time,
+                c.blk_write_time,
+                (c.runtime / greatest(c.calls, 1)).label("avg_runtime")]
+
+        from_clause = query
+        if self.has_extension("pg_stat_kcache"):
+            sys_hits = ((mulblock(c.shared_blks_read) - literal_column("kcache.kreads"))
+                        .label("kcache.hitblocks"))
+            total_hit_ratio = ((sys_hits + mulblock(c.shared_blks_hit)) * 100 /
+                               mulblock(total_blocks))
+            k_hitratio = (sys_hits * 100) / mulblock(c.shared_blks_read)
+            cols.extend([
+                literal_column("kcache.kreads"),
+                literal_column("kcache.kwrites"),
+                literal_column("kcache.kuser_time"),
+                literal_column("kcache.ksystem_time"),
+                case([(total_blocks == 0, 0)],
+                     else_=total_hit_ratio).label("total_hitratio"),
+                case([(c.shared_blks_read == 0, 0)],
+                     else_=k_hitratio).label("khit_ratio")])
+            from_clause = query.join(
+                self._KCACHE_QUERY,
+                literal_column("kcache.ts") == c.ts)
+        return (select(cols)
+                .select_from(from_clause)
+                .where(c.calls != None)
+                .order_by(c.ts)
+                .params(samples=100))
 
 
 class QueryIndexes(ContentWidget):
@@ -132,13 +167,13 @@ class QueryExplains(ContentWidget):
             raise HTTPError(501, "PG qualstats is not installed")
 
         sql = (aggregate_qual_values(
-                text("""s.dbname = :database AND s.md5query = :query
-                    AND coalesce_range && tstzrange(:from, :to)"""))
-                .with_only_columns(['quals',
-                                    'query',
-                                    'to_json(mf) as "most filtering"',
-                                    'to_json(lf) as "least filtering"',
-                                    'to_json(me) as "most executed"']))
+            text("""s.dbname = :database AND s.md5query = :query
+                 AND coalesce_range && tstzrange(:from, :to)"""))
+            .with_only_columns(['quals',
+                                'query',
+                                'to_json(mf) as "most filtering"',
+                                'to_json(lf) as "least filtering"',
+                                'to_json(me) as "most executed"']))
         params = {"database": database, "query": query,
                   "from": self.get_argument("from"),
                   "to": self.get_argument("to")}
@@ -160,8 +195,8 @@ class QueryExplains(ContentWidget):
                 plans.append(Plan(key, vals['constants'], query,
                                   plan, vals["filter_ratio"], vals['count']))
         if len(plans) == 0:
-            self.flash("No quals found for this query", "warning");
-            self.render("xhr.html", content="");
+            self.flash("No quals found for this query", "warning")
+            self.render("xhr.html", content="")
             return
 
         self.render("database/query/explains.html", plans=plans)
@@ -189,13 +224,11 @@ class QualList(MetricGroupDef):
         WHERE md5query = :query
     """)
 
-
     def process(self, val, database=None, query=None, **kwargs):
         row = dict(val)
         row['url'] = self.reverse_url('QualOverview', database, query,
-                                         row['nodehash'])
+                                      row['nodehash'])
         return row
-
 
     def post_process(self, data, database, query, **kwargs):
         conn = self.connect(database=database)
@@ -210,22 +243,30 @@ class QueryDetail(ContentWidget):
     title = "Query Detail"
     data_url = r"/metrics/database/(\w+)/query/(\w+)/detail"
 
-    DETAIL_QUERY = text("""
-        SELECT query,
-             sum(total_calls) as total_calls,
-             to_timestamp(sum(total_runtime)) as total_runtime,
-             sum(shared_blks_read * blksize) as total_read_blocks,
-             sum(shared_blks_hit * blksize) as total_hit_blocks,
-             sum((shared_blks_read + shared_blks_hit) * blksize) as total_blocks
-        FROM powa_statements,
-        powa_getstatdata_sample(:from, :to, :query, 300),
-        (SELECT current_setting('block_size')::int AS blksize) b
-        WHERE md5query = :query AND dbname = :database
-        GROUP BY query
-    """)
-
     def get(self, database, query):
-        value = self.execute(self.DETAIL_QUERY, params={
+        bs = block_size.c.block_size
+        stmt = powa_getstatdata_sample("query")
+        stmt = stmt.where(
+            (column("dbname") == bindparam("database")) &
+            (column("md5query") == bindparam("query")))
+        stmt = stmt.alias()
+        c = stmt.c
+        rblk = mulblock(sum(c.shared_blks_read).label("shared_blks_read"))
+        wblk = mulblock(sum(c.shared_blks_hit).label("shared_blks_hit"))
+        stmt = (select([
+            column("query"),
+            sum(c.calls).label("calls"),
+            sum(c.runtime).label("runtime"),
+            rblk,
+            wblk,
+            (rblk + wblk).label("total_blks")])
+            .select_from(stmt.join(
+                table("powa_statements"),
+                c.md5query == literal_column('powa_statements.md5query')))
+            .group_by(column("query"), bs)
+            .params(samples=1))
+
+        value = self.execute(stmt, params={
             "query": query,
             "database": database,
             "from": self.get_argument("from"),
@@ -243,8 +284,7 @@ class QueryOverview(DashboardPage):
     base_url = r"/database/(\w+)/query/(\w+)/overview"
     params = ["database", "query"]
     datasources = [QueryOverviewMetricGroup, QueryDetail,
-                   QueryExplains, QueryIndexes, QualList,
-                   KcacheMetricGroup]
+                   QueryExplains, QueryIndexes, QualList]
     parent = DatabaseOverview
 
     def __init__(self, *args, **kwargs):
@@ -259,36 +299,40 @@ class QueryOverview(DashboardPage):
     def dashboard(self):
         if self._dashboard:
             return self._dashboard
+        hit_ratio_graph = Graph("Hit ratio",
+                                metrics=[QueryOverviewMetricGroup.hit_ratio])
         self._dashboard = Dashboard(
             "Query %(query)s on database %(database)s",
             [[QueryDetail],
              [Graph("General",
                     metrics=[QueryOverviewMetricGroup.avg_runtime,
                              QueryOverviewMetricGroup.rows]),
-              Graph("Shared block (in Bps)",
+              hit_ratio_graph],
+             [Graph("Shared block (in Bps)",
                     metrics=[QueryOverviewMetricGroup.shared_blks_read,
                              QueryOverviewMetricGroup.shared_blks_hit,
                              QueryOverviewMetricGroup.shared_blks_dirtied,
-                             QueryOverviewMetricGroup.shared_blks_written])],
-             [Graph("Local block (in Bps)",
+                             QueryOverviewMetricGroup.shared_blks_written]),
+              Graph("Local block (in Bps)",
                     metrics=[QueryOverviewMetricGroup.local_blks_read,
                              QueryOverviewMetricGroup.local_blks_hit,
                              QueryOverviewMetricGroup.local_blks_dirtied,
                              QueryOverviewMetricGroup.local_blks_written]),
               Graph("Temp block (in Bps)",
                     metrics=[QueryOverviewMetricGroup.temp_blks_read,
-                             QueryOverviewMetricGroup.temp_blks_written]),
-              Graph("Read / Write time",
+                             QueryOverviewMetricGroup.temp_blks_written])],
+             [Graph("Read / Write time",
                     metrics=[QueryOverviewMetricGroup.blk_read_time,
                              QueryOverviewMetricGroup.blk_write_time])]])
         if self.has_extension("pg_stat_kcache"):
             self._dashboard.widgets.extend([[
                 Graph("Physical block (in Bps)",
-                    metrics=[KcacheMetricGroup.reads,
-                             KcacheMetricGroup.writes]),
+                      metrics=[QueryOverviewMetricGroup.kreads,
+                               QueryOverviewMetricGroup.kwrites]),
                 Graph("CPU time",
-                    metrics=[KcacheMetricGroup.user_time,
-                             KcacheMetricGroup.system_time])]]),
+                      metrics=[QueryOverviewMetricGroup.kuser_time,
+                               QueryOverviewMetricGroup.ksystem_time])]])
+            hit_ratio_graph.metrics.append(QueryOverviewMetricGroup.khit_ratio)
         if self.has_extension("pg_qualstats"):
             self._dashboard.widgets.extend([[
                 Grid("Predicates used by this query",
