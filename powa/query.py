@@ -30,6 +30,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     xaxis = "ts"
     data_url = r"/metrics/database/(\w+)/query/(\w+)"
     rows = MetricDef(label="#Rows")
+    calls = MetricDef(label="#Calls")
     shared_blks_read = MetricDef(label="Shared read", type="sizerate")
     shared_blks_hit = MetricDef(label="Shared hit", type="sizerate")
     shared_blks_dirtied = MetricDef(label="Shared dirtied", type="sizerate")
@@ -100,6 +101,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                         .label("total_blocks"))
         cols = [to_epoch(c.ts),
                 c.rows,
+                c.calls,
                 case([(total_blocks == 0, 0)],
                      else_=cast(c.shared_blks_hit, Numeric) * 100 / total_blocks
                      ).label("hit_ratio"),
@@ -324,7 +326,8 @@ class QueryOverview(DashboardPage):
             [[QueryDetail],
              [Graph("General",
                     metrics=[QueryOverviewMetricGroup.avg_runtime,
-                             QueryOverviewMetricGroup.rows]),
+                             QueryOverviewMetricGroup.rows,
+                             QueryOverviewMetricGroup.calls]),
               hit_ratio_graph],
              [Graph("Shared block (in Bps)",
                     metrics=[QueryOverviewMetricGroup.shared_blks_read,
