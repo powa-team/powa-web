@@ -32,7 +32,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     name = "database_overview"
     xaxis = "ts"
     data_url = r"/metrics/database_overview/(\w+)/"
-    avg_runtime = MetricDef(label="Total runtime", type="duration")
+    avg_runtime = MetricDef(label="Avg runtime", type="duration")
     total_blks_hit = MetricDef(label="Total hit", type="sizerate")
     total_blks_read = MetricDef(label="Total read", type="sizerate")
 
