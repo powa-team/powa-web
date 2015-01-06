@@ -135,10 +135,9 @@ SELECT dbname, md5query, base.* FROM powa_statements, LATERAL (SELECT *
                 WHERE tstzrange(:from, :to,'[]') @> (records).ts
                 UNION ALL
                 SELECT (record).*
-                FROM powa_statements_history_current_db
+                FROM powa_statements_history_current phc
                 WHERE tstzrange(:from, :to,'[]') @> (record).ts
-                AND md5query = powa_statements.md5query
-                AND dbname = powa_statements.dbname
+                AND phc.md5query = powa_statements.md5query
             ) as statements_history
         ) as sh
         WHERE number % (int8larger((total)/(:samples+1),1) )=0) as base) as by_db
