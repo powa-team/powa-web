@@ -62,7 +62,6 @@ class MetricGroupHandler(AuthHandler):
     """
 
     def initialize(self, datasource, params):
-        self.query = datasource.query
         self.params = params
         self.metric_group = datasource
 
