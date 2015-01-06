@@ -9,6 +9,7 @@ block_size = select([cast(func.current_setting('block_size'), Numeric)
 
 round = func.round
 greatest = func.greatest
+least = func.least
 
 def mulblock(column, label=None):
     return (column * block_size.c.block_size).label(label or column.name)

@@ -5,8 +5,9 @@ Dashboard for the by-query page.
 from tornado.web import HTTPError
 from sqlalchemy.sql import (
     bindparam, text, column, select, table,
-    literal_column, case)
+    literal_column, case, cast)
 from sqlalchemy.sql.functions import sum
+from sqlalchemy.types import Numeric
 
 from powa.dashboards import (
     Dashboard, Graph, Grid,
@@ -63,8 +64,8 @@ class QueryOverviewMetricGroup(MetricGroupDef):
             WHERE md5(r.rolname||d.datname||s.query) = :query
         )
         SELECT ts,
-            reads_raw as kreads,
-            writes_raw as kwrites,
+            reads_raw * 512 as kreads,
+            writes_raw * 512 as kwrites,
             user_time as kuser_time,
             system_time as ksystem_time
         FROM src
@@ -95,8 +96,8 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                         .label("total_blocks"))
         cols = [to_epoch(c.ts),
                 c.rows,
-                case([(total_blocks == 0, 0)],
-                     else_=c.shared_blks_hit * 100 / total_blocks
+                case([(total_blocks == 0, 100)],
+                     else_=cast(c.shared_blks_hit, Numeric) * 100 / total_blocks
                      ).label("hit_ratio"),
                 mulblock(c.shared_blks_read),
                 mulblock(c.shared_blks_hit),
@@ -114,19 +115,20 @@ class QueryOverviewMetricGroup(MetricGroupDef):
 
         from_clause = query
         if self.has_extension("pg_stat_kcache"):
-            sys_hits = ((mulblock(c.shared_blks_read) - literal_column("kcache.kreads"))
+            sys_hits = (greatest(mulblock(c.shared_blks_read) -
+                              literal_column("kcache.kreads"), 0)
                         .label("kcache.hitblocks"))
-            total_hit_ratio = ((sys_hits + mulblock(c.shared_blks_hit)) * 100 /
+            total_hit_ratio = ((cast(sys_hits, Numeric) + mulblock(c.shared_blks_hit)) * 100 /
                                mulblock(total_blocks))
-            k_hitratio = (sys_hits * 100) / mulblock(c.shared_blks_read)
+            k_hitratio = (cast(sys_hits, Numeric) * 100) / mulblock(c.shared_blks_read)
             cols.extend([
                 literal_column("kcache.kreads"),
                 literal_column("kcache.kwrites"),
                 literal_column("kcache.kuser_time"),
                 literal_column("kcache.ksystem_time"),
-                case([(total_blocks == 0, 0)],
-                     else_=total_hit_ratio).label("total_hitratio"),
-                case([(c.shared_blks_read == 0, 0)],
+                case([(total_blocks == 0, 100)],
+                     else_=total_hit_ratio).label("total_hit_ratio"),
+                case([(c.shared_blks_read == 0, 100)],
                      else_=k_hitratio).label("khit_ratio")])
             from_clause = query.join(
                 self._KCACHE_QUERY,
@@ -333,6 +335,7 @@ class QueryOverview(DashboardPage):
                       metrics=[QueryOverviewMetricGroup.kuser_time,
                                QueryOverviewMetricGroup.ksystem_time])]])
             hit_ratio_graph.metrics.append(QueryOverviewMetricGroup.khit_ratio)
+            hit_ratio_graph.metrics.append(QueryOverviewMetricGroup.total_hit_ratio)
         if self.has_extension("pg_qualstats"):
             self._dashboard.widgets.extend([[
                 Grid("Predicates used by this query",

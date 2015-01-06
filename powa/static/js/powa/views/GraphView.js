@@ -18,8 +18,8 @@ define([
                 "number": Rickshaw.Fixtures.Number.formatKMBT,
                 "size": new size.SizeFormatter().fromRaw,
                 "sizerate": function(value){ return new size.SizeFormatter({suffix: "ps"}).fromRaw(value)},
-                "duration": function(data){ return moment(parseInt(data, 10)).preciseDiff(moment(0))},
-                "percent": function(value){ return value + '%'}
+                "duration": function(data){ return moment(parseFloat(data, 10)).preciseDiff(moment(0))},
+                "percent": function(value){ return Math.round(value * 100) / 100 + '%'}
             },
 
 
@@ -64,6 +64,7 @@ define([
                     var unit = key;
                     var ymin = +Infinity,
                         ymax = -Infinity;
+                    axis.scale = d3.scale.linear();
                     var all_series = [];
                     _.each(this.graph.series, function(serie){
                         var metric = serie.metric;
@@ -78,7 +79,10 @@ define([
                     });
                     ymin = 0.8 * ymin;
                     ymax = 1.2 * ymax;
-                    axis.scale = axis.scale.domain([ymin, ymax]).nice();
+                    if(key == "percent"){
+                        console.log(ymin, ymax);
+                    }
+                    axis.scale = axis.scale.domain([ymin, ymax]).range([0, 1]);
                     _.each(all_series, function(serie){
                         serie.scale = axis.scale;
                     });

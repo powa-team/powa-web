@@ -15,6 +15,8 @@ define(['moment'], function(moment){
         seconds: 's',
         millisecond: 'ms',
         milliseconds: 'ms',
+        microsecond: 'µs',
+        microseconds: 'µs',
         delimiter: ' '
     };
     moment.fn.preciseDiff = function(d2) {
@@ -22,9 +24,6 @@ define(['moment'], function(moment){
     };
     moment.preciseDiff = function(d1, d2) {
         var m1 = moment(d1), m2 = moment(d2);
-        if (m1.isSame(m2)) {
-            return STRINGS.nodiff;
-        }
         if (m1.isAfter(m2)) {
             var tmp = m1;
             m1 = m2;
@@ -37,6 +36,18 @@ define(['moment'], function(moment){
         var minDiff = m2.minute() - m1.minute();
         var secDiff = m2.second() - m1.second();
         var msecDiff = m2.millisecond() - m1.millisecond();
+        var microsecDiff = 0;
+        if(typeof m1._i == "number" && typeof m2._i == "number"){
+            microsecDiff = Math.round((1000 * (m1._i - Math.floor(m1)) - 1000 * (m2._i - Math.floor(m2))))
+        } else {
+            if (m1.isSame(m2)) {
+                return STRINGS.nodiff;
+            }
+        }
+        if(microsecDiff < 0){
+            microsecDiff = 1000 + msecDiff;
+            msecDiff--;
+        }
         if(msecDiff < 0) {
             msecDiff = 1000 + secDiff;
             secDiff--;
@@ -90,6 +101,9 @@ define(['moment'], function(moment){
         }
         if (msecDiff) {
             result.push(pluralize(msecDiff, 'millisecond'));
+        }
+        if(microsecDiff){
+            result.push(pluralize(microsecDiff, 'microsecond'));
         }
         return result.join(STRINGS.delimiter);
     };
