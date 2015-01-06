@@ -48,6 +48,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     kuser_time = MetricDef(label="CPU user time", type="percent")
     ksystem_time = MetricDef(label="CPU system time", type="percent")
     hit_ratio = MetricDef(label="Shared buffers hit ratio", type="percent")
+    miss_ratio = MetricDef(label="Shared buffers miss ratio", type="percent")
     sys_hit_ratio = MetricDef(label="System cache hit ratio", type="percent")
     disk_hit_ratio = MetricDef(label="Disk hit ratio", type="percent")
 
@@ -82,6 +83,9 @@ class QueryOverviewMetricGroup(MetricGroupDef):
             for key in ("kreads", "kwrites", "kuser_time", "ksystem_time",
                         "sys_hit_ratio", "disk_hit_ratio"):
                 base.pop(key)
+        else:
+            base.pop("miss_ratio")
+
         return base
 
     @property
@@ -134,6 +138,13 @@ class QueryOverviewMetricGroup(MetricGroupDef):
             from_clause = query.join(
                 self._KCACHE_QUERY,
                 literal_column("kcache.ts") == c.ts)
+        else:
+            cols.extend([
+                case([(total_blocks == 0, 0)],
+                     else_=cast(c.shared_blks_read, Numeric) * 100 / total_blocks
+                     ).label("miss_ratio")
+            ])
+
         return (select(cols)
                 .select_from(from_clause)
                 .where(c.calls != None)
@@ -339,6 +350,9 @@ class QueryOverview(DashboardPage):
                                QueryOverviewMetricGroup.ksystem_time])]])
             hit_ratio_graph.metrics.append(QueryOverviewMetricGroup.sys_hit_ratio)
             hit_ratio_graph.metrics.append(QueryOverviewMetricGroup.disk_hit_ratio)
+        else:
+            hit_ratio_graph.metrics.append(QueryOverviewMetricGroup.miss_ratio)
+
         if self.has_extension("pg_qualstats"):
             self._dashboard.widgets.extend([[
                 Grid("Predicates used by this query",
