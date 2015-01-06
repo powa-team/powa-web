@@ -7,12 +7,11 @@ from powa.dashboards import (
     MetricGroupDef, MetricDef,
     DashboardPage)
 
-from powa.sql.views import (powa_getstatdata_sample_db, total_measure_interval, block_size,
+from powa.sql.views import (block_size,
                             powa_getstatdata_detailed_db, mulblock,
                             compute_total_statdata_db_samples)
 from powa.overview import Overview
-from sqlalchemy.sql import extract, ColumnCollection, bindparam, column, select
-from sqlalchemy.sql.functions import sum, text
+from sqlalchemy.sql import ColumnCollection, bindparam, column
 
 from powa.metrics import Totals
 
@@ -35,11 +34,9 @@ class DatabaseOverviewMetricGroup(Totals, MetricGroupDef):
 
     @property
     def query(self):
-        bs = block_size.c.block_size
         # Fetch the base query for sample, and filter them on the database
         return compute_total_statdata_db_samples(
             inner_filter=(column("datname") == bindparam("database")))
-
 
 
 class ByQueryMetricGroup(MetricGroupDef):
@@ -79,12 +76,11 @@ class ByQueryMetricGroup(MetricGroupDef):
                     mulblock(c.shared_blks_written),
                     mulblock(c.temp_blks_read),
                     mulblock(c.temp_blks_written),
-                    (c.runtime/ c.calls).label("avg_runtime"),
+                    (c.runtime / c.calls).label("avg_runtime"),
                     c.blk_read_time,
                     c.blk_write_time])
                 .order_by(c.calls.desc())
                 .group_by(bs))
-
 
 
     def process(self, val, database=None, **kwargs):
