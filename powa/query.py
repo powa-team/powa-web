@@ -53,9 +53,6 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     sys_hit_ratio = MetricDef(label="System cache hit ratio", type="percent")
     disk_hit_ratio = MetricDef(label="Disk hit ratio", type="percent")
 
-    total_temp_blks_written = MetricDef(label="Temp Blocks written",
-                                        type="size")
-
     _KCACHE_QUERY = text("""
     (
         WITH src AS (
