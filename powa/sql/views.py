@@ -20,7 +20,7 @@ def powa_base_statdata_detailed_db():
         FROM powa_statements_history_current psc
         WHERE tstzrange(:from,:to,'[]') @> (record).ts
         AND psc.md5query IN (SELECT powa_statements.md5query FROM powa_statements WHERE powa_statements.dbname = :database)
-    ) h JOIN powa_statements s USING (md5query)
+    ) h JOIN powa_statements USING (md5query)
     """)
     return base_query
 
@@ -77,12 +77,11 @@ def powa_getstatdata_detailed_db():
     diffs = get_diffs_forstatdata()
     return (select([
         column("md5query"),
-        column("query"),
         column("dbname"),
 ] + diffs)
         .select_from(base_query)
         .where(column("dbname") == bindparam("database"))
-        .group_by(column("md5query"), column("query"), column("dbname"))
+        .group_by(column("md5query"), column("dbname"))
         .having(max(column("calls")) - min(column("calls")) > 0))
 
 def powa_getstatdata_db():

@@ -15,7 +15,7 @@ from powa.sql.views import (block_size,
 from powa.overview import Overview
 from sqlalchemy.sql import ColumnCollection, bindparam, column, select
 from sqlalchemy.sql.functions import sum
-from powa.sql.utils import greatest
+from powa.sql.utils import greatest, powa_statements
 
 
 class DatabaseSelector(AuthHandler):
@@ -81,9 +81,10 @@ class ByQueryMetricGroup(MetricGroupDef):
         inner_query = powa_getstatdata_detailed_db()
         inner_query = inner_query.alias()
         c = inner_query.c
+        ps = powa_statements
         return (select([
                     c.md5query,
-                    c.query,
+                    ps.c.query,
                     c.calls,
                     c.runtime,
                     mulblock(c.shared_blks_read),
@@ -95,6 +96,8 @@ class ByQueryMetricGroup(MetricGroupDef):
                     (c.runtime / greatest(c.calls, 1)).label("avg_runtime"),
                     c.blk_read_time,
                     c.blk_write_time])
+                    .select_from(inner_query.join(
+                        ps, ps.c.md5query == c.md5query))
                 .order_by(c.calls.desc()))
 
 

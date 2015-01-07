@@ -1,11 +1,15 @@
 from sqlalchemy import select, cast, func
 from sqlalchemy.types import Numeric
-from sqlalchemy.sql import extract, column, case
+from sqlalchemy.sql import extract, column, case, table, column
 from sqlalchemy.sql.functions import sum, min, max
 
 block_size = select([cast(func.current_setting('block_size'), Numeric)
                      .label('block_size')]).alias('block_size')
 
+powa_statements = table("powa_statements",
+                   column("query"),
+                   column("md5query"),
+                   column("dbname"))
 
 round = func.round
 greatest = func.greatest
