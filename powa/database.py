@@ -75,14 +75,13 @@ class ByQueryMetricGroup(MetricGroupDef):
     temp_blks_written = MetricDef(label="Temp Blocks written", type="size")
 
     # TODO: refactor with GlobalDatabasesMetricGroup
-
     @property
     def query(self):
         bs = block_size.c.block_size
         inner_query = powa_getstatdata_detailed_db()
-        c = ColumnCollection(*inner_query.inner_columns)
-        return (inner_query
-                .with_only_columns([
+        inner_query = inner_query.alias()
+        c = inner_query.c
+        return (select([
                     c.md5query,
                     c.query,
                     c.calls,
@@ -96,8 +95,7 @@ class ByQueryMetricGroup(MetricGroupDef):
                     (c.runtime / greatest(c.calls, 1)).label("avg_runtime"),
                     c.blk_read_time,
                     c.blk_write_time])
-                .order_by(c.calls.desc())
-                .group_by(bs))
+                .order_by(c.calls.desc()))
 
 
     def process(self, val, database=None, **kwargs):
