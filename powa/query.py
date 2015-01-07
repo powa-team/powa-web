@@ -288,7 +288,8 @@ class QueryDetail(ContentWidget):
             "to": self.get_argument("to")
         })
         if value.rowcount < 1:
-            raise HTTPError(404)
+            self.render("xhr.html", content="No data")
+            return
         self.render("database/query/detail.html", stats=value.first())
 
 
