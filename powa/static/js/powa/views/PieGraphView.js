@@ -3,23 +3,21 @@ function(GraphView, Rickshaw){
     return GraphView.extend({
 
         initGraph: function(series){
-            this.graph = new Rickshaw.Graph({
+            this.graph = new Rickshaw.Graph($.extend({}, this.model.attributes, {
                         element: this.graph_elem,
                         height: this.$el.innerHeight(),
                         width: this.$el.innerWidth() - 40,
                         renderer: 'pie',
-                        series: series || []
-            });
+                        series: series || [],
+                        label_attribute: this.model.get("x_label_attr")
+            }));
             this.adaptGraph(series);
         },
 
         initAxes: function(){
             return;
-        },
-
-        initGoodies: function(){
-
         }
+
 
     });
 });

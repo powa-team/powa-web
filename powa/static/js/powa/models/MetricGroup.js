@@ -32,8 +32,7 @@ define(['backbone', 'powa/models/DataSource', 'powa/models/Metric', 'powa/models
                             current_group = series[group] = {
                                 metric: metric,
                                 id: metric.get("name") + group,
-                                name: metric.get("label") + group,
-                                label: metric.label_template(),
+                                name: metric.label_template({group: group}),
                                 data: []
                             }
                         }

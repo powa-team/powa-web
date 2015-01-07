@@ -131,10 +131,6 @@ define([
                 });
 
 
-                var highlighter = new Rickshaw.Graph.Behavior.Series.Highlight( {
-                    graph: this.graph,
-                    legend: this.legend
-                });
             },
 
 
@@ -177,6 +173,10 @@ define([
                         graph: this.graph,
                         legend: this.legend
                     } );
+                    var highlighter = new Rickshaw.Graph.Behavior.Series.Highlight( {
+                        graph: this.graph,
+                        legend: this.legend
+                    });
                 }
                 this.hideload();
                 this.trigger("widget:update");

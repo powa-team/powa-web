@@ -18,7 +18,10 @@ from powa.database import DatabaseOverview
 from powa.sql import (Plan, format_jumbled_query,
                       resolve_quals, aggregate_qual_values,
                       suggest_indexes)
-from powa.sql.views import powa_getstatdata_sample, qualstat_getstatdata_sample
+from powa.sql.views import (powa_getstatdata_sample,
+                            qualstat_getstatdata_sample,
+                            powa_getstatdata_detailed_db,
+                            qualstat_getstatdata)
 from powa.sql.utils import block_size, mulblock, greatest, to_epoch
 
 
@@ -230,12 +233,7 @@ class QualList(MetricGroupDef):
 
     @property
     def query(self):
-        stmt = qualstat_getstatdata_sample()
-        c = ColumnCollection(*stmt.inner_columns)
-        stmt = (stmt
-            .where((c.md5query == bindparam("query")))
-            .params(samples=1))
-        return stmt
+        return qualstat_getstatdata()
 
     def process(self, val, database=None, query=None, **kwargs):
         row = dict(val)
@@ -258,7 +256,7 @@ class QueryDetail(ContentWidget):
 
     def get(self, database, query):
         bs = block_size.c.block_size
-        stmt = powa_getstatdata_sample("query")
+        stmt = powa_getstatdata_detailed_db()
         stmt = stmt.where(
             (column("dbname") == bindparam("database")) &
             (column("md5query") == bindparam("query")))
@@ -273,11 +271,7 @@ class QueryDetail(ContentWidget):
             rblk,
             wblk,
             (rblk + wblk).label("total_blks")])
-            .select_from(stmt.join(
-                table("powa_statements"),
-                c.md5query == literal_column('powa_statements.md5query')))
-            .group_by(column("query"), bs)
-            .params(samples=1))
+            .group_by(column("query"), bs))
 
         value = self.execute(stmt, params={
             "query": query,

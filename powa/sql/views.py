@@ -240,3 +240,39 @@ def qualstat_getstatdata_sample():
     return (select(base_columns)
             .select_from(base_query)
             .where(column("count") != None))
+
+
+def qualstat_base_statdata():
+    base_query = text("""
+    (
+    SELECT unnested.nodehash, unnested.queryid,  (unnested.records).*
+    FROM (
+        SELECT pqnh.nodehash, pqnh.queryid, pqnh.coalesce_range, unnest(records) as records
+        FROM powa_qualstats_nodehash_history pqnh
+        WHERE coalesce_range && tstzrange(:from, :to, '[]')
+        AND pqnh.queryid IN ( SELECT pqs.queryid FROM powa_qualstats_statements pqs WHERE pqs.md5query = :query)
+    ) AS unnested
+    WHERE tstzrange(:from, :to, '[]') @> (records).ts
+    UNION ALL
+        SELECT pqnc.nodehash, pqnc.queryid, pqnc.ts, pqnc.quals, pqnc.avg_filter_ratio, pqnc.count
+        FROM powa_qualstats_nodehash_current pqnc
+        WHERE tstzrange(:from, :to, '[]') @> pqnc.ts
+        AND pqnc.queryid IN ( SELECT pqs.queryid FROM powa_qualstats_statements pqs WHERE pqs.md5query = :query)
+    ) h JOIN powa_qualstats_statements USING (queryid)
+    """)
+    return base_query
+
+
+def qualstat_getstatdata():
+    base_query = qualstat_base_statdata()
+    return (select([
+        column("nodehash"),
+        column("queryid"),
+        column("md5query"),
+        func.to_json(column("quals")).label("quals"),
+        diff("count"),
+        (sum(column("count") * column("filter_ratio")) /
+         sum(column("count"))).label("filter_ratio")])
+        .select_from(base_query)
+        .group_by(column("nodehash"), column("queryid"), column("quals"), column("md5query"))
+        .having(max(column("count")) - min(column("count")) > 0))

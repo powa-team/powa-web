@@ -3,10 +3,13 @@ from powa.dashboards import (
     MetricGroupDef, MetricDef,
     DashboardPage,
     ContentWidget)
-from sqlalchemy.sql import text, ColumnCollection, bindparam
+from sqlalchemy.sql import (
+    text, ColumnCollection, bindparam, table, select,
+    literal_column, column, cast, case)
+from sqlalchemy.types import Numeric
 from powa.sql import aggregate_qual_values, resolve_quals, func
 from powa.query import QueryOverview
-from powa.sql.views import qualstat_getstatdata_sample
+from powa.sql.views import qualstat_getstatdata, qualstat_getstatdata
 
 
 class QualConstantsMetricGroup(MetricGroupDef):
@@ -16,25 +19,47 @@ class QualConstantsMetricGroup(MetricGroupDef):
     name = "QualConstants"
     data_url = r"/metrics/database/(\w+)/query/(\w+)/qual/(\w+)/constants"
     xaxis = "rownumber"
-    mffr = MetricDef(label="Most Filtering")
-    lffr = MetricDef(label="Least Filtering")
-    mec = MetricDef(label="Most Executed")
-    query = (aggregate_qual_values(text("""
-        s.dbname = :database AND
-        s.md5query = :query AND
-        qn.nodehash = :qual AND
-        coalesce_range && tstzrange(:from, :to)"""), top=10)
-             .with_only_columns(['rownumber',
-                                '(mf).filter_ratio as mffr',
-                                '(mf).constants as mfconstants',
-                                '(lf).filter_ratio as lffr',
-                                '(lf).constants as lfconstants',
-                                '(me).count as mec',
-                                '(me).constants as meconstants']))
+    exec_count = MetricDef(label="<%=group%>")
+    grouper = "constants"
+
+    @property
+    def query(self):
+        query = (aggregate_qual_values(text("""
+            s.dbname = :database AND
+            s.md5query = :query AND
+            qn.nodehash = :qual AND
+            coalesce_range && tstzrange(:from, :to)"""), top=10)
+                .with_only_columns([column('rownumber'),
+                                    literal_column('(me).count').label('exec_count'),
+                                    literal_column('(me).constants').label('constants')]))
+        base = qualstat_getstatdata()
+        c = ColumnCollection(*base.inner_columns)
+        base = base.alias()
+        totals = (base.select()
+                  .where((c.nodehash == bindparam("qual")) &
+                         (c.md5query == bindparam("query")))).alias()
+        return (query.alias().select()
+                .column(totals.c.count.label('total_count'))
+                .column(base.c.md5query)
+                .correlate(query))
 
 
     def post_process(self, data, database, query, qual, **kwargs):
+        if not data['data']:
+            return data
         conn = self.connect(database=database)
+        max_rownumber = 0
+        total_top10 = 0
+        total = None
+        d = {'total_count': 0}
+        for d in data['data']:
+            max_rownumber = max(max_rownumber, d['rownumber'])
+            total_top10 += d['exec_count']
+        else:
+            total = d['total_count']
+        data['data'].append({'exec_count': total - total_top10,
+                     'rownumber': max_rownumber + 1,
+                     'constants': 'Others'})
         return data
 
 
@@ -46,19 +71,20 @@ class QualDetail(ContentWidget):
     data_url = r"/database/(\w+)/query/(\w+)/qual/(\w+)/detail"
 
     def get(self, database, query, qual):
-        stmt = qualstat_getstatdata_sample()
+        stmt = qualstat_getstatdata()
         c = ColumnCollection(*stmt.inner_columns)
-        stmt = (stmt
+        stmt = stmt.alias()
+        stmt = (stmt.select()
             .where((c.nodehash == bindparam("nodehash")) &
                    (c.md5query == bindparam("query")))
+            .where(stmt.c.count > 0)
             .column((c.md5query == bindparam("query")).label("is_my_query")))
         quals = list(self.execute(
             stmt,
             params={"query": query,
                     "from": self.get_argument("from"),
                     "to": self.get_argument("to"),
-                    "nodehash": qual,
-                    "samples": 1}))
+                    "nodehash": qual}))
         quals = resolve_quals(self.connect(database=database), quals)
         my_qual = None
         other_queries = {}
@@ -93,6 +119,6 @@ class QualOverview(DashboardPage):
         "Qual %(qual)s",
         [[QualDetail],
          [Graph("Most executed values",
-               metrics=[QualConstantsMetricGroup.mec],
-               x_label_attr="mfconstants",
+               metrics=[QualConstantsMetricGroup.exec_count],
+               x_label_attr="constants",
                renderer="pie")]])
