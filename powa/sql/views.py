@@ -11,27 +11,27 @@ def powa_base_statdata_detailed_db():
         FROM (
             SELECT psh.md5query, psh.coalesce_range, unnest(records) AS records
             FROM powa_statements_history psh
-            WHERE coalesce_range && tstzrange(:from,:to,'[]')
-            AND psh.md5query IN (SELECT powa_statements.md5query FROM powa_statements WHERE powa_statements.dbname=:database)
+            WHERE coalesce_range && tstzrange(:from, :to, '[]')
+            AND psh.md5query IN ( SELECT powa_statements.md5query FROM powa_statements WHERE powa_statements.dbname=:database )
         ) AS unnested
-        WHERE tstzrange(:from,:to,'[]') @> (records).ts
+        WHERE tstzrange(:from, :to, '[]') @> (records).ts
         UNION ALL
         SELECT psc.md5query,(psc.record).*
         FROM powa_statements_history_current psc
         WHERE tstzrange(:from,:to,'[]') @> (record).ts
-        AND psc.md5query IN (SELECT powa_statements.md5query FROM powa_statements WHERE powa_statements.dbname=:database)
-    ) h JOIN powa_statements s USING (md5query)""")
+        AND psc.md5query IN (SELECT powa_statements.md5query FROM powa_statements WHERE powa_statements.dbname = :database)
+    ) h JOIN powa_statements s USING (md5query)
+    """)
     return base_query
 
 def powa_base_statdata_db():
     base_query = text("""(
-          SELECT dbname, min(lower(coalesce_range)) as min_ts, max(upper(coalesce_range)) as max_ts
+          SELECT dbname, min(lower(coalesce_range)) AS min_ts, max(upper(coalesce_range)) AS max_ts
           FROM powa_statements_history_db dbh
-          WHERE coalesce_range && tstzrange(:from,:to,'[]')
+          WHERE coalesce_range && tstzrange(:from, :to, '[]')
           GROUP BY dbname
     ) ranges,
-    LATERAL
-      (
+    LATERAL (
         SELECT (unnested1.records).*
         FROM (
             SELECT dbh.coalesce_range, unnest(records) AS records
@@ -39,7 +39,7 @@ def powa_base_statdata_db():
             WHERE coalesce_range @> min_ts
             AND dbh.dbname = ranges.dbname
         ) AS unnested1
-        WHERE tstzrange(:from,:to,'[]') @> (unnested1.records).ts
+        WHERE tstzrange(:from, :to, '[]') @> (unnested1.records).ts
         UNION ALL
         SELECT (unnested2.records).*
         FROM (
@@ -48,11 +48,11 @@ def powa_base_statdata_db():
             WHERE coalesce_range @> max_ts
             AND dbh.dbname = ranges.dbname
         ) AS unnested2
-        WHERE tstzrange(:from,:to,'[]') @> (unnested2.records).ts
+        WHERE tstzrange(:from, :to, '[]') @> (unnested2.records).ts
         UNION ALL
         SELECT (dbc.record).*
         FROM powa_statements_history_current_db dbc
-        WHERE tstzrange(:from,:to,'[]') @> (dbc.record).ts
+        WHERE tstzrange(:from, :to, '[]') @> (dbc.record).ts
         AND dbc.dbname = ranges.dbname
     ) AS db_history
     """)
@@ -94,10 +94,14 @@ def powa_getstatdata_db():
             .having(max(column("calls")) - min(column("calls")) > 0))
 
 
-BASE_QUERY_SAMPLE_DB = text("""(SELECT datname, base.* FROM pg_database, LATERAL (SELECT *
-        FROM (SELECT
-            row_number() over (partition by dbname order by statements_history.ts) as number,
-            count(*) OVER (partition by dbname) as total,
+BASE_QUERY_SAMPLE_DB = text("""(
+    SELECT datname, base.* FROM pg_database,
+    LATERAL (
+        SELECT *
+        FROM (
+            SELECT
+            row_number() OVER (PARTITION BY dbname ORDER BY statements_history.ts) AS number,
+            count(*) OVER (PARTITION BY dbname) AS total,
             *
             FROM (
                 SELECT dbname, (unnested.records).*
@@ -107,40 +111,47 @@ BASE_QUERY_SAMPLE_DB = text("""(SELECT datname, base.* FROM pg_database, LATERAL
                     WHERE coalesce_range && tstzrange(:from, :to,'[]')
                     AND psh.dbname = datname
                 ) AS unnested
-                WHERE tstzrange(:from, :to,'[]') @> (records).ts
+                WHERE tstzrange(:from, :to, '[]') @> (records).ts
                 UNION ALL
                 SELECT dbname, (record).*
                 FROM powa_statements_history_current_db
-                WHERE tstzrange(:from, :to,'[]') @> (record).ts
+                WHERE tstzrange(:from, :to, '[]') @> (record).ts
                 AND dbname = datname
-            ) as statements_history
-        ) as sh
-        WHERE number % (int8larger((total)/(:samples+1),1) )=0) as base) as by_db
+            ) AS statements_history
+        ) AS sh
+        WHERE number % ( int8larger((total)/(:samples+1),1) ) = 0
+    ) AS base
+) AS by_db
 """)
 
 BASE_QUERY_SAMPLE = text("""(
-SELECT dbname, md5query, base.* FROM powa_statements, LATERAL (SELECT *
+    SELECT dbname, md5query, base.*
+    FROM powa_statements,
+    LATERAL (
+        SELECT *
         FROM (SELECT
-            row_number() over (partition by md5query order by statements_history.ts) as number,
-            count(*) OVER (partition by md5query) as total,
+            row_number() OVER (PARTITION BY md5query ORDER BY statements_history.ts) AS number,
+            count(*) OVER (PARTITION BY md5query) AS total,
             *
             FROM (
                 SELECT (unnested.records).*
                 FROM (
                     SELECT psh.md5query, psh.coalesce_range, unnest(records) AS records
                     FROM powa_statements_history psh
-                    WHERE coalesce_range && tstzrange(:from, :to,'[]')
+                    WHERE coalesce_range && tstzrange(:from, :to, '[]')
                     AND psh.md5query = powa_statements.md5query
                 ) AS unnested
-                WHERE tstzrange(:from, :to,'[]') @> (records).ts
+                WHERE tstzrange(:from, :to, '[]') @> (records).ts
                 UNION ALL
                 SELECT (record).*
                 FROM powa_statements_history_current phc
-                WHERE tstzrange(:from, :to,'[]') @> (record).ts
+                WHERE tstzrange(:from, :to, '[]') @> (record).ts
                 AND phc.md5query = powa_statements.md5query
-            ) as statements_history
-        ) as sh
-        WHERE number % (int8larger((total)/(:samples+1),1) )=0) as base) as by_db
+            ) AS statements_history
+        ) AS sh
+        WHERE number % ( int8larger((total)/(:samples+1),1) ) = 0
+    ) AS base
+) AS by_query
 """)
 
 
