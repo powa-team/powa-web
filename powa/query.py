@@ -5,7 +5,7 @@ Dashboard for the by-query page.
 from tornado.web import HTTPError
 from sqlalchemy.sql import (
     bindparam, text, column, select, table,
-    literal_column, case, cast)
+    literal_column, case, cast, ColumnCollection)
 from sqlalchemy.sql.functions import sum
 from sqlalchemy.types import Numeric
 
@@ -18,7 +18,7 @@ from powa.database import DatabaseOverview
 from powa.sql import (Plan, format_jumbled_query,
                       resolve_quals, aggregate_qual_values,
                       suggest_indexes)
-from powa.sql.views import powa_getstatdata_sample
+from powa.sql.views import powa_getstatdata_sample, qualstat_getstatdata_sample
 from powa.sql.utils import block_size, mulblock, greatest, to_epoch
 
 
@@ -228,16 +228,14 @@ class QualList(MetricGroupDef):
     filter_ratio = MetricDef(label="Avg filter_ratio (excluding index)")
     count = MetricDef(label="Execution count (excluding index)")
 
-    query = text("""
-        SELECT
-            to_json(quals) as quals,
-            filter_ratio,
-            count,
-            nodehash
-        FROM powa_qualstats_statements,
-        LATERAL powa_qualstats_getstatdata_sample(tstzrange(:from, :to), queryid, 1)
-        WHERE md5query = :query
-    """)
+    @property
+    def query(self):
+        stmt = qualstat_getstatdata_sample()
+        c = ColumnCollection(*stmt.inner_columns)
+        stmt = (stmt
+            .where((c.md5query == bindparam("query")))
+            .params(samples=0))
+        return stmt
 
     def process(self, val, database=None, query=None, **kwargs):
         row = dict(val)

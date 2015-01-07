@@ -3,9 +3,10 @@ from powa.dashboards import (
     MetricGroupDef, MetricDef,
     DashboardPage,
     ContentWidget)
-from sqlalchemy.sql import text
-from powa.sql import aggregate_qual_values, resolve_quals
+from sqlalchemy.sql import text, ColumnCollection, bindparam
+from powa.sql import aggregate_qual_values, resolve_quals, func
 from powa.query import QueryOverview
+from powa.sql.views import qualstat_getstatdata_sample
 
 
 class QualConstantsMetricGroup(MetricGroupDef):
@@ -44,17 +45,15 @@ class QualDetail(ContentWidget):
     title = "Detail for this Qual"
     data_url = r"/database/(\w+)/query/(\w+)/qual/(\w+)/detail"
 
-    QUAL_DEF_QUERY = text("""
-        SELECT nodehash, queryid, to_json(quals) as quals, filter_ratio, count,
-               md5query = :query as is_my_query, query, md5query
-        FROM powa_statements INNER JOIN powa_qualstats_statements USING (md5query),
-        LATERAL powa_qualstats_getstatdata_sample(tstzrange(:from, :to), queryid, 1)
-        WHERE nodehash = :nodehash
-    """)
-
     def get(self, database, query, qual):
+        stmt = qualstat_getstatdata_sample()
+        c = ColumnCollection(*stmt.inner_columns)
+        stmt = (stmt
+            .where((c.nodehash == bindparam("nodehash")) &
+                   (c.md5query == bindparam("query")))
+            .column((c.md5query == bindparam("query")).label("is_my_query")))
         quals = list(self.execute(
-            self.QUAL_DEF_QUERY,
+            stmt,
             params={"query": query,
                     "from": self.get_argument("from"),
                     "to": self.get_argument("to"),
@@ -67,6 +66,9 @@ class QualDetail(ContentWidget):
                 my_qual = qual
             else:
                 other_queries[qual['md5query']] = qual['query']
+        if my_qual is None:
+            self.render("xhr.html", content="nodata")
+            return
         self.render("database/query/qualdetail.html",
                     qual=my_qual,
                     database=database,

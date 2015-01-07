@@ -1,5 +1,5 @@
 from sqlalchemy.sql import (select, cast, func, column, text, extract, case,
-                            bindparam)
+                            bindparam, literal_column)
 from sqlalchemy.types import Numeric
 from sqlalchemy.sql.functions import max, min, sum
 from powa.sql.utils import *
@@ -189,3 +189,52 @@ def powa_getstatdata_sample(mode):
         biggest("temp_blks_written"),
         biggest("blk_read_time"),
         biggest("blk_write_time")]).select_from(base_query)
+
+
+
+BASE_QUERY_QUALSTATS_SAMPLE = text("""
+powa_statements ps
+JOIN powa_qualstats_statements pqs USING(md5query)
+JOIN powa_qualstats_nodehash nh USING(queryid)
+, LATERAL (
+    SELECT  sh.ts,
+         sh.nodehash,
+         sh.quals,
+         int8larger(lead(sh.count) over (querygroup) - sh.count,0) count,
+         CASE WHEN sum(sh.count) over querygroup > 0 THEN sum(sh.count * sh.filter_ratio) over (querygroup) / sum(sh.count) over (querygroup) ELSE 0 END as filter_ratio
+         FROM (
+      SELECT * FROM
+      (
+         SELECT row_number() over (order by quals_history.ts) as number, *,
+          count(*) OVER () as total
+         FROM (
+          SELECT unnested.queryid, unnested.nodehash, (unnested.records).*
+          FROM (
+              SELECT nh.queryid, nh.nodehash, nh.coalesce_range, unnest(records) AS records
+              FROM powa_qualstats_nodehash_history nh
+              WHERE coalesce_range && tstzrange(:from, :to)
+              AND queryid = nh.queryid AND nodehash = nh.nodehash
+          ) AS unnested
+          WHERE tstzrange(:from, :to) @> (records).ts and queryid = nh.queryid
+          UNION ALL
+          SELECT powa_qualstats_nodehash_current.queryid, powa_qualstats_nodehash_current.nodehash, powa_qualstats_nodehash_current.ts, powa_qualstats_nodehash_current.quals, powa_qualstats_nodehash_current.avg_filter_ratio, powa_qualstats_nodehash_current.count
+          FROM powa_qualstats_nodehash_current
+          WHERE tstzrange(:from, :to)@> powa_qualstats_nodehash_current.ts
+          AND queryid = nh.queryid AND nodehash = nh.nodehash
+        ) quals_history
+     ) numbered_history WHERE number % (int8larger(total/(:samples+1),1) )=0
+    ) sh
+     WINDOW querygroup AS (PARTITION BY sh.nodehash  ORDER BY sh.ts)
+) samples
+""")
+
+def qualstat_getstatdata_sample():
+    base_query = BASE_QUERY_QUALSTATS_SAMPLE
+    base_columns = [
+        literal_column("nh.queryid").label("queryid"),
+        func.to_json(literal_column("nh.quals")).label("quals"),
+        literal_column("nh.nodehash").label("nodehash"),
+        "count",
+        "filter_ratio",
+        "md5query"]
+    return select(base_columns).select_from(base_query)
