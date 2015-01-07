@@ -234,7 +234,7 @@ class QualList(MetricGroupDef):
         c = ColumnCollection(*stmt.inner_columns)
         stmt = (stmt
             .where((c.md5query == bindparam("query")))
-            .params(samples=0))
+            .params(samples=1))
         return stmt
 
     def process(self, val, database=None, query=None, **kwargs):

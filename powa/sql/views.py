@@ -237,4 +237,6 @@ def qualstat_getstatdata_sample():
         "count",
         "filter_ratio",
         "md5query"]
-    return select(base_columns).select_from(base_query)
+    return (select(base_columns)
+            .select_from(base_query)
+            .where(column("count") != None))

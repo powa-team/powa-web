@@ -57,7 +57,8 @@ class QualDetail(ContentWidget):
             params={"query": query,
                     "from": self.get_argument("from"),
                     "to": self.get_argument("to"),
-                    "nodehash": qual}))
+                    "nodehash": qual,
+                    "samples": 1}))
         quals = resolve_quals(self.connect(database=database), quals)
         my_qual = None
         other_queries = {}
