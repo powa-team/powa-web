@@ -191,14 +191,10 @@ def suggest_indexes(handler, database, query):
                 ) qnc ON qnc.nodehash = qn.nodehash AND qnc.queryid = qn.queryid
 
                 WHERE datname = :database AND s.queryid = :query
-                -- compute all available data or filter ?
-                --AND tstzrange(now() - interval '20 hours',now(),'[)') && coalesce_range
             ) quals
-            -- Only quals accessed by a full scan
             WHERE eval_type = 'f'
             GROUP by datname, relid, attnum, opno
         ) class
-        -- only quals filtering half the rows
         WHERE filter_ratio > 0.5
     """)
     params = {"database": database, "query": query}
@@ -219,9 +215,7 @@ def suggest_indexes(handler, database, query):
             JOIN pg_namespace nsp on nsp.oid = c.relnamespace
             JOIN pg_amop amop ON amop.amoplefttype = a.atttypid
             JOIN pg_am am ON am.oid = amop.amopmethod
-            --JOIN pg_opfamily of ON of.oid = amop.amopfamily
             JOIN pg_operator o ON o.oid = amop.amopopr
-            --JOIN powa_qualstats_nodehash_constvalues nc ON nc.nodehash = nh.nodehash AND nc.queryid = nh.queryid
             WHERE c.oid in ( :relid )
             AND amop.amopopr = :opno
             AND a.attnum IN ( :attnum )
