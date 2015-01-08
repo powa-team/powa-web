@@ -19,6 +19,7 @@ from powa.sql import (Plan, format_jumbled_query,
                       resolve_quals, aggregate_qual_values,
                       suggest_indexes)
 from powa.sql.views import (powa_getstatdata_sample,
+                            kcache_getstatdata_sample,
                             qualstat_getstatdata_sample,
                             powa_getstatdata_detailed_db,
                             qualstat_getstatdata)
@@ -47,41 +48,20 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     blk_read_time = MetricDef(label="Read time", type="duration")
     blk_write_time = MetricDef(label="Write time", type="duration")
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
-    kreads = MetricDef(label="Physical read", type="sizerate")
-    kwrites = MetricDef(label="Physical writes", type="sizerate")
-    kuser_time = MetricDef(label="CPU user time", type="percent")
-    ksystem_time = MetricDef(label="CPU system time", type="percent")
+    reads = MetricDef(label="Physical read", type="sizerate")
+    writes = MetricDef(label="Physical writes", type="sizerate")
+    user_time = MetricDef(label="CPU user time", type="percent")
+    system_time = MetricDef(label="CPU system time", type="percent")
     hit_ratio = MetricDef(label="Shared buffers hit ratio", type="percent")
     miss_ratio = MetricDef(label="Shared buffers miss ratio", type="percent")
     sys_hit_ratio = MetricDef(label="System cache hit ratio", type="percent")
     disk_hit_ratio = MetricDef(label="Disk hit ratio", type="percent")
 
-    _KCACHE_QUERY = text("""
-    (
-        WITH src AS (
-            SELECT md5(r.rolname||d.datname||s.query) AS md5query, queryid
-            FROM pg_stat_statements s
-                JOIN pg_database d ON d.oid = s.dbid
-                JOIN pg_roles r ON r.oid = s.userid
-            WHERE md5(r.rolname||d.datname||s.query) = :query
-        )
-        SELECT ts,
-            reads_raw * 512 as kreads,
-            writes_raw * 512 as kwrites,
-            user_time as kuser_time,
-            system_time as ksystem_time
-        FROM src
-        JOIN (SELECT current_setting('block_size')::numeric AS blksize) setting ON true,
-        LATERAL (SELECT * FROM public.powa_kcache_getstatdata_sample(tstzrange(:from, :to), src.queryid, 300)) sample
-        WHERE reads_raw IS NOT NULL
-    ) as kcache
-    """)
-
     @classmethod
     def _get_metrics(cls, handler, **params):
         base = cls.metrics.copy()
         if not handler.has_extension("pg_stat_kcache"):
-            for key in ("kreads", "kwrites", "kuser_time", "ksystem_time",
+            for key in ("reads", "writes", "user_time", "system_time",
                         "sys_hit_ratio", "disk_hit_ratio"):
                 base.pop(key)
         else:
@@ -123,25 +103,32 @@ class QueryOverviewMetricGroup(MetricGroupDef):
         if self.has_extension("pg_stat_kcache"):
             # Add system metrics from pg_stat_kcache,
             # and detailed hit ratio.
+            kcache_query = kcache_getstatdata_sample()
+            kc = ColumnCollection(*kcache_query.inner_columns)
+            kcache_query = (
+                kcache_query
+                .where(kc.queryid == bindparam("query"))
+                .alias())
+            kc = kcache_query.c
             sys_hits = (greatest(mulblock(c.shared_blks_read) -
-                              literal_column("kcache.kreads"), 0)
+                              kc.reads, 0)
                         .label("kcache_hitblocks"))
             sys_hitratio = (cast(sys_hits, Numeric) * 100 /
                             mulblock(total_blocks))
-            disk_hit_ratio = (literal_column("kcache.kreads") /
+            disk_hit_ratio = (kc.reads  /
                               mulblock(total_blocks))
             cols.extend([
-                literal_column("kcache.kreads"),
-                literal_column("kcache.kwrites"),
-                literal_column("kcache.kuser_time"),
-                literal_column("kcache.ksystem_time"),
+                kc.reads,
+                kc.writes,
+                kc.user_time,
+                kc.system_time,
                 case([(total_blocks == 0, 0)],
                      else_=disk_hit_ratio).label("disk_hit_ratio"),
                 case([(total_blocks == 0, 0)],
                      else_=sys_hitratio).label("sys_hit_ratio")])
-            from_clause = query.join(
-                self._KCACHE_QUERY,
-                literal_column("kcache.ts") == c.ts)
+            from_clause = from_clause.join(
+                kcache_query,
+                kcache_query.c.ts == c.ts)
         else:
             cols.extend([
                 case([(total_blocks == 0, 0)],
@@ -345,11 +332,11 @@ class QueryOverview(DashboardPage):
         if self.has_extension("pg_stat_kcache"):
             self._dashboard.widgets.extend([[
                 Graph("Physical block (in Bps)",
-                      metrics=[QueryOverviewMetricGroup.kreads,
-                               QueryOverviewMetricGroup.kwrites]),
+                      metrics=[QueryOverviewMetricGroup.reads,
+                               QueryOverviewMetricGroup.writes]),
                 Graph("CPU time",
-                      metrics=[QueryOverviewMetricGroup.kuser_time,
-                               QueryOverviewMetricGroup.ksystem_time])]])
+                      metrics=[QueryOverviewMetricGroup.user_time,
+                               QueryOverviewMetricGroup.system_time])]])
             hit_ratio_graph.metrics.append(QueryOverviewMetricGroup.sys_hit_ratio)
             hit_ratio_graph.metrics.append(QueryOverviewMetricGroup.disk_hit_ratio)
         else:

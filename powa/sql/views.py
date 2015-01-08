@@ -5,6 +5,22 @@ from sqlalchemy.sql.functions import max, min, sum
 from powa.sql.utils import *
 
 
+class Biggest(object):
+
+    def __init__(self, base_columns, order_by):
+        self.base_columns = base_columns
+        self.order_by = order_by
+
+    def __call__(self, var, minval=0, label=None):
+        label = label or var
+        return func.greatest(
+            func.lead(column(var))
+            .over(order_by=self.order_by,
+                  partition_by=self.base_columns)
+                - column(var),
+            minval).label(label)
+
+
 def powa_base_statdata_detailed_db():
     base_query = text("""
     pg_database,
@@ -169,15 +185,12 @@ def powa_getstatdata_sample(mode):
         base_query = BASE_QUERY_SAMPLE
         base_columns = ["dbid", "queryid"]
 
+    ts = column('ts')
+    biggest = Biggest(base_columns, ts)
 
-    def biggest(var, minval=0, label=None):
-        label = label or var
-        return func.greatest(
-            func.lead(column(var)).over(order_by="ts", partition_by=base_columns) - column(var),
-            minval).label(label)
 
     return select(base_columns + [
-        "ts",
+        ts,
         biggest("ts", '0 s', "mesure_interval"),
         biggest("calls"),
         biggest("total_time", label="runtime"),
@@ -193,7 +206,7 @@ def powa_getstatdata_sample(mode):
         biggest("temp_blks_read"),
         biggest("temp_blks_written"),
         biggest("blk_read_time"),
-        biggest("blk_write_time")]).select_from(base_query)
+        biggest("blk_write_time")]).select_from(base_query).apply_labels()
 
 
 
@@ -254,7 +267,7 @@ def qualstat_base_statdata():
     FROM (
         SELECT pqnh.nodehash, pqnh.queryid, pqnh.coalesce_range, unnest(records) as records
         FROM powa_qualstats_nodehash_history pqnh
-        WHERE coalesce_range && tstzrange(:from, :to, '[]')
+        WHERE coalesce_range  && tstzrange(:from, :to, '[]')
         AND pqnh.queryid IN ( SELECT pqs.queryid FROM powa_qualstats_statements pqs WHERE pqs.md5query = :query)
     ) AS unnested
     WHERE tstzrange(:from, :to, '[]') @> (records).ts
@@ -281,3 +294,51 @@ def qualstat_getstatdata():
         .select_from(base_query)
         .group_by(column("nodehash"), column("queryid"), column("quals"), column("md5query"))
         .having(max(column("count")) - min(column("count")) > 0))
+
+BASE_QUERY_KCACHE_SAMPLE = text("""
+        powa_statements s JOIN pg_database ON pg_database.oid = s.dbid,
+        LATERAL (
+            SELECT *
+            FROM (
+                SELECT row_number() OVER (ORDER BY kmbq.ts) AS number,
+                    count(*) OVER () as total,
+                        *
+                FROM (
+                    SELECT km.ts,
+                    sum(km.reads) AS reads, sum(km.writes) AS writes,
+                    sum(km.user_time) AS user_time, sum(km.system_time) AS system_time
+                    FROM (
+                        SELECT * FROM (
+                            SELECT (unnest(metrics)).*
+                            FROM powa_kcache_metrics km
+                            WHERE km.queryid = s.queryid
+                            AND km.coalesce_range && tstzrange(:from, :to, '[]')
+                        ) his
+                        WHERE tstzrange(:from, :to, '[]') @> his.ts
+                        UNION ALL
+                        SELECT (metrics).*
+                        FROM powa_kcache_metrics_current kmc
+                        WHERE tstzrange(:from, :to, '[]') @> (metrics).ts
+                        AND kmc.queryid = s.queryid
+                    ) km
+                    GROUP BY km.ts
+                ) kmbq
+            ) kmn
+        WHERE kmn.number % (int8larger(total/(:samples+1),1) ) = 0
+        ) kcache
+""")
+
+def kcache_getstatdata_sample():
+    base_query = BASE_QUERY_KCACHE_SAMPLE
+    base_columns = ["queryid", "datname"]
+    ts = column('ts')
+    biggest = Biggest(base_columns, ts)
+
+    return (select(base_columns + [
+        ts,
+        biggest("reads"),
+        biggest("writes"),
+        biggest("user_time"),
+        biggest("system_time")])
+        .select_from(base_query)
+        .apply_labels())
