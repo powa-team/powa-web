@@ -14,6 +14,7 @@ from sqlalchemy.sql.functions import sum
 from sqlalchemy.sql import select, cast, extract
 from sqlalchemy.types import Numeric
 from powa.sql.utils import total_read, total_hit, mulblock, round, greatest
+from powa.sql.tables import pg_database
 
 
 class ByDatabaseMetricGroup(MetricGroupDef):
@@ -21,7 +22,7 @@ class ByDatabaseMetricGroup(MetricGroupDef):
     Metric group used by the "by database" grid
     """
     name = "by_database"
-    xaxis = "dbname"
+    xaxis = "datname"
     data_url = r"/metrics/by_databases/"
     axis_type = "category"
     calls = MetricDef(label="#Calls", type="string")
@@ -39,8 +40,12 @@ class ByDatabaseMetricGroup(MetricGroupDef):
         bs = block_size.c.block_size
         inner_query = powa_getstatdata_db().alias()
         c = inner_query.c
+        from_clause = inner_query.join(
+            pg_database,
+            c.dbid == pg_database.c.oid)
+
         return (select([
-            c.dbname,
+            pg_database.c.datname,
             sum(c.calls).label("calls"),
             sum(c.runtime).label("runtime"),
             round(cast(sum(c.runtime), Numeric) / greatest(sum(c.calls), 1), 2).label("avg_runtime"),
@@ -51,13 +56,14 @@ class ByDatabaseMetricGroup(MetricGroupDef):
             mulblock(sum(c.temp_blks_written).label("temp_blks_written")),
             round(cast(sum(c.blk_read_time + c.blk_write_time), Numeric), 2).label("io_time")
         ])
+            .select_from(from_clause)
             .order_by(sum(c.calls).desc())
-            .group_by(c.dbname, bs))
+            .group_by(pg_database.c.datname, bs))
 
 
     def process(self, val, **kwargs):
         val = dict(val)
-        val["url"] = self.reverse_url("DatabaseOverview", val["dbname"])
+        val["url"] = self.reverse_url("DatabaseOverview", val["datname"])
         return val
 
 
@@ -104,7 +110,7 @@ class Overview(DashboardPage):
                          GlobalDatabasesMetricGroup.total_blks_read])],
          [Grid("Details for all databases",
                columns=[{
-                   "name": "dbname",
+                   "name": "datname",
                    "label": "Database",
                    "url_attr": "url"
                }],

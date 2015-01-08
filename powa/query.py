@@ -23,7 +23,7 @@ from powa.sql.views import (powa_getstatdata_sample,
                             powa_getstatdata_detailed_db,
                             qualstat_getstatdata)
 from powa.sql.utils import block_size, mulblock, greatest, to_epoch
-
+from powa.sql.tables import powa_statements
 
 class QueryOverviewMetricGroup(MetricGroupDef):
     """
@@ -93,8 +93,8 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     def query(self):
         query = powa_getstatdata_sample("query")
         query = query.where(
-            (column("dbname") == bindparam("database")) &
-            (column("md5query") == bindparam("query")))
+            (column("datname") == bindparam("database")) &
+            (column("queryid") == bindparam("query")))
         query = query.alias()
         c = query.c
         total_blocks = ((c.shared_blks_read + c.shared_blks_hit)
@@ -231,6 +231,10 @@ class QualList(MetricGroupDef):
     filter_ratio = MetricDef(label="Avg filter_ratio (excluding index)")
     count = MetricDef(label="Execution count (excluding index)")
 
+    def prepare(self):
+        if not self.has_extension("pg_qualstats"):
+            raise HTTPError(501, "PG qualstats is not installed")
+
     @property
     def query(self):
         return qualstat_getstatdata()
@@ -258,9 +262,11 @@ class QueryDetail(ContentWidget):
         bs = block_size.c.block_size
         stmt = powa_getstatdata_detailed_db()
         stmt = stmt.where(
-            (column("dbname") == bindparam("database")) &
-            (column("md5query") == bindparam("query")))
+            (column("datname") == bindparam("database")) &
+            (column("queryid") == bindparam("query")))
         stmt = stmt.alias()
+        from_clause = stmt.join(powa_statements,
+                                powa_statements.c.queryid == stmt.c.queryid)
         c = stmt.c
         rblk = mulblock(sum(c.shared_blks_read).label("shared_blks_read"))
         wblk = mulblock(sum(c.shared_blks_hit).label("shared_blks_hit"))
@@ -271,6 +277,7 @@ class QueryDetail(ContentWidget):
             rblk,
             wblk,
             (rblk + wblk).label("total_blks")])
+            .select_from(from_clause)
             .group_by(column("query"), bs))
 
         value = self.execute(stmt, params={

@@ -15,7 +15,8 @@ from powa.sql.views import (block_size,
 from powa.overview import Overview
 from sqlalchemy.sql import ColumnCollection, bindparam, column, select
 from sqlalchemy.sql.functions import sum
-from powa.sql.utils import greatest, powa_statements
+from powa.sql.utils import greatest
+from powa.sql.tables import powa_statements
 
 
 class DatabaseSelector(AuthHandler):
@@ -83,7 +84,7 @@ class ByQueryMetricGroup(MetricGroupDef):
         c = inner_query.c
         ps = powa_statements
         return (select([
-                    c.md5query,
+                    c.queryid,
                     ps.c.query,
                     c.calls,
                     c.runtime,
@@ -97,14 +98,16 @@ class ByQueryMetricGroup(MetricGroupDef):
                     c.blk_read_time,
                     c.blk_write_time])
                     .select_from(inner_query.join(
-                        ps, ps.c.md5query == c.md5query))
+                        ps, (ps.c.queryid == c.queryid) &
+                        (ps.c.dbid == c.dbid)))
+                    .where(c.datname == bindparam("database"))
                 .order_by(c.calls.desc()))
 
 
     def process(self, val, database=None, **kwargs):
         val = dict(val)
         val["url"] = self.reverse_url(
-            "QueryOverview", database, val["md5query"])
+            "QueryOverview", database, val["queryid"])
         return val
 
 

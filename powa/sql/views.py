@@ -6,30 +6,36 @@ from powa.sql.utils import *
 
 
 def powa_base_statdata_detailed_db():
-    base_query = text("""(
-        SELECT unnested.md5query,(unnested.records).*
+    base_query = text("""
+    pg_database,
+    LATERAL
+    (
+        SELECT unnested.dbid, unnested.queryid,(unnested.records).*
         FROM (
-            SELECT psh.md5query, psh.coalesce_range, unnest(records) AS records
+            SELECT psh.dbid, psh.queryid, psh.coalesce_range, unnest(records) AS records
             FROM powa_statements_history psh
             WHERE coalesce_range && tstzrange(:from, :to, '[]')
-            AND psh.md5query IN ( SELECT powa_statements.md5query FROM powa_statements WHERE powa_statements.dbname=:database )
+            AND psh.dbid = pg_database.oid
+            AND psh.queryid IN ( SELECT powa_statements.queryid FROM powa_statements WHERE powa_statements.dbid = pg_database.oid )
         ) AS unnested
         WHERE tstzrange(:from, :to, '[]') @> (records).ts
         UNION ALL
-        SELECT psc.md5query,(psc.record).*
+        SELECT psc.dbid, psc.queryid,(psc.record).*
         FROM powa_statements_history_current psc
         WHERE tstzrange(:from,:to,'[]') @> (record).ts
-        AND psc.md5query IN (SELECT powa_statements.md5query FROM powa_statements WHERE powa_statements.dbname = :database)
-    ) h JOIN powa_statements USING (md5query)
+        AND psc.dbid = pg_database.oid
+        AND psc.queryid IN ( SELECT powa_statements.queryid FROM powa_statements WHERE powa_statements.dbid = pg_database.oid )
+    ) h
     """)
     return base_query
 
 def powa_base_statdata_db():
     base_query = text("""(
-          SELECT dbname, min(lower(coalesce_range)) AS min_ts, max(upper(coalesce_range)) AS max_ts
+          SELECT dbid, min(lower(coalesce_range)) AS min_ts, max(upper(coalesce_range)) AS max_ts
           FROM powa_statements_history_db dbh
+          JOIN pg_database ON dbh.dbid = pg_database.oid
           WHERE coalesce_range && tstzrange(:from, :to, '[]')
-          GROUP BY dbname
+          GROUP BY dbid
     ) ranges,
     LATERAL (
         SELECT (unnested1.records).*
@@ -37,7 +43,7 @@ def powa_base_statdata_db():
             SELECT dbh.coalesce_range, unnest(records) AS records
             FROM powa_statements_history_db dbh
             WHERE coalesce_range @> min_ts
-            AND dbh.dbname = ranges.dbname
+            AND dbh.dbid = ranges.dbid
         ) AS unnested1
         WHERE tstzrange(:from, :to, '[]') @> (unnested1.records).ts
         UNION ALL
@@ -46,14 +52,14 @@ def powa_base_statdata_db():
             SELECT dbh.coalesce_range, unnest(records) AS records
             FROM powa_statements_history_db dbh
             WHERE coalesce_range @> max_ts
-            AND dbh.dbname = ranges.dbname
+            AND dbh.dbid = ranges.dbid
         ) AS unnested2
         WHERE tstzrange(:from, :to, '[]') @> (unnested2.records).ts
         UNION ALL
         SELECT (dbc.record).*
         FROM powa_statements_history_current_db dbc
         WHERE tstzrange(:from, :to, '[]') @> (dbc.record).ts
-        AND dbc.dbname = ranges.dbname
+        AND dbc.dbid = ranges.dbid
     ) AS db_history
     """)
     return base_query
@@ -76,20 +82,20 @@ def powa_getstatdata_detailed_db():
     base_query = powa_base_statdata_detailed_db()
     diffs = get_diffs_forstatdata()
     return (select([
-        column("md5query"),
-        column("dbname"),
+        column("queryid"),
+        column("dbid"),
+        column("datname"),
 ] + diffs)
         .select_from(base_query)
-        .where(column("dbname") == bindparam("database"))
-        .group_by(column("md5query"), column("dbname"))
+        .group_by(column("queryid"), column("dbid"), column("datname"))
         .having(max(column("calls")) - min(column("calls")) > 0))
 
 def powa_getstatdata_db():
     base_query = powa_base_statdata_db()
     diffs = get_diffs_forstatdata()
-    return (select([column("dbname")] + diffs)
+    return (select([column("dbid")] + diffs)
             .select_from(base_query)
-            .group_by(column("dbname"))
+            .group_by(column("dbid"))
             .having(max(column("calls")) - min(column("calls")) > 0))
 
 
@@ -99,23 +105,23 @@ BASE_QUERY_SAMPLE_DB = text("""(
         SELECT *
         FROM (
             SELECT
-            row_number() OVER (PARTITION BY dbname ORDER BY statements_history.ts) AS number,
-            count(*) OVER (PARTITION BY dbname) AS total,
+            row_number() OVER (PARTITION BY dbid ORDER BY statements_history.ts) AS number,
+            count(*) OVER (PARTITION BY dbid) AS total,
             *
             FROM (
-                SELECT dbname, (unnested.records).*
+                SELECT dbid, (unnested.records).*
                 FROM (
-                    SELECT psh.dbname, psh.coalesce_range, unnest(records) AS records
+                    SELECT psh.dbid, psh.coalesce_range, unnest(records) AS records
                     FROM powa_statements_history_db psh
                     WHERE coalesce_range && tstzrange(:from, :to,'[]')
-                    AND psh.dbname = datname
+                    AND psh.dbid = pg_database.oid
                 ) AS unnested
                 WHERE tstzrange(:from, :to, '[]') @> (records).ts
                 UNION ALL
-                SELECT dbname, (record).*
+                SELECT dbid, (record).*
                 FROM powa_statements_history_current_db
                 WHERE tstzrange(:from, :to, '[]') @> (record).ts
-                AND dbname = datname
+                AND dbid = pg_database.oid
             ) AS statements_history
         ) AS sh
         WHERE number % ( int8larger((total)/(:samples+1),1) ) = 0
@@ -124,28 +130,28 @@ BASE_QUERY_SAMPLE_DB = text("""(
 """)
 
 BASE_QUERY_SAMPLE = text("""(
-    SELECT dbname, md5query, base.*
-    FROM powa_statements,
+    SELECT datname, dbid, queryid, base.*
+    FROM powa_statements JOIN pg_database ON pg_database.oid = powa_statements.dbid,
     LATERAL (
         SELECT *
         FROM (SELECT
-            row_number() OVER (PARTITION BY md5query ORDER BY statements_history.ts) AS number,
-            count(*) OVER (PARTITION BY md5query) AS total,
+            row_number() OVER (PARTITION BY queryid ORDER BY statements_history.ts) AS number,
+            count(*) OVER (PARTITION BY queryid) AS total,
             *
             FROM (
                 SELECT (unnested.records).*
                 FROM (
-                    SELECT psh.md5query, psh.coalesce_range, unnest(records) AS records
+                    SELECT psh.queryid, psh.coalesce_range, unnest(records) AS records
                     FROM powa_statements_history psh
                     WHERE coalesce_range && tstzrange(:from, :to, '[]')
-                    AND psh.md5query = powa_statements.md5query
+                    AND psh.queryid = powa_statements.queryid
                 ) AS unnested
                 WHERE tstzrange(:from, :to, '[]') @> (records).ts
                 UNION ALL
                 SELECT (record).*
                 FROM powa_statements_history_current phc
                 WHERE tstzrange(:from, :to, '[]') @> (record).ts
-                AND phc.md5query = powa_statements.md5query
+                AND phc.queryid = powa_statements.queryid
             ) AS statements_history
         ) AS sh
         WHERE number % ( int8larger((total)/(:samples+1),1) ) = 0
@@ -157,11 +163,11 @@ BASE_QUERY_SAMPLE = text("""(
 def powa_getstatdata_sample(mode):
     if mode == "db":
         base_query = BASE_QUERY_SAMPLE_DB
-        base_columns = ["dbname"]
+        base_columns = ["dbid"]
 
     elif mode == "query":
         base_query = BASE_QUERY_SAMPLE
-        base_columns = ["dbname", "md5query"]
+        base_columns = ["dbid", "queryid"]
 
 
     def biggest(var, minval=0, label=None):
