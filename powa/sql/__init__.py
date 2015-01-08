@@ -105,14 +105,14 @@ def aggregate_qual_values(filter_clause, top=1):
                 greatest(max(me_count) - min(me_count), 1) as me_count,
                 sum(me_count * me_filter_ratio) as me_filter_ratio
         FROM powa_statements s
-        JOIN powa_qualstats_statements qs ON s.md5query = qs.md5query
-        JOIN powa_qualstats_nodehash qn ON qs.queryid = qn.queryid
+        JOIN pg_database ON pg_database.oid = s.dbid
+        JOIN powa_qualstats_nodehash qn ON s.queryid = qn.queryid
         JOIN (
             SELECT *
             FROM powa_qualstats_nodehash_constvalues qnc
             UNION ALL
             SELECT *
-            FROM powa_qualstats_view_current
+            FROM powa_qualstats_aggregate_constvalues_current
         ) qnc ON qn.nodehash = qnc.nodehash AND qn.queryid = qnc.queryid,
         LATERAL
                 unnest(least_filtering, most_filtering, most_executed) as t(
@@ -175,28 +175,28 @@ def suggest_indexes(handler, database, query):
     sql = text("""
         SELECT * FROM
         (
-            SELECT dbname, relid, attnum, opno,
+            SELECT datname, relid, attnum, opno,
             avg(filter_ratio) as filter_ratio,
             avg(count) as count
             FROM (
-                SELECT s.md5query,dbname,(unnest(qn.quals)).*
+                SELECT s.queryid ,datname,(unnest(qn.quals)).*
                 -- work on most executed quals
                 ,(unnest(most_executed)).*
                 FROM powa_statements s
-                JOIN powa_qualstats_statements qs ON qs.md5query = s.md5query
-                JOIN powa_qualstats_nodehash qn ON qn.queryid = qs.queryid
+                JOIN pg_database ON s.dbid = pg_database.oid
+                JOIN powa_qualstats_nodehash qn ON qn.queryid = s.queryid
                 JOIN (SELECT * FROM powa_qualstats_nodehash_constvalues c1
                     UNION ALL
-                    SELECT * FROM powa_qualstats_view_current c2
+                    SELECT * FROM powa_qualstats_aggregate_constvalues_current c2
                 ) qnc ON qnc.nodehash = qn.nodehash AND qnc.queryid = qn.queryid
 
-                WHERE s.dbname = :database AND s.md5query = :query
+                WHERE datname = :database AND s.queryid = :query
                 -- compute all available data or filter ?
                 --AND tstzrange(now() - interval '20 hours',now(),'[)') && coalesce_range
             ) quals
             -- Only quals accessed by a full scan
             WHERE eval_type = 'f'
-            GROUP by dbname, relid, attnum, opno
+            GROUP by datname, relid, attnum, opno
         ) class
         -- only quals filtering half the rows
         WHERE filter_ratio > 0.5
@@ -221,7 +221,7 @@ def suggest_indexes(handler, database, query):
             JOIN pg_am am ON am.oid = amop.amopmethod
             --JOIN pg_opfamily of ON of.oid = amop.amopfamily
             JOIN pg_operator o ON o.oid = amop.amopopr
-            --JOIN powa_qualstats_nodehash_constvalues nc ON nc.nodehash = nh.nodehash AND nc.md5query = nh.md5query
+            --JOIN powa_qualstats_nodehash_constvalues nc ON nc.nodehash = nh.nodehash AND nc.queryid = nh.queryid
             WHERE c.oid in ( :relid )
             AND amop.amopopr = :opno
             AND a.attnum IN ( :attnum )
@@ -229,6 +229,6 @@ def suggest_indexes(handler, database, query):
         ) idx
         GROUP by amname,nspname,relname
     """)
-    result = handler.execute(sql, database=row['dbname'], params=row)
+    result = handler.execute(sql, database=row['datname'], params=row)
     indexes = result.fetchall()
     return indexes

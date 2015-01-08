@@ -212,7 +212,6 @@ def powa_getstatdata_sample(mode):
 
 BASE_QUERY_QUALSTATS_SAMPLE = text("""
 powa_statements ps
-JOIN powa_qualstats_statements pqs USING(md5query)
 JOIN powa_qualstats_nodehash nh USING(queryid)
 , LATERAL (
     SELECT  sh.ts,
@@ -253,8 +252,7 @@ def qualstat_getstatdata_sample():
         func.to_json(literal_column("nh.quals")).label("quals"),
         literal_column("nh.nodehash").label("nodehash"),
         "count",
-        "filter_ratio",
-        "md5query"]
+        "filter_ratio"]
     return (select(base_columns)
             .select_from(base_query)
             .where(column("count") != None))
@@ -262,21 +260,24 @@ def qualstat_getstatdata_sample():
 
 def qualstat_base_statdata():
     base_query = text("""
+    (SELECT ps.query, h.*
+    FROM
+    powa_statements ps, LATERAL
     (
     SELECT unnested.nodehash, unnested.queryid,  (unnested.records).*
     FROM (
         SELECT pqnh.nodehash, pqnh.queryid, pqnh.coalesce_range, unnest(records) as records
         FROM powa_qualstats_nodehash_history pqnh
         WHERE coalesce_range  && tstzrange(:from, :to, '[]')
-        AND pqnh.queryid IN ( SELECT pqs.queryid FROM powa_qualstats_statements pqs WHERE pqs.md5query = :query)
+        AND pqnh.queryid IN ( SELECT pqs.queryid FROM powa_statements pqs WHERE pqs.queryid = ps.queryid)
     ) AS unnested
     WHERE tstzrange(:from, :to, '[]') @> (records).ts
     UNION ALL
         SELECT pqnc.nodehash, pqnc.queryid, pqnc.ts, pqnc.quals, pqnc.avg_filter_ratio, pqnc.count
         FROM powa_qualstats_nodehash_current pqnc
         WHERE tstzrange(:from, :to, '[]') @> pqnc.ts
-        AND pqnc.queryid IN ( SELECT pqs.queryid FROM powa_qualstats_statements pqs WHERE pqs.md5query = :query)
-    ) h JOIN powa_qualstats_statements USING (queryid)
+        AND pqnc.queryid IN ( SELECT pqs.queryid FROM powa_statements pqs WHERE pqs.queryid = ps.queryid)
+    ) h) qs
     """)
     return base_query
 
@@ -285,14 +286,13 @@ def qualstat_getstatdata():
     base_query = qualstat_base_statdata()
     return (select([
         column("nodehash"),
-        column("queryid"),
-        column("md5query"),
+        column("queryid").label("queryid"),
         func.to_json(column("quals")).label("quals"),
         diff("count"),
         (sum(column("count") * column("filter_ratio")) /
          sum(column("count"))).label("filter_ratio")])
         .select_from(base_query)
-        .group_by(column("nodehash"), column("queryid"), column("quals"), column("md5query"))
+        .group_by(column("nodehash"), literal_column("queryid"), column("quals"))
         .having(max(column("count")) - min(column("count")) > 0))
 
 BASE_QUERY_KCACHE_SAMPLE = text("""

@@ -172,7 +172,7 @@ class QueryExplains(ContentWidget):
             raise HTTPError(501, "PG qualstats is not installed")
 
         sql = (aggregate_qual_values(
-            text("""s.dbname = :database AND s.md5query = :query
+            text("""datname = :database AND s.queryid = :query
                  AND coalesce_range && tstzrange(:from, :to)"""))
             .with_only_columns(['quals',
                                 'query',
@@ -224,7 +224,10 @@ class QualList(MetricGroupDef):
 
     @property
     def query(self):
-        return qualstat_getstatdata()
+        base = qualstat_getstatdata()
+        c = ColumnCollection(*base.inner_columns)
+        return (base.where(c.queryid == bindparam("query")))
+
 
     def process(self, val, database=None, query=None, **kwargs):
         row = dict(val)

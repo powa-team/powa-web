@@ -25,8 +25,8 @@ class QualConstantsMetricGroup(MetricGroupDef):
     @property
     def query(self):
         query = (aggregate_qual_values(text("""
-            s.dbname = :database AND
-            s.md5query = :query AND
+            datname = :database AND
+            s.queryid = :query AND
             qn.nodehash = :qual AND
             coalesce_range && tstzrange(:from, :to)"""), top=10)
                 .with_only_columns([column('rownumber'),
@@ -34,13 +34,13 @@ class QualConstantsMetricGroup(MetricGroupDef):
                                     literal_column('(me).constants').label('constants')]))
         base = qualstat_getstatdata()
         c = ColumnCollection(*base.inner_columns)
-        base = base.alias()
+        base = base.where(c.queryid == bindparam("query")).alias()
         totals = (base.select()
                   .where((c.nodehash == bindparam("qual")) &
-                         (c.md5query == bindparam("query")))).alias()
+                         (c.queryid == bindparam("query")))).alias()
         return (query.alias().select()
                 .column(totals.c.count.label('total_count'))
-                .column(base.c.md5query)
+                .column(base.c.queryid)
                 .correlate(query))
 
 
@@ -76,9 +76,9 @@ class QualDetail(ContentWidget):
         stmt = stmt.alias()
         stmt = (stmt.select()
             .where((c.nodehash == bindparam("nodehash")) &
-                   (c.md5query == bindparam("query")))
+                   (c.queryid== bindparam("query")))
             .where(stmt.c.count > 0)
-            .column((c.md5query == bindparam("query")).label("is_my_query")))
+            .column((c.queryid == bindparam("query")).label("is_my_query")))
         quals = list(self.execute(
             stmt,
             params={"query": query,
@@ -92,7 +92,7 @@ class QualDetail(ContentWidget):
             if qual['is_my_query']:
                 my_qual = qual
             else:
-                other_queries[qual['md5query']] = qual['query']
+                other_queries[qual['queryid']] = qual['query']
         if my_qual is None:
             self.render("xhr.html", content="nodata")
             return
