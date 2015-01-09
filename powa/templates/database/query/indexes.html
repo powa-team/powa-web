@@ -6,7 +6,7 @@
         {% if len(indexes) > 0 %}
             <div class="columns large-6">
                 {% for index in indexes %}
-                    <pre class="sql"><code>{{index}}</code></pre>
+                    <pre class="sql"><code>{{index.query}}</code></pre>
                 {% end %}
             </div>
         {% else %}
