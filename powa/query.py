@@ -5,7 +5,8 @@ Dashboard for the by-query page.
 from tornado.web import HTTPError
 from sqlalchemy.sql import (
     bindparam, text, column, select, table,
-    literal_column, case, cast, ColumnCollection)
+    literal_column, case, cast, ColumnCollection,
+    func)
 from sqlalchemy.sql.functions import sum
 from sqlalchemy.types import Numeric
 
@@ -16,13 +17,13 @@ from powa.dashboards import (
 from powa.database import DatabaseOverview
 
 from powa.sql import (Plan, format_jumbled_query,
-                      resolve_quals, aggregate_qual_values,
-                      suggest_indexes)
+                      resolve_quals, qual_constants)
 from powa.sql.views import (powa_getstatdata_sample,
                             kcache_getstatdata_sample,
                             qualstat_getstatdata_sample,
                             powa_getstatdata_detailed_db,
-                            qualstat_getstatdata)
+                            qualstat_getstatdata,
+                            possible_indexes)
 from powa.sql.utils import block_size, mulblock, greatest, to_epoch
 from powa.sql.tables import powa_statements
 
@@ -170,15 +171,18 @@ class QueryExplains(ContentWidget):
     def get(self, database, query):
         if not self.has_extension("pg_qualstats"):
             raise HTTPError(501, "PG qualstats is not installed")
-
-        sql = (aggregate_qual_values(
-            text("""datname = :database AND s.queryid = :query
-                 AND coalesce_range && tstzrange(:from, :to)"""))
-            .with_only_columns(['quals',
-                                'query',
-                                'to_json(mf) as "most filtering"',
-                                'to_json(lf) as "least filtering"',
-                                'to_json(me) as "most executed"']))
+        condition = text("""datname = :database AND s.queryid = :query
+                 AND coalesce_range && tstzrange(:from, :to)""")
+        sql = (select(['most_filtering.quals',
+                      'most_filtering.query',
+                      'to_json(most_filtering) as "most filtering"',
+                      'to_json(least_filtering) as "least filtering"',
+                      'to_json(most_executed) as "most executed"'])
+               .select_from(qual_constants("most_filtering", condition).alias("most_filtering")
+               .join(qual_constants("least_filtering", condition).alias("least_filtering"),
+                     text("most_filtering.rownumber = least_filtering.rownumber"))
+               .join(qual_constants("most_executed", condition).alias("most_executed"),
+                     text("most_executed.rownumber = least_filtering.rownumber"))))
         params = {"database": database, "query": query,
                   "from": self.get_argument("from"),
                   "to": self.get_argument("to")}

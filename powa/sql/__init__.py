@@ -89,21 +89,23 @@ Plan = namedtuple(
     ("title", "values", "query", "plan", "filter_ratio", "exec_count"))
 
 
-def aggregate_qual_values(filter_clause, top=1):
+def qual_constants(type, filter_clause, top=1):
+    orders = {
+        'most_executed': "4 DESC",
+        'least_filtering': "5",
+        'most_filtering': "5 DESC"
+    }
+    if type not in ('most_executed', 'most_filtering',
+                    'least_filtering'):
+        retur
     filter_clause = filter_clause.compile()
     base = text("""
     (
     WITH sample AS (
     SELECT query, quals as quals,
-                mf_constants,
-                lf_constants,
-                me_constants,
-                greatest(max(mf_count) - min(mf_count), 1) as mf_count,
-                sum(mf_count * mf_filter_ratio) as mf_filter_ratio,
-                greatest(max(lf_count) - min(lf_count), 1) as lf_count,
-                sum(lf_count * lf_filter_ratio) as lf_filter_ratio,
-                greatest(max(me_count) - min(me_count), 1) as me_count,
-                sum(me_count * me_filter_ratio) as me_filter_ratio
+                constants,
+                sum(count) as count,
+                sum(count * filter_ratio) / greatest(sum(count), 1) as filter_ratio
         FROM powa_statements s
         JOIN pg_database ON pg_database.oid = s.dbid
         JOIN powa_qualstats_nodehash qn ON s.queryid = qn.queryid

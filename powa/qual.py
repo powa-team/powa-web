@@ -7,7 +7,7 @@ from sqlalchemy.sql import (
     text, ColumnCollection, bindparam, table, select,
     literal_column, column, cast, case)
 from sqlalchemy.types import Numeric
-from powa.sql import aggregate_qual_values, resolve_quals, func
+from powa.sql import qual_constants, resolve_quals, func
 from powa.query import QueryOverview
 from powa.sql.views import qualstat_getstatdata, qualstat_getstatdata
 
@@ -19,19 +19,17 @@ class QualConstantsMetricGroup(MetricGroupDef):
     name = "QualConstants"
     data_url = r"/metrics/database/(\w+)/query/(\w+)/qual/(\w+)/constants"
     xaxis = "rownumber"
-    exec_count = MetricDef(label="<%=group%>")
+    count = MetricDef(label="<%=group%>")
     grouper = "constants"
 
     @property
     def query(self):
-        query = (aggregate_qual_values(text("""
+        query = (qual_constants("most_executed",
+                                text("""
             datname = :database AND
             s.queryid = :query AND
             qn.nodehash = :qual AND
-            coalesce_range && tstzrange(:from, :to)"""), top=10)
-                .with_only_columns([column('rownumber'),
-                                    literal_column('(me).count').label('exec_count'),
-                                    literal_column('(me).constants').label('constants')]))
+            coalesce_range && tstzrange(:from, :to)"""), top=10))
         base = qualstat_getstatdata()
         c = ColumnCollection(*base.inner_columns)
         base = base.where(c.queryid == bindparam("query")).alias()
@@ -54,10 +52,10 @@ class QualConstantsMetricGroup(MetricGroupDef):
         d = {'total_count': 0}
         for d in data['data']:
             max_rownumber = max(max_rownumber, d['rownumber'])
-            total_top10 += d['exec_count']
+            total_top10 += d['count']
         else:
             total = d['total_count']
-        data['data'].append({'exec_count': total - total_top10,
+        data['data'].append({'count': total - total_top10,
                      'rownumber': max_rownumber + 1,
                      'constants': 'Others'})
         return data
@@ -119,6 +117,6 @@ class QualOverview(DashboardPage):
         "Qual %(qual)s",
         [[QualDetail],
          [Graph("Most executed values",
-               metrics=[QualConstantsMetricGroup.exec_count],
+               metrics=[QualConstantsMetricGroup.count],
                x_label_attr="constants",
                renderer="pie")]])

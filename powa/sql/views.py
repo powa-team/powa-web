@@ -1,8 +1,10 @@
 from sqlalchemy.sql import (select, cast, func, column, text, extract, case,
-                            bindparam, literal_column)
+                            bindparam, literal_column, ColumnCollection)
 from sqlalchemy.types import Numeric
 from sqlalchemy.sql.functions import max, min, sum
 from powa.sql.utils import *
+from powa.sql import resolve_quals
+from collections import defaultdict
 
 
 class Biggest(object):
@@ -46,13 +48,17 @@ def powa_base_statdata_detailed_db():
     return base_query
 
 def powa_base_statdata_db():
-    base_query = text("""(
+    base_query = text("""
+    (
+    SELECT pg_database.oid as dbid, h.*
+    FROM
+    pg_database LEFT JOIN
+    (
           SELECT dbid, min(lower(coalesce_range)) AS min_ts, max(upper(coalesce_range)) AS max_ts
           FROM powa_statements_history_db dbh
-          JOIN pg_database ON dbh.dbid = pg_database.oid
           WHERE coalesce_range && tstzrange(:from, :to, '[]')
           GROUP BY dbid
-    ) ranges,
+    ) ranges ON pg_database.oid = ranges.dbid,
     LATERAL (
         SELECT (unnested1.records).*
         FROM (
@@ -75,8 +81,8 @@ def powa_base_statdata_db():
         SELECT (dbc.record).*
         FROM powa_statements_history_current_db dbc
         WHERE tstzrange(:from, :to, '[]') @> (dbc.record).ts
-        AND dbc.dbid = ranges.dbid
-    ) AS db_history
+        AND dbc.dbid = pg_database.oid
+    ) AS h) AS db_history
     """)
     return base_query
 
@@ -260,24 +266,20 @@ def qualstat_getstatdata_sample():
 
 def qualstat_base_statdata():
     base_query = text("""
-    (SELECT ps.query, h.*
-    FROM
-    powa_statements ps, LATERAL
     (
-    SELECT unnested.nodehash, unnested.queryid,  (unnested.records).*
+    SELECT queryid, nodehash, (unnested.records).*
     FROM (
-        SELECT pqnh.nodehash, pqnh.queryid, pqnh.coalesce_range, unnest(records) as records
+        SELECT pqnh.nodehash, pqnh.queryid, pqnh.dbid, pqnh.userid, pqnh.coalesce_range, unnest(records) as records
         FROM powa_qualstats_nodehash_history pqnh
-        WHERE coalesce_range  && tstzrange(:from, :to, '[]')
-        AND pqnh.queryid IN ( SELECT pqs.queryid FROM powa_statements pqs WHERE pqs.queryid = ps.queryid)
+        WHERE coalesce_range  && tstzrange(:from, :to, '[]') AND pqnh.queryid = :query
     ) AS unnested
     WHERE tstzrange(:from, :to, '[]') @> (records).ts
     UNION ALL
-        SELECT pqnc.nodehash, pqnc.queryid, pqnc.ts, pqnc.quals, pqnc.avg_filter_ratio, pqnc.count
-        FROM powa_qualstats_nodehash_current pqnc
-        WHERE tstzrange(:from, :to, '[]') @> pqnc.ts
-        AND pqnc.queryid IN ( SELECT pqs.queryid FROM powa_statements pqs WHERE pqs.queryid = ps.queryid)
-    ) h) qs
+    SELECT queryid, nodehash, pqnc.ts, pqnc.count, pqnc.filter_ratio
+    FROM powa_qualstats_nodehash_current pqnc
+    WHERE tstzrange(:from, :to, '[]') @> pqnc.ts AND pqnc.queryid = :query
+    ) h
+    JOIN powa_qualstats_nodehash pqnh USING (queryid, nodehash)
     """)
     return base_query
 
