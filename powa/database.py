@@ -41,9 +41,10 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     def query(self):
         # Fetch the base query for sample, and filter them on the database
         bs = block_size.c.block_size
-        query = powa_getstatdata_sample("db")
-        query = query.where(column("datname") == bindparam("database"))
-        query = query.alias()
+        subquery = powa_getstatdata_sample("db")
+        # Put the where clause inside the subquery
+        subquery = subquery.where(column("datname") == bindparam("database"))
+        query = subquery.alias()
         c = query.c
         return (select([
                 to_epoch(c.ts),
@@ -78,29 +79,31 @@ class ByQueryMetricGroup(MetricGroupDef):
     # TODO: refactor with GlobalDatabasesMetricGroup
     @property
     def query(self):
-        bs = block_size.c.block_size
+        # Working from the statdata detailed_db base query
         inner_query = powa_getstatdata_detailed_db()
         inner_query = inner_query.alias()
         c = inner_query.c
         ps = powa_statements
-        return (select([
-                    c.queryid,
-                    ps.c.query,
-                    c.calls,
-                    c.runtime,
-                    mulblock(c.shared_blks_read),
-                    mulblock(c.shared_blks_hit),
-                    mulblock(c.shared_blks_dirtied),
-                    mulblock(c.shared_blks_written),
-                    mulblock(c.temp_blks_read),
-                    mulblock(c.temp_blks_written),
-                    (c.runtime / greatest(c.calls, 1)).label("avg_runtime"),
-                    c.blk_read_time,
-                    c.blk_write_time])
-                    .select_from(inner_query.join(
-                        ps, (ps.c.queryid == c.queryid) &
-                        (ps.c.dbid == c.dbid)))
-                    .where(c.datname == bindparam("database"))
+        # Multiply each measure by the size of one block.
+        columns = [c.queryid,
+                   ps.c.query,
+                   c.calls,
+                   c.runtime,
+                   mulblock(c.shared_blks_read),
+                   mulblock(c.shared_blks_hit),
+                   mulblock(c.shared_blks_dirtied),
+                   mulblock(c.shared_blks_written),
+                   mulblock(c.temp_blks_read),
+                   mulblock(c.temp_blks_written),
+                   (c.runtime / greatest(c.calls, 1)).label("avg_runtime"),
+                   c.blk_read_time,
+                   c.blk_write_time]
+        from_clause = inner_query.join(ps,
+                                       (ps.c.queryid == c.queryid) &
+                                       (ps.c.dbid == c.dbid))
+        return (select(columns)
+                .select_from(from_clause)
+                .where(c.datname == bindparam("database"))
                 .order_by(c.calls.desc()))
 
 
