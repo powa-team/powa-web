@@ -2,13 +2,34 @@
 {% block content %}
 <div class="indexes">
     <h4>Index suggestion</h4>
-    <div class="row">
         {% if len(indexes) > 0 %}
-            <div class="columns large-6">
-                {% for index in indexes %}
-                    <pre class="sql"><code>{{index.query}}</code></pre>
+          <ul>
+                {% for clause, index in indexes.items() %}
+                <li>
+                <h5>Possible indexes for attributes present in {{clause}}:</h5>
+                <ul>
+                {% for am, quals in index.items() %}
+                <li>
+                  <h6>With access method <em>{{ am }}</em></h6>
+                  <ul>
+                  {% for qual in quals %}
+                  <li>
+                    <dl>
+                      <dt>Attribute</dt>
+                      <dd>{{ qual['relname'] }}.{{ qual['attname']}}</dd>
+                      <dt>N Distinct</dt>
+                      <dd>{{ qual['n_distinct'] }}</dd>
+                      <dt>
+                    </dl>
+                  </li>
+                  {% end %}
+                  </ul>
+                </li>
                 {% end %}
-            </div>
+                </ul>
+                </li>
+                {% end %}
+          </ul>
         {% else %}
             No suitable index to suggest.
         {% end %}

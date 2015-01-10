@@ -297,6 +297,15 @@ def qualstat_getstatdata():
         .group_by(column("nodehash"), literal_column("queryid"), column("quals"))
         .having(max(column("count")) - min(column("count")) > 0))
 
+def possible_indexes(resolved_qual_list):
+    by_am = defaultdict(list)
+    for qual in resolved_qual_list:
+        for am in qual['indexam_names']:
+            by_am[am].append(qual)
+    return by_am
+
+
+
 BASE_QUERY_KCACHE_SAMPLE = text("""
         powa_statements s JOIN pg_database ON pg_database.oid = s.dbid,
         LATERAL (

@@ -46,13 +46,12 @@ define(["jquery", "foundation-daterangepicker"], function($){
                 if(start_date.isSame(defaultrange[0]) && end_date.isSame(defaultrange[1])){
                     return;
                 }
-                if(params["from"] == start_date.format() &&
-                   params["to"] == end_date.format()){
-                    return;
+                if(!(params["from"] == start_date.format() &&
+                   params["to"] == end_date.format())){
+                    params["from"] = start_date.format();
+                    params["to"] = end_date.format();
+                    history.pushState({}, "", window.location.pathname + "?" + $.param(params, true));
                 }
-                params["from"] = start_date.format();
-                params["to"] = end_date.format();
-                history.pushState({}, "", window.location.pathname + "?" + $.param(params, true));
 
                 $('[data-url-has-params]').each(function(){
                         var params = self.parseUrl(this.search);

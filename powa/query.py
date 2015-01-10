@@ -155,10 +155,24 @@ class QueryIndexes(ContentWidget):
     def get(self, database, query):
         if not self.has_extension("pg_qualstats"):
             raise HTTPError(501, "PG qualstats is not installed")
-
-        indexes = suggest_indexes(self, database, query)
-
-        self.render("database/query/indexes.html", indexes=indexes)
+        base_query = qualstat_getstatdata()
+        c = ColumnCollection(*base_query.inner_columns)
+        base_query.append_from(text("""LATERAL unnest(quals) as qual"""))
+        base_query = (base_query
+                    .where(c.queryid == query)
+                    .having(func.bool_or(column('eval_type') == 'f'))
+                    .having(c.count > 1000)
+                    .having(c.filter_ratio > 0.5)
+                    .params(**{'from': '-infinity',
+                                'to': 'infinity'}))
+        optimizable = list(self.execute(base_query, params={'query': query}))
+        optimizable = resolve_quals(self.connect(database=database),
+                                    optimizable,
+                                    'quals')
+        qual_indexes = {}
+        for line in optimizable:
+            qual_indexes[line['where_clause']] = possible_indexes(line['quals'])
+        self.render("database/query/indexes.html", indexes=qual_indexes)
 
 
 class QueryExplains(ContentWidget):
