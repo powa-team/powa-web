@@ -6,7 +6,7 @@
           <ul>
                 {% for clause, index in indexes.items() %}
                 <li>
-                <h5>Possible indexes for attributes present in {{clause}}:</h5>
+                <h5>Possible indexes for attributes present in <b>{{clause}}</b>:</h5>
                 <ul>
                 {% for am, quals in index.items() %}
                 <li>
@@ -17,8 +17,12 @@
                     <dl>
                       <dt>Attribute</dt>
                       <dd>{{ qual['relname'] }}.{{ qual['attname']}}</dd>
-                      <dt>N Distinct</dt>
-                      <dd>{{ qual['n_distinct'] }}</dd>
+                      <dt>Data distribution</dt>
+                      {% if qual['n_distinct'] >= 0 %}
+                      <dd>approximately <b>{{ qual['n_distinct'] }}</b> distinct values</dd>
+                      {%else %}
+                      <dd>approximately <b>{{ abs(qual['n_distinct']) * 100 }} %</b> distinct values</dd>
+                      {% end %}
                       <dt>
                     </dl>
                   </li>
