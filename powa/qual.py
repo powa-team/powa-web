@@ -28,13 +28,13 @@ class QualConstantsMetricGroup(MetricGroupDef):
                                 text("""
             datname = :database AND
             s.queryid = :query AND
-            qn.nodehash = :qual AND
+            qn.qualid = :qual AND
             coalesce_range && tstzrange(:from, :to)"""), top=10))
         base = qualstat_getstatdata()
         c = ColumnCollection(*base.inner_columns)
         base = base.where(c.queryid == bindparam("query")).alias()
         totals = (base.select()
-                  .where((c.nodehash == bindparam("qual")) &
+                  .where((c.qualid == bindparam("qual")) &
                          (c.queryid == bindparam("query")))).alias()
         return (query.alias().select()
                 .column(totals.c.count.label('total_count'))
@@ -73,7 +73,7 @@ class QualDetail(ContentWidget):
         c = ColumnCollection(*stmt.inner_columns)
         stmt = stmt.alias()
         stmt = (stmt.select()
-            .where((c.nodehash == bindparam("nodehash")) &
+            .where((c.qualid == bindparam("qualid")) &
                    (c.queryid== bindparam("query")))
             .where(stmt.c.count > 0)
             .column((c.queryid == bindparam("query")).label("is_my_query")))
@@ -82,7 +82,7 @@ class QualDetail(ContentWidget):
             params={"query": query,
                     "from": self.get_argument("from"),
                     "to": self.get_argument("to"),
-                    "nodehash": qual}))
+                    "qualid": qual}))
         quals = resolve_quals(self.connect(database=database), quals)
         my_qual = None
         other_queries = {}

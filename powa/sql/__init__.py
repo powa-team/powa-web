@@ -144,14 +144,14 @@ def qual_constants(type, filter_clause, top=1):
                 sum(count * filter_ratio) / greatest(sum(count), 1) as filter_ratio
         FROM powa_statements s
         JOIN pg_database ON pg_database.oid = s.dbid
-        JOIN powa_qualstats_nodehash qn ON s.queryid = qn.queryid
+        JOIN powa_qualstats_quals qn ON s.queryid = qn.queryid
         JOIN (
             SELECT *
-            FROM powa_qualstats_nodehash_constvalues qnc
+            FROM powa_qualstats_constvalues_history qnc
             UNION ALL
             SELECT *
             FROM powa_qualstats_aggregate_constvalues_current
-        ) qnc ON qn.nodehash = qnc.nodehash AND qn.queryid = qnc.queryid,
+        ) qnc ON qn.qualid = qnc.qualid AND qn.queryid = qnc.queryid,
         LATERAL
                 unnest(%s) as t(constants,filter_ratio,count)
         WHERE %s

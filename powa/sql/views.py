@@ -218,10 +218,10 @@ def powa_getstatdata_sample(mode):
 
 BASE_QUERY_QUALSTATS_SAMPLE = text("""
 powa_statements ps
-JOIN powa_qualstats_nodehash nh USING(queryid)
+JOIN powa_qualstats_quals nh USING(queryid)
 , LATERAL (
     SELECT  sh.ts,
-         sh.nodehash,
+         sh.qualid,
          sh.quals,
          int8larger(lead(sh.count) over (querygroup) - sh.count,0) count,
          CASE WHEN sum(sh.count) over querygroup > 0 THEN sum(sh.count * sh.filter_ratio) over (querygroup) / sum(sh.count) over (querygroup) ELSE 0 END as filter_ratio
@@ -231,23 +231,23 @@ JOIN powa_qualstats_nodehash nh USING(queryid)
          SELECT row_number() over (order by quals_history.ts) as number, *,
           count(*) OVER () as total
          FROM (
-          SELECT unnested.queryid, unnested.nodehash, (unnested.records).*
+          SELECT unnested.queryid, unnested.qualid, (unnested.records).*
           FROM (
-              SELECT nh.queryid, nh.nodehash, nh.coalesce_range, unnest(records) AS records
-              FROM powa_qualstats_nodehash_history nh
+              SELECT nh.queryid, nh.qualid, nh.coalesce_range, unnest(records) AS records
+              FROM powa_qualstats_quals_history nh
               WHERE coalesce_range && tstzrange(:from, :to)
-              AND queryid = nh.queryid AND nodehash = nh.nodehash
+              AND queryid = nh.queryid AND qualid = nh.qualid
           ) AS unnested
           WHERE tstzrange(:from, :to) @> (records).ts and queryid = nh.queryid
           UNION ALL
-          SELECT powa_qualstats_nodehash_current.queryid, powa_qualstats_nodehash_current.nodehash, powa_qualstats_nodehash_current.ts, powa_qualstats_nodehash_current.quals, powa_qualstats_nodehash_current.avg_filter_ratio, powa_qualstats_nodehash_current.count
-          FROM powa_qualstats_nodehash_current
-          WHERE tstzrange(:from, :to)@> powa_qualstats_nodehash_current.ts
-          AND queryid = nh.queryid AND nodehash = nh.nodehash
+          SELECT qhc.queryid, qhc.qualid, qhc.ts, qhc.quals, qhc.avg_filter_ratio, qhc.count
+          FROM powa_qualstats_quals_history_current qhc
+          WHERE tstzrange(:from, :to)@> qhc.ts
+          AND queryid = nh.queryid AND qualid = nh.qualid
         ) quals_history
      ) numbered_history WHERE number % (int8larger(total/(:samples+1),1) )=0
     ) sh
-     WINDOW querygroup AS (PARTITION BY sh.nodehash  ORDER BY sh.ts)
+     WINDOW querygroup AS (PARTITION BY sh.qualid  ORDER BY sh.ts)
 ) samples
 """)
 
@@ -256,7 +256,7 @@ def qualstat_getstatdata_sample():
     base_columns = [
         literal_column("nh.queryid").label("queryid"),
         func.to_json(literal_column("nh.quals")).label("quals"),
-        literal_column("nh.nodehash").label("nodehash"),
+        literal_column("nh.qualid").label("qualid"),
         "count",
         "filter_ratio"]
     return (select(base_columns)
@@ -267,19 +267,19 @@ def qualstat_getstatdata_sample():
 def qualstat_base_statdata():
     base_query = text("""
     (
-    SELECT queryid, nodehash, (unnested.records).*
+    SELECT queryid, qualid, (unnested.records).*
     FROM (
-        SELECT pqnh.nodehash, pqnh.queryid, pqnh.dbid, pqnh.userid, pqnh.coalesce_range, unnest(records) as records
-        FROM powa_qualstats_nodehash_history pqnh
+        SELECT pqnh.qualid, pqnh.queryid, pqnh.dbid, pqnh.userid, pqnh.coalesce_range, unnest(records) as records
+        FROM powa_qualstats_quals_history pqnh
         WHERE coalesce_range  && tstzrange(:from, :to, '[]') AND pqnh.queryid = :query
     ) AS unnested
     WHERE tstzrange(:from, :to, '[]') @> (records).ts
     UNION ALL
-    SELECT queryid, nodehash, pqnc.ts, pqnc.count, pqnc.filter_ratio
-    FROM powa_qualstats_nodehash_current pqnc
+    SELECT queryid, qualid, pqnc.ts, pqnc.count, pqnc.filter_ratio
+    FROM powa_qualstats_quals_history_current pqnc
     WHERE tstzrange(:from, :to, '[]') @> pqnc.ts AND pqnc.queryid = :query
     ) h
-    JOIN powa_qualstats_nodehash pqnh USING (queryid, nodehash)
+    JOIN powa_qualstats_quals pqnh USING (queryid, qualid)
     """)
     return base_query
 
@@ -287,14 +287,14 @@ def qualstat_base_statdata():
 def qualstat_getstatdata():
     base_query = qualstat_base_statdata()
     return (select([
-        column("nodehash"),
+        column("qualid"),
         column("queryid").label("queryid"),
         func.to_json(column("quals")).label("quals"),
         diff("count"),
         (sum(column("count") * column("filter_ratio")) /
          sum(column("count"))).label("filter_ratio")])
         .select_from(base_query)
-        .group_by(column("nodehash"), literal_column("queryid"), column("quals"))
+        .group_by(column("qualid"), literal_column("queryid"), column("quals"))
         .having(max(column("count")) - min(column("count")) > 0))
 
 def possible_indexes(resolved_qual_list):

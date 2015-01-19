@@ -250,7 +250,7 @@ class QualList(MetricGroupDef):
     def process(self, val, database=None, query=None, **kwargs):
         row = dict(val)
         row['url'] = self.reverse_url('QualOverview', database, query,
-                                      row['nodehash'])
+                                      row['qualid'])
         return row
 
     def post_process(self, data, database, query, **kwargs):
