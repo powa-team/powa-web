@@ -128,12 +128,12 @@ Plan = namedtuple(
 def qual_constants(type, filter_clause, top=1):
     orders = {
         'most_executed': "4 DESC",
-        'least_filtering': "5",
-        'most_filtering': "5 DESC"
+        'least_filtering': "6",
+        'most_filtering': "6 DESC"
     }
     if type not in ('most_executed', 'most_filtering',
                     'least_filtering'):
-        retur
+        return
     filter_clause = filter_clause.compile()
     base = text("""
     (
@@ -141,7 +141,8 @@ def qual_constants(type, filter_clause, top=1):
     SELECT query, quals as quals,
                 constants,
                 sum(count) as count,
-                sum(count * filter_ratio) / greatest(sum(count), 1) as filter_ratio
+                sum(nbfiltered) as nbfiltered,
+                CASE WHEN sum(count) = 0 THEN 0 ELSE sum(nbfiltered) / sum(count) END AS filter_ratio
         FROM powa_statements s
         JOIN pg_database ON pg_database.oid = s.dbid
         JOIN powa_qualstats_quals qn ON s.queryid = qn.queryid
@@ -153,17 +154,18 @@ def qual_constants(type, filter_clause, top=1):
             FROM powa_qualstats_aggregate_constvalues_current
         ) qnc ON qn.qualid = qnc.qualid AND qn.queryid = qnc.queryid,
         LATERAL
-                unnest(%s) as t(constants,filter_ratio,count)
+                unnest(%s) as t(constants,nbfiltered,count)
         WHERE %s
         GROUP BY quals, constants, query
         ORDER BY %s
         LIMIT :top_value
     )
-    SELECT query, quals, constants as constants, filter_ratio as filter_ratio,
+    SELECT query, quals, constants as constants, nbfiltered as nbfiltered,
                 count as count,
+                filter_ratio as filter_ratio,
                 row_number() OVER (ORDER BY count desc NULLS LAST) as rownumber
         FROM sample
-    ORDER BY 6
+    ORDER BY 7
     LIMIT :top_value
     ) %s
     """ % (type, filter_clause.statement, orders[type], type)

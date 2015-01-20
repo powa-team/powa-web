@@ -20,7 +20,6 @@ from powa.sql import (Plan, format_jumbled_query,
                       resolve_quals, qual_constants)
 from powa.sql.views import (powa_getstatdata_sample,
                             kcache_getstatdata_sample,
-                            qualstat_getstatdata_sample,
                             powa_getstatdata_detailed_db,
                             qualstat_getstatdata,
                             possible_indexes)

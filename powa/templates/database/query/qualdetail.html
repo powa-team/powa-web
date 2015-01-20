@@ -7,7 +7,9 @@
     <dt>Executed:</dt><dd>{{qual["count"]}}</dd>
     </li>
     <li>
-    <dt>Filter ratio</dt><dd>{{qual["filter_ratio"]}}</dd>
+      <dt># of filtered tuples:</dt><dd>{{qual["nbfiltered"]}}</dd>
+    <li>
+    <dt>Filter ratio</dt><dd>{{"%.6g" % qual["filter_ratio"]}}</dd>
     </li>
     <li>
     <dt>Other queries</dt><dd>
