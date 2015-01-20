@@ -1,6 +1,6 @@
 define([
     'jquery',
-    'foundation',
+    'foundation/foundation.equalizer',
     'backbone',
     'powa/views/LineGraphView',
     'powa/views/BarGraphView',

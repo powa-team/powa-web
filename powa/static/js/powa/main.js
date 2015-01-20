@@ -1,5 +1,4 @@
-define([
-        'jquery',
+require(['jquery',
         'foundation/foundation',
         'underscore',
         'backbone',
@@ -13,7 +12,9 @@ define([
         'powa/utils/timeurls',
         'highlight',
         'modernizr',
-        'foundation/foundation.tooltip'],
+        'foundation/foundation.tooltip',
+        'foundation/foundation.dropdown',
+        'foundation/foundation.alert'],
         function($, Foundation, _, BackBone, DashboardView,
             Graph,
             Grid,

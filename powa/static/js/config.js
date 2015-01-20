@@ -1,7 +1,6 @@
 require.config({
   baseUrl: "/static/js/",
   paths: {
-    almond: "../bower_components/almond/almond",
     backbone: "../bower_components/backbone/backbone",
     d3: "../bower_components/d3/d3",
     foundation: "../bower_components/foundation/js/foundation",
@@ -23,18 +22,33 @@ require.config({
     "backgrid-paginator": "../bower_components/backgrid-paginator/backgrid-paginator",
     "backbone-pageable": "../bower_components/backbone-pageable/lib/backbone-pageable"
   },
-  urlArgs: new Date(),
+  urlArgs: {
+
+  },
   wrapShim: true,
   shim: {
     highlight: {
       exports: "hljs"
     },
-    foundation: [
-      "jquery"
+    "foundation/foundation": {
+      deps: [
+        "jquery"
+      ]
+    },
+    "foundation/foundation.equalizer": [
+      "foundation/foundation"
+    ],
+    "foundation/foundation.dropdown": [
+      "foundation/foundation"
+    ],
+    "foundation/foundation.tooltip": [
+      "foundation/foundation"
+    ],
+    "foundation/foundation.alert": [
+      "foundation/foundation"
     ],
     "foundation-daterangepicker": [
-      "jquery",
-      "foundation"
+      "foundation/foundation"
     ],
     backgrid: {
       deps: [

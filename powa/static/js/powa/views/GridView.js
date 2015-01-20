@@ -1,6 +1,6 @@
 define([
         'jquery',
-        'foundation',
+        'foundation/foundation.tooltip',
         'backbone',
         'powa/views/WidgetView',
         'powa/models/Grid',

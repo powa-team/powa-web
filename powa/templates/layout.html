@@ -99,9 +99,6 @@
         <script data-main="{{ static_url('js/config.js')}}" src="{{static_url('bower_components/requirejs/require.js')}}"></script>
       {% else %}
         <script data-main="{{ static_url('js/powa.min-all.js')}}" src="{{static_url('bower_components/requirejs/require.js')}}"></script>
-        <script>
-          require(["powa/main"]);
-        </script>
       {% end %}
   </body>
 </html>
