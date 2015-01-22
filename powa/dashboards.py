@@ -388,6 +388,8 @@ class MetaMetricGroup(type, JSONizable):
     def __new__(meta, name, bases, dct):
         dct['metrics'] = {}
         dct['_stubs'] = {}
+        if not isinstance(dct.get('name', ''), str):
+            raise ValueError("The metric group name must be of type str")
         for base in bases:
             if hasattr(base, '_stubs'):
                 for key, stub in base._stubs.items():
