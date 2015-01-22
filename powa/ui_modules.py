@@ -26,12 +26,12 @@ class Messages(UIModule):
 
 class MenuEntry(UIModule):
 
-    def __init__(self, title, url_name, url_params, children=None, active=False):
+    def __init__(self, title, url_name, url_params=None, children=None, active=False):
         self.title = title
         self.url_name = url_name
         self.children = children or []
-        self.url_params = url_params
-        self.active = False
+        self.url_params = url_params or {}
+        self.active = active
 
     def findMenu(self, url_name, url_params):
         if self.url_name == url_name:
@@ -50,8 +50,10 @@ class MenuEntry(UIModule):
 
     def get_breadcrumb(self):
         base = []
-        if self.active:
+        if self.active and self.url_name:
             base.append(self)
         for child in self.children:
             base.extend(child.get_breadcrumb())
         return base
+
+GlobalMenu = [MenuEntry("Config", "Overview")]

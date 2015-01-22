@@ -6,7 +6,7 @@ This module provides several classes to define a Dashboard.
 
 from powa.json import JSONizable
 from powa.framework import AuthHandler
-from powa.ui_modules import MenuEntry
+from powa.ui_modules import MenuEntry, GlobalMenu
 from powa.compat import with_metaclass, classproperty, hybridmethod
 from tornado.web import URLSpec
 from operator import attrgetter
@@ -53,7 +53,9 @@ class DashboardHandler(AuthHandler):
     @property
     def menu(self):
         params = OrderedDict(zip(self.params, self.path_args))
-        return self.get_menu(self, params)
+        new_top_level = list(GlobalMenu)
+        new_top_level.append(self.get_menu(self, params))
+        return MenuEntry(None, None, None, new_top_level, active=True)
 
 
 class MetricGroupHandler(AuthHandler):
