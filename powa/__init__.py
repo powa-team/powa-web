@@ -13,6 +13,7 @@ from powa.overview import Overview
 from powa.database import DatabaseSelector, DatabaseOverview
 from powa.query import QueryOverview
 from powa.qual import QualOverview
+from powa.config import ConfigOverview
 
 class IndexHandler(AuthHandler):
     """
@@ -35,7 +36,8 @@ URLS = [
 for dashboard in (Overview,
                   DatabaseOverview,
                   QueryOverview,
-                  QualOverview):
+                  QualOverview,
+                  ConfigOverview):
     URLS.extend(dashboard.url_specs())
 
 

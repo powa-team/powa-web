@@ -9,7 +9,7 @@ define(['backbone',  'powa/models/DataSourceCollection', 'powa/models/MetricColl
             this.set("collection", new (Backbone.PageableCollection.extend({
                 mode: "client",
                 state: {
-                    pageSize: 50
+                    pageSize: 25
                 }
             })));
             this.listenTo(this.get("common_group"), "metricgroup:dataload", this.update);
