@@ -54,7 +54,13 @@ class DashboardHandler(AuthHandler):
     def menu(self):
         params = OrderedDict(zip(self.params, self.path_args))
         new_top_level = list(GlobalMenu)
-        new_top_level.append(self.get_menu(self, params))
+        menu = self.get_menu(self, params)
+        for i, child in enumerate(GlobalMenu):
+            if child.url_name == menu.url_name:
+                new_top_level[i] = menu
+                break
+        else:
+            new_top_level.append(menu)
         return MenuEntry(None, None, None, new_top_level, active=True)
 
 

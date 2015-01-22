@@ -56,4 +56,5 @@ class MenuEntry(UIModule):
             base.extend(child.get_breadcrumb())
         return base
 
-GlobalMenu = [MenuEntry("Config", "ConfigOverview")]
+GlobalMenu = [MenuEntry("Config", "ConfigOverview"),
+              MenuEntry("Overview", "Overview")]
