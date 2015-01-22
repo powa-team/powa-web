@@ -36,6 +36,7 @@ module.exports = function(grunt) {
                     "except": ["$super"]
                 },
                 preserveLicenseComments: false,
+                generateSourceMaps: false,
                 mainConfigFile: "./powa/static/js/config.js",
                 out: "powa/static/js/powa.min-all.js",
             }
