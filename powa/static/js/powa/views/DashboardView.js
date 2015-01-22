@@ -35,7 +35,9 @@ define([
             for(var y = 0; y <= maxy.get("y"); y++){
                 var newrow = $('<div>').addClass("row"),
                     rowwidgets = this.widgets.where({y: y});
-                newrow.attr("data-equalizer", "");
+                if(rowwidgets.length > 1){
+                    newrow.attr("data-equalizer", "");
+                }
                 this.$('.widgets').append(newrow);
                 var    len = 12 / rowwidgets.length;
                 _.each(rowwidgets, function(widget) {

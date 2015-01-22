@@ -6,7 +6,12 @@ define(['backbone',  'powa/models/DataSourceCollection', 'powa/models/MetricColl
 
         initialize: function(){
             var self = this;
-            this.set("collection", new (Backbone.PageableCollection.extend({mode: "client"})));
+            this.set("collection", new (Backbone.PageableCollection.extend({
+                mode: "client",
+                state: {
+                    pageSize: 50
+                }
+            })));
             this.listenTo(this.get("common_group"), "metricgroup:dataload", this.update);
             this.listenTo(this.get("common_group"), "metricgroup:dataload-failed", function(response){
                 this.trigger("widget:dataload-failed", response);
@@ -14,7 +19,11 @@ define(['backbone',  'powa/models/DataSourceCollection', 'powa/models/MetricColl
         },
 
         update: function(data){
-            this.get("collection").reset(data);
+            var col = this.get("collection"),
+                state = col.state;
+            col.reset(data);
+            state.lastPage = Math.ceil(data.length / state.pageSize);
+            this.get("collection").getFirstPage({reset: true});
             this.trigger("widget:needrefresh");
         }
 
