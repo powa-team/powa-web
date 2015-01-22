@@ -61,7 +61,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
 class ByQueryMetricGroup(MetricGroupDef):
     """Metric group for indivual query stats (displayed on the grid)."""
     name = "all_queries"
-    xaxis = "md5query"
+    xaxis = "queryid"
     axis_type = "category"
     data_url = r"/metrics/database_all_queries/(\w+)/"
     blk_read_time = MetricDef(label="Block read time", type="duration")
