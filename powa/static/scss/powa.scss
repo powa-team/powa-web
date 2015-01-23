@@ -37,6 +37,10 @@
     overflow: hidden;
 }
 
+.offcanvas-overlap-right .left-off-canvas-menu {
+    box-shadow: 5px 10px 15px 5px rgba(0, 0, 0, 0.5);
+}
+
 .side-nav {
 
   a.close {
@@ -45,6 +49,7 @@
     &:hover {
         opacity: 0.8;
     }
+    padding-right: 5px;
   }
 
   li a.dropdown {
