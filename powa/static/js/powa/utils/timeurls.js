@@ -3,7 +3,7 @@ define(["jquery", "foundation-daterangepicker"], function($){
 
         events: {
             'change [data-role="start_date"]': "inputChange",
-            'change [data-role="enddate"]': "inputChange"
+            'change [data-role="end_date"]': "inputChange"
         },
 
         initialize: function(args){
@@ -66,6 +66,7 @@ define(["jquery", "foundation-daterangepicker"], function($){
         inputChange: function(){
             var start_date =  moment(this.startInput.val()),
                 end_date = moment(this.endInput.val());
+            this.daterangepicker.hide();
             if(start_date.isValid() && end_date.isValid()){
                 this.start_date = this.daterangepicker.startDate = start_date;
                 this.end_date = this.daterangepicker.endDate = end_date;

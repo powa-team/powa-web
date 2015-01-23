@@ -1,4 +1,5 @@
 $oil: #333333;
+$white: #FFFFFF;
 $powa_color: #859145;
 $primary-color: $powa_color;
 $secondary-color: #F9F9F9;
@@ -7,6 +8,6 @@ $row-width: 100%;
 $header-font-color: $powa_color;
 $f-dropdown-bg: $oil;
 $form-label-font-color: scale-color($powa_color, $lightness: -10%);
-$side-nav-link-color: scale-color($powa-color, $lightness: 10%);
-$side-nav-divider-color: scale-color($powa_color, $lightness: 10%);
+$side-nav-link-color: scale-color($white, $lightness: 10%);
+$side-nav-divider-color: scale-color($white, $lightness: 10%);
 $side-nav-link-bg-hover: scale-color($oil, $lightness: 20%);

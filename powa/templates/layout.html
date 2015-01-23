@@ -12,41 +12,47 @@
     {% block header %} {% end %}
   </head>
   <body>
-    <nav class="top-bar" data-topbar role="navigation">
-      <ul class="title-area">
-        <li class="name">
-        <h1><a href="#"><img src="{{
-            static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA</a></h1>
-        </li>
-        <li class="toggle-topbar menu-icon">
-        <a href="#"><span>Menu</span></a>
-        </li>
-      </ul>
-      <section class="top-bar-section">
-        {% if current_user %}
-          <ul class="right">
-            <li>
-              <div class="" type="text" id="daterangepicker">
-                <input data-role="start_date"></input>
-                <input data-role="end_date"></input>
-              </div>
-            </li>
-            <li class="title powa-text">
-              <a href="#"><span>{{title}}</span></a>
-            </li>
+    <div class="off-canvas-wrap" id="offcanvas" data-offcanvas>
+      <div class="inner-wrap">
+        <nav class="top-bar" data-topbar role="navigation">
+          <ul class="title-area">
+            <li class="name">
 
-            <li>
-              <a href="{{ reverse_url('logout')}}">Logout</a>
+            <h1><a href="#"><img src="{{
+                static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA</a></h1>
             </li>
           </ul>
+          <section class="top-bar-section">
+            <ul class="left">
+            <li>
+            <a id="menu-toggle" class="menu-icon" href="#" ><span></span></a>
+            </li>
+            </ul>
+          </section>
 
-        {% end %}
-      </section>
-    </nav>
+          <section class="top-bar-section">
+            {% if current_user %}
+              <ul class="right">
+                <li>
+                  <div class="" type="text" id="daterangepicker">
+                    <input data-role="start_date"></input>
+                    <input data-role="end_date"></input>
+                  </div>
+                </li>
+                <li class="title powa-text">
+                  <a href="#"><span>{{title}}</span></a>
+                </li>
 
+                <li>
+                  <a href="{{ reverse_url('logout')}}">Logout</a>
+                </li>
+              </ul>
 
+            {% end %}
+          </section>
+        </nav>
     <div class="row full-width">
-      <div class="large-10 medium-9 small-12 large-push-2 medium-push-3 columns  main">
+      <div class="main">
         <div class="row">
         <div>
           {% if handler.menu %}
@@ -67,13 +73,6 @@
         </div>
         {% block content %} {% end %}
       </div>
-      <div class="hide-for-small">
-        <nav class="large-2  medium-3 large-pull-10 medium-pull-9 columns sidebar">
-        {% module SideBar(handler.menu) %}
-        </nav>
-      </div>
-    </div>
-
     <footer class="row full-width" >
     <div class="large-12 columns" >
       <div class="row hide-for-small">
@@ -95,6 +94,15 @@
       </div>
     </div>
     </footer>
+    </div>
+
+      <aside class="left-off-canvas-menu" id="left-menu">
+      {% module SideBar(handler.menu) %}
+      </aside>
+      <a class="exit-off-canvas"></a>
+      </div>
+    </div>
+
       {% if handler.application.settings['debug'] %}
         <script data-main="{{ static_url('js/config.js')}}" src="{{static_url('bower_components/requirejs/require.js')}}"></script>
       {% else %}

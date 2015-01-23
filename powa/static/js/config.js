@@ -35,6 +35,9 @@ require.config({
         "jquery"
       ]
     },
+    "foundation/foundation.topbar": [
+      "foundation/foundation"
+    ],
     "foundation/foundation.equalizer": [
       "foundation/foundation"
     ],
@@ -42,6 +45,9 @@ require.config({
       "foundation/foundation"
     ],
     "foundation/foundation.tooltip": [
+      "foundation/foundation"
+    ],
+    "foundation/foundation.offcanvas": [
       "foundation/foundation"
     ],
     "foundation/foundation.alert": [
