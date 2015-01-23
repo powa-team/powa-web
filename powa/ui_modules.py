@@ -56,5 +56,5 @@ class MenuEntry(UIModule):
             base.extend(child.get_breadcrumb())
         return base
 
-GlobalMenu = [MenuEntry("Config", "ConfigOverview"),
-              MenuEntry("Overview", "Overview")]
+GlobalMenu = [MenuEntry("Server configuration", "ConfigOverview"),
+              MenuEntry("All databases", "Overview")]

@@ -102,7 +102,7 @@ class Overview(DashboardPage):
     base_url = r"/overview/"
     datasources = [GlobalDatabasesMetricGroup, ByDatabaseMetricGroup]
     dashboard = Dashboard(
-        "Overview",
+        "All databases",
         [[Graph("Query runtime per second (all databases)",
                 metrics=[GlobalDatabasesMetricGroup.avg_runtime]),
           Graph("Block access in Bps",
@@ -115,6 +115,10 @@ class Overview(DashboardPage):
                    "url_attr": "url"
                }],
                metrics=ByDatabaseMetricGroup.all())]])
+
+    @classmethod
+    def get_menutitle(cls, handler, params):
+        return "All databases"
 
     @classmethod
     def get_childmenu(cls, handler, params):
