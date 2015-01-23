@@ -37,7 +37,7 @@ class PgExtensionsMetricGroup(MetricGroupDef):
              CASE WHEN avail.name IS NULL then false ELSE true END AS available,
              CASE WHEN ins.extname IS NULL then false ELSE true END AS installed,
              CASE WHEN f.module IS NULL then false ELSE true END AS handled
-           FROM (SELECT 'pg_stat_statements' AS extname UNION SELECT 'pg_qualstats' UNION SELECT 'pg_stat_kcache' UNION SELECT 'btree_gist') s
+           FROM (SELECT 'pg_stat_statements' AS extname UNION SELECT 'pg_qualstats' UNION SELECT 'pg_stat_kcache') s
            LEFT JOIN pg_available_extensions avail on s.extname = avail.name
            LEFT JOIN pg_extension ins on s.extname = ins.extname
            LEFT JOIN powa_functions f ON s.extname = f.module
@@ -55,22 +55,22 @@ class ConfigOverview(DashboardPage):
 
     dashboard = Dashboard(
         "Configuration overview",
-         [[Grid("PostgreSQL settings",
-               columns=[{
-                   "name": "setting_name",
-                   "label": "Setting",
-                   "url_attr": "url"
-               }],
-               metrics=PgSettingsMetricGroup.all()
-               )],
-          [Grid("Extensions",
+         [[Grid("Extensions",
                columns=[{
                    "name": "extname",
                    "label": "Extensions",
                    "url_attr": "url"
                }],
                metrics=PgExtensionsMetricGroup.all()
-          )]
-         ]
+          ),
+          Grid("PostgreSQL settings",
+               columns=[{
+                   "name": "setting_name",
+                   "label": "Setting",
+                   "url_attr": "url"
+               }],
+               metrics=PgSettingsMetricGroup.all()
+               )
+         ]]
     )
 
