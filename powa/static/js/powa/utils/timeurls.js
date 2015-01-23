@@ -42,6 +42,8 @@ define(["jquery", "foundation-daterangepicker"], function($){
                 var params = this.parseUrl(window.location.search),
                     self = this,
                     defaultrange = this.daterangepicker.ranges['hour'];
+                this.startInput.val(start_date.format(this.format));
+                this.endInput.val(end_date.format(this.format));
                 // If the range is the default range, ignore
                 if(start_date.isSame(defaultrange[0]) && end_date.isSame(defaultrange[1])){
                     return;
