@@ -64,17 +64,17 @@ class ByQueryMetricGroup(MetricGroupDef):
     xaxis = "queryid"
     axis_type = "category"
     data_url = r"/metrics/database_all_queries/(\w+)/"
-    blk_read_time = MetricDef(label="Block read time", type="duration")
-    blk_write_time = MetricDef(label="Block write time", type="duration")
-    calls = MetricDef(label="#Calls", type="string")
-    runtime = MetricDef(label="Runtime", type="duration")
-    avg_runtime = MetricDef(label="Avg runtime", type="duration")
-    shared_blks_read = MetricDef(label="Blocks read", type="size")
-    shared_blks_hit = MetricDef(label="Blocks hit", type="size")
-    shared_blks_dirtied = MetricDef(label="Blocks dirtied", type="size")
-    shared_blks_written = MetricDef(label="Blocks written", type="size")
-    temp_blks_read = MetricDef(label="Temp Blocks written", type="size")
-    temp_blks_written = MetricDef(label="Temp Blocks written", type="size")
+    calls = MetricDef(label="#", type="string")
+    runtime = MetricDef(label="Time", type="duration")
+    avg_runtime = MetricDef(label="Avg time", type="duration")
+    blk_read_time = MetricDef(label="Read", type="duration")
+    blk_write_time = MetricDef(label="Write", type="duration")
+    shared_blks_read = MetricDef(label="Read", type="size")
+    shared_blks_hit = MetricDef(label="Hit", type="size")
+    shared_blks_dirtied = MetricDef(label="Dirtied", type="size")
+    shared_blks_written = MetricDef(label="Written", type="size")
+    temp_blks_read = MetricDef(label="Read", type="size")
+    temp_blks_written = MetricDef(label="Written", type="size")
 
     # TODO: refactor with GlobalDatabasesMetricGroup
     @property
@@ -128,6 +128,25 @@ class DatabaseOverview(DashboardPage):
                 metrics=[DatabaseOverviewMetricGroup.total_blks_read,
                          DatabaseOverviewMetricGroup.total_blks_hit])],
          [Grid("Details for all queries",
+                toprow=[{
+                    'merge': True
+                },{
+                    'name': 'Execution',
+                    'merge': False,
+                    'colspan': 3
+                }, {
+                    'name': 'I/O Time',
+                    'merge': False,
+                    'colspan': 2
+                }, {
+                    'name': 'Blocks',
+                    'merge': False,
+                    'colspan': 4,
+                }, {
+                    'name': 'Temp blocks',
+                    'merge': False,
+                    'colspan': 2
+                }],
                columns=[{
                    "name": "query",
                    "label": "Query",

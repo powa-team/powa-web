@@ -44,6 +44,40 @@ define([
         }
     });
 
+    var ComposedHeader = Backgrid.Header.extend({
+        initialize: function(options) {
+            this.toprow = options.toprow;
+            this.columns = options.columns;
+            if(this.toprow){
+                this.toprow = new Backbone.Collection(options.toprow);
+                var i = 0;
+            }
+            ComposedHeader.__super__.initialize.apply(this, arguments);
+        },
+
+        render: function () {
+            if(this.toprow){
+                var tr = $("<tr>");
+                this.toprow.each(function(col){
+                    var cell = $("<th>")
+                            .attr("colspan",  col.get("colspan") || 1)
+                            .append(
+                                    $("<a>")
+                                    .attr("title", col.get("name"))
+                                    .html(col.get("name")));
+                    cell.addClass("renderable");
+                    if(col.get("merge")){
+                        cell.addClass("merge");
+                    }
+                    tr.append(cell);
+                });
+                this.$el.append(tr);
+            }
+            this.$el.append(this.row.render().$el);
+            return this;
+        }
+    });
+
     Backgrid.Extension.DurationCell = Backgrid.Cell.extend({
         className: "duration",
         formatter: DurationFormatter
@@ -91,6 +125,8 @@ define([
                 this.grid = new Backgrid.Grid({
                     columns: this.getColumnDefinitions(),
                     collection: this.model.get("collection"),
+                    header: ComposedHeader,
+                    toprow: this.model.get("toprow")
                 });
                 this.grid.body.emptyText = "No data";
                 this.filter = new Backgrid.Extension.ClientSideFilter({

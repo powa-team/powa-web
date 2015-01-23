@@ -83,10 +83,16 @@
   }
 
   thead th {
-    vertical-align: bottom;
+    vertical-align: top;
     background-color: #f9f9f9;
+    border-right: 1px solid #DDD;
     a {
       display: block;
+    }
+
+
+    &.merge {
+        border-bottom: none;
     }
   }
 

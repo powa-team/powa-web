@@ -6687,10 +6687,13 @@ th.hide-for-touch {
       cursor: pointer;
       text-decoration: none; }
   .backgrid thead th {
-    vertical-align: bottom;
-    background-color: #f9f9f9; }
+    vertical-align: top;
+    background-color: #f9f9f9;
+    border-right: 1px solid #DDD; }
     .backgrid thead th a {
       display: block; }
+    .backgrid thead th.merge {
+      border-bottom: none; }
   .backgrid tbody tr.empty {
     font-style: italic;
     color: gray; }
@@ -7029,15 +7032,6 @@ pre .tex .formula {
 
 .sidebar .side-nav li {
   background-color: #353535; }
-
-[data-magellan-expedition] {
-  min-width: inherit;
-  padding: 0; }
-  [data-magellan-expedition] ul {
-    margin-bottom: 0; }
-
-.magellan-container {
-  padding: 1.5rem; }
 
 .side-nav li a.dropdown {
   position: relative;
