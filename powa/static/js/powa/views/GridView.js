@@ -23,6 +23,15 @@ define([
         }
     };
 
+    var BoolFormatter = {
+      fromRaw: function(rawData){
+          if(rawData == true){
+              return "☑";
+          }
+          return "☒";
+      }
+    };
+
     var BaseCell = Backgrid.Cell.extend({
         initialize: function(options){
             BaseCell.__super__.initialize.apply(this, arguments);
@@ -81,6 +90,10 @@ define([
     Backgrid.Extension.DurationCell = Backgrid.Cell.extend({
         className: "duration",
         formatter: DurationFormatter
+    });
+    Backgrid.Extension.BoolCell = Backgrid.Cell.extend({
+        className: "bool",
+        formatter: BoolFormatter
     });
     Backgrid.Extension.SizeCell = Backgrid.Cell.extend({
         className: "size",

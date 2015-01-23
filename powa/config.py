@@ -29,9 +29,9 @@ class PgExtensionsMetricGroup(MetricGroupDef):
     xaxis = "extname"
     data_url = r"/config/pg_extensions/"
     axis_type = "category"
-    available = MetricDef(label="Extension available", type="string")
-    installed = MetricDef(label="Extension installed", type="string")
-    handled = MetricDef(label="Extension handled", type="string")
+    available = MetricDef(label="Extension available", type="bool")
+    installed = MetricDef(label="Extension installed", type="bool")
+    handled = MetricDef(label="Extension handled", type="bool")
     query = """
            SELECT DISTINCT s.extname,
              CASE WHEN avail.name IS NULL then false ELSE true END AS available,
