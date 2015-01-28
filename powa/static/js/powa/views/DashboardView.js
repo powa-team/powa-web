@@ -55,6 +55,8 @@ define([
                         view.from_date = this.from_date;
                         view.to_date = this.to_date;
                         this.listenTo(view, "widget:update", this.postRender, this);
+                        this.listenTo(view, "widget:zoomin", this.zoomIn, this);
+                        this.listenTo(view, "widget:updateperiod", this.updatePeriod, this);
                         widgetcontainer.append(view.render().el);
                         this.views.push(view);
                     } catch(e) {
@@ -95,17 +97,31 @@ define([
             this.layout();
         },
 
-        updatePeriod: function(startDate, endDate){
-            this.from_date = startDate;
-            this.to_date = endDate;
-            _.each(this.views, function(widget){
-                widget.from_date = this.from_date;
-                widget.to_date = this.to_date;
-                widget.showload();
-            }, this);
+        refreshSources: function(startDate, endDate){
             this.data_sources.each(function(data_source){
                 data_source.update(startDate, endDate);
             });
+        },
+
+        zoomIn: function(startDate, endDate){
+            _.each(this.views, function(widget){
+                widget.zoomIn(startDate, endDate);
+            }, this);
+            this.refreshSources(startDate, endDate);
+        },
+
+        updatePeriod: function(startDate, endDate){
+            var self = this;
+            if(startDate.isValid()){
+                this.from_date = startDate;
+            }
+            if(endDate.isValid()){
+                this.to_date = endDate;
+            }
+            _.each(this.views, function(widget){
+                widget.updatePeriod(this.from_date, this.to_date);
+            }, this);
+            this.refreshSources(this.from_date, this.to_date);
         },
 
     });

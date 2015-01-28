@@ -8,6 +8,17 @@
 @import '../bower_components/backgrid-filter/backgrid-filter.scss';
 @import '../bower_components/backgrid-paginator/backgrid-paginator.scss';
 @import '../libs/highlight/styles/solarized_dark.scss';
+@import 'foundation-icons.scss';
+
+.widget-icon-bar {
+@include icon-bar(
+  // Set the size of the icons within the icon bar. Default: $icon-bar-icon-size.
+  $icon-size: 1rem,
+  $image-height: 1rem,
+  $padding: 0,
+  $disabled: true
+);
+}
 
 .sidebar .side-nav li {
   background-color: scale-color($oil, $lightness: 1%);

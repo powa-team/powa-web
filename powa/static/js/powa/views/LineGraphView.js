@@ -1,14 +1,15 @@
-define(["rickshaw", "d3", "powa/views/GraphView"], function(rickshaw, d3, GraphView){
+define(["rickshaw", "d3", "powa/views/GraphView",
+        "powa/views/GraphPreview", "moment"], function(rickshaw, d3, GraphView, GraphPreview, moment){
     return GraphView.extend({
 
         initGraph: function(series){
             this.graph = new Rickshaw.Graph($.extend({}, this.model.attributes, {
                         element: this.graph_elem,
-                        height: this.$el.innerHeight(),
-                        width: this.$el.innerWidth() - 40,
+                        width: this.$graph_elem.parent().innerWidth(),
                         xScale: d3.time.scale(),
                         renderer: "line",
-                        series: series || []
+                        series: series || [],
+                        interpolation: 'linear'
             }));
             var time = new Rickshaw.Fixtures.Time();
             var seconds = time.unit('second');
@@ -18,9 +19,26 @@ define(["rickshaw", "d3", "powa/views/GraphView"], function(rickshaw, d3, GraphV
             } );
         },
 
+        update: function(newseries){
+            GraphView.prototype.update.call(this, newseries);
+            if(this.preview){
+                var domain = this.graph.dataDomain();
+                console.log(domain);
+                this.graph.window.xMin = domain[0];
+                this.graph.window.xMax = domain[1];
+                if(!this.preview.rendered){
+                    this.preview.range = domain;
+                }
+                this.preview.render();
+            }
+        },
+
+
         onResize: function(){
             this.preview.configure({width: this.graph.width});
         },
+
+
 
         initGoodies: function(){
             GraphView.prototype.initGoodies.call(this);
@@ -38,11 +56,29 @@ define(["rickshaw", "d3", "powa/views/GraphView"], function(rickshaw, d3, GraphV
                 }
             });
 
-            this.preview = new Rickshaw.Graph.RangeSlider.Preview({
+            this.preview = new GraphPreview({
                 graph: this.graph,
-                element: this.$el.find(".graph_preview").get(0)
+                element: this.$el.find(".graph_preview").get(0),
+                range: this.graph.dataDomain()
             });
-        }
+            this.preview.onSlide(function(graph, xmin, xmax){
+                self.trigger("widget:zoomin", moment.unix(xmin), moment.unix(xmax));
+            });
+        },
+
+        updatePeriod: function(startDate, endDate){
+            if(this.preview){
+                this.preview.rendered = false;
+            }
+            this.from_date = startDate;
+            this.to_date = endDate;
+            this.showload();
+        },
+
+
+        addPreview: function(xmin, xmax){
+
+        },
 
     });
 });

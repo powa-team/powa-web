@@ -22,7 +22,6 @@ define([
                 "percent": function(value){ return Math.round(value * 100) / 100 + '%'}
             },
 
-
             initialize: function(){
                 var self = this;
                 this.listenTo(this.model, "widget:needrefresh", this.update);
@@ -61,6 +60,7 @@ define([
             updateScales: function(series){
                 var self = this;
                 $.each(this.y_axes, function(key, axis){
+                    return;
                     var unit = key;
                     var ymin = +Infinity,
                         ymax = -Infinity;
@@ -84,7 +84,6 @@ define([
                         serie.scale = axis.scale;
                     });
                 });
-                this.graph.update();
             },
 
             adaptGraph: function(series){},
@@ -129,8 +128,6 @@ define([
                     graph: this.graph,
                     element: this.$el.find('.graph_legend').get(0)
                 });
-
-
             },
 
 
@@ -158,14 +155,12 @@ define([
             onResize: function(){},
 
             update: function(newseries){
+                this.hideload();
+                this.remove_nodata();
                 if(newseries.length == 0){
-                    this.hideload();
                     this.nodata();
-                    return;
                 }
                 this.getGraph(newseries);
-                this.remove_nodata();
-                this._resize();
                 this.graph.update();
                 if(this.legend){
                     this.legend.render();
@@ -178,13 +173,16 @@ define([
                         legend: this.legend
                     });
                 }
-                this.hideload();
                 this.trigger("widget:update");
             },
 
             render: function(){
                 return this;
-            }
+            },
+
+
+
+
         });
     return GraphView;
 

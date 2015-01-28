@@ -27,6 +27,16 @@ define([
             if(this.spinner){
                 this.spinner.stop();
             }
+        },
+
+        updatePeriod: function(startDate, endDate){
+            this.from_date = startDate
+            this.to_date = endDate;
+            this.showload();
+        },
+
+        zoomIn: function(startDate, endDate){
+            this.showload();
         }
 
 
