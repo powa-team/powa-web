@@ -31,9 +31,11 @@ def to_epoch(column):
 def total_read(c):
     bs = block_size.c.block_size
     return (sum(c.shared_blks_read + c.local_blks_read
-               + c.temp_blks_read) * bs).label("total_blks_read")
+               + c.temp_blks_read) * bs /
+            total_measure_interval(c.mesure_interval)).label("total_blks_read")
 
 def total_hit(c):
     bs = block_size.c.block_size
-    return ((sum(c.shared_blks_hit + c.local_blks_hit) * bs)
+    return ((sum(c.shared_blks_hit + c.local_blks_hit) * bs /
+            total_measure_interval(c.mesure_interval))
             .label("total_blks_hit"))
