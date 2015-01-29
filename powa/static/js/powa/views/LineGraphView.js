@@ -23,7 +23,6 @@ define(["rickshaw", "d3", "powa/views/GraphView",
             GraphView.prototype.update.call(this, newseries);
             if(this.preview){
                 var domain = this.graph.dataDomain();
-                console.log(domain);
                 this.graph.window.xMin = domain[0];
                 this.graph.window.xMax = domain[1];
                 if(!this.preview.rendered){
