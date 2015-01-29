@@ -31,6 +31,7 @@ define(["rickshaw", "d3", "powa/views/GraphView",
                 }
                 this.preview.render();
             }
+            this.graph.render();
         },
 
 
