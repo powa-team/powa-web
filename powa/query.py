@@ -6,7 +6,7 @@ from tornado.web import HTTPError
 from sqlalchemy.sql import (
     bindparam, text, column, select, table,
     literal_column, case, cast, ColumnCollection,
-    func)
+    func, extract)
 from sqlalchemy.sql.functions import sum
 from sqlalchemy.types import Numeric
 
@@ -23,7 +23,7 @@ from powa.sql.views import (powa_getstatdata_sample,
                             powa_getstatdata_detailed_db,
                             qualstat_getstatdata,
                             possible_indexes)
-from powa.sql.utils import block_size, mulblock, greatest, to_epoch
+from powa.sql.utils import block_size, mulblock, greatest, to_epoch, total_measure_interval
 from powa.sql.tables import powa_statements
 
 class QueryOverviewMetricGroup(MetricGroupDef):
@@ -79,22 +79,24 @@ class QueryOverviewMetricGroup(MetricGroupDef):
         c = query.c
         total_blocks = ((c.shared_blks_read + c.shared_blks_hit)
                         .label("total_blocks"))
+        def bps(col):
+            return (mulblock(col) / extract("epoch", greatest(c.mesure_interval, '1 second'))).label(col.name)
         cols = [to_epoch(c.ts),
                 c.rows,
                 c.calls,
                 case([(total_blocks == 0, 0)],
                      else_=cast(c.shared_blks_hit, Numeric) * 100 / total_blocks
                      ).label("hit_ratio"),
-                mulblock(c.shared_blks_read),
-                mulblock(c.shared_blks_hit),
-                mulblock(c.shared_blks_dirtied),
-                mulblock(c.shared_blks_written),
-                mulblock(c.local_blks_read),
-                mulblock(c.local_blks_hit),
-                mulblock(c.local_blks_dirtied),
-                mulblock(c.local_blks_written),
-                mulblock(c.temp_blks_read),
-                mulblock(c.temp_blks_written),
+                bps(c.shared_blks_read),
+                bps(c.shared_blks_hit),
+                bps(c.shared_blks_dirtied),
+                bps(c.shared_blks_written),
+                bps(c.local_blks_read),
+                bps(c.local_blks_hit),
+                bps(c.local_blks_dirtied),
+                bps(c.local_blks_written),
+                bps(c.temp_blks_read),
+                bps(c.temp_blks_written),
                 c.blk_read_time,
                 c.blk_write_time,
                 (c.runtime / greatest(c.calls, 1)).label("avg_runtime")]
