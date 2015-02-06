@@ -5,3 +5,6 @@ powa/static/build/
 **/*.pyc
 **/__pycache__/
 powa.conf
+build
+powa.egg.info
+dist
