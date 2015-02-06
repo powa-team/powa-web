@@ -31,6 +31,7 @@ setup(
     "Topic :: Database :: Front-Ends"],
     package_data={
         'powa': [
+            'powa.wsgi',
             'templates/*.html',
             'static/css/*',
             'static/js/powa.min-all.js',
