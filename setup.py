@@ -11,7 +11,7 @@ with open('powa/__init__.py') as f:
 requires = ['sqlalchemy', 'tornado', 'psycopg2'],
 
 setup(
-    name='powa',
+    name='powa-web',
     version=__VERSION__,
     author='Dalibo',
     license='Postgresql',
