@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Powa main application.
 """
@@ -5,7 +6,7 @@ Powa main application.
 __VERSION__ = '0.0.1'
 
 from tornado.web import Application, URLSpec as U
-from tornado.options import define, parse_config_file
+from tornado.options import define, parse_config_file, options
 from powa import ui_modules, ui_methods
 from powa.framework import AuthHandler
 from powa.user import LoginHandler, LogoutHandler
@@ -14,6 +15,8 @@ from powa.database import DatabaseSelector, DatabaseOverview
 from powa.query import QueryOverview
 from powa.qual import QualOverview
 from powa.config import ConfigOverview
+import os
+import sys
 
 class IndexHandler(AuthHandler):
     """
@@ -41,18 +44,49 @@ for dashboard in (Overview,
     URLS.extend(dashboard.url_specs())
 
 
+POWA_ROOT = os.path.dirname(__file__)
+CONF_LOCATIONS=['/etc/powa.conf',
+        os.path.expanduser('~/.config/powa.conf'),
+        os.path.expanduser('~/.powa.conf'),
+        'powa.conf']
+
+
+SAMPLE_CONFIG_FILE="""
+servers={
+  'main': {
+    'host': 'localhost',
+    'port': '5432',
+    'database': 'powa'
+  }
+}
+cookie_secret="SUPERSECRET_THAT_YOU_SHOULD_CHANGE"
+"""
+
 def make_app(**kwargs):
     """
     Parse the config file and instantiate a tornado app.
     """
     define("servers", type=dict)
-    parse_config_file("powa.conf")
+    define("cookie_secret", type=str)
+    for possible_config in CONF_LOCATIONS:
+        try:
+            parse_config_file(possible_config)
+        except:
+            pass
+    for key in ('servers', 'cookie_secret'):
+        if getattr(options, key, None) is None:
+            print("You should define a server and cookie_secret in your configuration file.")
+            print("""Place and adapt the following content in one of those locations:""")
+            print("\n\t".join([""] + CONF_LOCATIONS))
+            print(SAMPLE_CONFIG_FILE)
+            sys.exit(-1)
+
     return Application(
         URLS,
         ui_modules=ui_modules,
         ui_methods=ui_methods,
         login_url="/login/",
-        static_path="powa/static",
-        cookie_secret="kaljlkdjqlk",
-        template_path="powa/templates",
+        static_path=os.path.join(POWA_ROOT, "static"),
+        cookie_secret=options.cookie_secret,
+        template_path=os.path.join(POWA_ROOT,  "templates"),
         **kwargs)
