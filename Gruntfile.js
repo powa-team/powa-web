@@ -23,6 +23,16 @@ module.exports = function(grunt) {
                 ext: ".scss"
             }
             ]
+        },
+        requirejs: {
+            files: [
+            {    
+                cwd: 'powa:static/',
+                src: ['bower_components/requirejs/require.js'],
+                dest: ['powa/static/js/'],
+                filter: 'isFile'
+            }
+            ]
         }
     },
     requirejs: {
