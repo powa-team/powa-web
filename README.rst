@@ -1,3 +1,8 @@
+
+.. image:: http://dalibo.github.io/powa/img/logo.png
+    :alt: PoWA logo
+    :align: center
+    
 PoWA UI
 =======
 
