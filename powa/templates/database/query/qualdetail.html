@@ -17,9 +17,7 @@
         <ul class="unstyled">
             {% for md5query, query in other_queries.items() %}
             <li>
-                <a data-url-has-params
-            href="{{reverse_url_with_params("QueryOverview", url_args=[database,
-            md5query])}}">
+                <a data-url-has-params href="{{reverse_url_with_params("QueryOverview", url_args=[database, md5query])}}">
                 <pre class="sql"><code>{{query}}</code></pre>
                 </a>
             </li>

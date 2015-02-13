@@ -311,17 +311,15 @@ class QueryOverview(DashboardPage):
                    QueryExplains, QueryIndexes, QualList]
     parent = DatabaseOverview
 
-    def __init__(self, *args, **kwargs):
-        self._dashboard = None
-        super(QueryOverview, self).__init__(*args, **kwargs)
-
     @classmethod
     def get_menutitle(cls, handler, params):
         return "Query detail"
 
     @property
     def dashboard(self):
-        if self._dashboard:
+        # This COULD be initialized in the constructor, but tornado < 3 doesn't
+        # call it
+        if getattr(self, '_dashboard', None) is not None:
             return self._dashboard
         hit_ratio_graph = Graph("Hit ratio",
                                 metrics=[QueryOverviewMetricGroup.hit_ratio],

@@ -17,6 +17,7 @@ setup(
     license='Postgresql',
     packages=find_packages(),
     install_requires=requires,
+    url="http://dalibo.github.io/powa",
     description="A User Interface for the PoWA project",
     long_description="See http://dalibo.github.io/powa",
     scripts=['powa-web'],
@@ -32,7 +33,7 @@ setup(
     package_data={
         'powa': [
             'powa.wsgi',
-            'templates/*.html',
+            'templates/**/*.html',
             'static/css/*',
             'static/js/powa.min-all.js',
             'static/js/config.js',

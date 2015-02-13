@@ -26,6 +26,9 @@ class DashboardHandler(AuthHandler):
         self.params = params
 
     def get(self, *args):
+        # Compatibility for tornado < 3:
+        if not hasattr(self, "path_args"):
+            self.path_args = args
         params = OrderedDict(zip(self.params,
                                  args))
         param_rows = []

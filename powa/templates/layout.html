@@ -18,8 +18,7 @@
           <ul class="title-area">
             <li class="name">
 
-            <h1><a href="#"><img src="{{
-                static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA</a></h1>
+            <h1><a href="#"><img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA</a></h1>
             </li>
           </ul>
           <section class="top-bar-section">
@@ -60,8 +59,7 @@
             {% set last = len(handler.menu.get_breadcrumb()) - 1 %}
             {% for i, crumb_item in enumerate(handler.menu.get_breadcrumb()) %}
             <li class="{{'current' if last == i else ''}}">
-            <a data-url-has-params href="{{
-              reverse_url_with_params(crumb_item.url_name, url_args=crumb_item.url_params.values())}}">{{crumb_item.title}}</a>
+            <a data-url-has-params href="{{ reverse_url_with_params(crumb_item.url_name, url_args=crumb_item.url_params.values())}}">{{crumb_item.title}}</a>
             </li>
             {% end %}
           </ul>
