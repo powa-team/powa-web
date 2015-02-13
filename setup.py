@@ -8,7 +8,11 @@ with open('powa/__init__.py') as f:
             __VERSION__ = line.split('=')[1].replace("'", '').strip()
 
 
-requires = ['sqlalchemy', 'tornado', 'psycopg2'],
+requires = [
+    'sqlalchemy>=0.7.2',
+    'tornado>=2.0',
+    'psycopg2'
+]
 
 setup(
     name='powa-web',
@@ -17,6 +21,7 @@ setup(
     license='Postgresql',
     packages=find_packages(),
     install_requires=requires,
+    include_package_data=True,
     url="http://dalibo.github.io/powa",
     description="A User Interface for the PoWA project",
     long_description="See http://dalibo.github.io/powa",
@@ -29,16 +34,5 @@ setup(
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 2",
     "Programming Language :: Python :: 3",
-    "Topic :: Database :: Front-Ends"],
-    package_data={
-        'powa': [
-            'powa.wsgi',
-            'templates/**/*.html',
-            'static/css/*',
-            'static/js/powa.min-all.js',
-            'static/js/config.js',
-            'static/js/require.js',
-            'static/img/**/*',
-        ]
-    }
+    "Topic :: Database :: Front-Ends"]
 )
