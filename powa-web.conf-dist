@@ -5,4 +5,4 @@ servers={
     'database': 'powa'
   }
 }
-cookie_secrets="SUPERSECRET_THAT_YOU_SHOULD_CHANGE"
+cookie_secret="SUPERSECRET_THAT_YOU_SHOULD_CHANGE"

@@ -5,3 +5,4 @@ recursive-include  powa/static/img *
 include powa/static/js/powa.min-all.js
 include powa/static/js/config.js
 include powa/static/js/require.js
+include powa-web.conf-dist

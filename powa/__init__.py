@@ -45,10 +45,10 @@ for dashboard in (Overview,
 
 
 POWA_ROOT = os.path.dirname(__file__)
-CONF_LOCATIONS=['/etc/powa.conf',
-        os.path.expanduser('~/.config/powa.conf'),
-        os.path.expanduser('~/.powa.conf'),
-        'powa.conf']
+CONF_LOCATIONS=['/etc/powa-web.conf',
+        os.path.expanduser('~/.config/powa-web.conf'),
+        os.path.expanduser('~/.powa-web.conf'),
+        './powa-web.conf']
 
 
 SAMPLE_CONFIG_FILE="""
@@ -71,7 +71,7 @@ def make_app(**kwargs):
     for possible_config in CONF_LOCATIONS:
         try:
             parse_config_file(possible_config)
-        except:
+        except Exception as e:
             pass
     for key in ('servers', 'cookie_secret'):
         if getattr(options, key, None) is None:
