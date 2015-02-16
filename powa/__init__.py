@@ -2,11 +2,14 @@ from __future__ import print_function
 """
 Powa main application.
 """
+import os
 
 __VERSION__ = '0.0.4'
+POWA_ROOT = os.path.dirname(__file__)
 
 from tornado.web import Application, URLSpec as U
-from tornado.options import define, parse_config_file, options
+from powa.options import parse_options
+from tornado.options import options
 from powa import ui_modules, ui_methods
 from powa.framework import AuthHandler
 from powa.user import LoginHandler, LogoutHandler
@@ -15,8 +18,7 @@ from powa.database import DatabaseSelector, DatabaseOverview
 from powa.query import QueryOverview
 from powa.qual import QualOverview
 from powa.config import ConfigOverview
-import os
-import sys
+
 
 class IndexHandler(AuthHandler):
     """
@@ -35,7 +37,6 @@ URLS = [
 ]
 
 
-
 for dashboard in (Overview,
                   DatabaseOverview,
                   QueryOverview,
@@ -44,42 +45,11 @@ for dashboard in (Overview,
     URLS.extend(dashboard.url_specs())
 
 
-POWA_ROOT = os.path.dirname(__file__)
-CONF_LOCATIONS=['/etc/powa-web.conf',
-        os.path.expanduser('~/.config/powa-web.conf'),
-        os.path.expanduser('~/.powa-web.conf'),
-        './powa-web.conf']
-
-
-SAMPLE_CONFIG_FILE="""
-servers={
-  'main': {
-    'host': 'localhost',
-    'port': '5432',
-    'database': 'powa'
-  }
-}
-cookie_secret="SUPERSECRET_THAT_YOU_SHOULD_CHANGE"
-"""
-
 def make_app(**kwargs):
     """
     Parse the config file and instantiate a tornado app.
     """
-    define("servers", type=dict)
-    define("cookie_secret", type=str)
-    for possible_config in CONF_LOCATIONS:
-        try:
-            parse_config_file(possible_config)
-        except Exception as e:
-            pass
-    for key in ('servers', 'cookie_secret'):
-        if getattr(options, key, None) is None:
-            print("You should define a server and cookie_secret in your configuration file.")
-            print("""Place and adapt the following content in one of those locations:""")
-            print("\n\t".join([""] + CONF_LOCATIONS))
-            print(SAMPLE_CONFIG_FILE)
-            sys.exit(-1)
+    parse_options()
 
     return Application(
         URLS,
