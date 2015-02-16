@@ -81,14 +81,16 @@ class QueryOverviewMetricGroup(MetricGroupDef):
         c = query.c
         total_blocks = ((c.shared_blks_read + c.shared_blks_hit)
                         .label("total_blocks"))
+
         def bps(col):
-            return (mulblock(col) / extract("epoch", greatest(c.mesure_interval, '1 second'))).label(col.name)
+            ts = extract("epoch", greatest(c.mesure_interval, '1 second'))
+            return (mulblock(col) / ts).label(col.name)
         cols = [to_epoch(c.ts),
                 c.rows,
                 c.calls,
                 case([(total_blocks == 0, 0)],
-                     else_=cast(c.shared_blks_hit, Numeric) * 100 / total_blocks
-                     ).label("hit_ratio"),
+                     else_=cast(c.shared_blks_hit, Numeric) * 100 /
+                     total_blocks).label("hit_ratio"),
                 bps(c.shared_blks_read),
                 bps(c.shared_blks_hit),
                 bps(c.shared_blks_dirtied),
@@ -115,11 +117,11 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                 .alias())
             kc = kcache_query.c
             sys_hits = (greatest(mulblock(c.shared_blks_read) -
-                              kc.reads, 0)
+                                 kc.reads, 0)
                         .label("kcache_hitblocks"))
             sys_hitratio = (cast(sys_hits, Numeric) * 100 /
                             mulblock(total_blocks))
-            disk_hit_ratio = (kc.reads  /
+            disk_hit_ratio = (kc.reads /
                               mulblock(total_blocks))
             cols.extend([
                 kc.reads,
@@ -136,8 +138,8 @@ class QueryOverviewMetricGroup(MetricGroupDef):
         else:
             cols.extend([
                 case([(total_blocks == 0, 0)],
-                     else_=cast(c.shared_blks_read, Numeric) * 100 / total_blocks
-                     ).label("miss_ratio")
+                     else_=cast(c.shared_blks_read, Numeric) * 100 /
+                     total_blocks).label("miss_ratio")
             ])
 
         return (select(cols)
@@ -162,19 +164,20 @@ class QueryIndexes(ContentWidget):
         c = inner_cc(base_query)
         base_query.append_from(text("""LATERAL unnest(quals) as qual"""))
         base_query = (base_query
-                    .where(c.queryid == query)
-                    .having(func.bool_or(column('eval_type') == 'f'))
-                    .having(c.count > 1000)
-                    .having(c.filter_ratio > 0.5)
-                    .params(**{'from': '-infinity',
-                                'to': 'infinity'}))
+                      .where(c.queryid == query)
+                      .having(func.bool_or(column('eval_type') == 'f'))
+                      .having(c.count > 1000)
+                      .having(c.filter_ratio > 0.5)
+                      .params(**{'from': '-infinity',
+                                 'to': 'infinity'}))
         optimizable = list(self.execute(base_query, params={'query': query}))
         optimizable = resolve_quals(self.connect(database=database),
                                     optimizable,
                                     'quals')
         qual_indexes = {}
         for line in optimizable:
-            qual_indexes[line['where_clause']] = possible_indexes(line['quals'])
+            qual_indexes[line['where_clause']] = possible_indexes(
+                line['quals'])
         self.render("database/query/indexes.html", indexes=qual_indexes)
 
 
@@ -195,11 +198,18 @@ class QueryExplains(ContentWidget):
                       'to_json(most_filtering) as "most filtering"',
                       'to_json(least_filtering) as "least filtering"',
                       'to_json(most_executed) as "most executed"'])
-               .select_from(qual_constants("most_filtering", condition).alias("most_filtering")
-               .join(qual_constants("least_filtering", condition).alias("least_filtering"),
-                     text("most_filtering.rownumber = least_filtering.rownumber"))
-               .join(qual_constants("most_executed", condition).alias("most_executed"),
-                     text("most_executed.rownumber = least_filtering.rownumber"))))
+               .select_from(
+                   qual_constants("most_filtering", condition)
+                   .alias("most_filtering")
+                   .join(
+                       qual_constants("least_filtering", condition)
+                       .alias("least_filtering"),
+                       text("most_filtering.rownumber = "
+                            "least_filtering.rownumber"))
+                   .join(qual_constants("most_executed", condition)
+                         .alias("most_executed"),
+                         text("most_executed.rownumber = "
+                              "least_filtering.rownumber"))))
         params = {"database": database, "query": query,
                   "from": self.get_argument("from"),
                   "to": self.get_argument("to")}
@@ -358,10 +368,13 @@ class QueryOverview(DashboardPage):
                 Graph("CPU time",
                       metrics=[QueryOverviewMetricGroup.user_time,
                                QueryOverviewMetricGroup.system_time])]])
-            hit_ratio_graph.metrics.append(QueryOverviewMetricGroup.sys_hit_ratio)
-            hit_ratio_graph.metrics.append(QueryOverviewMetricGroup.disk_hit_ratio)
+            hit_ratio_graph.metrics.append(
+                QueryOverviewMetricGroup.sys_hit_ratio)
+            hit_ratio_graph.metrics.append(
+                QueryOverviewMetricGroup.disk_hit_ratio)
         else:
-            hit_ratio_graph.metrics.append(QueryOverviewMetricGroup.miss_ratio)
+            hit_ratio_graph.metrics.append(
+                QueryOverviewMetricGroup.miss_ratio)
 
         if self.has_extension("pg_qualstats"):
             self._dashboard.widgets.extend([[
