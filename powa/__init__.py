@@ -3,7 +3,7 @@ from __future__ import print_function
 Powa main application.
 """
 
-__VERSION__ = '0.0.3'
+__VERSION__ = '0.0.4'
 
 from tornado.web import Application, URLSpec as U
 from tornado.options import define, parse_config_file, options
