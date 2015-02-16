@@ -4,10 +4,11 @@ from powa.dashboards import (
     DashboardPage,
     ContentWidget)
 from sqlalchemy.sql import (
-    text, ColumnCollection, bindparam, table, select,
+    text, bindparam, table, select,
     literal_column, column, cast, case)
 from sqlalchemy.types import Numeric
 from powa.sql import qual_constants, resolve_quals, func
+from powa.sql.utils import inner_cc
 from powa.query import QueryOverview
 from powa.sql.views import qualstat_getstatdata, qualstat_getstatdata
 
@@ -31,7 +32,7 @@ class QualConstantsMetricGroup(MetricGroupDef):
             qn.qualid = :qual AND
             coalesce_range && tstzrange(:from, :to)"""), top=10))
         base = qualstat_getstatdata()
-        c = ColumnCollection(*base.inner_columns)
+        c = inner_cc(base)
         base = base.where(c.queryid == bindparam("query")).alias()
         totals = (base.select()
                   .where((c.qualid == bindparam("qual")) &
@@ -70,7 +71,7 @@ class QualDetail(ContentWidget):
 
     def get(self, database, query, qual):
         stmt = qualstat_getstatdata()
-        c = ColumnCollection(*stmt.inner_columns)
+        c = inner_cc(stmt)
         stmt = stmt.alias()
         stmt = (stmt.select()
             .where((c.qualid == bindparam("qualid")) &

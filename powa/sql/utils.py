@@ -1,6 +1,7 @@
 from sqlalchemy import select, cast, func
 from sqlalchemy.types import Numeric
-from sqlalchemy.sql import extract, column, case, table, column
+from sqlalchemy.sql import (extract, column, case, table, column,
+                            ColumnCollection)
 from sqlalchemy.sql.functions import sum, min, max
 
 block_size = select([cast(func.current_setting('block_size'), Numeric)
@@ -39,3 +40,10 @@ def total_hit(c):
     return ((sum(c.shared_blks_hit + c.local_blks_hit) * bs /
             total_measure_interval(c.mesure_interval))
             .label("total_blks_hit"))
+
+def inner_cc(selectable):
+    new_cc = ColumnCollection()
+    for c in selectable.inner_columns:
+        new_cc.add(c)
+    return new_cc
+

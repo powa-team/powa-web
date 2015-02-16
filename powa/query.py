@@ -4,8 +4,8 @@ Dashboard for the by-query page.
 
 from tornado.web import HTTPError
 from sqlalchemy.sql import (
-    bindparam, text, column, select, table,
-    literal_column, case, cast, ColumnCollection,
+    bindparam, text, column, select,
+    case, cast,
     func, extract)
 from sqlalchemy.sql.functions import sum
 from sqlalchemy.types import Numeric
@@ -23,8 +23,10 @@ from powa.sql.views import (powa_getstatdata_sample,
                             powa_getstatdata_detailed_db,
                             qualstat_getstatdata,
                             possible_indexes)
-from powa.sql.utils import block_size, mulblock, greatest, to_epoch, total_measure_interval
+from powa.sql.utils import (block_size, mulblock, greatest,
+                            to_epoch, inner_cc)
 from powa.sql.tables import powa_statements
+
 
 class QueryOverviewMetricGroup(MetricGroupDef):
     """
@@ -106,7 +108,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
             # Add system metrics from pg_stat_kcache,
             # and detailed hit ratio.
             kcache_query = kcache_getstatdata_sample()
-            kc = ColumnCollection(*kcache_query.inner_columns)
+            kc = inner_cc(kcache_query)
             kcache_query = (
                 kcache_query
                 .where(kc.queryid == bindparam("query"))
@@ -157,7 +159,7 @@ class QueryIndexes(ContentWidget):
         if not self.has_extension("pg_qualstats"):
             raise HTTPError(501, "PG qualstats is not installed")
         base_query = qualstat_getstatdata()
-        c = ColumnCollection(*base_query.inner_columns)
+        c = inner_cc(base_query)
         base_query.append_from(text("""LATERAL unnest(quals) as qual"""))
         base_query = (base_query
                     .where(c.queryid == query)
@@ -244,9 +246,8 @@ class QualList(MetricGroupDef):
     @property
     def query(self):
         base = qualstat_getstatdata()
-        c = ColumnCollection(*base.inner_columns)
+        c = inner_cc(base)
         return (base.where(c.queryid == bindparam("query")))
-
 
     def process(self, val, database=None, query=None, **kwargs):
         row = dict(val)
