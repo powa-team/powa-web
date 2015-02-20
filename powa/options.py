@@ -1,4 +1,5 @@
-from tornado.options import define, parse_config_file, options, Error
+from tornado.options import (define, parse_config_file, options,
+                             Error, parse_command_line)
 import os
 import sys
 
@@ -27,23 +28,28 @@ define("port", type=int, default=8888, metavar="port",
        help="Listen on <port>")
 define("address", type=str, default="0.0.0.0", metavar="address",
        help="Listen on <address>")
-define("config", type=str, help="path to config file",
-       callback=lambda path: parse_config_file(path, final=False))
+define("config", type=str, help="path to config file")
+
+
+def parse_file(filepath):
+    try:
+        parse_config_file(filepath)
+    except IOError as e:
+        pass
+    except Error as e:
+        print("Error parsing config file %s:" % filepath)
+        print("\t%s" % e)
+        sys.exit(-1)
 
 
 def parse_options():
     define("servers", type=dict, help="Not available from the command line.")
     for possible_config in CONF_LOCATIONS:
-        try:
-            parse_config_file(possible_config)
-        except IOError as e:
-            pass
-        except Error as e:
-            print("Error parsing config file %s:" % possible_config)
-            print("\t%s" % e)
-            sys.exit(-1)
+        parse_file(possible_config)
     try:
-        options.parse_command_line()
+        parse_command_line()
+        if options.config:
+            parse_file(options.config)
     except Error as e:
         print("Error parsing command line options:")
         print("\t%s" % e)
