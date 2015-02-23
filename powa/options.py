@@ -59,7 +59,7 @@ def parse_options():
         if getattr(options, key, None) is None:
             print("You should define a server and cookie_secret in your "
                   "configuration file.")
-            print("""Place and adapt the following content in one of those "
+            print("Place and adapt the following content in one of those "
                   "locations:""")
             print("\n\t".join([""] + CONF_LOCATIONS))
             print(SAMPLE_CONFIG_FILE)
