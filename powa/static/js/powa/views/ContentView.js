@@ -28,7 +28,7 @@ function(WidgetView, Content, highlight, moment, duration){
                 highlight.highlightBlock(block);
             });
             this.$el.find("span.duration").each(function(i, block){
-                var date = moment($(block).html());
+                var date = moment(parseInt($(block).html()));
                 $(block).html(date.preciseDiff(moment.unix(0)));
             });
             this.hideload();
