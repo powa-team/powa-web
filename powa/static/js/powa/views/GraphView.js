@@ -57,6 +57,12 @@ define([
                 return this.graph;
             },
 
+            getSize: function(){
+                return {
+                      width: this.$graph_elem.parent().innerWidth()
+                };
+            },
+
             updateScales: function(series){
                 var self = this;
                 $.each(this.y_axes, function(key, axis){
@@ -179,10 +185,6 @@ define([
             render: function(){
                 return this;
             },
-
-
-
-
         });
     return GraphView;
 
