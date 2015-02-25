@@ -137,7 +137,10 @@ class BaseHandler(RequestHandler):
         """
         value = self.get_secure_cookie(name)
         if value:
-            return pickle.loads(value)
+            try:
+                return pickle.loads(value)
+            except:
+                self.clear_all_cookies()
 
     def set_pickle_cookie(self, name, value):
         """
