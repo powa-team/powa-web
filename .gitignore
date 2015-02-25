@@ -4,7 +4,7 @@ powa/static/build/
 .ropeproject
 **/*.pyc
 **/__pycache__/
-powa.conf
+powa-web.conf
 build
 powa.egg.info
 dist
