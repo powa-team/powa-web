@@ -78,10 +78,10 @@ class MetricGroupHandler(AuthHandler):
 
     def get(self, *params):
         url_params = dict(zip(self.params, params))
-        url_query_params = {
-            key: value[0].decode('utf8')
+        url_query_params = dict((
+            (key, value[0].decode('utf8'))
             for key, value
-            in self.request.arguments.items()}
+            in self.request.arguments.items()))
         url_params.update(url_query_params)
         query = self.query
         values = self.execute(query, params=url_params)
@@ -443,8 +443,8 @@ class MetricGroupDef(with_metaclass(MetaMetricGroup, DataSource)):
 
     @classmethod
     def to_json(cls):
-        values = {key: val for key, val in cls.__dict__.items()
-                if not key.startswith("_") and not isfunction(val)}
+        values = dict(((key, val) for key, val in cls.__dict__.items()
+                if not key.startswith("_") and not isfunction(val)))
         values['type'] = 'metric_group'
         values.setdefault("xaxis", "ts")
         values['metrics'] = list(cls.metrics.values())

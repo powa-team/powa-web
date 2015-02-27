@@ -29,8 +29,8 @@ class JSONizable(object):
         Returns:
             an object which can be encoded by the BaseJSONEncoder.
         """
-        return {key: val for key, val in self.__dict__.items()
-                if not key.startswith("_")}
+        return dict(((key, val) for key, val in self.__dict__.items()
+                if not key.startswith("_")))
 
 def to_json(object):
     """
