@@ -10,7 +10,10 @@ from powa.ui_modules import MenuEntry, GlobalMenu
 from powa.compat import with_metaclass, classproperty, hybridmethod
 from tornado.web import URLSpec
 from operator import attrgetter
-from collections import OrderedDict
+try:
+    from collections import OrderedDict
+except:
+    from ordereddict import OrderedDict
 from inspect import isfunction
 
 GLOBAL_COUNTER = 0
