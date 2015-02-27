@@ -4,7 +4,7 @@ Powa main application.
 """
 import os
 
-__VERSION__ = '0.0.6'
+__VERSION__ = '2.0.0'
 POWA_ROOT = os.path.dirname(__file__)
 
 from tornado.web import Application, URLSpec as U
