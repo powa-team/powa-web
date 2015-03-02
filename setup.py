@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 import sys
 
 __VERSION__ = None
@@ -26,7 +26,7 @@ setup(
     version=__VERSION__,
     author='Dalibo',
     license='Postgresql',
-    packages=['powa'],
+    packages=find_packages(),
     install_requires=requires,
     include_package_data=True,
     url="http://dalibo.github.io/powa",
