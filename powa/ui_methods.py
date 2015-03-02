@@ -64,7 +64,7 @@ def flash(self, message, category=""):
     """
     flashes = self.get_pickle_cookie("_flashes") or {}
     flashes.setdefault(category, []).append(message)
-    self.set_pickle_cookie("_flashes", pickle.dumps(flashes))
+    self.set_pickle_cookie("_flashes", flashes)
     self.flashed_messages = flashes
 
 

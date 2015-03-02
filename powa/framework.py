@@ -53,6 +53,15 @@ class BaseHandler(RequestHandler):
         """Return the current database."""
         return None
 
+    def get_powa_version(self, **kwargs):
+        version = self.execute(text(
+            """
+            SELECT extversion FROM pg_extension WHERE extname = 'powa'
+            """), **kwargs).scalar()
+        if version is None:
+            return None
+        return [int(part) for part in version.split('.')]
+
     @property
     def databases(self, **kwargs):
         """
