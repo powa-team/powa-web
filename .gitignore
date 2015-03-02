@@ -9,3 +9,4 @@ build
 powa.egg.info
 dist
 .*.sw?
+.pypirc
