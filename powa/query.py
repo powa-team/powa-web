@@ -52,8 +52,8 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
     reads = MetricDef(label="Physical read", type="sizerate")
     writes = MetricDef(label="Physical writes", type="sizerate")
-    user_time = MetricDef(label="CPU user time", type="percent")
-    system_time = MetricDef(label="CPU system time", type="percent")
+    user_time = MetricDef(label="CPU user time", type="duration")
+    system_time = MetricDef(label="CPU system time", type="duration")
     hit_ratio = MetricDef(label="Shared buffers hit ratio", type="percent")
     miss_ratio = MetricDef(label="Shared buffers miss ratio", type="percent")
     sys_hit_ratio = MetricDef(label="System cache hit ratio", type="percent")
@@ -126,7 +126,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
             cols.extend([
                 kc.reads,
                 kc.writes,
-                kc.user_time,
+                (kc.user_time * 1000).label("user_time"),
                 kc.system_time,
                 case([(total_blocks == 0, 0)],
                      else_=disk_hit_ratio).label("disk_hit_ratio"),
