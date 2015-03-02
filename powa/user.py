@@ -31,7 +31,7 @@ class LoginHandler(BaseHandler):
         if version[0:1] != __VERSION_NUM__[0:1]:
             self.flash(
                 'PoWA version does not match the PoWA-Web version: %s %s' %
-                    (version.decode('ut8'), __VERSION_NUM__),
+                    (version, __VERSION_NUM__),
             'alert')
         self.set_secure_cookie('username', username)
         self.set_secure_cookie('password', password)
