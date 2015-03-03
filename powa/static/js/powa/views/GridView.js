@@ -16,10 +16,7 @@ define([
 
     var DurationFormatter = {
         fromRaw: function(rawData){
-            if(parseInt(rawData, 10) == 0){
-                return "0 ms";
-            }
-            return moment(parseInt(rawData, 10)).preciseDiff(moment(0));
+            return moment(parseFloat(rawData, 10)).preciseDiff(moment(0));
         }
     };
 

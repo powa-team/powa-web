@@ -19,9 +19,6 @@ define([
                 "size": new size.SizeFormatter().fromRaw,
                 "sizerate": function(value){ return new size.SizeFormatter({suffix: "ps"}).fromRaw(value)},
                 "duration": function(data){
-                    if(parseInt(data, 10) == 0){
-                        return "0 ms";
-                    }
                     return moment(parseFloat(data, 10)).preciseDiff(moment(0))
                 },
                 "percent": function(value){ return Math.round(value * 100) / 100 + '%'}

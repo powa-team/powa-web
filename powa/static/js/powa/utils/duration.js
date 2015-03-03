@@ -105,6 +105,9 @@ define(['moment'], function(moment){
         if(microsecDiff){
             result.push(pluralize(microsecDiff, 'microsecond'));
         }
+        if(result.length == 0){
+            return "0";
+        }
         return result.join(STRINGS.delimiter);
     };
 });
