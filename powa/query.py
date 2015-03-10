@@ -52,8 +52,8 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
     reads = MetricDef(label="Physical read", type="sizerate")
     writes = MetricDef(label="Physical writes", type="sizerate")
-    user_time = MetricDef(label="CPU user time", type="duration")
-    system_time = MetricDef(label="CPU system time", type="duration")
+    user_time = MetricDef(label="CPU user time", type="percent")
+    system_time = MetricDef(label="CPU system time", type="percent")
     hit_ratio = MetricDef(label="Shared buffers hit ratio", type="percent")
     miss_ratio = MetricDef(label="Shared buffers miss ratio", type="percent")
     sys_hit_ratio = MetricDef(label="System cache hit ratio", type="percent")
@@ -123,11 +123,12 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                             mulblock(total_blocks))
             disk_hit_ratio = (kc.reads /
                               mulblock(total_blocks))
+            total_time = greatest(c.runtime, 1);
             cols.extend([
                 kc.reads,
                 kc.writes,
-                (kc.user_time * 1000).label("user_time"),
-                kc.system_time,
+                ((kc.user_time * 1000 * 100) / total_time).label("user_time"),
+                ((kc.system_time * 1000 * 100) / total_time).label("system_time"),
                 case([(total_blocks == 0, 0)],
                      else_=disk_hit_ratio).label("disk_hit_ratio"),
                 case([(total_blocks == 0, 0)],
@@ -365,9 +366,11 @@ class QueryOverview(DashboardPage):
                 Graph("Physical block (in Bps)",
                       metrics=[QueryOverviewMetricGroup.reads,
                                QueryOverviewMetricGroup.writes]),
-                Graph("CPU time",
+                Graph("CPU usage",
                       metrics=[QueryOverviewMetricGroup.user_time,
-                               QueryOverviewMetricGroup.system_time])]])
+                               QueryOverviewMetricGroup.system_time],
+                      renderer="bar",
+                      stack=True)]])
             hit_ratio_graph.metrics.append(
                 QueryOverviewMetricGroup.sys_hit_ratio)
             hit_ratio_graph.metrics.append(
