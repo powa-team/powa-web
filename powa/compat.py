@@ -5,7 +5,17 @@ Mostly copied straight from six:
     http://pypi.python.org/pypi/six/
 
 """
+import psycopg2
+from psycopg2 import extensions
+import json
 
+# If psycopg2 < 2.5, register json type
+psycopg2_version = tuple(psycopg2.__version__.split(' ')[0].split('.'))
+if psycopg2_version < ('2', '5'):
+    JSON_OID = 114
+    newtype = extensions.new_type(
+        (JSON_OID,), "JSON", json.loads)
+    extensions.register_type(newtype)
 
 
 def with_metaclass(meta, *bases):
@@ -56,5 +66,3 @@ class hybridmethod(object):
             return self._class_method.__get__(owner, owner.__class__)
         else:
             return self._instance_method.__get__(instance, owner)
-
-
