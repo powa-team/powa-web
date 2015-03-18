@@ -6,9 +6,10 @@ define([
         'powa/models/Graph',
         'tpl!powa/templates/graph.html',
         'powa/utils/duration',
-        'powa/utils/size'
+        'powa/utils/size',
+        'powa/rickshaw/Rickshaw.Graph.DragZoom'
 ],
-        function(Backbone, d3, Rickshaw, WidgetView, Graph, template, duration, size){
+        function(Backbone, d3, Rickshaw, WidgetView, Graph, template, duration, size, DragZoom){
 
     var GraphView = WidgetView.extend({
             template: template,

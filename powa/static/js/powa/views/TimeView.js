@@ -38,6 +38,12 @@ define(["powa/views/GraphView","powa/views/GraphPreview"], function(GraphView, G
             this.preview.onSlide(function(graph, xmin, xmax){
                 self.trigger("widget:zoomin", moment.unix(xmin), moment.unix(xmax));
             });
+            this.dragzoom = new Rickshaw.Graph.DragZoom({
+                    graph: this.graph,
+                    callback: function(xmin, xmax){
+                        self.trigger("widget:zoomin", moment.unix(xmin), moment.unix(xmax));
+                    }
+            });
         },
 
     });
