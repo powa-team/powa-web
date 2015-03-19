@@ -1,5 +1,6 @@
+2.0.6:
+  - fix bug with python2 relative imports
 2.0.5:
   - display cpu / user time as a percentage of query time
-  - fix bug with 32 bit architecture
   - initial changelog
 
