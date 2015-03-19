@@ -5,6 +5,7 @@ Mostly copied straight from six:
     http://pypi.python.org/pypi/six/
 
 """
+from __future__ import absolute_import
 import psycopg2
 from psycopg2 import extensions
 import json
@@ -14,7 +15,7 @@ psycopg2_version = tuple(psycopg2.__version__.split(' ')[0].split('.'))
 if psycopg2_version < ('2', '5'):
     JSON_OID = 114
     newtype = extensions.new_type(
-        (JSON_OID,), "JSON", json.loads)
+        (JSON_OID,), "JSON", lambda data, cursor: json.loads(data))
     extensions.register_type(newtype)
 
 
