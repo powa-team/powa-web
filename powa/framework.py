@@ -107,14 +107,14 @@ class BaseHandler(RequestHandler):
         self._connections[url] = engine
         return engine
 
-    def has_extension(self, extname):
+    def has_extension(self, extname, database=None):
         """
         Returns whether the database has the specific extension installed.
         """
         return self.execute(text(
             """
             SELECT true FROM pg_extension WHERE extname = :extname
-            """), params={"extname": extname}).rowcount > 0
+            """), database=database, params={"extname": extname}).rowcount > 0
 
     def write_error(self, status_code, **kwargs):
         if status_code == 403:
