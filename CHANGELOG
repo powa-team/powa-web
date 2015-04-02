@@ -1,3 +1,6 @@
+2.0.7:
+  - Add zoom-on-drag behaviour to graphs
+  - Fix redirect after login
 2.0.6:
   - fix bug with python2 relative imports
 2.0.5:
