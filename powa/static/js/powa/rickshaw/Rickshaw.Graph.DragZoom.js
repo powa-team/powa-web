@@ -1,6 +1,9 @@
 /*
  * This file is released by Prometeheus under the Apache License
  */
+define([
+    'rickshaw'
+], function(Rickshaw){
 
 Rickshaw.namespace('Rickshaw.Graph.DragZoom');
 
@@ -13,7 +16,7 @@ Rickshaw.Graph.DragZoom = Rickshaw.Class.create({
     var defaults = {
       opacity: 0.5,
       fill: 'steelblue',
-      minimumTimeSelection: 60,
+      minimumTimeSelection: 0.02,
       callback: function() {}
     };
 
@@ -63,15 +66,21 @@ Rickshaw.Graph.DragZoom = Rickshaw.Class.create({
         drag.stopDt
       ].sort(compareNumbers);
 
+      reset(this);
+
+      var range = windowAfterDrag[1] - windowAfterDrag[0],
+          wholerange = beforeDrag[1] - beforeDrag[0];
+
+      /* Can't zoom by less than 2% */
+      if(range < self.minimumTimeSelection * wholerange){
+        return;
+      }
       self.graph.window.xMin = windowAfterDrag[0];
       self.graph.window.xMax = windowAfterDrag[1];
 
       var endTime = self.graph.window.xMax;
-      var range = self.graph.window.xMax - self.graph.window.xMin;
 
-      reset(this);
-
-      if (range < self.minimumTimeSelection || isNaN(range)) {
+      if (isNaN(range)) {
         return;
       }
       self.stack.push(beforeDrag);
@@ -140,4 +149,6 @@ Rickshaw.Graph.DragZoom = Rickshaw.Class.create({
       return Math.floor(self.graph.x.invert(e.offsetX || e.layerX));
     }
   }
+});
+return Rickshaw.Graph.DragZoom;
 });

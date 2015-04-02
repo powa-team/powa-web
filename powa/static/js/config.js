@@ -23,7 +23,7 @@ require.config({
     "backbone-pageable": "../bower_components/backbone-pageable/lib/backbone-pageable"
   },
   urlArgs: {
-
+      date: new Date()
   },
   wrapShim: true,
   shim: {
