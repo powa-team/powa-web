@@ -4,7 +4,7 @@
 <div class="container">
   <div class="center row">
     <h2 class="welcome">Login</h2>
-    <form method="POST" action="{{ reverse_url('login') }}">
+    <form method="POST" action="">
         {% apply field(name="username", label=_("Username")) %}{% end %}
         {% apply field(name="password", label=_("Password"), type="password") %}{% end %}
         {% apply field(name="server", label=_("Server"), tag="select") %}
