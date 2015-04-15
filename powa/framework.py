@@ -92,8 +92,10 @@ class BaseHandler(RequestHandler):
         if server not in options.servers:
             raise HTTPError(404)
         connoptions = options.servers[server].copy()
-        connoptions['username'] = username
-        connoptions['password'] = password
+        if 'username' not in connoptions:
+            connoptions['username'] = username
+        if 'password' not in connoptions:
+            connoptions['password'] = password
         if database is not None:
             connoptions['database'] = database
         engineoptions = {'_initialize': False}
