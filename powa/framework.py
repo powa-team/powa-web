@@ -8,6 +8,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine.url import URL
 from tornado.options import options
 import pickle
+import logging
 
 
 class BaseHandler(RequestHandler):
@@ -21,6 +22,7 @@ class BaseHandler(RequestHandler):
         self.flashed_messages = {}
         self._databases = None
         self._connections = {}
+        self.logger = logging.getLogger("tornado.application")
 
     def render_json(self, value):
         """

@@ -17,6 +17,7 @@ class LoginHandler(BaseHandler):
             self.connect(username=username, password=password, server=server)
         except Exception as e:
             self.flash("Auth failed", "alert")
+            self.logger.error(e)
             self.get()
             return
         # Check that the database is correctly installed
