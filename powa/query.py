@@ -194,8 +194,8 @@ class QueryExplains(ContentWidget):
             raise HTTPError(501, "PG qualstats is not installed")
         condition = text("""datname = :database AND s.queryid = :query
                  AND coalesce_range && tstzrange(:from, :to)""")
-        sql = (select(['most_filtering.quals',
-                      'most_filtering.query',
+        sql = (select([text('most_filtering.quals'),
+                      text('most_filtering.query'),
                       'to_json(most_filtering) as "most filtering"',
                       'to_json(least_filtering) as "least filtering"',
                       'to_json(most_executed) as "most executed"'])
