@@ -37,12 +37,11 @@ class BaseHandler(RequestHandler):
         Return the current_user if he is allowed to connect
         to his server of choice.
         """
-        raw = self.get_secure_cookie('username')
-        if raw:
-            user = raw.decode('utf8')
+        raw = self.get_str_cookie('username')
+        if raw is not None:
             try:
                 self.connect()
-                return user
+                return raw or 'anonymous'
             except Exception as _:
                 return None
 
@@ -87,10 +86,10 @@ class BaseHandler(RequestHandler):
         Parameters default values are taken from the cookies and the server
         configuration file.
         """
-        server = server or self.get_secure_cookie('server').decode('utf8')
-        username = username or self.get_secure_cookie('username').decode('utf8')
+        server = server or self.get_str_cookie('server')
+        username = username or self.get_str_cookie('username')
         password = (password or
-                    self.get_secure_cookie('password').decode('utf8'))
+                    self.get_str_cookie('password'))
         if server not in options.servers:
             raise HTTPError(404)
         connoptions = options.servers[server].copy()
@@ -154,6 +153,12 @@ class BaseHandler(RequestHandler):
                 return pickle.loads(value)
             except:
                 self.clear_all_cookies()
+
+    def get_str_cookie(self, name, default=None):
+        value = self.get_secure_cookie(name)
+        if value is not None:
+            return value.decode('utf8')
+        return default
 
     def set_pickle_cookie(self, name, value):
         """
