@@ -29,6 +29,7 @@ define("port", type=int, default=8888, metavar="port",
 define("address", type=str, default="0.0.0.0", metavar="address",
        help="Listen on <address>")
 define("config", type=str, help="path to config file")
+define("index_url", type=str, default="/overview/")
 
 
 def parse_file(filepath):

@@ -27,7 +27,7 @@ class IndexHandler(AuthHandler):
     """
 
     def get(self):
-        return self.redirect("/overview/")
+        return self.redirect(options.index_url)
 
 
 URLS = [
