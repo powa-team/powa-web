@@ -1,3 +1,7 @@
+2.0.9:
+  - add index_url config parameter
+2.0.8:
+  - Compatibility with sqlalchemy 1.0.0
 2.0.7:
   - Add zoom-on-drag behaviour to graphs
   - Fix redirect after login
