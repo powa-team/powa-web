@@ -4,7 +4,7 @@ Powa main application.
 """
 import os
 
-__VERSION__ = '2.0.9'
+__VERSION__ = '2.0.10'
 __VERSION_NUM__ = [int(part) for part in __VERSION__.split('.')]
 POWA_ROOT = os.path.dirname(__file__)
 
@@ -51,8 +51,12 @@ def make_app(**kwargs):
     Parse the config file and instantiate a tornado app.
     """
     parse_options()
+    _cls = Application
+    if 'legacy_wsgi' in kwargs:
+        from tornado.wsgi import WSGIApplication
+        _cls = WSGIApplication
 
-    return Application(
+    return _cls(
         URLS,
         ui_modules=ui_modules,
         ui_methods=ui_methods,
