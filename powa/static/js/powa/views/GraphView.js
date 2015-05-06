@@ -169,18 +169,20 @@ define([
                 if(newseries.length == 0){
                     this.nodata();
                 }
-                this.getGraph(newseries);
-                this.graph.update();
-                if(this.legend){
-                    this.legend.render();
-                    var shelving = new Rickshaw.Graph.Behavior.Series.Toggle( {
-                        graph: this.graph,
-                        legend: this.legend
-                    } );
-                    var highlighter = new Rickshaw.Graph.Behavior.Series.Highlight( {
-                        graph: this.graph,
-                        legend: this.legend
-                    });
+                else{
+                   this.getGraph(newseries);
+                   this.graph.update();
+                   if(this.legend){
+                       this.legend.render();
+                       var shelving = new Rickshaw.Graph.Behavior.Series.Toggle( {
+                           graph: this.graph,
+                           legend: this.legend
+                       } );
+                       var highlighter = new Rickshaw.Graph.Behavior.Series.Highlight( {
+                           graph: this.graph,
+                           legend: this.legend
+                       });
+                   }
                 }
                 this.trigger("widget:update");
             },

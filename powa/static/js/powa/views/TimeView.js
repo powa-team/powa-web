@@ -12,7 +12,9 @@ define(["powa/views/GraphView","powa/views/GraphPreview"], function(GraphView, G
                 }
                 this.preview.render();
             }
-            this.graph.render();
+            if(newseries.length > 0){
+                this.graph.render();
+            }
         },
 
         initGoodies: function(){
