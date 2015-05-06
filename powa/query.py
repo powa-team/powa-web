@@ -335,7 +335,8 @@ class QueryOverview(DashboardPage):
         hit_ratio_graph = Graph("Hit ratio",
                                 metrics=[QueryOverviewMetricGroup.hit_ratio],
                                 renderer="bar",
-                                stack=True)
+                                stack=True,
+                                color_scheme=['#73c03a','#65b9ac','#cb513a'])
         self._dashboard = Dashboard(
             "Query %(query)s on database %(database)s",
             [[QueryDetail],
