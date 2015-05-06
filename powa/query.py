@@ -319,8 +319,7 @@ class QueryOverview(DashboardPage):
     """
     base_url = r"/database/(\w+)/query/(\w+)/overview"
     params = ["database", "query"]
-    datasources = [QueryOverviewMetricGroup, QueryDetail,
-                   QueryExplains, QueryIndexes, QualList]
+    datasources = [QueryOverviewMetricGroup, QueryDetail]
     parent = DatabaseOverview
 
     @classmethod
@@ -380,6 +379,7 @@ class QueryOverview(DashboardPage):
                 QueryOverviewMetricGroup.miss_ratio)
 
         if self.has_extension("pg_qualstats"):
+            Datasources.append(QueryIndexes, QualList, QueryExplains)
             self._dashboard.widgets.extend([[
                 Grid("Predicates used by this query",
                      columns=[{
