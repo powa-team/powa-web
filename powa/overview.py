@@ -107,7 +107,8 @@ class Overview(DashboardPage):
                 metrics=[GlobalDatabasesMetricGroup.avg_runtime]),
           Graph("Block access in Bps",
                 metrics=[GlobalDatabasesMetricGroup.total_blks_hit,
-                         GlobalDatabasesMetricGroup.total_blks_read])],
+                         GlobalDatabasesMetricGroup.total_blks_read],
+                color_scheme=['#73c03a','#cb513a'])],
          [Grid("Details for all databases",
                columns=[{
                    "name": "datname",
