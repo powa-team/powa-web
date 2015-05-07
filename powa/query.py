@@ -247,7 +247,7 @@ class QualList(MetricGroupDef):
     xaxis = "quals"
     axis_type = "category"
     data_url = r"/metrics/database/(\w+)/query/(\w+)/quals"
-    filter_ratio = MetricDef(label="Avg filter_ratio (excluding index)")
+    filter_ratio = MetricDef(label="Avg filter_ratio (excluding index)", type="percent")
     count = MetricDef(label="Execution count (excluding index)")
 
     def prepare(self):

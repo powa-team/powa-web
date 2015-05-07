@@ -246,7 +246,7 @@ def qualstat_getstatdata():
         case(
             [(sum(column("count")) == 0, 0)],
             else_=sum(column("nbfiltered")) /
-                cast(sum(column("count")), Numeric)
+                cast(sum(column("count")), Numeric) * 100
         ).label("filter_ratio")])
         .select_from(base_query)
         .group_by(column("qualid"), literal_column("queryid"), column("quals")))
