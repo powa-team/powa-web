@@ -28,9 +28,9 @@ def powa_base_statdata_detailed_db():
     pg_database,
     LATERAL
     (
-        SELECT unnested.dbid, unnested.queryid,(unnested.records).*
+        SELECT unnested.dbid, unnested.userid, unnested.queryid,(unnested.records).*
         FROM (
-            SELECT psh.dbid, psh.queryid, psh.coalesce_range, unnest(records) AS records
+            SELECT psh.dbid, psh.userid, psh.queryid, psh.coalesce_range, unnest(records) AS records
             FROM powa_statements_history psh
             WHERE coalesce_range && tstzrange(:from, :to, '[]')
             AND psh.dbid = pg_database.oid
@@ -38,7 +38,7 @@ def powa_base_statdata_detailed_db():
         ) AS unnested
         WHERE tstzrange(:from, :to, '[]') @> (records).ts
         UNION ALL
-        SELECT psc.dbid, psc.queryid,(psc.record).*
+        SELECT psc.dbid, psc.userid, psc.queryid,(psc.record).*
         FROM powa_statements_history_current psc
         WHERE tstzrange(:from,:to,'[]') @> (record).ts
         AND psc.dbid = pg_database.oid
@@ -106,10 +106,11 @@ def powa_getstatdata_detailed_db():
     return (select([
         column("queryid"),
         column("dbid"),
+        column("userid"),
         column("datname"),
 ] + diffs)
         .select_from(base_query)
-        .group_by(column("queryid"), column("dbid"), column("datname"))
+        .group_by(column("queryid"), column("dbid"), column("userid"), column("datname"))
         .having(max(column("calls")) - min(column("calls")) > 0))
 
 def powa_getstatdata_db():

@@ -87,24 +87,26 @@ class ByQueryMetricGroup(MetricGroupDef):
         # Multiply each measure by the size of one block.
         columns = [c.queryid,
                    ps.c.query,
-                   c.calls,
-                   c.runtime,
-                   mulblock(c.shared_blks_read),
-                   mulblock(c.shared_blks_hit),
-                   mulblock(c.shared_blks_dirtied),
-                   mulblock(c.shared_blks_written),
-                   mulblock(c.temp_blks_read),
-                   mulblock(c.temp_blks_written),
-                   (c.runtime / greatest(c.calls, 1)).label("avg_runtime"),
-                   c.blk_read_time,
-                   c.blk_write_time]
+                   sum(c.calls).label("calls"),
+                   sum(c.runtime).label("runtime"),
+                   sum(mulblock(c.shared_blks_read)).label("shared_blks_read"),
+                   sum(mulblock(c.shared_blks_hit)).label("shared_blks_hit"),
+                   sum(mulblock(c.shared_blks_dirtied)).label("shared_blks_dirtied"),
+                   sum(mulblock(c.shared_blks_written)).label("shared_blks_written"),
+                   sum(mulblock(c.temp_blks_read)).label("temp_blks_read"),
+                   sum(mulblock(c.temp_blks_written)).label("temp_blks_written"),
+                   (sum(c.runtime) / greatest(sum(c.calls), 1)).label("avg_runtime"),
+                   sum(c.blk_read_time).label("blks_read_time"),
+                   sum(c.blk_write_time).label("blks_write_time")]
         from_clause = inner_query.join(ps,
                                        (ps.c.queryid == c.queryid) &
+                                       (ps.c.userid == c.userid) &
                                        (ps.c.dbid == c.dbid))
         return (select(columns)
                 .select_from(from_clause)
                 .where(c.datname == bindparam("database"))
-                .order_by(c.calls.desc()))
+                .group_by(c.queryid, ps.c.query)
+                .order_by(sum(c.calls).desc()))
 
 
     def process(self, val, database=None, **kwargs):
