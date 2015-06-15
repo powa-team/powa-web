@@ -1,9 +1,10 @@
 from sqlalchemy.sql import (select, cast, func, column, text, extract, case,
-                            bindparam, literal_column, ColumnCollection)
+                            bindparam, literal_column, ColumnCollection, join, alias)
 from sqlalchemy.types import Numeric
 from sqlalchemy.sql.functions import max, min, sum
-from powa.sql.utils import *
+from powa.sql.utils import diff
 from powa.sql import resolve_quals
+from powa.sql.tables import powa_statements
 from collections import defaultdict
 
 
@@ -223,13 +224,13 @@ def qualstat_base_statdata():
     FROM (
         SELECT pqnh.qualid, pqnh.queryid, pqnh.dbid, pqnh.userid, pqnh.coalesce_range, unnest(records) as records
         FROM powa_qualstats_quals_history pqnh
-        WHERE coalesce_range  && tstzrange(:from, :to, '[]') AND pqnh.queryid = :query
+        WHERE coalesce_range  && tstzrange(:from, :to, '[]')
     ) AS unnested
     WHERE tstzrange(:from, :to, '[]') @> (records).ts
     UNION ALL
     SELECT queryid, qualid, pqnc.ts, pqnc.count, pqnc.nbfiltered
     FROM powa_qualstats_quals_history_current pqnc
-    WHERE tstzrange(:from, :to, '[]') @> pqnc.ts AND pqnc.queryid = :query
+    WHERE tstzrange(:from, :to, '[]') @> pqnc.ts
     ) h
     JOIN powa_qualstats_quals pqnh USING (queryid, qualid)
     """)
@@ -240,7 +241,8 @@ def qualstat_getstatdata():
     base_query = qualstat_base_statdata()
     return (select([
         column("qualid"),
-        column("queryid").label("queryid"),
+        powa_statements.c.queryid,
+        column("query"),
         func.to_json(column("quals")).label("quals"),
         sum(column("count")).label("count"),
         sum(column("nbfiltered")).label("nbfiltered"),
@@ -249,8 +251,12 @@ def qualstat_getstatdata():
             else_=sum(column("nbfiltered")) /
                 cast(sum(column("count")), Numeric) * 100
         ).label("filter_ratio")])
-        .select_from(base_query)
-        .group_by(column("qualid"), literal_column("queryid"), column("quals")))
+        .select_from(
+        join(base_query, powa_statements,
+                powa_statements.c.queryid ==
+                literal_column("pqnh.queryid")))
+        .group_by(column("qualid"), powa_statements.c.queryid,
+                  powa_statements.c.query, column("quals")))
 
 def possible_indexes(resolved_qual_list):
     by_am = defaultdict(list)

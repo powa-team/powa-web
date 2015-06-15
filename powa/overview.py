@@ -8,12 +8,13 @@ from powa.dashboards import (
     DashboardPage)
 
 from powa.sql.views import (
-    block_size, powa_getstatdata_db,
+    powa_getstatdata_db,
     powa_getstatdata_sample)
 from sqlalchemy.sql.functions import sum
 from sqlalchemy.sql import select, cast, extract
 from sqlalchemy.types import Numeric
-from powa.sql.utils import total_read, total_hit, mulblock, round, greatest
+from powa.sql.utils import (total_read, total_hit, mulblock, round, greatest,
+                            block_size)
 from powa.sql.tables import pg_database
 
 

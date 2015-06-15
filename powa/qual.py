@@ -74,8 +74,7 @@ class QualDetail(ContentWidget):
         c = inner_cc(stmt)
         stmt = stmt.alias()
         stmt = (stmt.select()
-            .where((c.qualid == bindparam("qualid")) &
-                   (c.queryid== bindparam("query")))
+            .where((c.qualid == bindparam("qualid")))
             .where(stmt.c.count > 0)
             .column((c.queryid == bindparam("query")).label("is_my_query")))
         quals = list(self.execute(

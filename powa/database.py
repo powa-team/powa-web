@@ -7,15 +7,14 @@ from powa.dashboards import (
     MetricGroupDef, MetricDef,
     DashboardPage)
 
-from powa.sql.views import (block_size,
-                            powa_getstatdata_detailed_db, mulblock,
-                            powa_getstatdata_sample, total_read, total_hit,
-                            total_measure_interval,
-                            to_epoch)
+from powa.sql.views import (powa_getstatdata_detailed_db,
+                            powa_getstatdata_sample)
 from powa.overview import Overview
 from sqlalchemy.sql import ColumnCollection, bindparam, column, select
 from sqlalchemy.sql.functions import sum
-from powa.sql.utils import greatest
+from powa.sql.utils import (greatest, block_size, mulblock,
+                            total_read, total_hit,
+                            total_measure_interval, to_epoch)
 from powa.sql.tables import powa_statements
 
 
