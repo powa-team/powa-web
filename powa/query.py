@@ -2,6 +2,7 @@
 Dashboard for the by-query page.
 """
 
+import re
 from tornado.web import HTTPError
 from sqlalchemy.sql import (
     bindparam, text, column, select,
@@ -16,7 +17,7 @@ from powa.dashboards import (
     DashboardPage, ContentWidget)
 from powa.database import DatabaseOverview
 
-from powa.sql import (Plan, format_jumbled_query,
+from powa.sql import (Plan, format_jumbled_query, quote_ident,
                       resolve_quals, qual_constants)
 from powa.sql.views import (powa_getstatdata_sample,
                             kcache_getstatdata_sample,
@@ -24,7 +25,7 @@ from powa.sql.views import (powa_getstatdata_sample,
                             qualstat_getstatdata,
                             possible_indexes)
 from powa.sql.utils import (block_size, mulblock, greatest,
-                            to_epoch, inner_cc)
+                            to_epoch, inner_cc, qualstat_get_figures)
 from powa.sql.tables import powa_statements
 
 
@@ -179,7 +180,62 @@ class QueryIndexes(ContentWidget):
         for line in optimizable:
             qual_indexes[line['where_clause']] = possible_indexes(
                 line['quals'])
-        self.render("database/query/indexes.html", indexes=qual_indexes)
+
+        # hypopg support
+        hypoplans = []
+        hypogain = None
+        hypoquery = None
+        if (len(qual_indexes) > 0 and
+            self.has_extension("hypopg", database=database)):
+            row = qualstat_get_figures(self, database, query,
+                                        self.get_argument("from"),
+                                        self.get_argument("to"))
+
+            if row != None:
+                vals = row['most executed']
+                query =  format_jumbled_query(row['query'], vals['constants'])
+                result = self.execute("EXPLAIN %s" % query, database=database);
+                plan = "\n".join(v[0] for v in result)
+                m = re.search("(?<=\.\.)\d+\.\d+",plan)
+                fromcost = m.group(0)
+                hypoplans.append(plan);
+
+                for clause, index in qual_indexes.items():
+                    hypoindex = {}
+                    for am, quals in index.items():
+                        if (am != 'btree'):
+                            # only btree am supported in hypopg 0.0.1
+                            break
+                        hypoindex['am'] = am;
+                        for qual in quals:
+                            if ('attnames' in hypoindex.keys()):
+                                hypoindex['attnames'] += ', ' + quote_ident(qual['attname'])
+                            else:
+                                hypoindex['attnames'] = quote_ident(qual['attname'])
+                                hypoindex['nspname'] = quote_ident(qual['nspname'])
+                                hypoindex['relname'] = quote_ident(qual['relname'])
+
+                    if ('am' in hypoindex.keys()):
+                        hypoquery = "CREATE INDEX ON %s.%s USING %s(%s)" % (
+                            hypoindex['nspname'],
+                            hypoindex['relname'],
+                            hypoindex['am'],
+                            hypoindex['attnames'])
+
+                        result = self.execute("SELECT hypopg_create_index('%s')" % hypoquery, database=database)
+                        ok = result.scalar()
+                        result.close()
+                        if (ok):
+                            result = self.execute("EXPLAIN %s" % query, database=database)
+                            plan = "\n".join(v[0] for v in result)
+                            m = re.search("(?<=\.\.)\d+\.\d+",plan)
+                            tocost = m.group(0)
+                            hypoplans.append(plan)
+                            hypogain = round(100 - float(tocost) * 100 / float(fromcost), 2)
+        self.render("database/query/indexes.html", indexes=qual_indexes,
+                    hypoplans=hypoplans,
+                    hypoquery=hypoquery,
+                    hypogain=hypogain)
 
 
 class QueryExplains(ContentWidget):
@@ -192,33 +248,15 @@ class QueryExplains(ContentWidget):
     def get(self, database, query):
         if not self.has_extension("pg_qualstats"):
             raise HTTPError(501, "PG qualstats is not installed")
-        condition = text("""datname = :database AND s.queryid = :query
-                 AND coalesce_range && tstzrange(:from, :to)""")
-        sql = (select([text('most_filtering.quals'),
-                      text('most_filtering.query'),
-                      'to_json(most_filtering) as "most filtering"',
-                      'to_json(least_filtering) as "least filtering"',
-                      'to_json(most_executed) as "most executed"'])
-               .select_from(
-                   qual_constants("most_filtering", condition)
-                   .alias("most_filtering")
-                   .join(
-                       qual_constants("least_filtering", condition)
-                       .alias("least_filtering"),
-                       text("most_filtering.rownumber = "
-                            "least_filtering.rownumber"))
-                   .join(qual_constants("most_executed", condition)
-                         .alias("most_executed"),
-                         text("most_executed.rownumber = "
-                              "least_filtering.rownumber"))))
-        params = {"database": database, "query": query,
-                  "from": self.get_argument("from"),
-                  "to": self.get_argument("to")}
-        quals = self.execute(sql, params=params)
-        plans = []
-        if quals.rowcount > 0:
 
-            row = quals.first()
+        plans = []
+        row = qualstat_get_figures(self, database, query,
+                                    self.get_argument("from"),
+                                    self.get_argument("to"))
+        if row != None:
+        #if quals.rowcount > 0:
+
+            #row = quals.first()
             for key in ('most filtering', 'least filtering', 'most executed'):
                 vals = row[key]
                 query = format_jumbled_query(row['query'], vals['constants'])

@@ -1,42 +1,66 @@
 {% extends "../../xhr.html" %}
 {% block content %}
 <div class="indexes">
-    <h4>Index suggestion</h4>
-        {% if len(indexes) > 0 %}
-          <ul>
-                {% for clause, index in indexes.items() %}
-                <li>
-                <h5>Possible indexes for attributes present in <b>{{clause}}</b>:</h5>
-                <ul>
+  <div class="row" data-equalizer>
+    <div class="columns large-4">
+      <h4>Index suggestion</h4>
+      {% if len(indexes) > 0 %}
+        <ul>
+          {% for clause, index in indexes.items() %}
+            <li>
+              <h5>Possible indexes for attributes present in <b>{{clause}}</b>:</h5>
+              <ul>
                 {% for am, quals in index.items() %}
-                <li>
-                  <h6>With access method <em>{{ am }}</em></h6>
-                  <ul>
-                  {% for qual in quals %}
                   <li>
-                    <dl>
-                      <dt>Attribute</dt>
-                      <dd>{{ qual['relname'] }}.{{ qual['attname']}}</dd>
-                      <dt>Data distribution</dt>
-                      {% if qual['n_distinct'] >= 0 %}
-                      <dd>approximately <b>{{ qual['n_distinct'] }}</b> distinct values</dd>
-                      {%else %}
-                      <dd>approximately <b>{{ abs(qual['n_distinct']) * 100 }} %</b> distinct values</dd>
+                    <h6>With access method <em>{{ am }}</em></h6>
+                    <ul>
+                      {% for qual in quals %}
+                        <li>
+                          <dl>
+                            <dt>Attribute</dt>
+                            <dd>{{ qual['relname'] }}.{{ qual['attname']}}</dd>
+                            <dt>Data distribution</dt>
+                            {% if qual['n_distinct'] >= 0 %}
+                              <dd>approximately <b>{{ qual['n_distinct'] }}</b> distinct values</dd>
+                            {%else %}
+                              <dd>approximately <b>{{ abs(qual['n_distinct']) * 100 }} %</b> distinct values</dd>
+                              {% end %}
+                              <dt>
+                          </dl>
+                        </li>
                       {% end %}
-                      <dt>
-                    </dl>
+                    </ul>
                   </li>
-                  {% end %}
-                  </ul>
-                </li>
                 {% end %}
-                </ul>
-                </li>
-                {% end %}
-          </ul>
-        {% else %}
-            No suitable index to suggest.
-        {% end %}
+              </ul>
+            </li>
+          {% end %}
+        </ul>
+      {% else %}
+        No suitable index to suggest.
+      {% end %}
     </div>
+    {% if len(hypoplans) > 0 %}
+      <div class="columns large-8">
+        <div class="row">
+          <div class="columns large-12">
+            <pre>Hypothetical index: <b>{{ hypoquery }}</b></pre>
+            <br />
+          </div>
+          <div class="columns large-6">
+            <pre>EXPLAIN plan <b>without</b> suggested index</pre>
+            <pre><code data-equalizer-watch="">{{ hypoplans[0] }}</code></pre>
+          </div>
+          <div class="columns large-6">
+            <pre>EXPLAIN plan <b>with</b> suggested index</pre>
+            <pre><code data-equalizer-watch="">{{ hypoplans[1] }}</code></pre>
+          </div>
+          <div class="columns large-12">
+            <pre>Query cost gain factor with hypothetical index: <b>{{ hypogain }} %</b></pre>
+          </div>
+        </div>
+      </div>
+    {% end %}
+  </div>
 </div>
 {% end %}

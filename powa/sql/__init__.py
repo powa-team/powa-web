@@ -44,6 +44,7 @@ RESOLVE_ATTNAME = text("""
     SELECT attrelid, attnum, json_build_object(
         'relname', relname,
         'attname', attname,
+        'nspname', nspname,
         'n_distinct', stadistinct,
         'null_frac', stanullfrac,
         'most_common_values', CASE
@@ -58,6 +59,7 @@ RESOLVE_ATTNAME = text("""
     ) as value
     FROM pg_attribute a
     INNER JOIN pg_class c on c.oid = a.attrelid
+    INNER JOIN pg_namespace n ON n.oid = c.relnamespace
     LEFT JOIN pg_statistic s ON s.starelid = c.oid
                        AND s.staattnum = a.attnum
     WHERE (attrelid, attnum) IN :att_list
@@ -105,6 +107,7 @@ def resolve_quals(conn, quallist, attribute="quals"):
             attname = attnames["%s.%s" % (v["relid"], v["attnum"])]
             v["relname"] = attname['relname']
             v["attname"] = attname['attname']
+            v["nspname"] = attname['nspname']
             v["n_distinct"] = attname['n_distinct']
             v["most_common_values"] = attname['most_common_values']
             v["null_frac"] = attname['null_frac']
@@ -171,3 +174,6 @@ def qual_constants(type, filter_clause, top=1):
     """ % (type, filter_clause.statement, orders[type], type)
                 ).params(top_value=top, **filter_clause.params)
     return select(["*"]).select_from(base)
+
+def quote_ident(name):
+    return '"' + name + '"'
