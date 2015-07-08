@@ -4,6 +4,7 @@ Utilities for the basis of Powa
 from tornado.web import RequestHandler, authenticated, HTTPError
 from powa import ui_methods
 from powa.json import to_json
+from powa.sql import Plan, format_jumbled_query
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine.url import URL
 from tornado.options import options
@@ -168,6 +169,22 @@ class BaseHandler(RequestHandler):
         Serialize a cookie value using the pickle protocol.
         """
         self.set_secure_cookie(name, pickle.dumps(value))
+
+    def get_plans(self, query, database, qual):
+        plans = []
+        for key in ('most filtering', 'least filtering', 'most executed'):
+            vals = qual[key]
+            query = format_jumbled_query(query, vals['constants'])
+            plan = "N/A"
+            try:
+                result = self.execute("EXPLAIN %s" % query,
+                                        database=database)
+                plan = "\n".join(v[0] for v in result)
+            except:
+                pass
+            plans.append(Plan(key, vals['constants'], query,
+                                plan, vals["filter_ratio"], vals['count']))
+        return plans
 
     flash = ui_methods.flash
     reverse_url_with_params = ui_methods.reverse_url_with_params

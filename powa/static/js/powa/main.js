@@ -7,6 +7,7 @@ require(['jquery',
         'powa/models/Graph',
         'powa/models/Grid',
         'powa/models/Content',
+        'powa/models/Wizard',
         'powa/models/DataSourceCollection',
         'powa/models/MetricGroup',
         'powa/models/ContentSource',
@@ -22,6 +23,7 @@ require(['jquery',
             Graph,
             Grid,
             Content,
+            Wizard,
             DataSourceCollection,
             MetricGroup,
             ContentSource,
@@ -81,6 +83,8 @@ require(['jquery',
                             widgets.add(Grid.fromJSON(this));
                         } else if (this.type == "content") {
                             widgets.add(Content.fromJSON(this));
+                        } else if (this.type == "wizard") {
+                            widgets.add(Wizard.fromJSON(this));
                         }
                     });
                 });

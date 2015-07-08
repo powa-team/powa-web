@@ -160,3 +160,8 @@ class DatabaseOverview(DashboardPage):
     @classmethod
     def get_menutitle(cls, handler, params):
         return params.get("database")
+
+    @classmethod
+    def get_childmenu(cls, handler, params):
+        from powa.wizard import WizardPage
+        return [WizardPage.get_selfmenu(handler, params)]

@@ -7,12 +7,13 @@ define([
     'powa/views/PieGraphView',
     'powa/views/GridView',
     'powa/views/ContentView',
+    'powa/views/WizardView',
     'foundation-daterangepicker',
     'moment',
     'powa/utils/timeurls'
 ], function(jquery, foundation, Backbone, LineGraphView, BarGraphView,
     PieGraphView,
-    GridView, ContentView, daterangepicker,
+    GridView, ContentView, WizardView, daterangepicker,
     moment, timeurls){
     return Backbone.View.extend({
         tagName: "div",
@@ -90,6 +91,8 @@ define([
                 return new GridView({model: widget});
             } else if (widget.get("type") == "content"){
                 return new ContentView({model: widget});
+            } else if (widget.get("type") == "wizard"){
+                return new WizardView({model: widget});
             }
         },
 
