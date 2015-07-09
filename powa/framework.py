@@ -112,12 +112,14 @@ class BaseHandler(RequestHandler):
 
     def has_extension(self, extname, database=None):
         """
-        Returns whether the database has the specific extension installed.
+        Returns the version of the specific extension on the specific database,
+        or None if the extension is not installed.
         """
-        return self.execute(text(
+        extversion = self.execute(text(
             """
-            SELECT true FROM pg_extension WHERE extname = :extname
-            """), database=database, params={"extname": extname}).rowcount > 0
+            SELECT extversion FROM pg_extension WHERE extname = :extname LIMIT 1
+            """), database=database, params={"extname": extname}).scalar()
+        return extversion
 
     def write_error(self, status_code, **kwargs):
         if status_code == 403:
