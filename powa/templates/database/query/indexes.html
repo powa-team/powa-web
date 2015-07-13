@@ -45,6 +45,13 @@
         <div class="row">
           <div class="columns large-12">
             <pre>Hypothetical index: <b>{{ hypoquery }}</b></pre>
+            The hypothetical index is
+            {% if hypoused %}
+              <span class="label radius" title="Tooltip" style="background-color: #12cd21">used</span>
+            {% else %}
+              <span class="label radius" title="Tooltip" style="background-color: #cd1221">not used</span>
+            {% end %}
+              .
             <br />
           </div>
           <div class="columns large-6">

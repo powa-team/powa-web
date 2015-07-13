@@ -181,12 +181,13 @@ class QueryIndexes(ContentWidget):
             qual_indexes[line['where_clause']] = possible_indexes(
                 line['quals'])
 
-        # hypopg support
+        # hypopg support, needing at least v. 0.0.3
         hypoplans = []
         hypogain = None
         hypoquery = None
+        hypoused = False
         if (len(qual_indexes) > 0 and
-            self.has_extension("hypopg", database=database)):
+            self.has_extension("hypopg", database=database)) >= "0.0.3":
             row = qualstat_get_figures(self, database, query,
                                         self.get_argument("from"),
                                         self.get_argument("to"))
@@ -222,17 +223,19 @@ class QueryIndexes(ContentWidget):
                             hypoindex['am'],
                             hypoindex['attnames'])
 
-                        result = self.execute("SELECT hypopg_create_index('%s')" % hypoquery, database=database)
-                        ok = result.scalar()
+                        result = self.execute("SELECT indexname FROM hypopg_create_index('%s')" % hypoquery, database=database)
+                        hyponame = result.scalar()
                         result.close()
-                        if (ok):
+                        if (hyponame):
                             result = self.execute("EXPLAIN %s" % query, database=database)
                             plan = "\n".join(v[0] for v in result)
+                            hypoused = hyponame in plan
                             m = re.search("(?<=\.\.)\d+\.\d+",plan)
                             tocost = m.group(0)
                             hypoplans.append(plan)
                             hypogain = round(100 - float(tocost) * 100 / float(fromcost), 2)
         self.render("database/query/indexes.html", indexes=qual_indexes,
+                    hypoused=hypoused,
                     hypoplans=hypoplans,
                     hypoquery=hypoquery,
                     hypogain=hypogain)
