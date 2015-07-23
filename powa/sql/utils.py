@@ -1,8 +1,10 @@
 from sqlalchemy import select, cast, func
 from sqlalchemy.types import Numeric
-from sqlalchemy.sql import (extract, column, case, table, column,
+from sqlalchemy.sql import (extract, column, case, table, column, text,
                             ColumnCollection)
 from sqlalchemy.sql.functions import sum, min, max
+from powa.sql import qual_constants, format_jumbled_query, quote_ident
+import re
 
 block_size = select([cast(func.current_setting('block_size'), Numeric)
                      .label('block_size')]).alias('block_size')
@@ -46,4 +48,3 @@ def inner_cc(selectable):
     for c in selectable.inner_columns:
         new_cc.add(c)
     return new_cc
-

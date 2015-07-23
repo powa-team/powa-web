@@ -224,9 +224,6 @@ class QueryExplains(ContentWidget):
                                    self.get_argument("to"),
                                    queries=[query])
         if row != None:
-        #if quals.rowcount > 0:
-
-            #row = quals.first()
             for key in ('most filtering', 'least filtering', 'most executed'):
                 vals = row[key]
                 query = format_jumbled_query(row['query'], vals['constants'])
