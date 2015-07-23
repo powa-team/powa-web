@@ -39,7 +39,6 @@ class QualConstantsMetricGroup(MetricGroupDef):
                          (c.queryid == bindparam("query")))).alias()
         return (query.alias().select()
                 .column(totals.c.count.label('total_count'))
-                .column(base.c.queryid)
                 .correlate(query))
 
 
@@ -83,12 +82,12 @@ class QualDetail(ContentWidget):
                     "from": self.get_argument("from"),
                     "to": self.get_argument("to"),
                     "qualid": qual}))
-        quals = resolve_quals(self.connect(database=database), quals)
         my_qual = None
         other_queries = {}
         for qual in quals:
             if qual['is_my_query']:
-                my_qual = qual
+                my_qual = resolve_quals(self.connect(database=database),
+                                        [qual])[0]
             else:
                 other_queries[qual['queryid']] = qual['query']
         if my_qual is None:

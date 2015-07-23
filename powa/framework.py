@@ -80,7 +80,7 @@ class BaseHandler(RequestHandler):
             engine.dispose()
 
     def connect(self, server=None, username=None, password=None,
-                database=None):
+                database=None, **kwargs):
         """
         Connect to a specific database.
         Parameters default values are taken from the cookies and the server
@@ -100,6 +100,7 @@ class BaseHandler(RequestHandler):
         if database is not None:
             connoptions['database'] = database
         engineoptions = {'_initialize': False}
+        engineoptions.update(**kwargs)
         if self.application.settings['debug']:
             engineoptions['echo'] = True
         url = URL("postgresql+psycopg2", **connoptions)
