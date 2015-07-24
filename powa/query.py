@@ -21,6 +21,7 @@ from powa.sql import (Plan, format_jumbled_query, quote_ident,
                       resolve_quals, qual_constants,
                       qualstat_get_figures,
                       get_hypoplans,
+                      get_sample_query,
                       possible_indexes)
 from powa.sql.views import (powa_getstatdata_sample,
                             kcache_getstatdata_sample,
@@ -178,12 +179,11 @@ class QueryIndexes(ContentWidget):
         optimizable = resolve_quals(self.connect(database=database),
                                     optimizable,
                                     'quals')
-        # FIXME: add hypopg support
-        hypo_version = self.has_extension("hypopg", database=database)
         hypoplan = None
         indexes = {}
         for qual in optimizable:
             indexes[qual.where_clause] = possible_indexes(qual)
+        hypo_version = self.has_extension("hypopg", database=database)
         if hypo_version and hypo_version >= "0.0.3":
             # identify indexes
             # create them
@@ -195,12 +195,9 @@ class QueryIndexes(ContentWidget):
                 if ddl is not None:
                     ind.name = self.execute(ddl, database=database).scalar()[1]
             # Build the query and fetch the plans
-            values = qualstat_get_figures(self, database,
-                                           self.get_argument("from"),
-                                           self.get_argument("to"),
-                                           queries=[query])
-            querystr = format_jumbled_query(values['query'],
-                                            values['most executed']['constants'])
+            querystr = get_sample_query(self, database, query,
+                                        self.get_argument("from"),
+                                        self.get_argument("to"))
             hypoplan = get_hypoplans(self.connect(database=database), querystr,
                                      allindexes)
         self.render("database/query/indexes.html", indexes=indexes,
