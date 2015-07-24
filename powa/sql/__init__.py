@@ -20,11 +20,13 @@ extract( epoch from
 
 def format_jumbled_query(sql, params):
     it = iter(params)
+    to_replace = re.findall("\?", sql)
+    result = None
     try:
         sql = re.sub("\?", lambda val: next(it), sql)
     except StopIteration:
         pass
-    return sql
+    return result
 
 
 RESOLVE_OPNAME = text("""
@@ -285,13 +287,47 @@ def get_plans(self, query, database, qual):
     return plans
 
 
+def get_sample_query(ctrl, database, queryid, _from, _to):
+    """
+    From a queryid, build a query string ready to be executed.
+
+    If the only constants in the query are in the predicates, use values from
+    the most_executed quals. If not, use the query_example collected by
+    pg_qualstats, as is.
+    """
+    has_pgqs = ctrl.has_extension("pg_qualstats")
+    if has_pgqs and has_pgqs >= "0.0.7":
+        rs = list(ctrl.execute(text("""
+            SELECT query, pg_qualstats_example_query(queryid)
+            FROM powa_statements
+            WHERE queryid = :queryid
+            LIMIT 1
+        """), params={"queryid": queryid}))[0]
+        normalized_query = rs[0]
+        example_query = rs[1]
+    else:
+        rs = list(ctrl.execute(text("""
+            SELECT query FROM powa_statements WHERE queryid = :queryid LIMIT1
+        """), params={"queryid": queryid}))[0]
+        normalized_query = rs[0]
+        example_query = None
+    values = qualstat_get_figures(ctrl, database, _from, _to,
+                                  queries=[queryid])
+    # Try to inject values
+    sql = format_jumbled_query(normalized_query,
+                               values['most executed']['constants'])
+
+    return sql or example_query
+
+
 def qualstat_get_figures(conn, database, tsfrom, tsto, queries=None, quals=None):
     condition = text("""datname = :database AND coalesce_range && tstzrange(:from, :to)""")
     if queries is not None:
         condition = and_(condition, array([int(q) for q in queries])
                          .any(literal_column("s.queryid")))
     if quals is not None:
-        condition = and_(condition, literal_column("qualid").in_(quals))
+        condition = and_(condition, array([int(q) for q in quals])
+                         .any(literal_column("qnc.qualid")))
     sql = (select([
                   text('most_filtering.quals'),
                   text('most_filtering.query'),
@@ -324,7 +360,7 @@ def qualstat_get_figures(conn, database, tsfrom, tsto, queries=None, quals=None)
     return row
 
 
-class HypoPlan(object):
+class HypoPlan(JSONizable):
 
     def __init__(self, baseplan, basecost,
                  hypoplan, hypocost,
