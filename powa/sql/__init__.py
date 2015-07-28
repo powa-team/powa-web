@@ -317,7 +317,7 @@ def get_sample_query(ctrl, database, queryid, _from, _to):
         example_query = rs[1]
     else:
         rs = list(ctrl.execute(text("""
-            SELECT query FROM powa_statements WHERE queryid = :queryid LIMIT1
+            SELECT query FROM powa_statements WHERE queryid = :queryid LIMIT 1
         """), params={"queryid": queryid}))[0]
         normalized_query = rs[0]
         example_query = None
