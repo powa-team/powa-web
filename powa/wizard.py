@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 from powa.framework import AuthHandler
 from powa.dashboards import (
     Dashboard, DashboardPage, ContentWidget,
