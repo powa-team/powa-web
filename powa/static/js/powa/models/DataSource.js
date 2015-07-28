@@ -9,6 +9,7 @@ define(['backbone'], function(Backbone, Metric, MetricCollection){
                           to: to_date.format("YYYY-MM-DD HH:mm:ssZZ")};
             return url + "?" + jQuery.param(params);
         }
+
     }, {
         fromJSON: function(jsonobj){
             return new this(jsonobj);

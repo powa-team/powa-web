@@ -81,7 +81,9 @@ class ResolvedQual(JSONizable):
                  most_common_values=None,
                  null_frac=None,
                  example_values=None,
-                 eval_type=None):
+                 eval_type=None,
+                 relid=None,
+                 attnum=None):
         self.nspname = nspname
         self.relname = relname
         self.attname = attname
@@ -92,6 +94,8 @@ class ResolvedQual(JSONizable):
         self.null_frac = null_frac
         self.example_values = example_values or []
         self.eval_type = eval_type
+        self.relid = relid
+        self.attnum = attnum
 
     def __str__(self):
         return "%s.%s %s ?" % (self.relname, self.attname, self.opname)
@@ -111,7 +115,8 @@ class ComposedQual(JSONizable):
                  filter_ratio = None,
                  count=None,
                  table_liverows=None,
-                 qualid=None):
+                 qualid=None,
+                 relid=None):
         super(ComposedQual, self).__init__()
         self.qualid = qualid
         self.relname = relname
@@ -120,6 +125,7 @@ class ComposedQual(JSONizable):
         self.filter_ratio = filter_ratio
         self.count = count
         self.table_liverows = table_liverows
+        self.relid = relid
         self._quals = []
 
     def append(self, element):
@@ -199,6 +205,7 @@ def resolve_quals(conn, quallist, attribute="quals"):
             else:
                 newqual.relname = attname["relname"]
                 newqual.nspname = attname["nspname"]
+                newqual.relid = v["relid"]
                 newqual.table_liverows = attname["table_liverows"]
             newqual.append(ResolvedQual(
                 nspname=attname['nspname'],
@@ -209,7 +216,9 @@ def resolve_quals(conn, quallist, attribute="quals"):
                 n_distinct=attname["n_distinct"],
                 most_common_values=attname["most_common_values"],
                 null_frac=attname["null_frac"],
-                eval_type=v["eval_type"]))
+                eval_type=v["eval_type"],
+                relid=v["relid"],
+                attnum=v["attnum"]))
     return new_qual_list
 
 
@@ -377,7 +386,12 @@ class HypoPlan(JSONizable):
     def gain_percent(self):
         return round(100 - float(self.hypocost) * 100 / float(self.basecost), 2)
 
-class HypoIndex(object):
+    def to_json(self):
+        base = super(HypoPlan, self).to_json()
+        base['gain_percent'] = self.gain_percent
+        return base
+
+class HypoIndex(JSONizable):
 
     def __init__(self, nspname, relname, amname, composed_qual=None):
         self.nspname = nspname
@@ -390,16 +404,25 @@ class HypoIndex(object):
     def ddl(self):
         # Only btree is supported right now
         if 'btree' == self.amname:
+            attrs = []
+            for qual in self.qual:
+                if qual.attname not in attrs:
+                    attrs.append(qual.attname)
             return ("""CREATE INDEX ON %s.%s(%s)""" % (
                 quote_ident(self.nspname),
                 quote_ident(self.relname),
-                ",".join(quote_ident(qual.attname) for qual in self.qual)))
+                ",".join(attrs)))
 
     @property
     def hypo_ddl(self):
         ddl = self.ddl
         if ddl is not None:
             return func.hypopg_create_index(self.ddl)
+
+    def to_json(self):
+        base = super(HypoIndex, self).to_json()
+        base['ddl'] = self.ddl
+        return base
 
 
 def possible_indexes(composed_qual):
@@ -437,9 +460,9 @@ def get_hypoplans(conn, query, indexes=None):
         hypoplan = "\n".join(v[0] for v in trans.execute("EXPLAIN %s" % query))
     COST_RE = "(?<=\.\.)\d+\.\d+"
     m = re.search(COST_RE, baseplan)
-    basecost = m.group(0)
+    basecost = float(m.group(0))
     m = re.search(COST_RE, hypoplan)
-    hypocost = m.group(0)
+    hypocost = float(m.group(0))
     used_indexes = []
     for ind in indexes:
         if ind.name is None:

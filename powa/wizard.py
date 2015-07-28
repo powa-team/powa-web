@@ -5,50 +5,68 @@ from powa.dashboards import (
     Widget, MetricGroupDef, MetricDef)
 
 from powa.database import DatabaseOverview
-from powa.sql import resolve_quals
+from powa.sql import (resolve_quals, possible_indexes, get_sample_query,
+                      format_jumbled_query, get_hypoplans)
 import json
-from powa.sql.views import qualstat_getstatdata, possible_indexes, TEXTUAL_INDEX_QUERY
+from powa.sql.views import qualstat_getstatdata, TEXTUAL_INDEX_QUERY
 from powa.sql.utils import inner_cc
 from powa.sql.tables import pg_database, powa_statements
-from sqlalchemy.sql import bindparam, literal, literal_column, join, select, alias, text
+from sqlalchemy.sql import (bindparam, literal, literal_column, join, select,
+                            alias, text, func)
 
 
 class IndexSuggestionHandler(AuthHandler):
 
     def post(self, database):
         qual_to_resolve = json.loads(self.request.body.decode("utf8"))
-        base = qual_to_resolve['qual']
-        indexes = possible_indexes(base["quals"])
+        qual_id = qual_to_resolve['qual']['id']
+        from_date = qual_to_resolve['from_date']
+        to_date = qual_to_resolve['to_date']
+        base_query = qualstat_getstatdata()
+        c = inner_cc(base_query)
+        base_query.append_from(text("""LATERAL unnest(quals) as qual"""))
+        base_query = (base_query
+                      .where(c.qualid == qual_id)
+                      .params(**{'from': '-infinity',
+                                 'to': 'infinity'}))
+        optimizable = list(self.execute(base_query))
+        optimizable = resolve_quals(self.connect(database=database),
+                                    optimizable,
+                                    'quals')
+        indexes = possible_indexes(optimizable[0])
         # Get every query associated with it.
         powa_conn = self.connect(database="powa")
         conn = self.connect(database=database)
         queries = list(powa_conn.execute(text("""
-            SELECT query, ps.queryid
+            SELECT DISTINCT query, ps.queryid
             FROM powa_statements ps
             JOIN powa_qualstats_quals q ON q.queryid = ps.queryid
             WHERE q.qualid = :qualid
-        """), qualid=base['id']))
+        """), qualid=qual_id))
         # Create all possible indexes for this qual
         not_tested = []
         plans = {}
-        for query in queries:
-            plans[query.querid]['without'] = self.get_plans(query.query, database,
-                                                       base)
-        for ind in indexes:
-            text_value = conn.execute(
-                text(TEXTUAL_INDEX_QUERY),
-                relid=base['relid'],
-                attnums=[q['attnum'] for q in qual_to_resolve['quals']],
-                indexam=ind).first().index_ddl
-            try:
-                conn.execute(text("""SELECT hypopg_create_index(:text_value)"""),
-                            text_value=text_value)
-            except:
-                not_tested.append(ind)
-        for query in queries:
-            plans[query.querid]['with'] = self.get_plans(query.query, database,
-                                                         base)
-        self.render_json(plans)
+        hypo_version = self.has_extension("hypopg", database=database)
+        hypoplans = {}
+        if hypo_version and hypo_version >= "0.0.3":
+            # identify indexes
+            # create them
+            hypo_index_names = []
+            for ind in indexes:
+                ddl = ind.hypo_ddl
+                if ddl is not None:
+                    ind.name = self.execute(ddl, database=database).scalar()[1]
+            # Build the query and fetch the plans
+            for query in queries:
+                querystr = get_sample_query(self, database, query.queryid,
+                                            from_date,
+                                            to_date)
+                if querystr:
+                    hypoplans[query.queryid] = get_hypoplans(
+                        self.connect(database=database), querystr,
+                        indexes)
+            # To value of a link is the the reduction in cost
+        self.render_json(hypoplans)
 
 
 
@@ -70,7 +88,8 @@ class WizardMetricGroup(MetricGroupDef):
             "quals",
             "count",
             "query",
-            "nbfiltered"
+            "nbfiltered",
+            "filter_ratio"
         ]).select_from(
             join(base, pg_database,
                  onclause=(
@@ -111,4 +130,4 @@ class WizardPage(DashboardPage):
 
     dashboard = Dashboard(
         "Optimizer for %(database)s",
-        [[Wizard("Apply wizardry to %(database)s")]])
+        [[Wizard("Apply wizardry to database '%(database)s'")]])

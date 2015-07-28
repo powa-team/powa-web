@@ -4,8 +4,10 @@ define([
         'tpl!powa/templates/wizard.html',
         'highlight',
         'moment',
-        'd3'],
-function(WidgetView, Wizard, template, highlight, moment, d3){
+        'd3',
+        'backgrid',
+        'backbone'],
+function(WidgetView, Wizard, template, highlight, moment, d3, Backgrid, Backbone){
 
 
     var h = "500",
@@ -19,7 +21,8 @@ function(WidgetView, Wizard, template, highlight, moment, d3){
             this.model = args.model;
             this.listenTo(this.model, "widget:dataload-failed", this.fail);
             this.listenTo(this.model, "widget:update_progress", this.change_progress);
-            this.listenTo(this.model, "wizard:update_graph", this.update_graph);
+//            this.listenTo(this.model, "wizard:update_graph", this.update_graph);
+            this.listenTo(this.model, "wizard:solved", this.display_solution);
             this.$el.addClass("wizard-widget");
             this.render();
         },
@@ -46,24 +49,22 @@ function(WidgetView, Wizard, template, highlight, moment, d3){
                 .attr("width", "100%")
                 .attr("height", h);
             this.force = d3.layout.force()
-                .size([w - 100, h - 100])
                 .nodes(this.model.get("nodes"))
                 .gravity(1)
                 .linkDistance(function(link) {
                     var base = link.samerel ? 0 : w / 10;
                     return base + link.value;
                 })
-                .charge(-3000)
+                .charge(-30)
                 .linkStrength(function(x) {
 				return 10;
 			    });
 			this.labelforce = d3.layout.force()
-                .nodes([])
+                .nodes([ ])
                 .gravity(0)
                 .linkDistance(0)
                 .linkStrength(8)
-                .charge(-100)
-                .size([w - 100, h - 100]);
+                .charge(-30);
             var updateNode = function() {
 				this.attr("transform", function(d) {
 					return "translate(" + d.x + "," + d.y + ")";
@@ -196,7 +197,6 @@ function(WidgetView, Wizard, template, highlight, moment, d3){
                 this.labelforce.links(labellinks);
                 this.labelforce.start();
             }
-            this.resolve_indexes(shortest_path);
         },
 
         resolve_indexes: function(path){
@@ -208,6 +208,33 @@ function(WidgetView, Wizard, template, highlight, moment, d3){
             _.each(interesting_links , function(link, index){
                 self.change_progress("Collecting index suggestion", index / interesting_links.length);
             });
+        },
+
+        display_solution: function(solutions){
+            var grid = new Backgrid.Grid({
+                columns: [
+                {
+                    editable: false,
+                    name: "ddl",
+                    cell: "string"
+                }, {
+                    editable: false,
+                    name: "queries",
+                    cell: "string",
+                    formatter: {
+                        fromRaw: function(queryobj){
+                            return _.pluck(queryobj, "query").join(",");
+                        }
+                    }
+                }, {
+                    editable: false,
+                    name: "quals",
+                    cell: "string"
+                }],
+                collection: new Backbone.Collection(_.values(solutions.by_index))
+            });
+            this.$gridel = this.$el.find(".indexes_grid");
+            this.$gridel.append(grid.render().el);
         }
 
     });

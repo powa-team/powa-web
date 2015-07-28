@@ -13,11 +13,19 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery'], function(Back
             total_cost += link.value + base;
         }
         return total_cost;
-    }
+    };
+
+    var pruneLinks = function(node, nodes_by_id){
+
+    };
+
 
     var TSPStupidSolver = function(nodes) {
         var start;
         var nodesById = {};
+        if(nodes.length == 1){
+            return;
+        }
         for(var i=0; i<nodes.length; i++){
             if(nodes[i].id == "start"){
                 start = nodes[i];
@@ -35,6 +43,8 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery'], function(Back
              * If it isn't, then we want to go to the most expensive option,
              * knowing the other ones are basically free after that.
              */
+            // Prune links leading to quals already satisfied by this index
+            pruneLinks(current_node, nodesById);
             var unvisited_targets = _.filter(current_node.links, function(link){
                 return nodesById[link.target.id] != undefined;
             });
@@ -43,16 +53,17 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery'], function(Back
             });
             /* We still have more predicate to optimize for this table */
             if(unvisited_samerel_targets.length > 0){
-                var next_path =  _.min(unvisited_samerel_targets, function(link){
-                    return link.value;
+                var next_path =  _.max(unvisited_samerel_targets, function(link){
+                    return link.overlap.length;
                 });
+
                 current_node = next_path.target;
                 current_path.push(next_path);
                 delete nodesById[current_node.id];
             } else {
                 /* Lets jump to the most comprehensive index for another table */
                 var next_path = _.max(unvisited_targets, function(link){
-                    return link.target.quals.length;
+                    return link.value;
                 });
                 current_node = next_path.target;
                 current_path.push(next_path);
@@ -152,8 +163,8 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery'], function(Back
             relid2 = q2.get("relid");
             if(q1.get("relid") == q2.get("relid") &&
                q1.get("attnum") == q2.get("attnum")){
-                var common_ams = _.filter(q1.get("indexams"), function(indexam){
-                    return q2.get("indexams").indexOf(indexam) > -1;
+                var common_ams = _.filter(q1.get("indexam_names"), function(indexam){
+                    return q2.get("indexam_names").indexOf(indexam) > -1;
                 });
                 if(common_ams.length > 0){
                     overlap.push({
@@ -185,30 +196,47 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery'], function(Back
             }
         }
         var samerel = relid1 != undefined && relid2 != undefined && relid1 == relid2;
-        var link1 = { source: node2, target: node1, samerel: samerel, overlap: overlap, missing: missing1 },
-            link2 = { source: node1, target: node2, samerel: samerel, overlap: overlap, missing: missing2 };
+        var link1 = { source: node1, target: node2, samerel: samerel, overlap: overlap, missing: missing2 },
+            link2 = { source: node2, target: node1, samerel: samerel, overlap: overlap, missing: missing1 };
         var links = [];
         if(link1.target.id != 'start'){
             links.push(link1);
-            node1.links[node2.id] = link2;
+            node1.links[node2.id] = link1;
         }
         if(link2.target.id != 'start'){
             links.push(link2);
-            node2.links[node1.id] = link1;
+            node2.links[node1.id] = link2;
         }
-        return [link1, link2];
+        // Sort the attributes for each links, so that a proper order is
+        // discovered for multi-column indexes
+        var overlap_attnames = _.pluck(overlap, "attname");
+        _.each(links, function(link){
+            link.quals = _.clone(link.target.quals.models);
+            link.quals = _.sortBy(link.quals, function(qual){
+                var score = 0;
+                _.each(qual.attnames, function(attname){
+                    if(overlap_attnames.indexOf(attname) > -1){
+                        score -= 1;
+                    }
+                });
+                return score;
+            });
+        });
+        return links;
     }
 
     return Backbone.Model.extend({
         initialize: function(){
             this.set("stage", "Starting wizard...");
             this.set("progress", 0);
-            this.startNode = { label: "Start", type: "startNode", quals: new QualCollection(), links: {}, id: "start"};
+            this.startNode = { label: "Start", type: "startNode", quals: new QualCollection(), links: {}, id: "start",
+                               x: 0.5, y: 0.5 };
             this.set("nodes", [this.startNode]);
             this.set("links", []);
             this.set("shortest_path", []);
             this.listenTo(this.get("datasource"), "metricgroup:dataload", this.update, this);
             this.listenTo(this.get("datasource"), "startload", this.starload, this);
+            this.set("cache", {});
         },
 
         startload: function(){
@@ -235,14 +263,15 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery'], function(Back
             return links;
         },
 
-        update: function(quals){
-            this.trigger("widget:update_progress", "Suggest indexes...", 0);
+        update: function(quals, from_date, to_date){
             var total_quals = _.size(quals);
             _.each(quals, function(qual, index){
                 var node = {
                     label: qual.where_clause,
                     type: "qual",
                     quals: new QualCollection(qual.quals),
+                    from_date: from_date,
+                    to_date: to_date,
                     links: {},
                     id: qual.qualid
                 }
@@ -250,12 +279,55 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery'], function(Back
             }, this);
             var links = this.computeLinks(this.get("nodes"));
             _.each(links, function(link, inde){
+                this.trigger("widget:update_progress", "Computing stats for links " + (inde / links.length) * 100 + "%", 100 * inde / links.length);
                 this.valueLink(link);
             }, this);
             this.set("links", links);
             var stupidShortPath = TSPStupidSolver(this.get("nodes"), this.get("links"));
             this.set("shortest_path", stupidShortPath);
-            this.trigger("wizard:update_graph", this);
+            console.log(stupidShortPath);
+            /* The shortest_path is computed, aggregate results by indexes */
+            var indexes = this.path_by_indexes_and_queries(stupidShortPath);
+            this.trigger("wizard:solved", indexes);
+        },
+
+        path_by_indexes_and_queries: function(shortest_path){
+            var indexes = {};
+            var queries = {};
+            for(var i=0; i<shortest_path.length; i++){
+                var link = shortest_path[i];
+                console.log(link);
+                // This index is already taken care of
+                if(link.missing.length == 0){
+                    continue;
+                } else {
+
+                // This index is already taken care of
+                }
+                _.each(link.details, function(elem, query){
+                    _.each(elem.indexes, function(index){
+                        var key = index.ddl;
+                        var stats = {
+                            "queries": [],
+                            "basecost": 0,
+                            "hypocost": 0,
+                            "quals": [],
+                            "ddl": index.ddl
+                        };
+                        if(indexes[key]){
+                            stats = indexes[key];
+                        } else {
+                            indexes[key] = stats;
+                        }
+                        stats.queries.push({queryid: query, query: elem.query});
+                        stats.quals.push(link.target.label);
+                    });
+                })
+            }
+            return {
+                by_index: indexes,
+                by_query: queries
+            }
         },
 
         valueLink: function(link){
@@ -270,20 +342,52 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery'], function(Back
             var missing = _.map(link.missing, function(qual){
                 return qual.attributes;
             });
+            var self = this;
+            link.value = -1000 * link.overlap.length;
             if (missing.length) {
-                console.log(link.target);
                 var shallowtarget = _.clone(link.target);
-                shallowtarget.quals = _.map(shallowtarget.quals.models, function(m){
+                shallowtarget.quals = _.map(link.quals, function(m){
                     return m.attributes;
                 });
+                var cached_value = self.get("cache")[shallowtarget.id];
+                if(cached_value){
+                    console.log("Already computed");
+                    link.details = cached_value.details;
+                    link.value = cached_value.value;
+                    return;
+                }
                 delete shallowtarget.links;
                 $.ajax({
                     url: '/database/' + this.get("database") + '/suggest/',
                     data: JSON.stringify({
-                        qual: shallowtarget
+                        qual: shallowtarget,
+                        from_date: shallowtarget.from_date,
+                        to_date: shallowtarget.to_date
                     }),
+                    async: false,
                     type: 'POST',
                     contentType: 'application/json'
+                }).success(function(data){
+                    link.details = data;
+                    link.value = 0;
+                    /* The "value" of a link is the sum of all savings made to
+                     * every query using the target qual(s)
+                     * This is a negative value, so that the cost will be
+                     * prefered in all cases.
+                     */
+                    if(_.keys(data.length == 0)){
+                        /* We could not get any plan for queries involving this
+                         * qual, so we rely on a really conservative guesstimate */
+                        link.value = missing.length * 100;
+                    } else {
+                        _.each(data, function(elem, index){
+                            link.value += (elem.basecost - elem.hypocost);
+                        });
+                    }
+                    self.get("cache")[shallowtarget.id] = {
+                        details: data,
+                        value: link.value
+                    }
                 });
             } else {
                 link.value = -1000 * link.overlap.length;
