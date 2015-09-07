@@ -543,6 +543,8 @@ def get_hypoplans(conn, query, indexes=None):
         indexes: a list of hypothetical index names to look for in the plan
     """
     indexes = indexes or []
+    # Escape literal '%'
+    query = query.replace("%", "%%")
     with conn.begin() as trans:
         trans.execute("SET hypopg.enabled = off")
         baseplan = "\n".join(v[0] for v in trans.execute("EXPLAIN %s" % query))
