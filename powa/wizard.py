@@ -94,7 +94,7 @@ class WizardMetricGroup(MetricGroupDef):
                  onclause=(
                      pg_database.c.oid == literal_column("dbid"))))
             .where(pg_database.c.datname == bindparam("database"))
-            .order_by(c.count.desc())
+            .order_by("count")
             .limit(20))
         return query
 
