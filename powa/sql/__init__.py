@@ -323,10 +323,12 @@ def get_sample_query(ctrl, database, queryid, _from, _to):
         example_query = None
     values = qualstat_get_figures(ctrl, database, _from, _to,
                                   queries=[queryid])
-    # Try to inject values
-    sql = format_jumbled_query(normalized_query,
-                               values['most executed'].get('constants', []))
 
+    if values is None:
+        values = {'most executed': {}}
+        # Try to inject values
+    sql = format_jumbled_query(normalized_query,
+                                values['most executed'].get('constants', []))
     return sql or example_query
 
 
