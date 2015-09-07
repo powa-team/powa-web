@@ -129,4 +129,4 @@ class WizardPage(DashboardPage):
 
     dashboard = Dashboard(
         "Optimizer for %(database)s",
-        [[Wizard("Apply wizardry to database '%(database)s'")]])
+        [[Wizard("Apply wizardry to database '%(database)s")]])

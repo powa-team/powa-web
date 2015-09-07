@@ -216,20 +216,15 @@ function(WidgetView, Wizard, template, highlight, moment, d3, Backgrid, Backbone
                 {
                     editable: false,
                     name: "ddl",
-                    cell: "string"
+                    cell: "query"
                 }, {
                     editable: false,
                     name: "queries",
-                    cell: "string",
-                    formatter: {
-                        fromRaw: function(queryobj){
-                            return _.pluck(queryobj, "query").join(",");
-                        }
-                    }
+                    cell: "query",
                 }, {
                     editable: false,
                     name: "quals",
-                    cell: "string"
+                    cell: "query"
                 }],
                 collection: new Backbone.Collection(_.values(solutions.by_index))
             });

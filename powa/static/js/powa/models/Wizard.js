@@ -1,4 +1,5 @@
-define(['backbone', 'powa/models/DataSourceCollection', 'jquery'], function(Backbone, DataSourceCollection, $){
+define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
+        'powa/views/GridView', 'highlight'], function(Backbone, DataSourceCollection, $){
 
     var computeDistance = function(path){
         var total_cost = 0;
@@ -237,6 +238,8 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery'], function(Back
             this.listenTo(this.get("datasource"), "metricgroup:dataload", this.update, this);
             this.listenTo(this.get("datasource"), "startload", this.starload, this);
             this.set("cache", {});
+            this.set("index_queries", {});
+            this.set("index_quals", {});
         },
 
         startload: function(){
@@ -285,7 +288,6 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery'], function(Back
             this.set("links", links);
             var stupidShortPath = TSPStupidSolver(this.get("nodes"), this.get("links"));
             this.set("shortest_path", stupidShortPath);
-            console.log(stupidShortPath);
             /* The shortest_path is computed, aggregate results by indexes */
             var indexes = this.path_by_indexes_and_queries(stupidShortPath);
             this.trigger("wizard:solved", indexes);
@@ -294,15 +296,13 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery'], function(Back
         path_by_indexes_and_queries: function(shortest_path){
             var indexes = {};
             var queries = {};
+            var self = this;
             for(var i=0; i<shortest_path.length; i++){
                 var link = shortest_path[i];
-                console.log(link);
                 // This index is already taken care of
                 if(link.missing.length == 0){
+                    // TODO: merge queries and quals
                     continue;
-                } else {
-
-                // This index is already taken care of
                 }
                 _.each(link.details, function(elem, query){
                     _.each(elem.indexes, function(index){
@@ -319,14 +319,13 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery'], function(Back
                         } else {
                             indexes[key] = stats;
                         }
-                        stats.queries.push({queryid: query, query: elem.query});
-                        stats.quals.push(link.target.label);
+                        stats.queries = self.get("index_queries")[key].join("\n");
+                        stats.quals = self.get("index_quals")[key].join(";\n");
                     });
                 })
             }
             return {
-                by_index: indexes,
-                by_query: queries
+                by_index: indexes
             }
         },
 
@@ -351,7 +350,6 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery'], function(Back
                 });
                 var cached_value = self.get("cache")[shallowtarget.id];
                 if(cached_value){
-                    console.log("Already computed");
                     link.details = cached_value.details;
                     link.value = cached_value.value;
                     return;
@@ -388,6 +386,16 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery'], function(Back
                         details: data,
                         value: link.value
                     }
+                    _.each(_.values(data), function(val){
+                        _.each(val.indexes, function(index) {
+                            var queries = self.get("index_queries")[index.ddl] || [];
+                            var quals = self.get("index_quals")[index.ddl] || [];
+                            queries.push(val.query);
+                            quals.push(shallowtarget.label);
+                            self.get("index_queries")[index.ddl] = queries;
+                            self.get("index_quals")[index.ddl] = quals;
+                        });
+                    });
                 });
             } else {
                 link.value = -1000 * link.overlap.length;
