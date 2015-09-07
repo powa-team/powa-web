@@ -325,7 +325,7 @@ def get_sample_query(ctrl, database, queryid, _from, _to):
                                   queries=[queryid])
     # Try to inject values
     sql = format_jumbled_query(normalized_query,
-                               values['most executed']['constants'])
+                               values['most executed'].get('constants', []))
 
     return sql or example_query
 
