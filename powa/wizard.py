@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from powa.framework import AuthHandler
 from powa.dashboards import (
     Dashboard, DashboardPage, ContentWidget,
