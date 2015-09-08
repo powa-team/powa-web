@@ -329,17 +329,41 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             }
         },
 
+        _order_attnums: function(link, preferred_attnums){
+            var attnums  = _.map(link.target.quals.models, function(qual){return qual.get("attnum")});
+            var missing = _.map(link.missing, function(qual){
+                return qual.attributes.attnum
+            });
+            return _.sortBy(attnums, function(attnum){
+                var idx = missing.indexOf(attnum);
+                if (idx >= 0){
+                    return Infinity;
+                }
+                if(preferred_attnums){
+                    idx = preferred_attnums.indexOf(attnum);
+                }
+                if(idx >= 0){
+                    return idx;
+                }
+                return attnums.indexOf(attnum);
+            });
+
+        },
+
         _propagate_cost: function(root, link, value, attnums){
             var self = this;
             _.each(_.values(link.target.links), function(nextlink){
-                if(nextlink.value){
+                if(nextlink.value != undefined){
                     return;
                 }
-                if(_.every(nextlink.overlap, function(overlap){
+                if(nextlink.samerel && nextlink.target.relid == link.target.relid &&
+                        nextlink.missing.length == 0 && nextlink.overlap.length > 0 &&
+                        _.every(nextlink.overlap, function(overlap){
                     return attnums.indexOf(overlap.attnum) >= 0;
                 })){
                     nextlink.value = link.value;
                     nextlink.cost = 0;
+                    var newattnums = self._order_attnums(nextlink, attnums);
                     self._propagate_cost(root, nextlink, value, attnums);
                 }
             });
@@ -368,20 +392,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             shallowtarget.quals = _.map(link.quals, function(m){
                 return m.attributes;
             });
-            var attnums  = _.map(link.target.quals.models, function(qual){return qual.get("attnum")});
-            attnums = _.sortBy(attnums, function(attnum){
-                var idx = missing.indexOf(attnum);
-                if (idx >= 0){
-                    return Infinity;
-                }
-                if(preferred_attnums){
-                    idx = preferred_attnums.indexOf(attnum);
-                }
-                if(idx >= 0){
-                    return idx;
-                }
-                return attnums.indexOf(attnum);
-            });
+            var attnums = self._order_attnums(link, preferred_attnums);
             var cache_key = attnums.join(",");
             var cached_value = (self.get("cache")[shallowtarget.id] || {})[cache_key];
             if(cached_value){
