@@ -125,7 +125,7 @@ class ResolvedQual(JSONizable):
 
     @property
     def amop_keys(self):
-        return [" ".join(amop) for amop in self.amops]
+        return [" ".join(amop) for amop in self.amops or []]
 
     @property
     def distinct_values(self):
