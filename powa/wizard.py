@@ -22,6 +22,7 @@ class IndexSuggestionHandler(AuthHandler):
         qual_id = qual_to_resolve['qual']['id']
         from_date = qual_to_resolve['from_date']
         to_date = qual_to_resolve['to_date']
+        attnum_order = qual_to_resolve['attnums']
         base_query = qualstat_getstatdata()
         c = inner_cc(base_query)
         base_query.append_from(text("""LATERAL unnest(quals) as qual"""))
@@ -33,7 +34,7 @@ class IndexSuggestionHandler(AuthHandler):
         optimizable = resolve_quals(self.connect(database=database),
                                     optimizable,
                                     'quals')
-        indexes = possible_indexes(optimizable[0])
+        indexes = possible_indexes(optimizable[0], order=attnum_order)
         # Get every query associated with it.
         powa_conn = self.connect(database="powa")
         conn = self.connect(database=database)

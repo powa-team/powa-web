@@ -9,6 +9,8 @@ from sqlalchemy.types import Numeric
 from sqlalchemy.dialects.postgresql import array, dialect as pgdialect
 from collections import namedtuple, defaultdict
 from powa.json import JSONizable
+from operator import attrgetter
+import sys
 
 TOTAL_MEASURE_INTERVAL = """
 extract( epoch from
@@ -146,7 +148,8 @@ class ComposedQual(JSONizable):
                  count=None,
                  table_liverows=None,
                  qualid=None,
-                 relid=None):
+                 relid=None,
+                 query=None):
         super(ComposedQual, self).__init__()
         self.qualid = qualid
         self.relname = relname
@@ -156,6 +159,7 @@ class ComposedQual(JSONizable):
         self.count = count
         self.table_liverows = table_liverows
         self.relid = relid
+        self.query = query
         self._quals = []
 
     def append(self, element):
@@ -220,7 +224,8 @@ def resolve_quals(conn, quallist, attribute="quals"):
             count=row['count'],
             nbfiltered=row['nbfiltered'],
             filter_ratio=row['filter_ratio'],
-            qualid=row['qualid']
+            qualid=row['qualid'],
+            query=row.get('query')
         )
         new_qual_list.append(newqual)
         values = [v for v in row[attribute] if v['relid'] != '0']
@@ -460,9 +465,16 @@ class HypoIndex(JSONizable):
         return base
 
 
-def possible_indexes(composed_qual):
+def possible_indexes(composed_qual, order):
     by_am = defaultdict(list)
-    for qual in composed_qual:
+    def sorter(qual):
+        attnum = qual.attnum
+        if attnum in order:
+            return order.index(attnum)
+        else:
+            # - attnum to guarantee stable sort
+            return sys.maxsize - attnum
+    for qual in sorted(composed_qual, key=sorter):
         for am in qual.amops.keys():
             by_am[am].append(qual)
     indexes = []

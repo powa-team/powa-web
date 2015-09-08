@@ -45,7 +45,6 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
              * knowing the other ones are basically free after that.
              */
             // Prune links leading to quals already satisfied by this index
-            pruneLinks(current_node, nodesById);
             var unvisited_targets = _.filter(current_node.links, function(link){
                 return nodesById[link.target.id] != undefined;
             });
@@ -55,7 +54,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             /* We still have more predicate to optimize for this table */
             if(unvisited_samerel_targets.length > 0){
                 var next_path =  _.max(unvisited_samerel_targets, function(link){
-                    return link.overlap.length;
+                    return link.value;
                 });
 
                 current_node = next_path.target;
@@ -164,8 +163,8 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             relid2 = q2.get("relid");
             if(q1.get("relid") == q2.get("relid") &&
                q1.get("attnum") == q2.get("attnum")){
-                var common_ams = _.filter(q1.get("amop"), function(indexam){
-                    return q2.get("amop_keys").indexOf(indexam.join(" "));
+                var common_ams = _.filter(_.keys(q1.get("amops")), function(indexam){
+                    return q2.get("amops")[indexam] != undefined;
                 });
                 if(common_ams.length > 0){
                     overlap.push({
@@ -174,12 +173,13 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                         attnum: q1.get("attnum"),
                         relname: q1.get("relname"),
                         attname: q1.get("attname"),
-                        indexams: common_ams
+                        indexams: common_ams,
+                        q1_idx: idx1,
+                        q2_idx: idx2
                     });
                     attrs1[attrid1] = true;
                     attrs2[attrid2] = true;
                 }
-                idx1++;
                 idx2++;
                 continue;
             } else {
@@ -187,12 +187,12 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                     var newq2 = _.clone(q2);
                     newq2.qualid = node2.qualid;
                     missing1.push(newq2);
-                    idx1++;
+                    idx2++;
                 } else {
                     var newq1 = _.clone(q1);
                     newq1.qualid = node1.qualid;
                     missing2.push(newq1);
-                    idx2++;
+                    idx1++;
                 }
             }
         }
@@ -281,7 +281,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 this.get("nodes").push(node);
             }, this);
             var links = this.computeLinks(this.get("nodes"));
-            _.each(links, function(link, inde){
+            _.each(_.sortBy(links, function(link){return link.overlap.length}), function(link, inde){
                 this.trigger("widget:update_progress", "Computing stats for links " + (inde / links.length) * 100 + "%", 100 * inde / links.length);
                 this.valueLink(link);
             }, this);
@@ -329,7 +329,24 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             }
         },
 
-        valueLink: function(link){
+        _propagate_cost: function(root, link, value, attnums){
+            var self = this;
+            _.each(_.values(link.target.links), function(nextlink){
+                if(nextlink.value){
+                    return;
+                }
+                if(_.every(nextlink.overlap, function(overlap){
+                    return attnums.indexOf(overlap.attnum) >= 0;
+                })){
+                    nextlink.value = link.value;
+                    nextlink.cost = 0;
+                    self._propagate_cost(root, nextlink, value, attnums);
+                }
+            });
+
+        },
+
+        valueLink: function(link, preferred_attnums){
             // A link from a source to a destination with one target being
             // entirely comprised in the source is valued as -1000 *
             // nbattributes: an index for one will cover the other one.
@@ -339,67 +356,89 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             // The reasoning is that it will be far cheaper to explore the
             // "biggest" indexes first, and then the other ones.
             var missing = _.map(link.missing, function(qual){
-                return qual.attributes;
+                return qual.attributes.attnum
             });
             var self = this;
-            link.value = -1000 * link.overlap.length;
-            if (missing.length) {
-                var shallowtarget = _.clone(link.target);
-                shallowtarget.quals = _.map(link.quals, function(m){
-                    return m.attributes;
-                });
-                var cached_value = self.get("cache")[shallowtarget.id];
-                if(cached_value){
-                    link.details = cached_value.details;
-                    link.value = cached_value.value;
-                    return;
+            link.cost = 1000 * link.missing.length;
+            // If this link was already visisted, skip it
+            if(link.value){
+                return;
+            }
+            var shallowtarget = _.clone(link.target);
+            shallowtarget.quals = _.map(link.quals, function(m){
+                return m.attributes;
+            });
+            var attnums  = _.map(link.target.quals.models, function(qual){return qual.get("attnum")});
+            attnums = _.sortBy(attnums, function(attnum){
+                var idx = missing.indexOf(attnum);
+                if (idx >= 0){
+                    return Infinity;
                 }
-                delete shallowtarget.links;
-                $.ajax({
-                    url: '/database/' + this.get("database") + '/suggest/',
-                    data: JSON.stringify({
-                        qual: shallowtarget,
-                        from_date: shallowtarget.from_date,
-                        to_date: shallowtarget.to_date
-                    }),
-                    async: false,
-                    type: 'POST',
-                    contentType: 'application/json'
-                }).success(function(data){
-                    link.details = data;
-                    link.value = 0;
-                    /* The "value" of a link is the sum of all savings made to
-                     * every query using the target qual(s)
-                     * This is a negative value, so that the cost will be
-                     * prefered in all cases.
-                     */
-                    if(_.keys(data.length == 0)){
-                        /* We could not get any plan for queries involving this
-                         * qual, so we rely on a really conservative guesstimate */
-                        link.value = missing.length * 100;
-                    } else {
-                        _.each(data, function(elem, index){
-                            link.value += (elem.basecost - elem.hypocost);
-                        });
-                    }
-                    self.get("cache")[shallowtarget.id] = {
-                        details: data,
-                        value: link.value
-                    }
-                    _.each(_.values(data), function(val){
-                        _.each(val.indexes, function(index) {
-                            var queries = self.get("index_queries")[index.ddl] || [];
-                            var quals = self.get("index_quals")[index.ddl] || [];
-                            queries.push(val.query);
-                            quals.push(shallowtarget.label);
-                            self.get("index_queries")[index.ddl] = queries;
-                            self.get("index_quals")[index.ddl] = quals;
-                        });
+                if(preferred_attnums){
+                    idx = preferred_attnums.indexOf(attnum);
+                }
+                if(idx >= 0){
+                    return idx;
+                }
+                return attnums.indexOf(attnum);
+            });
+            var cache_key = attnums.join(",");
+            var cached_value = (self.get("cache")[shallowtarget.id] || {})[cache_key];
+            if(cached_value){
+                link.details = cached_value.details;
+                link.value = cached_value.value;
+                return;
+            }
+            delete shallowtarget.links;
+            $.ajax({
+                url: '/database/' + this.get("database") + '/suggest/',
+                data: JSON.stringify({
+                    qual: shallowtarget,
+                    from_date: shallowtarget.from_date,
+                    to_date: shallowtarget.to_date,
+                    attnums: attnums
+                }),
+                async: false,
+                type: 'POST',
+                contentType: 'application/json'
+            }).success(function(data){
+                link.details = data;
+                link.value = 0;
+                /* The "value" of a link is the sum of all savings made to
+                    * every query using the target qual(s)
+                    * This is a negative value, so that the cost will be
+                    * prefered in all cases.
+                    */
+                if(_.keys(data.length == 0)){
+                    /* We could not get any plan for queries involving this
+                        * qual, so we rely on a really conservative guesstimate */
+                    link.value = missing.length * 100;
+                    link.cost = 1000 * link.missing.length - 100 * link.overlap.length;
+                } else {
+                    _.each(data, function(elem, index){
+                        link.value += (elem.basecost - elem.hypocost);
+                    });
+                }
+                var cacheforqual = self.get("cache")[shallowtarget.id];
+                if(!cacheforqual){
+                    cacheforqual = self.get("cache")[shallowtarget.id] = {};
+                }
+                cacheforqual[cache_key] = {
+                    details: data,
+                    value: link.value
+                }
+                self._propagate_cost(link, link, link.value, attnums);
+                _.each(_.values(data), function(val){
+                    _.each(val.indexes, function(index) {
+                        var queries = self.get("index_queries")[index.ddl] || [];
+                        var quals = self.get("index_quals")[index.ddl] || [];
+                        queries.push(val.query);
+                        quals.push(shallowtarget.label);
+                        self.get("index_queries")[index.ddl] = queries;
+                        self.get("index_quals")[index.ddl] = quals;
                     });
                 });
-            } else {
-                link.value = -1000 * link.overlap.length;
-            }
+            });
         }
     }, {
         fromJSON: function(jsonobj){
