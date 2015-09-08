@@ -96,6 +96,8 @@ class WizardMetricGroup(MetricGroupDef):
                  onclause=(
                      pg_database.c.oid == literal_column("dbid"))))
             .where(pg_database.c.datname == bindparam("database"))
+            .where("nbfiltered" > 1000)
+            .where("filter_ratio" > 0.3)
             .order_by("count")
             .limit(20))
         return query
