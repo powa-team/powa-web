@@ -164,8 +164,8 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             relid2 = q2.get("relid");
             if(q1.get("relid") == q2.get("relid") &&
                q1.get("attnum") == q2.get("attnum")){
-                var common_ams = _.filter(q1.get("indexam_names"), function(indexam){
-                    return q2.get("indexam_names").indexOf(indexam) > -1;
+                var common_ams = _.filter(q1.get("amop"), function(indexam){
+                    return q2.get("amop_keys").indexOf(indexam.join(" "));
                 });
                 if(common_ams.length > 0){
                     overlap.push({

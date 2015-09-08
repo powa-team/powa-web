@@ -32,15 +32,36 @@ def format_jumbled_query(sql, params):
 RESOLVE_OPNAME = text("""
 SELECT json_object_agg(oid, value)
     FROM (
-    SELECT pg_operator.oid, json_build_object(
+
+    SELECT oproid as oid, json_build_object(
         'name', oprname,
-        'indexams', coalesce(array_agg(distinct pg_am.oid ORDER BY pg_am.oid) FILTER (WHERE pg_am.oid IS NOT NULL), '{}'),
-        'indexam_names', coalesce(array_agg(distinct pg_am.amname ORDER BY pg_am.amname) FILTER (WHERE pg_am.amname IS NOT NULL), '{}')) as value
-    FROM pg_operator
-    LEFT JOIN pg_amop amop ON amop.amopopr = pg_operator.oid
-    LEFT JOIN pg_am ON amop.amopmethod = pg_am.oid AND pg_am.amname != 'hash'
-    WHERE pg_operator.oid in :oid_list
-    GROUP BY pg_operator.oid, oprname
+        'amop',
+        coalesce(
+            json_object_agg(am, opclass_oids::jsonb
+            ORDER BY am)
+                      FILTER (WHERE am is NOT NULL)),
+        'amop_names',
+         coalesce(
+            json_object_agg(
+                      amname,
+                      opclass_names ORDER BY am)
+                      FILTER (WHERE am is NOT NULL))) as value
+    FROM
+    (
+        SELECT oprname, pg_operator.oid as oproid,
+            pg_am.oid as am, to_json(array_agg(distinct c.oid)) as opclass_oids,
+            amname,
+        to_json(array_agg(distinct CASE WHEN opcdefault THEN '' ELSE opcname END)) as opclass_names
+        FROM
+        pg_operator
+        LEFT JOIN pg_amop amop ON amop.amopopr = pg_operator.oid
+        LEFT JOIN pg_am ON amop.amopmethod = pg_am.oid AND pg_am.amname != 'hash'
+        LEFt JOIN pg_opfamily f ON f.opfmethod = pg_am.oid AND amop.amopfamily = f.oid
+        LEFT JOIN pg_opclass c ON c.opcfamily = f.oid
+        WHERE pg_operator.oid in :oid_list
+        GROUP BY pg_operator.oid, oprname, pg_am.oid, amname
+    ) by_am
+    GROUP BY oproid, oprname
     ) detail
 """)
 
@@ -76,7 +97,7 @@ RESOLVE_ATTNAME = text("""
 class ResolvedQual(JSONizable):
 
     def __init__(self, nspname, relname, attname,
-                 opname, indexam_names,
+                 opname, amops,
                  n_distinct=None,
                  most_common_values=None,
                  null_frac=None,
@@ -88,7 +109,7 @@ class ResolvedQual(JSONizable):
         self.relname = relname
         self.attname = attname
         self.opname = opname
-        self.indexam_names = indexam_names
+        self.amops = amops
         self.n_distinct = n_distinct
         self.most_common_values = most_common_values
         self.null_frac = null_frac
@@ -101,11 +122,20 @@ class ResolvedQual(JSONizable):
         return "%s.%s %s ?" % (self.relname, self.attname, self.opname)
 
     @property
+    def amop_keys(self):
+        return [" ".join(amop) for amop in self.amops]
+
+    @property
     def distinct_values(self):
         if self.n_distinct > 0:
             return "%s" % self.n_distinct
         else:
             return "%s %%" % (abs(self.n_distinct) * 100)
+
+    def to_json(self):
+        base = super(ResolvedQual, self).to_json()
+        base['amop_keys'] = self.amop_keys
+        return base
 
 
 class ComposedQual(JSONizable):
@@ -212,7 +242,7 @@ def resolve_quals(conn, quallist, attribute="quals"):
                 relname=attname['relname'],
                 attname=attname['attname'],
                 opname=operators[v["opno"]]["name"],
-                indexam_names=operators[v["opno"]]["indexam_names"],
+                amops=operators[v["opno"]]["amop_names"],
                 n_distinct=attname["n_distinct"],
                 most_common_values=attname["most_common_values"],
                 null_frac=attname["null_frac"],
@@ -306,6 +336,8 @@ def get_sample_query(ctrl, database, queryid, _from, _to):
     pg_qualstats, as is.
     """
     has_pgqs = ctrl.has_extension("pg_qualstats")
+    normalized_query = None
+    example_query = None
     if has_pgqs and has_pgqs >= "0.0.7":
         rs = list(ctrl.execute(text("""
             SELECT query, pg_qualstats_example_query(queryid)
@@ -395,7 +427,8 @@ class HypoPlan(JSONizable):
 
 class HypoIndex(JSONizable):
 
-    def __init__(self, nspname, relname, amname, composed_qual=None):
+    def __init__(self, nspname, relname, amname,
+                 composed_qual=None):
         self.nspname = nspname
         self.relname = relname
         self.qual = composed_qual
@@ -430,7 +463,7 @@ class HypoIndex(JSONizable):
 def possible_indexes(composed_qual):
     by_am = defaultdict(list)
     for qual in composed_qual:
-        for am in qual.indexam_names:
+        for am in qual.amops.keys():
             by_am[am].append(qual)
     indexes = []
     for am, quals in by_am.items():
