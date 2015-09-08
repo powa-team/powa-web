@@ -12,7 +12,7 @@ from powa.sql.views import qualstat_getstatdata, TEXTUAL_INDEX_QUERY
 from powa.sql.utils import inner_cc
 from powa.sql.tables import pg_database, powa_statements
 from sqlalchemy.sql import (bindparam, literal, literal_column, join, select,
-                            alias, text, func)
+                            alias, text, func, column)
 
 
 class IndexSuggestionHandler(AuthHandler):
@@ -80,7 +80,7 @@ class WizardMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        pq = qualstat_getstatdata()
+        pq = qualstat_getstatdata(column("eval_type") == "f")
         c = inner_cc(pq)
         base = alias(pq)
         query = (select([
@@ -96,8 +96,8 @@ class WizardMetricGroup(MetricGroupDef):
                  onclause=(
                      pg_database.c.oid == literal_column("dbid"))))
             .where(pg_database.c.datname == bindparam("database"))
-            .where("nbfiltered" > 1000)
-            .where("filter_ratio" > 0.3)
+            .where(column("nbfiltered") > 1000)
+            .where(column("filter_ratio") > 0.3)
             .order_by("count")
             .limit(20))
         return query

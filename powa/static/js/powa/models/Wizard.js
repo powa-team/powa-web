@@ -281,7 +281,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 this.get("nodes").push(node);
             }, this);
             var links = this.computeLinks(this.get("nodes"));
-            _.each(_.sortBy(links, function(link){return link.overlap.length}), function(link, inde){
+            _.each(_.sortBy(links, function(link){return -link.overlap.length}), function(link, inde){
                 this.trigger("widget:update_progress", "Computing stats for links " + (inde / links.length) * 100 + "%", 100 * inde / links.length);
                 this.valueLink(link);
             }, this);
@@ -352,8 +352,8 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
 
         _propagate_cost: function(root, link, value, attnums){
             var self = this;
-            _.each(_.values(link.target.links), function(nextlink){
-                if(nextlink.value != undefined){
+            _.each(_.sortBy(_.values(link.target.links), function(link){ return -link.overlap.length}), function(nextlink){
+                if(nextlink.value !== undefined){
                     return;
                 }
                 if(nextlink.samerel && nextlink.target.relid == link.target.relid &&

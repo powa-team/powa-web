@@ -237,8 +237,10 @@ def qualstat_base_statdata():
     return base_query
 
 
-def qualstat_getstatdata():
+def qualstat_getstatdata(condition=None):
     base_query = qualstat_base_statdata()
+    if condition:
+        base_query = basequery.where(condition)
     return (select([
         column("qualid"),
         powa_statements.c.queryid,

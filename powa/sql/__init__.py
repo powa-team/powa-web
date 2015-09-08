@@ -111,7 +111,7 @@ class ResolvedQual(JSONizable):
         self.relname = relname
         self.attname = attname
         self.opname = opname
-        self.amops = amops
+        self.amops = amops or {}
         self.n_distinct = n_distinct
         self.most_common_values = most_common_values
         self.null_frac = null_frac
