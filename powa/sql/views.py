@@ -249,7 +249,7 @@ def qualstat_getstatdata(condition=None):
         powa_statements.c.dbid,
         func.to_json(column("quals")).label("quals"),
         sum(column("count")).label("count"),
-        sum(column("nbfiltered")).label("nbfiltered"),
+        (sum(column("nbfiltered")) / func.count()).label("avg_filter"),
         case(
             [(sum(column("count")) == 0, 0)],
             else_=sum(column("nbfiltered")) /
