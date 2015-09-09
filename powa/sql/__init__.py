@@ -124,20 +124,11 @@ class ResolvedQual(JSONizable):
         return "%s.%s %s ?" % (self.relname, self.attname, self.opname)
 
     @property
-    def amop_keys(self):
-        return [" ".join(amop) for amop in self.amops or []]
-
-    @property
     def distinct_values(self):
         if self.n_distinct > 0:
             return "%s" % self.n_distinct
         else:
             return "%s %%" % (abs(self.n_distinct) * 100)
-
-    def to_json(self):
-        base = super(ResolvedQual, self).to_json()
-        base['amop_keys'] = self.amop_keys
-        return base
 
 
 class ComposedQual(JSONizable):

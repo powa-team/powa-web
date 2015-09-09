@@ -295,7 +295,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 var node = {
                     label: qual.where_clause,
                     type: "qual",
-                    quals: new QualCollection(qual.quals),
+                    quals: new QualCollection(_.filter(qual.quals, function(qual){return _.keys(qual.amops).length > 0})),
                     from_date: from_date,
                     to_date: to_date,
                     queries: qual.queries,
