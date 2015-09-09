@@ -54,7 +54,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             /* We still have more predicate to optimize for this table */
             if(unvisited_samerel_targets.length > 0){
                 var next_path =  _.max(unvisited_samerel_targets, function(link){
-                    return link.value;
+                    return link.overlap.length;
                 });
 
                 current_node = next_path.target;
@@ -63,8 +63,9 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             } else {
                 /* Lets jump to the most comprehensive index for another table */
                 var next_path = _.max(unvisited_targets, function(link){
-                    return link.value;
+                    return link.cost;
                 });
+                previous_node = current_node;
                 current_node = next_path.target;
                 current_path.push(next_path);
                 delete nodesById[current_node.id];
@@ -123,108 +124,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
     }
 
 
-    var make_links = function (node1, node2) {
-        // This functions assumes that qual1.quals and qual2.quals are sorted
-        // according to the (relid,attnum,opno) tuple.
-        // This is basically a merge-join.
-        var idx1 = 0, idx2 = 0, l1 = node1.quals.models, l2 = node2.quals.models;
-        var overlap = [];
-        var attrs1 = {}, attrs2 = {};
-        var relid1, relid2;
-        var links = [];
-        var missing1 = [], missing2 = [];
-        while(true){
-            if(idx1 >= l1.length || idx2 >= l2.length){
-                for(var i = idx1; i < l1.length; i++){
-                    missing1.push(l1[i]);
-                }
-                for(var i = idx2; i < l2.length; i++){
-                    missing2.push(l2[i]);
-                }
-                break;
-            }
-            var q1 = l1[idx1],
-                q2 = l2[idx2],
-                attrid1 = make_attrid(q1),
-                attrid2 = make_attrid(q2);
-            if(attrs1[attrid1] === undefined){
-                attrs1[attrid1] = false;
-            }
-            if(attrs2[attrid2] === undefined){
-                attrs2[attrid2] = false;
-            }
-            if(relid1 && relid1 != q1.get("relid")){
-                throw "A single qual should NOT touch more than one table!";
-            }
-            relid1 = q1.get("relid");
-            if(relid2 && relid2 != q2.get("relid")){
-                throw "A single qual should NOT touch more than one table!";
-            }
-            relid2 = q2.get("relid");
-            if(q1.get("relid") == q2.get("relid") &&
-               q1.get("attnum") == q2.get("attnum")){
-                var common_ams = _.filter(_.keys(q1.get("amops")), function(indexam){
-                    return q2.get("amops")[indexam] != undefined;
-                });
-                if(common_ams.length > 0){
-                    overlap.push({
-                        relid: q1.get("relid"),
-                        queryids: [q1.get("queryid"), q2.get("queryid")],
-                        attnum: q1.get("attnum"),
-                        relname: q1.get("relname"),
-                        attname: q1.get("attname"),
-                        indexams: common_ams,
-                        q1_idx: idx1,
-                        q2_idx: idx2
-                    });
-                    attrs1[attrid1] = true;
-                    attrs2[attrid2] = true;
-                }
-                idx2++;
-                continue;
-            } else {
-                if(node1.quals.comparator.call(q1, q1, q2) > 0){
-                    var newq2 = _.clone(q2);
-                    newq2.qualid = node2.qualid;
-                    missing1.push(newq2);
-                    idx2++;
-                } else {
-                    var newq1 = _.clone(q1);
-                    newq1.qualid = node1.qualid;
-                    missing2.push(newq1);
-                    idx1++;
-                }
-            }
-        }
-        var samerel = relid1 != undefined && relid2 != undefined && relid1 == relid2;
-        var link1 = { source: node1, target: node2, samerel: samerel, overlap: overlap, missing: missing2 },
-            link2 = { source: node2, target: node1, samerel: samerel, overlap: overlap, missing: missing1 };
-        var links = [];
-        if(link1.target.id != 'start'){
-            links.push(link1);
-            node1.links[node2.id] = link1;
-        }
-        if(link2.target.id != 'start'){
-            links.push(link2);
-            node2.links[node1.id] = link2;
-        }
-        // Sort the attributes for each links, so that a proper order is
-        // discovered for multi-column indexes
-        var overlap_attnames = _.pluck(overlap, "attname");
-        _.each(links, function(link){
-            link.quals = _.clone(link.target.quals.models);
-            link.quals = _.sortBy(link.quals, function(qual){
-                var score = 0;
-                _.each(qual.attnames, function(attname){
-                    if(overlap_attnames.indexOf(attname) > -1){
-                        score -= 1;
-                    }
-                });
-                return score;
-            });
-        });
-        return links;
-    }
+
 
     return Backbone.Model.extend({
         initialize: function(){
@@ -260,9 +160,125 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 var firstnode = nodes[i];
                 for(var j=0; j<i; j++){
                     var secondnode = nodes[j];
-                    links = links.concat( make_links(firstnode, secondnode));
+                    links = links.concat( this.make_links(firstnode, secondnode));
                 }
             }
+            return links;
+        },
+
+        make_links: function (node1, node2) {
+            // This functions assumes that qual1.quals and qual2.quals are sorted
+            // according to the (relid,attnum,opno) tuple.
+            // This is basically a merge-join.
+            var idx1 = 0, idx2 = 0, l1 = node1.quals.models, l2 = node2.quals.models;
+            var overlap = [];
+            var attrs1 = {}, attrs2 = {};
+            var relid1, relid2;
+            var links = [];
+            var missing1 = [], missing2 = [];
+            while(true){
+                if(node1.label == "WHERE recoltant.id = ? AND recoltant.nom = ? AND recoltant.adresse = ?" ||
+                    node2.label == "WHERE recoltant.id = ? AND recoltant.nom = ? AND recoltant.adresse = ?"){
+                    console.log("L1:", l1.slice(idx1), "L2", l2.slice(idx2));
+                }
+                if(idx1 >= l1.length || idx2 >= l2.length){
+                    for(var i = idx1; i < l1.length; i++){
+                        missing1.push(l1[i]);
+                    }
+                    for(var i = idx2; i < l2.length; i++){
+                        missing2.push(l2[i]);
+                    }
+                    break;
+                }
+                var q1 = l1[idx1],
+                    q2 = l2[idx2],
+                    attrid1 = make_attrid(q1),
+                    attrid2 = make_attrid(q2);
+                if(attrs1[attrid1] === undefined){
+                    attrs1[attrid1] = false;
+                }
+                if(attrs2[attrid2] === undefined){
+                    attrs2[attrid2] = false;
+                }
+                if(relid1 && relid1 != q1.get("relid")){
+                    throw "A single qual should NOT touch more than one table!";
+                }
+                relid1 = q1.get("relid");
+                if(relid2 && relid2 != q2.get("relid")){
+                    throw "A single qual should NOT touch more than one table!";
+                }
+                relid2 = q2.get("relid");
+                if(q1.get("relid") == q2.get("relid") &&
+                q1.get("attnum") == q2.get("attnum")){
+                    var common_ams = _.filter(_.keys(q1.get("amops")), function(indexam){
+                        return q2.get("amops")[indexam] != undefined;
+                    });
+                    if(common_ams.length > 0){
+                        overlap.push({
+                            relid: q1.get("relid"),
+                            queryids: [q1.get("queryid"), q2.get("queryid")],
+                            attnum: q1.get("attnum"),
+                            relname: q1.get("relname"),
+                            attname: q1.get("attname"),
+                            indexams: common_ams,
+                            q1_idx: idx1,
+                            q2_idx: idx2
+                        });
+                        attrs1[attrid1] = true;
+                        attrs2[attrid2] = true;
+                    }
+                    idx1++;
+                    idx2++;
+                    continue;
+                } else {
+                    if(node1.quals.comparator.call(q1, q1, q2) > 0){
+                        var newq2 = _.clone(q2);
+                        newq2.qualid = node2.qualid;
+                        missing2.push(newq2);
+                        idx2++;
+                    } else {
+                        var newq1 = _.clone(q1);
+                        newq1.qualid = node1.qualid;
+                        missing1.push(newq1);
+                        idx1++;
+                    }
+                }
+            }
+            var samerel = relid1 != undefined && relid2 != undefined && relid1 == relid2;
+            var link1 = { source: node1, target: node2, samerel: samerel ? relid1 : false, overlap: overlap, missing: missing2 },
+                link2 = { source: node2, target: node1, samerel: samerel ? relid1 : false, overlap: overlap, missing: missing1 };
+            var links = [];
+            if(link1.target.id != 'start'){
+                if(false && link1.missing.length == 0 && link1.samerel && l1.length != l2.length){
+                    node2.deleted = true;
+                } else {
+                    links.push(link1);
+                    node1.links[node2.id] = link1;
+                }
+            }
+            if(link2.target.id != 'start'){
+                if(false && link2.missing.length == 0 && link2.samerel && l1.length != l2.length){
+                    node1.deleted = true;
+                } else {
+                    links.push(link2);
+                    node2.links[node1.id] = link2;
+                }
+            }
+            // Sort the attributes for each links, so that a proper order is
+            // discovered for multi-column indexes
+            var overlap_attnames = _.pluck(overlap, "attname");
+            _.each(links, function(link){
+                link.quals = _.clone(link.target.quals.models);
+                link.quals = _.sortBy(link.quals, function(qual){
+                    var score = 0;
+                    _.each(qual.attnames, function(attname){
+                        if(overlap_attnames.indexOf(attname) > -1){
+                            score -= 1;
+                        }
+                    });
+                    return score;
+                });
+            });
             return links;
         },
 
@@ -281,6 +297,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 this.get("nodes").push(node);
             }, this);
             var links = this.computeLinks(this.get("nodes"));
+//            this.set("nodes", _.filter(this.get("nodes"), function(node){return node.deleted !== true}));
             _.each(_.sortBy(links, function(link){return -link.overlap.length}), function(link, inde){
                 this.trigger("widget:update_progress", "Computing stats for links " + (inde / links.length) * 100 + "%", 100 * inde / links.length);
                 this.valueLink(link);
@@ -291,6 +308,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             /* The shortest_path is computed, aggregate results by indexes */
             var indexes = this.path_by_indexes_and_queries(stupidShortPath);
             this.trigger("wizard:solved", indexes);
+            this.trigger("wizard:update_graph", this);
         },
 
         path_by_indexes_and_queries: function(shortest_path){
@@ -356,15 +374,16 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 if(nextlink.value !== undefined){
                     return;
                 }
-                if(nextlink.samerel && nextlink.target.relid == link.target.relid &&
+                if(nextlink.samerel && nextlink.samerel === link.samerel &&
                         nextlink.missing.length == 0 && nextlink.overlap.length > 0 &&
                         _.every(nextlink.overlap, function(overlap){
-                    return attnums.indexOf(overlap.attnum) >= 0;
+                    return attnums.indexOf(overlap.attnum) >= 0
                 })){
                     nextlink.value = link.value;
                     nextlink.cost = 0;
+                    nextlink.has_propagate = "LOL";
                     var newattnums = self._order_attnums(nextlink, attnums);
-                    self._propagate_cost(root, nextlink, value, attnums);
+                    self._propagate_cost(root, nextlink, value, newattnums);
                 }
             });
 
@@ -420,7 +439,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                     * This is a negative value, so that the cost will be
                     * prefered in all cases.
                     */
-                if(_.keys(data.length == 0)){
+                if(_.keys(data).length == 0){
                     /* We could not get any plan for queries involving this
                         * qual, so we rely on a really conservative guesstimate */
                     link.value = missing.length * 100;

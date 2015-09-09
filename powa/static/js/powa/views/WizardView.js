@@ -21,7 +21,7 @@ function(WidgetView, Wizard, template, highlight, moment, d3, Backgrid, Backbone
             this.model = args.model;
             this.listenTo(this.model, "widget:dataload-failed", this.fail);
             this.listenTo(this.model, "widget:update_progress", this.change_progress);
-//            this.listenTo(this.model, "wizard:update_graph", this.update_graph);
+            this.listenTo(this.model, "wizard:update_graph", this.update_graph);
             this.listenTo(this.model, "wizard:solved", this.display_solution);
             this.$el.addClass("wizard-widget");
             this.render();
