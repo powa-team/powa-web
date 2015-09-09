@@ -302,6 +302,10 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
 
         update: function(quals, from_date, to_date){
             var total_quals = _.size(quals);
+            if (total_quals == 0){
+                this.trigger("widget:update_progress", "No qual found!", 100);
+                return;
+            }
             _.each(quals, function(qual, index){
                 var node = {
                     label: qual.where_clause,
