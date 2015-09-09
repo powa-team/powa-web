@@ -151,7 +151,7 @@ class WizardPage(DashboardPage):
 
     @classmethod
     def get_menutitle(cls, handler, params):
-        return "Query detail"
+        return "Wizard index suggestion"
 
     @property
     def dashboard(self):
