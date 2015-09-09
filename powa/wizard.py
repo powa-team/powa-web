@@ -90,17 +90,17 @@ class WizardMetricGroup(MetricGroupDef):
             cast(column("quals"), JSONB).label('quals'),
             "count",
             func.array_agg(column("query")).label("queries"),
-            "nbfiltered",
+            "avg_filter",
             "filter_ratio"
         ]).select_from(
             join(base, pg_database,
                  onclause=(
                      pg_database.c.oid == literal_column("dbid"))))
             .where(pg_database.c.datname == bindparam("database"))
-            .where(column("nbfiltered") > 1000)
+            .where(column("avg_filter") > 1000)
             .where(column("filter_ratio") > 0.3)
             .group_by(column("qualid"), column("count"), cast(column("quals"), JSONB),
-                     column("nbfiltered"), column("filter_ratio"))
+                     column("avg_filter"), column("filter_ratio"))
             .order_by(column("count").desc())
             .limit(200))
         return query

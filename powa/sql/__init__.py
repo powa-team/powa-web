@@ -143,7 +143,7 @@ class ResolvedQual(JSONizable):
 class ComposedQual(JSONizable):
 
     def __init__(self, nspname=None, relname=None,
-                 nbfiltered=None,
+                 avg_filter=None,
                  filter_ratio = None,
                  count=None,
                  table_liverows=None,
@@ -154,7 +154,7 @@ class ComposedQual(JSONizable):
         self.qualid = qualid
         self.relname = relname
         self.nspname = nspname
-        self.nbfiltered = nbfiltered
+        self.avg_filter = avg_filter
         self.filter_ratio = filter_ratio
         self.count = count
         self.table_liverows = table_liverows
@@ -222,7 +222,7 @@ def resolve_quals(conn, quallist, attribute="quals"):
         row = dict(row)
         newqual = ComposedQual(
             count=row['count'],
-            nbfiltered=row['nbfiltered'],
+            avg_filter=row['avg_filter'],
             filter_ratio=row['filter_ratio'],
             qualid=row['qualid'],
             queries=row.get('queries')
