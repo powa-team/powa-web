@@ -28,8 +28,8 @@ class IndexSuggestionHandler(AuthHandler):
         base_query.append_from(text("""LATERAL unnest(quals) as qual"""))
         base_query = (base_query
                       .where(c.qualid == qual_id)
-                      .params(**{'from': '-infinity',
-                                 'to': 'infinity'}))
+                      .params(**{'from': from_date,
+                                 'to': to_date}))
         optimizable = list(self.execute(base_query))
         optimizable = resolve_quals(self.connect(database=database),
                                     optimizable,
