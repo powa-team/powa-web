@@ -323,9 +323,10 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             var links = this.computeLinks(this.get("nodes"));
 //            this.set("nodes", _.filter(this.get("nodes"), function(node){return node.deleted !== true}));
             _.each(_.sortBy(links, function(link){return -link.overlap.length}), function(link, inde){
-                this.trigger("widget:update_progress", "Computing stats for links " + (inde / links.length) * 100 + "%", 100 * inde / links.length);
+                this.trigger("widget:update_progress", "Computing stats for links " + Math.round(inde / links.length * 100, 2) + "%", 100 * inde / links.length);
                 this.valueLink(link);
             }, this);
+            this.trigger("widget:update_progress", "Computing stats for links done", 100);
             this.set("links", links);
             var stupidShortPath = TSPStupidSolver(this.get("nodes"), this.get("links"));
             this.set("shortest_path", stupidShortPath);

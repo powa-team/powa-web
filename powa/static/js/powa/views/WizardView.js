@@ -31,7 +31,7 @@ function(WidgetView, Wizard, template, highlight, moment, d3, Backgrid, Backbone
 
         change_progress: function(state, progress){
             this.$progress_label.text(state);
-            this.$progress_elem.css({width: "[100 - " + progress + "]%"});
+            this.$progress_elem.css({width: progress + "%"});
         },
 
         showload: function(){
