@@ -456,7 +456,7 @@ class HypoIndex(JSONizable):
         return base
 
 
-def possible_indexes(composed_qual, order):
+def possible_indexes(composed_qual, order=()):
     by_am = defaultdict(list)
     def sorter(qual):
         attnum = qual.attnum
