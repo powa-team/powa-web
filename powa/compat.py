@@ -18,7 +18,6 @@ if psycopg2_version < ('2', '5'):
         (JSON_OID,), "JSON", lambda data, cursor: json.loads(data))
     extensions.register_type(newtype)
 
-
 def with_metaclass(meta, *bases):
     """Create a base class with a metaclass."""
     # This requires a bit of explanation: the basic idea is to make a dummy

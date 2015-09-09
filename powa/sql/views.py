@@ -247,7 +247,7 @@ def qualstat_getstatdata(condition=None):
         powa_statements.c.queryid,
         column("query"),
         powa_statements.c.dbid,
-        func.to_jsonb(column("quals")).label("quals"),
+        func.to_json(column("quals")).label("quals"),
         sum(column("count")).label("count"),
         sum(column("nbfiltered")).label("nbfiltered"),
         case(

@@ -8,6 +8,7 @@ from powa.database import DatabaseOverview
 from powa.sql import (resolve_quals, possible_indexes, get_sample_query,
                       format_jumbled_query, get_hypoplans)
 import json
+from powa.sql.compat import JSONB, JSON
 from powa.sql.views import qualstat_getstatdata, TEXTUAL_INDEX_QUERY
 from powa.sql.utils import inner_cc
 from powa.sql.tables import pg_database, powa_statements
@@ -86,7 +87,7 @@ class WizardMetricGroup(MetricGroupDef):
         query = (select([
             func.array_agg(column("queryid")).label("queryids"),
             "qualid",
-            "quals",
+            cast(column("quals"), JSONB).label('quals'),
             "count",
             func.array_agg(column("query")).label("queries"),
             "nbfiltered",
@@ -98,7 +99,7 @@ class WizardMetricGroup(MetricGroupDef):
             .where(pg_database.c.datname == bindparam("database"))
             .where(column("nbfiltered") > 1000)
             .where(column("filter_ratio") > 0.3)
-            .group_by(column("qualid"), column("count"), column("quals"),
+            .group_by(column("qualid"), column("count"), cast(column("quals"), JSONB),
                      column("nbfiltered"), column("filter_ratio"))
             .order_by(column("count").desc())
             .limit(20))

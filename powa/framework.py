@@ -100,7 +100,8 @@ class BaseHandler(RequestHandler):
             connoptions['password'] = password
         if database is not None:
             connoptions['database'] = database
-        engineoptions = {'_initialize': False}
+        #engineoptions = {'_initialize': False}
+        engineoptions = {}
         engineoptions.update(**kwargs)
         if self.application.settings['debug']:
             engineoptions['echo'] = True
