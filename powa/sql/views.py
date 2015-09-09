@@ -4,6 +4,7 @@ from sqlalchemy.types import Numeric
 from sqlalchemy.sql.functions import max, min, sum
 from powa.sql.utils import diff
 from powa.sql import resolve_quals
+from powa.sql.compat import JSONB
 from powa.sql.tables import powa_statements
 from collections import defaultdict
 
@@ -246,7 +247,7 @@ def qualstat_getstatdata(condition=None):
         powa_statements.c.queryid,
         column("query"),
         powa_statements.c.dbid,
-        func.to_json(column("quals")).label("quals"),
+        cast(func.to_json(column("quals")), JSONB).label("quals"),
         sum(column("count")).label("count"),
         sum(column("nbfiltered")).label("nbfiltered"),
         case(

@@ -12,7 +12,7 @@ from powa.sql.views import qualstat_getstatdata, TEXTUAL_INDEX_QUERY
 from powa.sql.utils import inner_cc
 from powa.sql.tables import pg_database, powa_statements
 from sqlalchemy.sql import (bindparam, literal, literal_column, join, select,
-                            alias, text, func, column)
+                            alias, text, func, column, cast)
 
 
 class IndexSuggestionHandler(AuthHandler):
@@ -84,11 +84,11 @@ class WizardMetricGroup(MetricGroupDef):
         c = inner_cc(pq)
         base = alias(pq)
         query = (select([
-            "queryid",
+            func.array_agg(column("queryid")).label("queryids"),
             "qualid",
             "quals",
             "count",
-            "query",
+            func.array_agg(column("query")).label("queries"),
             "nbfiltered",
             "filter_ratio"
         ]).select_from(
@@ -98,6 +98,8 @@ class WizardMetricGroup(MetricGroupDef):
             .where(pg_database.c.datname == bindparam("database"))
             .where(column("nbfiltered") > 1000)
             .where(column("filter_ratio") > 0.3)
+            .group_by(column("qualid"), column("count"), column("quals"),
+                     column("nbfiltered"), column("filter_ratio"))
             .order_by(column("count").desc())
             .limit(20))
         return query
