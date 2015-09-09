@@ -386,33 +386,51 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 if(idx >= 0){
                     return idx;
                 }
-                return attnums.indexOf(attnum);
+                return attnums.indexOf(attnum) + (preferred_attnums || []).length;
             });
 
         },
 
-        _propagate_cost: function(root, link, value, attnums){
+        _propagate_cost: function(root, link, value, attnums, preferred_order){
             var self = this;
+            preferred_order = preferred_order || [];
             _.each(_.sortBy(_.values(link.target.links), function(link){ return -link.overlap.length}), function(nextlink){
-                if(nextlink.value !== undefined){
+                if(nextlink.value !== undefined || nextlink.cost){
                     return;
                 }
+
+                var newattnums = self._order_attnums(nextlink, preferred_order);
                 if(nextlink.samerel && nextlink.samerel === link.samerel &&
-                        nextlink.missing.length == 0 && nextlink.overlap.length > 0 &&
-                        _.every(nextlink.overlap, function(overlap){
-                    return attnums.indexOf(overlap.attnum) >= 0
-                })){
-                    nextlink.value = link.value;
-                    nextlink.cost = 0;
-                    nextlink.has_propagate = "LOL";
-                    delete link.target.links[nextlink.source.id];
-                    root.queries = _.uniq(root.queries.concat(nextlink.target.queries));
-                    root.qualstrs = _.uniq(root.qualstrs.concat(nextlink.target.qualstrs));
-                    var newattnums = self._order_attnums(nextlink, attnums);
-                    self._propagate_cost(root, nextlink, value, newattnums);
+                        nextlink.missing.length == 0 && nextlink.overlap.length > 0){
+
+                    var in_order_attnums =   _.filter(nextlink.overlap, function(overlap, idx){
+                        return attnums.indexOf(overlap.attnum) >= 0 && (
+                                preferred_order.indexOf(overlap.attnum) < 0 ||
+                                preferred_order.indexOf(overlap.attnum) == idx);
+
+                    });
+                    nextlink.cost =  (nextlink.overlap.length - in_order_attnums.length) * 1000;
+                    if(in_order_attnums.length == nextlink.overlap.length){
+                        nextlink.value = link.value;
+                        nextlink.cost = 0;
+                        nextlink.has_propagate = "LOL";
+                        delete link.target.links[nextlink.source.id];
+                        delete nextlink.target.links[link.source.id];
+                        root.queries = _.uniq(root.queries.concat(nextlink.target.queries));
+                        root.qualstrs = _.uniq(root.qualstrs.concat(nextlink.target.qualstrs));
+                        _.each(newattnums, function(attnum){
+                            if(preferred_order.indexOf(attnum) < 0){
+                                preferred_order.push(attnum);
+                            }
+                        });
+                        self._propagate_cost(root, nextlink, value, newattnums, preferred_order);
+                    } else {
+                        nextlink.is_stupid = true;
+                        nextlink.overlap = [];
+                        nextlink.missing = nextlink.target.quals.models;
+                    }
                 }
             });
-
         },
 
         valueLink: function(link, preferred_attnums){
@@ -428,11 +446,11 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 return qual.attributes.attnum
             });
             var self = this;
-            link.cost = 1000 * link.missing.length;
             // If this link was already visisted, skip it
             if(link.value){
                 return;
             }
+            link.cost = 1000 * link.missing.length;
             var shallowtarget = _.clone(link.target);
             shallowtarget.quals = _.map(link.quals, function(m){
                 return m.attributes;
