@@ -98,7 +98,7 @@ class WizardMetricGroup(MetricGroupDef):
             .where(pg_database.c.datname == bindparam("database"))
             .where(column("nbfiltered") > 1000)
             .where(column("filter_ratio") > 0.3)
-            .order_by("count")
+            .order_by(column("count").desc())
             .limit(20))
         return query
 
