@@ -160,17 +160,14 @@ class WizardPage(DashboardPage):
         if getattr(self, '_dashboard', None) is not None:
             return self._dashboard
 
-        title = "Apply wizardry to database %(database)s"
-
         self._dashboard = Dashboard("Optimizer for %(database)s")
 
         hypo_version = self.has_extension("hypopg", database = self.database)
         if hypo_version and hypo_version >= "0.0.3":
             self._dashboard.widgets.extend(
-                [[Wizard("Apply wizardry to database '%(database)s")]])
+                [[Wizard("Apply wizardry index suggestion to database \"%(database)s\"")]])
         else:
             self._dashboard.widgets.extend(
                 [[NoWizard]])
-                #[[Wizard("Apply wizardry to database '%(database)s")]])
 
         return self._dashboard

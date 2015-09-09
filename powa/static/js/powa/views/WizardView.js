@@ -215,15 +215,15 @@ function(WidgetView, Wizard, template, highlight, moment, d3, Backgrid, Backbone
                 columns: [
                 {
                     editable: false,
-                    name: "ddl",
+                    name: "Indexes",
                     cell: "query"
                 }, {
                     editable: false,
-                    name: "queries",
+                    name: "Queries",
                     cell: "query",
                 }, {
                     editable: false,
-                    name: "quals",
+                    name: "Quals",
                     cell: "query"
                 }],
                 collection: new Backbone.Collection(_.values(solutions.by_index))

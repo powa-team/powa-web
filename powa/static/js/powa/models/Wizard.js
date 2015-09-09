@@ -336,11 +336,11 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                     _.each(elem.indexes, function(index){
                         var key = index.ddl;
                         var stats = {
-                            "queries": link.target.queries.join("\n"),
-                            "quals": link.target.qualstrs.join("\n"),
+                            "Queries": link.target.queries.join("\n"),
+                            "Quals": link.target.qualstrs.join("\n"),
                             "basecost": 0,
                             "hypocost": 0,
-                            "ddl": index.ddl,
+                            "Indexes": index.ddl,
                         };
                         if(indexes[key]){
                             stats = indexes[key];
