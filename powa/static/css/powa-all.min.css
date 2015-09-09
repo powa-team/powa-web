@@ -8382,4 +8382,7 @@ footer {
   height: inherit;
   padding: 0; }
 
+.graph_visualisation {
+  display: none; }
+
 /*# sourceMappingURL=powa-all.min.css.map */
