@@ -266,7 +266,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             var link1 = { source: node1, target: node2, samerel: samerel ? relid1 : false, overlap: overlap, missing: missing2 },
                 link2 = { source: node2, target: node1, samerel: samerel ? relid1 : false, overlap: overlap, missing: missing1 };
             var links = [];
-            if(link1.target.id != 'start'){
+            if(link1.source.id == 'start' || link1.overlap.length > 0){
                 if(false && link1.missing.length == 0 && link1.samerel && l1.length != l2.length){
                     node2.deleted = true;
                 } else {
@@ -274,7 +274,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                     node1.links[node2.id] = link1;
                 }
             }
-            if(link2.target.id != 'start'){
+            if(link2.source.id == 'start' || link2.overlap.length > 0){
                 if(false && link2.missing.length == 0 && link2.samerel && l1.length != l2.length){
                     node1.deleted = true;
                 } else {
@@ -282,21 +282,6 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                     node2.links[node1.id] = link2;
                 }
             }
-            // Sort the attributes for each links, so that a proper order is
-            // discovered for multi-column indexes
-            var overlap_attnames = _.pluck(overlap, "attname");
-            _.each(links, function(link){
-                link.quals = _.clone(link.target.quals.models);
-                link.quals = _.sortBy(link.quals, function(qual){
-                    var score = 0;
-                    _.each(qual.attnames, function(attname){
-                        if(overlap_attnames.indexOf(attname) > -1){
-                            score -= 1;
-                        }
-                    });
-                    return score;
-                });
-            });
             return links;
         },
 
