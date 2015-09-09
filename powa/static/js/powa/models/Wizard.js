@@ -36,7 +36,9 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
         }
         var current_node = start;
         var current_path = [];
-        while(!_.isEmpty(nodesById)){
+        var current_idx = 0;
+        var previous_node = null;
+        while(true){
             /* The heuristic is a bit tricky here:
              * We want the algorithm to go at the least expensive option, IF it
              * is on the same relation.
@@ -51,14 +53,26 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             var unvisited_samerel_targets = _.filter(unvisited_targets, function(link){
                 return link.samerel;
             });
+            if(unvisited_targets.length == 0){
+                if(current_idx == 0){
+                    break;
+                }
+                current_idx--;
+                current_node = current_path[current_idx].source;
+                continue;
+            }
             /* We still have more predicate to optimize for this table */
             if(unvisited_samerel_targets.length > 0){
                 var next_path =  _.max(unvisited_samerel_targets, function(link){
+                    if(link.missing.length != 0){
+                        return - link.missing.length;
+                    }
                     return link.overlap.length;
                 });
-
+                previous_node = current_node
                 current_node = next_path.target;
                 current_path.push(next_path);
+                current_idx++;
                 delete nodesById[current_node.id];
             } else {
                 /* Lets jump to the most comprehensive index for another table */
@@ -68,6 +82,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 previous_node = current_node;
                 current_node = next_path.target;
                 current_path.push(next_path);
+                current_idx++;
                 delete nodesById[current_node.id];
             }
         }
@@ -138,8 +153,6 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             this.listenTo(this.get("datasource"), "metricgroup:dataload", this.update, this);
             this.listenTo(this.get("datasource"), "startload", this.starload, this);
             this.set("cache", {});
-            this.set("index_queries", {});
-            this.set("index_quals", {});
         },
 
         startload: function(){
@@ -176,6 +189,8 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             var relid1, relid2;
             var links = [];
             var missing1 = [], missing2 = [];
+            l1 = new QualCollection(_.uniq(l1, false, function(q){ return [q.get("attnum"), q.get("relid")].join(".")})).models;
+            l2 = new QualCollection(_.uniq(l2, false, function(q){ return [q.get("attnum"), q.get("relid")].join(".")})).models;
             while(true){
                 if(node1.label == "WHERE recoltant.id = ? AND recoltant.nom = ? AND recoltant.adresse = ?" ||
                     node2.label == "WHERE recoltant.id = ? AND recoltant.nom = ? AND recoltant.adresse = ?"){
@@ -245,6 +260,9 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 }
             }
             var samerel = relid1 != undefined && relid2 != undefined && relid1 == relid2;
+            overlap = _.uniq(overlap, function(item){
+                return item.attnum;
+            });
             var link1 = { source: node1, target: node2, samerel: samerel ? relid1 : false, overlap: overlap, missing: missing2 },
                 link2 = { source: node2, target: node1, samerel: samerel ? relid1 : false, overlap: overlap, missing: missing1 };
             var links = [];
@@ -291,6 +309,8 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                     quals: new QualCollection(qual.quals),
                     from_date: from_date,
                     to_date: to_date,
+                    queries: qual.queries,
+                    qualstrs: [qual.where_clause],
                     links: {},
                     id: qual.qualid
                 }
@@ -308,7 +328,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             /* The shortest_path is computed, aggregate results by indexes */
             var indexes = this.path_by_indexes_and_queries(stupidShortPath);
             this.trigger("wizard:solved", indexes);
-            this.trigger("wizard:update_graph", this);
+//            this.trigger("wizard:update_graph", this);
         },
 
         path_by_indexes_and_queries: function(shortest_path){
@@ -326,19 +346,17 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                     _.each(elem.indexes, function(index){
                         var key = index.ddl;
                         var stats = {
-                            "queries": [],
+                            "queries": link.target.queries.join("\n"),
+                            "quals": link.target.qualstrs.join("\n"),
                             "basecost": 0,
                             "hypocost": 0,
-                            "quals": [],
-                            "ddl": index.ddl
+                            "ddl": index.ddl,
                         };
                         if(indexes[key]){
                             stats = indexes[key];
                         } else {
                             indexes[key] = stats;
                         }
-                        stats.queries = self.get("index_queries")[key].join("\n");
-                        stats.quals = self.get("index_quals")[key].join(";\n");
                     });
                 })
             }
@@ -348,9 +366,9 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
         },
 
         _order_attnums: function(link, preferred_attnums){
-            var attnums  = _.map(link.target.quals.models, function(qual){return qual.get("attnum")});
+            var attnums  = _.uniq(_.map(link.target.quals.models, function(qual){return qual.get("attnum")}));
             var missing = _.map(link.missing, function(qual){
-                return qual.attributes.attnum
+                return qual.attributes.attnum;
             });
             return _.sortBy(attnums, function(attnum){
                 var idx = missing.indexOf(attnum);
@@ -382,6 +400,9 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                     nextlink.value = link.value;
                     nextlink.cost = 0;
                     nextlink.has_propagate = "LOL";
+                    delete link.target.links[nextlink.source.id];
+                    root.queries = _.uniq(root.queries.concat(nextlink.target.queries));
+                    root.qualstrs = _.uniq(root.qualstrs.concat(nextlink.target.qualstrs));
                     var newattnums = self._order_attnums(nextlink, attnums);
                     self._propagate_cost(root, nextlink, value, newattnums);
                 }
@@ -457,17 +478,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                     details: data,
                     value: link.value
                 }
-                self._propagate_cost(link, link, link.value, attnums);
-                _.each(_.values(data), function(val){
-                    _.each(val.indexes, function(index) {
-                        var queries = self.get("index_queries")[index.ddl] || [];
-                        var quals = self.get("index_quals")[index.ddl] || [];
-                        queries.push(val.query);
-                        quals.push(shallowtarget.label);
-                        self.get("index_queries")[index.ddl] = queries;
-                        self.get("index_quals")[index.ddl] = quals;
-                    });
-                });
+                self._propagate_cost(link.target, link, link.value, attnums);
             });
         }
     }, {

@@ -102,7 +102,7 @@ class WizardMetricGroup(MetricGroupDef):
             .group_by(column("qualid"), column("count"), cast(column("quals"), JSONB),
                      column("nbfiltered"), column("filter_ratio"))
             .order_by(column("count").desc())
-            .limit(20))
+            .limit(200))
         return query
 
     def post_process(self, data, database, **kwargs):
