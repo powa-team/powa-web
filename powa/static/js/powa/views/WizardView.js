@@ -57,68 +57,68 @@ function(WidgetView, Wizard, template, highlight, moment, d3, Backgrid, Backbone
                 })
                 .charge(-30)
                 .linkStrength(function(x) {
-				return 10;
-			    });
-			this.labelforce = d3.layout.force()
+                    return 10;
+                });
+                this.labelforce = d3.layout.force()
                 .nodes([ ])
                 .gravity(0)
                 .linkDistance(0)
                 .linkStrength(8)
                 .charge(-30);
             var updateNode = function() {
-				this.attr("transform", function(d) {
-					return "translate(" + d.x + "," + d.y + ")";
-				});
+                this.attr("transform", function(d) {
+                    return "translate(" + d.x + "," + d.y + ")";
+                });
 
-			}
+            }
             this.node = this.vis.selectAll("g.node");
             this.anchorNode = this.vis.selectAll("g.anchorNode");
             this.anchorLink = this.vis.selectAll("line.anchorLink")
 
-			var updateLink = function() {
-				this.attr("x1", function(d) {
-					return d.source.x;
-				}).attr("y1", function(d) {
-					return d.source.y;
-				}).attr("x2", function(d) {
-					return d.target.x;
-				}).attr("y2", function(d) {
-					return d.target.y;
-				});
+                var updateLink = function() {
+                    this.attr("x1", function(d) {
+                        return d.source.x;
+                    }).attr("y1", function(d) {
+                        return d.source.y;
+                    }).attr("x2", function(d) {
+                        return d.target.x;
+                    }).attr("y2", function(d) {
+                        return d.target.y;
+                    });
 
-			}
-			this.force.on("tick", function() {
+                }
+            this.force.on("tick", function() {
 
-				self.labelforce.start();
+                self.labelforce.start();
 
-				self.node.call(updateNode);
+                self.node.call(updateNode);
 
-				self.anchorNode.each(function(d, i) {
-					if(i % 2 == 0) {
-						d.x = d.node.x;
-						d.y = d.node.y;
-					} else {
-						var b = this.childNodes[1].getBBox();
+                self.anchorNode.each(function(d, i) {
+                    if(i % 2 == 0) {
+                        d.x = d.node.x;
+                        d.y = d.node.y;
+                    } else {
+                        var b = this.childNodes[1].getBBox();
 
-						var diffX = d.x - d.node.x;
-						var diffY = d.y - d.node.y;
+                        var diffX = d.x - d.node.x;
+                        var diffY = d.y - d.node.y;
 
-						var dist = Math.sqrt(diffX * diffX + diffY * diffY);
+                        var dist = Math.sqrt(diffX * diffX + diffY * diffY);
 
-						var shiftX = b.width * (diffX - dist) / (dist * 2);
-						shiftX = Math.max(-b.width, Math.min(0, shiftX));
-						var shiftY = 5;
-						this.childNodes[1].setAttribute("transform", "translate(" + shiftX + "," + shiftY + ")");
-					}
-				});
+                        var shiftX = b.width * (diffX - dist) / (dist * 2);
+                        shiftX = Math.max(-b.width, Math.min(0, shiftX));
+                        var shiftY = 5;
+                        this.childNodes[1].setAttribute("transform", "translate(" + shiftX + "," + shiftY + ")");
+                    }
+                });
 
 
-				self.anchorNode.call(updateNode);
+                self.anchorNode.call(updateNode);
 
-				self.anchorLink.call(updateLink);
-				self.link.call(updateLink);
+                self.anchorLink.call(updateLink);
+                self.link.call(updateLink);
 
-			});
+            });
             return this;
         },
 
@@ -131,7 +131,7 @@ function(WidgetView, Wizard, template, highlight, moment, d3, Backgrid, Backbone
 
             w = this.$el.parent().innerWidth();
 
-			for(var i = 0; i < nodes.length; i++) {
+            for(var i = 0; i < nodes.length; i++) {
                 /* Push twice: one will not be visible */
                 var node = nodes[i];
                 if(node.type == "startNode"){
@@ -144,10 +144,10 @@ function(WidgetView, Wizard, template, highlight, moment, d3, Backgrid, Backbone
 
 
                 labellinks.push({
-					source : i * 2,
-					target : i * 2 + 1,
-					weight : 1
-				});
+                    source : i * 2,
+                    target : i * 2 + 1,
+                    weight : 1
+                });
 
             };
 
@@ -159,7 +159,7 @@ function(WidgetView, Wizard, template, highlight, moment, d3, Backgrid, Backbone
                     .append("svg:g")
                     .attr("class", "node");
                 this.node.call(this.force.drag);
-			    this.link = this.vis.selectAll("line.link")
+                this.link = this.vis.selectAll("line.link")
                     .data(links).enter()
                         .append("svg:line")
                         .attr("class", "link")
@@ -186,10 +186,10 @@ function(WidgetView, Wizard, template, highlight, moment, d3, Backgrid, Backbone
                 this.anchorNode.append("svg:circle")
                     .attr("r", 0)
                     .style("fill", "#FFF");
-				this.anchorNode.append("svg:text")
+                this.anchorNode.append("svg:text")
                     .text(function(d, i) {
-				        return i % 2 == 0 ? "" : d.node.label
-    			    })
+                        return i % 2 == 0 ? "" : d.node.label
+                    })
                     .style("fill", "#555")
                     .style("font-family", "Arial")
                     .style("font-size", 12);
