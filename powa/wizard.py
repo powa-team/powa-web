@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from powa.framework import AuthHandler
 from powa.dashboards import (
-    Dashboard, DashboardPage,
+    Dashboard, DashboardPage, ContentWidget,
     Widget, MetricGroupDef, MetricDef)
 
 from powa.database import DatabaseOverview
@@ -123,6 +123,21 @@ class Wizard(Widget):
         values['datasource'] = 'wizard'
         return values
 
+class NoWizard(ContentWidget):
+
+    title = 'Can not apply wizardry'
+
+    data_url = r"/database/(\w+)/nowizard/"
+
+    #def __init__(self, title):
+    #    self.title = title
+
+    def get(self, database):
+        self.render("database/nowizard.html", database = database)
+        #self.render("xhr.html", content="nodata")
+        return
+    #def to_json(self):
+    #    return ()
 
 class WizardPage(DashboardPage):
 
@@ -132,8 +147,30 @@ class WizardPage(DashboardPage):
 
     parent = DatabaseOverview
 
-    datasources = [WizardMetricGroup]
+    datasources = [WizardMetricGroup, NoWizard]
 
-    dashboard = Dashboard(
-        "Optimizer for %(database)s",
-        [[Wizard("Apply wizardry to database '%(database)s")]])
+    @classmethod
+    def get_menutitle(cls, handler, params):
+        return "Query detail"
+
+    @property
+    def dashboard(self):
+        # This COULD be initialized in the constructor, but tornado < 3 doesn't
+        # call it
+        if getattr(self, '_dashboard', None) is not None:
+            return self._dashboard
+
+        title = "Apply wizardry to database %(database)s"
+
+        self._dashboard = Dashboard("Optimizer for %(database)s")
+
+        hypo_version = self.has_extension("hypopg", database = self.database)
+        if hypo_version and hypo_version >= "1.0.3":
+            self._dashboard.widgets.extend(
+                [[Wizard("Apply wizardry to database '%(database)s")]])
+        else:
+            self._dashboard.widgets.extend(
+                [[NoWizard]])
+                #[[Wizard("Apply wizardry to database '%(database)s")]])
+
+        return self._dashboard

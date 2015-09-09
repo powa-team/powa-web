@@ -204,7 +204,6 @@ class Dashboard(JSONizable):
     def __init__(self, title, widgets=None):
         self.title = title
         self._widgets = widgets or []
-        self._validate_layout()
 
     def _validate_layout(self):
         """
@@ -234,6 +233,7 @@ class Dashboard(JSONizable):
         self._widgets = widgets
 
     def to_json(self):
+        self._validate_layout()
         return {'title': self.title,
                 'widgets': self.widgets}
 
