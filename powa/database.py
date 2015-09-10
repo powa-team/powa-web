@@ -3,7 +3,7 @@ Module containing the by-database dashboard.
 """
 from powa.framework import AuthHandler
 from powa.dashboards import (
-    Dashboard, Graph, Grid,
+    Dashboard, Graph, Grid, ContentWidget,
     MetricGroupDef, MetricDef,
     DashboardPage)
 
@@ -114,48 +114,76 @@ class ByQueryMetricGroup(MetricGroupDef):
             "QueryOverview", database, val["queryid"])
         return val
 
+class WizardThisDatabase(ContentWidget):
+
+    title = 'Apply wizardry to this database'
+
+    data_url = r"/database/(\w+)/wizardthisdatabase/"
+
+    def get(self, database):
+        self.render("database/wizardthisdatabase.html", database = database,
+                    url = self.reverse_url("WizardPage", database))
+        return
+
 
 class DatabaseOverview(DashboardPage):
     """DatabaseOverview Dashboard."""
     base_url = r"/database/(\w+)/overview"
-    datasources = [DatabaseOverviewMetricGroup, ByQueryMetricGroup]
+    datasources = [DatabaseOverviewMetricGroup, ByQueryMetricGroup,
+                   WizardThisDatabase]
     params = ["database"]
     parent = Overview
-    dashboard = Dashboard(
-        "Database overview for %(database)s",
-        [[Graph("Calls (On database %(database)s)",
-                metrics=[DatabaseOverviewMetricGroup.avg_runtime]),
-          Graph("Blocks (On database %(database)s)",
-                metrics=[DatabaseOverviewMetricGroup.total_blks_read,
-                         DatabaseOverviewMetricGroup.total_blks_hit])],
-         [Grid("Details for all queries",
-                toprow=[{
-                    'merge': True
-                },{
-                    'name': 'Execution',
-                    'merge': False,
-                    'colspan': 3
-                }, {
-                    'name': 'I/O Time',
-                    'merge': False,
-                    'colspan': 2
-                }, {
-                    'name': 'Blocks',
-                    'merge': False,
-                    'colspan': 4,
-                }, {
-                    'name': 'Temp blocks',
-                    'merge': False,
-                    'colspan': 2
-                }],
-               columns=[{
-                   "name": "query",
-                   "label": "Query",
-                   "type": "query",
-                   "url_attr": "url",
-                   "max_length": 70
-               }],
-               metrics=ByQueryMetricGroup.all())]])
+
+    @property
+    def dashboard(self):
+        # This COULD be initialized in the constructor, but tornado < 3 doesn't
+        # call it
+        if getattr(self, '_dashboard', None) is not None:
+            return self._dashboard
+
+        has_qualstats = self.has_extension('pg_qualstats')
+        has_hypopg = self.has_extension('hypopg', database = self.database)
+
+        self._dashboard = Dashboard("Database overview for %(database)s")
+
+        if has_qualstats >= "0.0.7" and has_hypopg >= "0.0.3":
+            self._dashboard.widgets.extend([[WizardThisDatabase]])
+
+        self._dashboard.widgets.extend(
+            [[Graph("Calls (On database %(database)s)",
+                    metrics=[DatabaseOverviewMetricGroup.avg_runtime]),
+              Graph("Blocks (On database %(database)s)",
+                    metrics=[DatabaseOverviewMetricGroup.total_blks_read,
+                             DatabaseOverviewMetricGroup.total_blks_hit])],
+             [Grid("Details for all queries",
+                    toprow=[{
+                        'merge': True
+                    },{
+                        'name': 'Execution',
+                        'merge': False,
+                        'colspan': 3
+                    }, {
+                        'name': 'I/O Time',
+                        'merge': False,
+                        'colspan': 2
+                    }, {
+                        'name': 'Blocks',
+                        'merge': False,
+                        'colspan': 4,
+                    }, {
+                        'name': 'Temp blocks',
+                        'merge': False,
+                        'colspan': 2
+                    }],
+                   columns=[{
+                       "name": "query",
+                       "label": "Query",
+                       "type": "query",
+                       "url_attr": "url",
+                       "max_length": 70
+                   }],
+                   metrics=ByQueryMetricGroup.all())]])
+        return self._dashboard
 
     @classmethod
     def get_menutitle(cls, handler, params):
