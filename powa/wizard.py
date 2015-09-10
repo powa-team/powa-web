@@ -2,17 +2,17 @@ from __future__ import absolute_import
 from powa.framework import AuthHandler
 from powa.dashboards import (
     Dashboard, DashboardPage, ContentWidget,
-    Widget, MetricGroupDef, MetricDef)
+    Widget, MetricGroupDef)
 
 from powa.database import DatabaseOverview
 from powa.sql import (resolve_quals, possible_indexes, get_any_sample_query,
-                      format_jumbled_query, get_hypoplans)
+                      get_hypoplans)
 import json
-from powa.sql.compat import JSONB, JSON
-from powa.sql.views import qualstat_getstatdata, TEXTUAL_INDEX_QUERY
+from powa.sql.compat import JSONB
+from powa.sql.views import qualstat_getstatdata
 from powa.sql.utils import inner_cc
-from powa.sql.tables import pg_database, powa_statements
-from sqlalchemy.sql import (bindparam, literal, literal_column, join, select,
+from powa.sql.tables import pg_database
+from sqlalchemy.sql import (bindparam, literal_column, join, select,
                             alias, text, func, column, cast)
 
 
@@ -47,13 +47,11 @@ class IndexSuggestionHandler(AuthHandler):
         """), qualid=qual_id))
         # Create all possible indexes for this qual
         not_tested = []
-        plans = {}
         hypo_version = self.has_extension("hypopg", database=database)
         hypoplans = {}
         if hypo_version and hypo_version >= "0.0.3":
             # identify indexes
             # create them
-            hypo_index_names = []
             for ind in indexes:
                 ddl = ind.hypo_ddl
                 if ddl is not None:
@@ -82,7 +80,6 @@ class WizardMetricGroup(MetricGroupDef):
     @property
     def query(self):
         pq = qualstat_getstatdata(column("eval_type") == "f")
-        c = inner_cc(pq)
         base = alias(pq)
         query = (select([
             func.array_agg(column("queryid")).label("queryids"),
