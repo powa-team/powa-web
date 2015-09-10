@@ -1,124 +1,6 @@
 define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
         'powa/views/GridView', 'highlight'], function(Backbone, DataSourceCollection, $){
 
-    var computeDistance = function(path){
-        var total_cost = 0;
-        for(var i=0; i<path.length - 1;i++){
-            var current_node = path[i],
-                next_node = path[i+1];
-            var link = current_node.links[next_node.id];
-            var base = link.samerel ? 0 : 5;
-            if(!link){
-                throw "Uncomputable path !";
-            }
-            total_cost += link.value + base;
-        }
-        return total_cost;
-    };
-
-    var pruneLinks = function(node, nodes_by_id){
-
-    };
-
-
-    var TSPStupidSolver = function(nodes) {
-        var start;
-        var nodesById = {};
-        if(nodes.length == 1){
-            return;
-        }
-        for(var i=0; i<nodes.length; i++){
-            if(nodes[i].id == "start"){
-                start = nodes[i];
-            } else {
-               nodesById[nodes[i].id] = nodes;
-            }
-        }
-        var current_node = start;
-        var current_path = [];
-        var current_idx = 0;
-        var previous_node = null;
-        while(true){
-            /* The heuristic is a bit tricky here:
-             * We want the algorithm to go at the least expensive option, IF it
-             * is on the same relation.
-             *
-             * If it isn't, then we want to go to the most expensive option,
-             * knowing the other ones are basically free after that.
-             */
-            // Prune links leading to quals already satisfied by this index
-            var unvisited_targets = _.filter(current_node.links, function(link){
-                return nodesById[link.target.id] != undefined;
-            });
-            var unvisited_samerel_targets = _.filter(unvisited_targets, function(link){
-                return link.samerel;
-            });
-            if(unvisited_targets.length == 0){
-                if(current_idx == 0){
-                    break;
-                }
-                current_idx--;
-                current_node = current_path[current_idx].source;
-                continue;
-            }
-            /* We still have more predicate to optimize for this table */
-            if(unvisited_samerel_targets.length > 0){
-                var next_path =  _.max(unvisited_samerel_targets, function(link){
-                    if(link.missing.length != 0){
-                        return - link.missing.length;
-                    }
-                    return link.overlap.length;
-                });
-                previous_node = current_node
-                current_node = next_path.target;
-                current_path.push(next_path);
-                current_idx++;
-                delete nodesById[current_node.id];
-            } else {
-                /* Lets jump to the most comprehensive index for another table */
-                var next_path = _.max(unvisited_targets, function(link){
-                    return link.cost;
-                });
-                previous_node = current_node;
-                current_node = next_path.target;
-                current_path.push(next_path);
-                current_idx++;
-                delete nodesById[current_node.id];
-            }
-        }
-        return current_path;
-    }
-
-    var TSPSolver = function(nodes){
-        // Randomize the nodes list
-        var nodes = nodes.slice(0);
-        // Start with the start node
-        var H = []
-        H.push(nodes.shift());
-        nodes = _.shuffle(nodes);
-        // Pick any node and generate H = (Start,n)
-        H.push(nodes.shift());
-        // While not every node is in H:
-        while(nodes.length > 0){
-            var n = nodes.shift();
-            var bestH = null,
-                bestCost = null;
-            // For each remaining node
-            for(var i=0; i<H.length;i++){
-                var newH = H.slice(0);
-                newH.splice(i+1, 0, n);
-                var newCost = computeDistance(newH);
-                if((!bestH) || newCost < bestCost){
-                    bestH = newH;
-                    bestCost = newCost;
-                }
-            }
-            H = bestH;
-        }
-        return H;
-    }
-
-
     var QualCollection = Backbone.Collection.extend({
         comparator: function (qual1, qual2){
             if(qual1.get("relid") != qual2.get("relid")){
@@ -137,9 +19,6 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
     var make_attrid = function(qual){
         return "" + qual.get("relid") + "/" + qual.get("attnum");
     }
-
-
-
 
     return Backbone.Model.extend({
         initialize: function(){
@@ -168,15 +47,18 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
          *
          * */
         computeLinks: function(nodes){
-            var links = [];
+            var nodesToTrash = [];
             for(var i=0; i <nodes.length; i++){
                 var firstnode = nodes[i];
                 for(var j=0; j<i; j++){
                     var secondnode = nodes[j];
-                    links = links.concat( this.make_links(firstnode, secondnode));
+                    nodesToTrash = nodesToTrash.concat(this.make_links(firstnode, secondnode));
                 }
             }
-            return links;
+            _.each(nodes, function(nodesource){
+                nodesource.contained = _.difference(nodesource.contained, nodesToTrash);
+            });
+            return _.difference(nodes, nodesToTrash);
         },
 
         make_links: function (node1, node2) {
@@ -192,10 +74,6 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             l1 = new QualCollection(_.uniq(l1, false, function(q){ return [q.get("attnum"), q.get("relid")].join(".")})).models;
             l2 = new QualCollection(_.uniq(l2, false, function(q){ return [q.get("attnum"), q.get("relid")].join(".")})).models;
             while(true){
-                if(node1.label == "WHERE recoltant.id = ? AND recoltant.nom = ? AND recoltant.adresse = ?" ||
-                    node2.label == "WHERE recoltant.id = ? AND recoltant.nom = ? AND recoltant.adresse = ?"){
-                    console.log("L1:", l1.slice(idx1), "L2", l2.slice(idx2));
-                }
                 if(idx1 >= l1.length || idx2 >= l2.length){
                     for(var i = idx1; i < l1.length; i++){
                         missing1.push(l1[i]);
@@ -263,26 +141,21 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             overlap = _.uniq(overlap, function(item){
                 return item.attnum;
             });
-            var link1 = { source: node1, target: node2, samerel: samerel ? relid1 : false, overlap: overlap, missing: missing2 },
-                link2 = { source: node2, target: node1, samerel: samerel ? relid1 : false, overlap: overlap, missing: missing1 };
-            var links = [];
-            if(link1.source.id == 'start' || link1.overlap.length > 0){
-                if(false && link1.missing.length == 0 && link1.samerel && l1.length != l2.length){
-                    node2.deleted = true;
-                } else {
-                    links.push(link1);
-                    node1.links[node2.id] = link1;
-                }
+
+            node1.relid = relid1;
+            node2.relid = relid2;
+            if(missing1.length == 0 && missing2.length == 0){
+                node1.queries = node1.queries.concat(node2.queries);
+                node1.qualstrs = node1.queries.concat(node2.qualstrs);
+                return [node2];
             }
-            if(link2.source.id == 'start' || link2.overlap.length > 0){
-                if(false && link2.missing.length == 0 && link2.samerel && l1.length != l2.length){
-                    node1.deleted = true;
-                } else {
-                    links.push(link2);
-                    node2.links[node1.id] = link2;
-                }
+            if(missing2.length == 0){
+                node1.contained.push(node2);
             }
-            return links;
+            if(missing1.length == 0){
+                node2.contained.push(node1);
+            }
+            return [];
         },
 
         update: function(quals, from_date, to_date){
@@ -291,6 +164,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 this.trigger("widget:update_progress", "No qual found!", 100);
                 return;
             }
+            var nodes = [];
             _.each(quals, function(qual, index){
                 var node = {
                     label: qual.where_clause,
@@ -301,194 +175,109 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                     queries: qual.queries,
                     qualstrs: [qual.where_clause],
                     links: {},
-                    id: qual.qualid
+                    id: qual.qualid,
+                    contained: []
                 }
-                this.get("nodes").push(node);
+                node.attnums = _.uniq(_.map(node.quals.models, function(qual){ return qual.attributes.attnum }));
+                node.score = node.attnums.length;
+                nodes.push(node);
             }, this);
-            var links = this.computeLinks(this.get("nodes"));
-//            this.set("nodes", _.filter(this.get("nodes"), function(node){return node.deleted !== true}));
-            _.each(_.sortBy(links, function(link){return -link.overlap.length}), function(link, inde){
-                this.trigger("widget:update_progress", "Computing stats for links " + Math.round(inde / links.length * 100, 2) + "%", 100 * inde / links.length);
-                this.valueLink(link);
-            }, this);
-            this.trigger("widget:update_progress", "Computing stats for links done", 100);
-            this.set("links", links);
-            var stupidShortPath = TSPStupidSolver(this.get("nodes"), this.get("links"));
-            this.set("shortest_path", stupidShortPath);
-            /* The shortest_path is computed, aggregate results by indexes */
-            var indexes = this.path_by_indexes_and_queries(stupidShortPath);
-            this.trigger("wizard:solved", indexes);
-//            this.trigger("wizard:update_graph", this);
+            nodes = this.computeLinks(nodes);
+            this.solve(nodes);
         },
 
-        path_by_indexes_and_queries: function(shortest_path){
-            var indexes = {};
-            var queries = {};
-            var self = this;
-            for(var i=0; i<shortest_path.length; i++){
-                var link = shortest_path[i];
-                // This index is already taken care of
-                if(link.missing.length == 0){
-                    // TODO: merge queries and quals
-                    continue;
+
+        findContained: function(node1, nodes){
+            var contained = [];
+            _.each(nodes, function(node) {
+                var link = node1.links[node.id];
+                if(link != undefined && link.missing.length == 0){
+                    contained.push(node);
                 }
-                _.each(link.details, function(elem, query){
-                    _.each(elem.indexes, function(index){
-                        var key = index.ddl;
-                        var stats = {
-                            "Queries": link.target.queries.join("\n"),
-                            "Quals": link.target.qualstrs.join("\n"),
-                            "basecost": 0,
-                            "hypocost": 0,
-                            "Indexes": index.ddl,
-                        };
-                        if(indexes[key]){
-                            stats = indexes[key];
-                        } else {
-                            indexes[key] = stats;
+            });
+            return contained;
+        },
+
+        solve: function(nodes){
+            var remainingNodes = _.clone(nodes);
+            var pathes = {};
+
+            var makePathId = function(nodes){
+                return _.pluck(nodes, "id").join(",");
+            };
+            var getPathes = function(node){
+                var mypath = {
+                    id: node.id,
+                    score: node.score,
+                    nodes: [node]
+                };
+                var pathes = [];
+                _.each(node.contained, function(contained){
+                    var child_pathes = getPathes(contained);
+                    _.each(child_pathes, function(path){
+                        var current_path = _.clone(path.nodes);
+                        current_path.push(node);
+                        pathes.push({
+                            nodes: current_path,
+                            id: makePathId(current_path),
+                            score: node.score + path.score
+                        });
+                    });
+                }, this);
+                pathes.push(mypath);
+                return pathes;
+            };
+
+            _.each(remainingNodes, function(node){
+                _.each(getPathes(node), function(path){
+                    pathes[path.id] = path;
+                });
+            });
+            console.log(pathes);
+            var indexes = [];
+            var safeguard = 0;
+            while(_.values(pathes).length > 0 && safeguard < 1000){
+                safeguard++;
+                /* Work with the remainging highest-scoring path */
+                var firstPath = _.max(_.pairs(pathes), function(pair){
+                    return pair[1].score;
+                })[1];
+                var root = firstPath.nodes.slice(-1)[0];
+                _.each(_.keys(pathes), function(key){
+                    if(key.endsWith(root.id)){
+                        delete pathes[key];
+                    }
+                });
+                /* Find attnum order */
+                var attnums = [];
+                var queryids = [];
+                var qualstrs = [];
+                _.each(firstPath.nodes, function(node, idx){
+                    var newAttnums = _.difference(node.attnums, attnums);
+                    var idToDel = makePathId(firstPath.nodes.slice(0, idx+1));
+                    attnums = attnums.concat(newAttnums);
+                    _.each(_.pairs(pathes), function(pair){
+                        var pathid = pair[0];
+                        var path = pair[1];
+                        if(path.nodes.indexOf(node) > -1){
+                            var pathToDel = pathes[pathid];
+                            delete pathes[pathid];
                         }
                     });
-                })
+                    delete pathes[idToDel];
+                    queryids = queryids.concat(node.queryids);
+                    qualstrs = qualstrs.concat(node.qualstrs);
+                });
+                indexes.push({
+                    relid: firstPath.nodes[0].relid,
+                    attnums: attnums,
+                    queryids: queryids,
+                    qualstrs: qualstrs
+                });
             }
-            return {
-                by_index: indexes
-            }
-        },
-
-        _order_attnums: function(link, preferred_attnums){
-            var attnums  = _.uniq(_.map(link.target.quals.models, function(qual){return qual.get("attnum")}));
-            var missing = _.map(link.missing, function(qual){
-                return qual.attributes.attnum;
-            });
-            return _.sortBy(attnums, function(attnum){
-                var idx = missing.indexOf(attnum);
-                if (idx >= 0){
-                    return Infinity;
-                }
-                if(preferred_attnums){
-                    idx = preferred_attnums.indexOf(attnum);
-                }
-                if(idx >= 0){
-                    return idx;
-                }
-                return attnums.indexOf(attnum) + (preferred_attnums || []).length;
-            });
-
-        },
-
-        _propagate_cost: function(root, link, value, attnums, preferred_order){
-            var self = this;
-            preferred_order = preferred_order || [];
-            _.each(_.sortBy(_.values(link.target.links), function(link){ return -link.overlap.length}), function(nextlink){
-                if(nextlink.value !== undefined || nextlink.cost){
-                    return;
-                }
-
-                var newattnums = self._order_attnums(nextlink, preferred_order);
-                if(nextlink.samerel && nextlink.samerel === link.samerel &&
-                        nextlink.missing.length == 0 && nextlink.overlap.length > 0){
-
-                    var in_order_attnums =   _.filter(nextlink.overlap, function(overlap, idx){
-                        return attnums.indexOf(overlap.attnum) >= 0 && (
-                                preferred_order.indexOf(overlap.attnum) < 0 ||
-                                preferred_order.indexOf(overlap.attnum) == idx);
-
-                    });
-                    nextlink.cost =  (nextlink.overlap.length - in_order_attnums.length) * 1000;
-                    if(in_order_attnums.length == nextlink.overlap.length){
-                        nextlink.value = link.value;
-                        nextlink.cost = 0;
-                        nextlink.has_propagate = "LOL";
-                        delete link.target.links[nextlink.source.id];
-                        delete nextlink.target.links[link.source.id];
-                        root.queries = _.uniq(root.queries.concat(nextlink.target.queries));
-                        root.qualstrs = _.uniq(root.qualstrs.concat(nextlink.target.qualstrs));
-                        _.each(newattnums, function(attnum){
-                            if(preferred_order.indexOf(attnum) < 0){
-                                preferred_order.push(attnum);
-                            }
-                        });
-                        self._propagate_cost(root, nextlink, value, newattnums, preferred_order);
-                    } else {
-                        nextlink.is_stupid = true;
-                        nextlink.overlap = [];
-                        nextlink.missing = nextlink.target.quals.models;
-                    }
-                }
-            });
-        },
-
-        valueLink: function(link, preferred_attnums){
-            // A link from a source to a destination with one target being
-            // entirely comprised in the source is valued as -1000 *
-            // nbattributes: an index for one will cover the other one.
-            // A link from a source to a destination in another relation is
-            // equal to 1000, minus the number of attributes present in the
-            // qual.
-            // The reasoning is that it will be far cheaper to explore the
-            // "biggest" indexes first, and then the other ones.
-            var missing = _.map(link.missing, function(qual){
-                return qual.attributes.attnum
-            });
-            var self = this;
-            // If this link was already visisted, skip it
-            if(link.value){
-                return;
-            }
-            link.cost = 1000 * link.missing.length;
-            var shallowtarget = _.clone(link.target);
-            shallowtarget.quals = _.map(link.quals, function(m){
-                return m.attributes;
-            });
-            var attnums = self._order_attnums(link, preferred_attnums);
-            var cache_key = attnums.join(",");
-            var cached_value = (self.get("cache")[shallowtarget.id] || {})[cache_key];
-            if(cached_value){
-                link.details = cached_value.details;
-                link.value = cached_value.value;
-                return;
-            }
-            delete shallowtarget.links;
-            $.ajax({
-                url: '/database/' + this.get("database") + '/suggest/',
-                data: JSON.stringify({
-                    qual: shallowtarget,
-                    from_date: shallowtarget.from_date,
-                    to_date: shallowtarget.to_date,
-                    attnums: attnums
-                }),
-                async: false,
-                type: 'POST',
-                contentType: 'application/json'
-            }).success(function(data){
-                link.details = data;
-                link.value = 0;
-                /* The "value" of a link is the sum of all savings made to
-                    * every query using the target qual(s)
-                    * This is a negative value, so that the cost will be
-                    * prefered in all cases.
-                    */
-                if(_.keys(data).length == 0){
-                    /* We could not get any plan for queries involving this
-                        * qual, so we rely on a really conservative guesstimate */
-                    link.value = missing.length * 100;
-                    link.cost = 1000 * link.missing.length - 100 * link.overlap.length;
-                } else {
-                    _.each(data, function(elem, index){
-                        link.value += (elem.basecost - elem.hypocost);
-                    });
-                }
-                var cacheforqual = self.get("cache")[shallowtarget.id];
-                if(!cacheforqual){
-                    cacheforqual = self.get("cache")[shallowtarget.id] = {};
-                }
-                cacheforqual[cache_key] = {
-                    details: data,
-                    value: link.value
-                }
-                self._propagate_cost(link.target, link, link.value, attnums);
-            });
+            console.log("INDEXES: ", indexes);
         }
+
     }, {
         fromJSON: function(jsonobj){
             var group = DataSourceCollection.get_instance();
