@@ -126,15 +126,9 @@ class NoWizard(ContentWidget):
 
     data_url = r"/database/(\w+)/nowizard/"
 
-    #def __init__(self, title):
-    #    self.title = title
-
     def get(self, database):
         self.render("database/nowizard.html", database = database)
-        #self.render("xhr.html", content="nodata")
         return
-    #def to_json(self):
-    #    return ()
 
 class WizardPage(DashboardPage):
 
