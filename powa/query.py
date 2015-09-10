@@ -21,7 +21,7 @@ from powa.sql import (Plan, format_jumbled_query, quote_ident,
                       resolve_quals, qual_constants,
                       qualstat_get_figures,
                       get_hypoplans,
-                      get_sample_query,
+                      get_any_sample_query,
                       possible_indexes)
 from powa.sql.views import (powa_getstatdata_sample,
                             kcache_getstatdata_sample,
@@ -195,7 +195,7 @@ class QueryIndexes(ContentWidget):
                 if ddl is not None:
                     ind.name = self.execute(ddl, database=database).scalar()[1]
             # Build the query and fetch the plans
-            querystr = get_sample_query(self, database, query,
+            querystr = get_any_sample_query(self, database, query,
                                         self.get_argument("from"),
                                         self.get_argument("to"))
             hypoplan = get_hypoplans(self.connect(database=database), querystr,

@@ -22,13 +22,11 @@ extract( epoch from
 
 def format_jumbled_query(sql, params):
     it = iter(params)
-    to_replace = re.findall("\?", sql)
-    result = None
     try:
         sql = re.sub("\?", lambda val: next(it), sql)
     except StopIteration:
         pass
-    return result
+    return sql
 
 
 RESOLVE_OPNAME = text("""
@@ -323,16 +321,45 @@ def get_plans(self, query, database, qual):
     return plans
 
 
-def get_sample_query(ctrl, database, queryid, _from, _to):
+def get_unjumbled_query(ctrl, database, queryid, _from, _to, kind):
     """
     From a queryid, build a query string ready to be executed.
 
-    If the only constants in the query are in the predicates, use values from
-    the most_executed quals. If not, use the query_example collected by
-    pg_qualstats, as is.
+    Gather a jumbled query from powa_statements, then try to denormalized it
+    using stored const values, by its kind (least/most filtering, most common).
+
+    This function can return None if the query has not been gathered by powa, or
+    a partially or fully normalized query, depending on const values has been
+    found and/or the SELECT clause has been normalized
+    """
+
+    rs = list(ctrl.execute(text("""
+        SELECT query FROM powa_statements WHERE queryid = :queryid LIMIT 1
+    """), params={"queryid": queryid}))[0]
+    normalized_query = rs[0]
+
+    values = qualstat_get_figures(ctrl, database, _from, _to,
+                                  queries=[queryid])
+
+    if values is None:
+        return normalized_query
+
+    # Try to inject values
+    sql = format_jumbled_query(normalized_query,
+                               values[kind].get('constants', []))
+    return sql
+
+def get_any_sample_query(ctrl, database, queryid, _from, _to):
+    """
+    From a queryid, get a non normalized query.
+
+    If pg_qualstats is available and recent enough, try to retrieve a randomly
+    chosen non normalized query, which is fast.
+
+    If this fail, fallback get_unjumbled_query, with "most executed" const
+    values.
     """
     has_pgqs = ctrl.has_extension("pg_qualstats")
-    normalized_query = None
     example_query = None
     if has_pgqs and has_pgqs >= "0.0.7":
         rs = list(ctrl.execute(text("""
@@ -341,23 +368,11 @@ def get_sample_query(ctrl, database, queryid, _from, _to):
             WHERE queryid = :queryid
             LIMIT 1
         """), params={"queryid": queryid}))[0]
-        normalized_query = rs[0]
         example_query = rs[1]
-    else:
-        rs = list(ctrl.execute(text("""
-            SELECT query FROM powa_statements WHERE queryid = :queryid LIMIT 1
-        """), params={"queryid": queryid}))[0]
-        normalized_query = rs[0]
-        example_query = None
-    values = qualstat_get_figures(ctrl, database, _from, _to,
-                                  queries=[queryid])
+        if example_query is not None:
+            return example_query
 
-    if values is None:
-        values = {'most executed': {}}
-        # Try to inject values
-    sql = format_jumbled_query(normalized_query,
-                                values['most executed'].get('constants', []))
-    return sql or example_query
+    return get_unjumbled_query(ctrl, database, _from, _to, 'most executed')
 
 
 def qualstat_get_figures(conn, database, tsfrom, tsto, queries=None, quals=None):

@@ -5,7 +5,7 @@ from powa.dashboards import (
     Widget, MetricGroupDef, MetricDef)
 
 from powa.database import DatabaseOverview
-from powa.sql import (resolve_quals, possible_indexes, get_sample_query,
+from powa.sql import (resolve_quals, possible_indexes, get_any_sample_query,
                       format_jumbled_query, get_hypoplans)
 import json
 from powa.sql.compat import JSONB, JSON
@@ -60,7 +60,7 @@ class IndexSuggestionHandler(AuthHandler):
                     ind.name = self.execute(ddl, database=database).scalar()[1]
             # Build the query and fetch the plans
             for query in queries:
-                querystr = get_sample_query(self, database, query.queryid,
+                querystr = get_any_sample_query(self, database, query.queryid,
                                             from_date,
                                             to_date)
                 if querystr:
