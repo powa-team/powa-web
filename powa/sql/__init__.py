@@ -224,7 +224,8 @@ def resolve_quals(conn, quallist, attribute="quals"):
             avg_filter=row['avg_filter'],
             filter_ratio=row['filter_ratio'],
             qualid=row['qualid'],
-            queries=row.get('queries')
+            queries=row.get('queries'),
+            queryids=row.get('queryids')
         )
         new_qual_list.append(newqual)
         values = [v for v in row[attribute] if v['relid'] != '0']
@@ -513,7 +514,7 @@ def get_hypoplans(conn, query, indexes=None):
     Arguments:
         conn: a connection to the target database
         queries: a list of sql queries, already formatted with values
-        indexes: a list of HypoIndex to look for in the plan. They should have been created, and have a name.
+        indexes: a list of hypothetical index names to look for in the plan
     """
     indexes = indexes or []
     # Escape literal '%'
@@ -530,8 +531,6 @@ def get_hypoplans(conn, query, indexes=None):
     hypocost = float(m.group(0))
     used_indexes = []
     for ind in indexes:
-        if ind.name is None:
-            continue
-        if ind.name in hypoplan:
+        if ind in hypoplan:
             used_indexes.append(ind)
     return HypoPlan(baseplan, basecost, hypoplan, hypocost, query, used_indexes)

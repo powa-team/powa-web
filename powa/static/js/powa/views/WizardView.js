@@ -38,6 +38,11 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
                     name: "quals",
                     label: "Used by",
                     cell: "html",
+                },{
+                    editable: false,
+                    name: "nbqueries",
+                    label: "# Queries boosted",
+                    cell: "string"
                 }],
                 collection: this.model.get("indexes")
             });
@@ -52,12 +57,13 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
         },
 
         onStart: function(state, progress){
-            this.$el.find(".configuration").hide();
             this.$el.find(".summary").show();
+            this.$el.find(".launcher").prop("disabled", true);
+            this.$gridel.show();
         },
 
         onEnd: function(state, progress){
-            this.$el.find(".configuration").show();
+            this.$el.find(".launcher").prop("disabled", false);
         },
 
         showload: function(){
@@ -75,6 +81,7 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
                 return this;
             }
             this.$el.html(this.template(this.model.toJSON()));
+            this.$el.find(".indexesgrid").hide();
             this.$el.find(".summary").hide();
             this.$el.find(".results").hide();
             this.$el.find(".results").hide();

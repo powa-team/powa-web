@@ -107,7 +107,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
 
         merge: function(node2){
             this.set("queries", _.uniq(this.get("queries").concat(node2.get("queries"))));
-            this.set("queryids", _.uniq(this.get("queryids").concat(node2.get("queryids"))))
+            this.set("queryids", _.uniq(this.get("queryids").concat(node2.get("queryids"))));
             var quals = _.union(this.get("quals").models, node2.get("quals").models);
             this.get("quals").set(quals);
         }
@@ -129,6 +129,10 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             var attnames = _.uniq(this.get("node").get("quals").pluck("attname"));
             ddl += attnames.join(",") + ")";
             return ddl;
+        },
+
+        nbqueries: function(){
+            return this.get("queryids").length;
         },
 
         quals: function(){
@@ -300,6 +304,8 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
 
         update: function(quals, from_date, to_date){
             var total_quals = _.size(quals);
+            this.set("from_date", from_date);
+            this.set("to_date", to_date);
             if (total_quals == 0){
                 this.trigger("widget:update_progress", "No qual found!", 100);
                 this.trigger("wizard:end");
@@ -330,7 +336,39 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             }, this);
             nodes = this.computeLinks(nodes);
             this.solve(nodes);
+            this.checkSolution();
             this.trigger("wizard:end");
+        },
+
+        checkSolution: function(){
+            if(!this.get("has_hypopg")){
+                this.trigger("widget:update_progress", "Install hypopg for solution validation",
+                        100);
+                return
+            }
+            this.trigger("widget:update_progress", "Checking solution with hypopg...",
+                    60);
+            var indexes = [], queryids = [];
+            this.get("indexes").each(function(index){
+                indexes.push(index.get("ddl"));
+                queryids = _.uniq(queryids.concat(index.get("queryids")));
+            });
+
+            this.get("indexes").each(function(index, idx){
+                $.ajax({
+                url: '/database/' + this.get("database") + '/suggest/',
+                data: JSON.stringify({
+                    queryids: queryids,
+                    indexes: indexes,
+                    from_date: this.get("from_date"),
+                    to_date: this.get("to_date")
+                }),
+                type: 'POST',
+                contentType: 'application/json'
+            }).success(function(data){
+                console.log(data);
+            });
+            }, this);
         },
 
         solve: function(nodes){
@@ -418,7 +456,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                             delete pathes[pathid];
                         }
                     });
-                    queryids = _.uniq(queryids.concat(node.queryids));
+                    queryids = _.uniq(queryids.concat(node.get("queryids")));
                 });
                 var ams = _.flatten(firstPath.nodes.slice(-1)[0].get("quals").map(function(qual){
                     return _.keys(qual.get("amops"))

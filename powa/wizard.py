@@ -19,43 +19,28 @@ from sqlalchemy.sql import (bindparam, literal_column, join, select,
 class IndexSuggestionHandler(AuthHandler):
 
     def post(self, database):
-        qual_to_resolve = json.loads(self.request.body.decode("utf8"))
-        qual_id = qual_to_resolve['qual']['id']
-        from_date = qual_to_resolve['from_date']
-        to_date = qual_to_resolve['to_date']
-        attnum_order = qual_to_resolve['attnums']
-        base_query = qualstat_getstatdata()
-        c = inner_cc(base_query)
-        base_query.append_from(text("""LATERAL unnest(quals) as qual"""))
-        base_query = (base_query
-                      .where(c.qualid == qual_id)
-                      .params(**{'from': from_date,
-                                 'to': to_date}))
-        optimizable = list(self.execute(base_query))
-        optimizable = resolve_quals(self.connect(database=database),
-                                    optimizable,
-                                    'quals')
-        indexes = possible_indexes(optimizable[0], order=attnum_order)
-        # Get every query associated with it.
+        payload = json.loads(self.request.body.decode("utf8"))
+        from_date = payload['from_date']
+        to_date = payload['to_date']
+        indexes = payload['indexes']
+        queryids = payload['queryids']
         powa_conn = self.connect(database="powa")
         conn = self.connect(database=database)
         queries = list(powa_conn.execute(text("""
             SELECT DISTINCT query, ps.queryid
             FROM powa_statements ps
-            JOIN powa_qualstats_quals q ON q.queryid = ps.queryid
-            WHERE q.qualid = :qualid
-        """), qualid=qual_id))
+            WHERE queryid IN :queryids
+        """), queryids=tuple(queryids)))
         # Create all possible indexes for this qual
         not_tested = []
         hypo_version = self.has_extension("hypopg", database=database)
         hypoplans = {}
+        indnames = []
         if hypo_version and hypo_version >= "0.0.3":
             # identify indexes
             # create them
             for ind in indexes:
-                ddl = ind.hypo_ddl
-                if ddl is not None:
-                    ind.name = self.execute(ddl, database=database).scalar()[1]
+                indnames.append(self.execute(func.hypopg_create_index(ind), database=database).scalar()[1])
             # Build the query and fetch the plans
             for query in queries:
                 querystr = get_any_sample_query(self, database, query.queryid,
@@ -64,7 +49,7 @@ class IndexSuggestionHandler(AuthHandler):
                 if querystr:
                     hypoplans[query.queryid] = get_hypoplans(
                         self.connect(database=database), querystr,
-                        indexes)
+                        indnames)
             # To value of a link is the the reduction in cost
         self.render_json(hypoplans)
 
@@ -123,4 +108,5 @@ class Wizard(Widget):
         qsver = handler.has_extension("pg_qualstats")
         values['has_hypopg'] = hypover and hypover  >= '0.0.3'
         values['has_qualstats'] = qsver and qsver >= '0.0.7'
+        values['database'] = database
         return values
