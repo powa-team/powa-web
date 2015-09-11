@@ -126,7 +126,14 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 am = " USING " + am;
             }
             ddl += am + "(";
-            var attnames = _.uniq(this.get("node").get("quals").pluck("attname"));
+            var myattnums = this.get("attnums");
+            var attnames = _.uniq(_.map(_.sortBy(this.get("node").get("quals").map(function(qual){
+                var attnum = qual.get("attnum");
+                var attname = qual.get("attname");
+                return [myattnums.indexOf(attnum), attname];
+            }), function(pair){
+                return pair[0];
+            }), function(pair){return pair[1]}));
             ddl += attnames.join(",") + ")";
             return ddl;
         },
@@ -437,9 +444,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
 
 
                 _.each(firstPath.nodes, function(node, idx){
-                    var nodeAttnum = _.uniq(node.get("quals").pluck(function(qual){
-                        return qual.get("attnum");
-                    }));
+                    var nodeAttnum = node.get("quals").pluck("attnum");
                     var newAttnums = _.difference(nodeAttnum, attnums);
                     var idToDel = makePathId(firstPath.nodes.slice(0, idx+1));
                     attnums = attnums.concat(newAttnums);
