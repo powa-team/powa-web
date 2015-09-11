@@ -366,7 +366,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 type: 'POST',
                 contentType: 'application/json'
             }).success(function(data){
-                this.trigger("widget:update_progress", "Done !", 100);
+                self.trigger("widget:update_progress", "Done !", 100);
 
             });
             }, this);
