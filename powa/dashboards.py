@@ -138,6 +138,7 @@ class DataSource(JSONizable):
     """
     datasource_handler_cls = None
     data_url = None
+    enabled = True
 
     @classproperty
     def url_name(cls):
@@ -403,6 +404,8 @@ class MetaMetricGroup(type, JSONizable):
         if not isinstance(dct.get('name', ''), str):
             raise ValueError("The metric group name must be of type str")
         for base in bases:
+            if hasattr(base, "enabled"):
+                dct.setdefault("enabled", base.enabled)
             if hasattr(base, '_stubs'):
                 for key, stub in base._stubs.items():
                     dct[key] = stub.__class__(*stub.args,

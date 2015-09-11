@@ -76,6 +76,7 @@ class WizardMetricGroup(MetricGroupDef):
     xaxis = "quals"
     axis_type = "category"
     data_url = r"/metrics/database/(\w+)/wizard/"
+    enabled = True
 
     @property
     def query(self):

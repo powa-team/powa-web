@@ -102,7 +102,9 @@ define([
 
         refreshSources: function(startDate, endDate){
             this.data_sources.each(function(data_source){
-                data_source.update(startDate, endDate);
+                if(data_source.get("enabled") != false){
+                    data_source.update(startDate, endDate);
+                }
             });
         },
 
