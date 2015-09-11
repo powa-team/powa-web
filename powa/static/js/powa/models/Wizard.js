@@ -52,7 +52,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 var firstnode = nodes[i];
                 for(var j=0; j<i; j++){
                     var secondnode = nodes[j];
-                    nodesToTrash = nodesToTrash.concat(this.make_links(firstnode, secondnode));
+                    nodesToTrash = _.uniq(nodesToTrash.concat(this.make_links(firstnode, secondnode)));
                 }
             }
             _.each(nodes, function(nodesource){
@@ -101,6 +101,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                     throw "A single qual should NOT touch more than one table!";
                 }
                 relid2 = q2.get("relid");
+                var isOverlap = false;
                 if(q1.get("relid") == q2.get("relid") &&
                 q1.get("attnum") == q2.get("attnum")){
                     var common_ams = _.filter(_.keys(q1.get("amops")), function(indexam){
@@ -117,13 +118,15 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                             q1_idx: idx1,
                             q2_idx: idx2
                         });
+                        isOverlap = true;
                         attrs1[attrid1] = true;
                         attrs2[attrid2] = true;
+                        idx1++;
+                        idx2++;
+                        continue;
                     }
-                    idx1++;
-                    idx2++;
-                    continue;
-                } else {
+                }
+                if(!isOverlap){
                     if(node1.quals.comparator.call(q1, q1, q2) > 0){
                         var newq2 = _.clone(q2);
                         newq2.qualid = node2.qualid;
@@ -138,6 +141,8 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 }
             }
             var samerel = relid1 != undefined && relid2 != undefined && relid1 == relid2;
+            node1.contained_ams[node2.id] = overlap.indexams;
+            node2.contained_ams[node1.id] = overlap.indexams;
             overlap = _.uniq(overlap, function(item){
                 return item.attnum;
             });
@@ -145,8 +150,8 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             node1.relid = relid1;
             node2.relid = relid2;
             if(missing1.length == 0 && missing2.length == 0){
-                node1.queries = node1.queries.concat(node2.queries);
-                node1.qualstrs = node1.queries.concat(node2.qualstrs);
+                node1.queries = _.uniq(node1.queries.concat(node2.queries));
+                node1.qualstrs = _.uniq(node1.qualstrs.concat(node2.qualstrs));
                 return [node2];
             }
             if(missing2.length == 0){
@@ -173,14 +178,36 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                     from_date: from_date,
                     to_date: to_date,
                     queries: qual.queries,
-                    qualstrs: [qual.where_clause],
                     links: {},
                     id: qual.qualid,
-                    contained: []
+                    contained: [],
+                    contained_ams: {}
                 }
+                // Delete quals which do not support the most common access
+                // method.
+                var access_methods = {}
+                node.quals.each(function(qual){
+                    _.each(_.keys(qual.get("amops")), function(am){
+                        access_methods[am] = (access_methods[am] || 0) + 1;
+                    });
+                });
+                var most_common_am = _.max(_.pairs(access_methods), function(pair){
+                    return pair[1];
+                })[0];
+                var grouped = node.quals.groupBy(function(qual){
+                    return qual.get("amops")[most_common_am] ? "keep" : "trash";
+                });
+                var reprs = _.map(grouped.keep, function(qual){
+                    return qual.get("label");
+                });
+                reprs = reprs.concat(_.map(grouped.trash, function(qual){
+                    return "<strike>" + qual.get("label") + "<strike>";
+                }));
+                node.qualstrs = reprs;
+                node.quals.set(grouped.keep);
+                nodes.push(node);
                 node.attnums = _.uniq(_.map(node.quals.models, function(qual){ return qual.attributes.attnum }));
                 node.score = node.attnums.length;
-                nodes.push(node);
             }, this);
             nodes = this.computeLinks(nodes);
             this.solve(nodes);
@@ -233,7 +260,6 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                     pathes[path.id] = path;
                 });
             });
-            console.log(pathes);
             var indexes = [];
             var safeguard = 0;
             while(_.values(pathes).length > 0 && safeguard < 1000){
@@ -265,14 +291,19 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                         }
                     });
                     delete pathes[idToDel];
-                    queryids = queryids.concat(node.queryids);
-                    qualstrs = qualstrs.concat(node.qualstrs);
+                    queryids = _.uniq(queryids.concat(node.queryids));
+                    qualstrs = _.uniq(qualstrs.concat(node.qualstrs));
                 });
+                var ams = _.flatten(firstPath.nodes.slice(-1)[0].quals.map(function(qual){
+                    return _.keys(qual.get("amops"))
+                }));
+                ams = _.uniq(ams);
                 indexes.push({
                     relid: firstPath.nodes[0].relid,
                     attnums: attnums,
                     queryids: queryids,
-                    qualstrs: qualstrs
+                    qualstrs: qualstrs,
+                    ams: ams
                 });
             }
             console.log("INDEXES: ", indexes);

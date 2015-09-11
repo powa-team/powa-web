@@ -131,6 +131,11 @@ class ResolvedQual(JSONizable):
         else:
             return "%s %%" % (abs(self.n_distinct) * 100)
 
+    def to_json(self):
+        base = super(ResolvedQual, self).to_json()
+        base["label"] = str(self)
+        return base
+
 
 class ComposedQual(JSONizable):
 
