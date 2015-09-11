@@ -51,7 +51,10 @@ SELECT json_object_agg(oid, value)
         SELECT oprname, pg_operator.oid as oproid,
             pg_am.oid as am, to_json(array_agg(distinct c.oid)) as opclass_oids,
             amname,
-        to_json(array_agg(distinct CASE WHEN opcdefault THEN '' ELSE opcname END)) as opclass_names
+        to_json(array_agg(distinct CASE
+                      WHEN opcdefault IS TRUE THEN ''
+                      WHEN opcdefault IS FALSE THEN opcname
+                      ELSE NULL END)) as opclass_names
         FROM
         pg_operator
         LEFT JOIN pg_amop amop ON amop.amopopr = pg_operator.oid
