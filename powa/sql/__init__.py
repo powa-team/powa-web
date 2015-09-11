@@ -331,7 +331,7 @@ def get_plans(self, query, database, qual):
     return plans
 
 
-def get_unjumbled_query(ctrl, database, queryid, _from, _to, kind):
+def get_unjumbled_query(ctrl, database, queryid, _from, _to, kind = 'most executed'):
     """
     From a queryid, build a query string ready to be executed.
 
