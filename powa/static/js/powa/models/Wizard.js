@@ -353,7 +353,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 indexes.push(index.get("ddl"));
                 queryids = _.uniq(queryids.concat(index.get("queryids")));
             });
-
+            var self = this;
             this.get("indexes").each(function(index, idx){
                 $.ajax({
                 url: '/database/' + this.get("database") + '/suggest/',
@@ -366,7 +366,8 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 type: 'POST',
                 contentType: 'application/json'
             }).success(function(data){
-                console.log(data);
+                this.trigger("widget:update_progress", "Done !", 100);
+
             });
             }, this);
         },
