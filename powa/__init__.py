@@ -19,7 +19,7 @@ from powa.database import DatabaseSelector, DatabaseOverview
 from powa.query import QueryOverview
 from powa.qual import QualOverview
 from powa.config import ConfigOverview
-from powa.wizard import WizardPage, IndexSuggestionHandler
+from powa.wizard import IndexSuggestionHandler
 
 
 class IndexHandler(AuthHandler):
@@ -45,8 +45,7 @@ for dashboard in (Overview,
                   DatabaseOverview,
                   QueryOverview,
                   QualOverview,
-                  ConfigOverview,
-                  WizardPage):
+                  ConfigOverview):
     URLS.extend(dashboard.url_specs())
 
 

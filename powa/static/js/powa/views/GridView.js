@@ -84,6 +84,19 @@ define([
         }
     });
 
+    Backgrid.Extension.HtmlCell = Backgrid.Cell.extend({
+        className: "html",
+        render: function(){
+            this.$el.empty();
+            var model = this.model,
+            raw_value = model.get(this.column.get("name")),
+            value = raw_value.replace(/^\s+/g,"").replace(/\n\s+/, "\n");
+            this.$el.append(value);
+            this.delegateEvents();
+            return this;
+        }
+    });
+
     Backgrid.Extension.DurationCell = Backgrid.Cell.extend({
         className: "duration",
         formatter: DurationFormatter

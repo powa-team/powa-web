@@ -9,6 +9,7 @@ from powa.dashboards import (
 
 from powa.sql.views import (powa_getstatdata_detailed_db,
                             powa_getstatdata_sample)
+from powa.wizard import WizardMetricGroup, Wizard
 from powa.overview import Overview
 from sqlalchemy.sql import ColumnCollection, bindparam, column, select
 from sqlalchemy.sql.functions import sum
@@ -130,7 +131,7 @@ class DatabaseOverview(DashboardPage):
     """DatabaseOverview Dashboard."""
     base_url = r"/database/(\w+)/overview"
     datasources = [DatabaseOverviewMetricGroup, ByQueryMetricGroup,
-                   WizardThisDatabase]
+                   WizardMetricGroup]
     params = ["database"]
     parent = Overview
 
@@ -146,8 +147,6 @@ class DatabaseOverview(DashboardPage):
 
         self._dashboard = Dashboard("Database overview for %(database)s")
 
-        if has_qualstats >= "0.0.7" and has_hypopg >= "0.0.3":
-            self._dashboard.widgets.extend([[WizardThisDatabase]])
 
         self._dashboard.widgets.extend(
             [[Graph("Calls (On database %(database)s)",
@@ -183,13 +182,10 @@ class DatabaseOverview(DashboardPage):
                        "max_length": 70
                    }],
                    metrics=ByQueryMetricGroup.all())]])
+
+        self._dashboard.widgets.extend([[Wizard("Index suggestions")]])
         return self._dashboard
 
     @classmethod
     def get_menutitle(cls, handler, params):
         return params.get("database")
-
-    @classmethod
-    def get_childmenu(cls, handler, params):
-        from powa.wizard import WizardPage
-        return [WizardPage.get_selfmenu(handler, params)]

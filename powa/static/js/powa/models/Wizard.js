@@ -1,5 +1,5 @@
 define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
-        'powa/views/GridView', 'highlight'], function(Backbone, DataSourceCollection, $){
+        'powa/views/GridView', 'highlight'], function(Backbone, DataSourceCollection, $, GridView, highlight){
 
     var QualCollection = Backbone.Collection.extend({
         comparator: function (qual1, qual2){
@@ -16,21 +16,171 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
         }
     });
 
+
+    var GetterModel = Backbone.Model.extend({
+        get: function(attr){
+            if (typeof this[attr] == 'function') {
+                return this[attr]();
+            }
+            return Backbone.Model.prototype.get.call(this, attr);
+        }
+    });
+
+    var QualModel = GetterModel.extend({
+
+        initialize: function(values){
+            this.set("quals", new QualCollection());
+            this.set("contained", new NodeCollection());
+            this.set("trashedQuals", new QualCollection());
+            this.listenTo(this.get("quals"), "add", this.qualupdate, this);
+            this.listenTo(this.get("quals"), "add", this.qualupdate, this);
+            if(values && values.quals){
+                this.get("quals").set(values.quals);
+            }
+        },
+
+        qualupdate: function(newquals, options){
+            if(options.internal){
+                return;
+            }
+            this.trashQuals();
+            var relids = _.uniq(this.get("quals").pluck("relid"));
+            if(relids.length > 1){
+                throw "A qual should not span more than one table";
+            }
+            this.set("relid", relids[0]);
+            this.set("relname", this.get("quals").models[0].get("relname"));
+        },
+
+        relfqn: function(){
+            return this.get("nspname") + "." + this.get("relname");
+        },
+
+        uniqAttnums: function(){
+            return _.uniq(this.get("quals").map(function(qual){
+                return qual.get("attnum");
+            }));
+        },
+
+        trashQuals: function(){
+            // Delete quals which do not support the most common access
+            // method.
+            quals = this.get("quals");
+            var access_methods = {}
+            quals.each(function(qual){
+                _.each(_.keys(qual.get("amops")), function(am){
+                    access_methods[am] = (access_methods[am] || 0) + 1;
+                });
+            });
+            var most_common_am = _.max(_.pairs(access_methods), function(pair){
+                return pair[1];
+            })[0];
+            var grouped = quals.groupBy(function(qual){
+                return qual.get("amops")[most_common_am] ? "keep" : "trash";
+            });
+            this.get("trashedQuals").set(grouped.trash, {internal: true});
+            this.get("quals").set(grouped.keep, {internal: true});
+        },
+
+        repr: function(){
+            var base = "WHERE " +  _.uniq(this.get("quals").map(function(qual){
+                return qual.get("label")
+            }, this)).join(" AND ");
+            base = "<pre>" + highlight.highlight("sql", base, true).value + "</pre>";
+            var unmanaged = this.get("trashedQuals").map(function(qual, idx){
+                var part = "<strike><pre>";
+                var value = qual.get("label");
+                if(idx == 0){
+                    value = " AND " + value;
+                }
+                if(idx < this.get("trashedQuals").length - 1){
+                    value += " AND ";
+                }
+                value = highlight.highlight("sql", "WHERE " + value, true).value;
+                value = value.substring(value.indexOf("</span> ") + 8);
+                part += value + "</pre></strike>";
+                return part;
+            }, this).join(" AND ");
+            base = base + unmanaged;
+            return base;
+        },
+
+        merge: function(node2){
+            this.set("queries", _.uniq(this.get("queries").concat(node2.get("queries"))));
+            this.set("queryids", _.uniq(this.get("queryids").concat(node2.get("queryids"))))
+            var quals = _.union(this.get("quals").models, node2.get("quals").models);
+            this.get("quals").set(quals);
+        }
+    });
+
+    var IndexModel = GetterModel.extend({
+
+        ddl: function(){
+            var am = this.get("ams")[0];
+            var node = this.get("node");
+            var ddl = "CREATE INDEX ON " + this.get("node").get("relfqn");
+            if(this.get("ams").indexOf("btree") > 0){
+                // Propose btree when possible
+                am = "";
+            } else {
+                am = " USING " + am;
+            }
+            ddl += am + "(";
+            var attnames = _.uniq(this.get("node").get("quals").pluck("attname"));
+            ddl += attnames.join(",") + ")";
+            return ddl;
+        },
+
+        quals: function(){
+            return this.get("node").get("repr");
+        }
+    });
+
+
+    var NodeCollection = Backbone.Collection.extend({
+        model: QualModel
+    });
+
+    var IndexCollection = Backbone.Collection.extend({
+        model: IndexModel
+    });
+
     var make_attrid = function(qual){
         return "" + qual.get("relid") + "/" + qual.get("attnum");
+    }
+
+    var ColumnScoringMethod = {
+        scoreNode: function(node){
+            return _.uniq(node.get("quals").map(function(qual){
+                return qual.get("attnum");
+            })).length;
+        },
+
+        scorePath: function(nodes){
+            return _.reduce(nodes, function(memo, node){
+                return memo + node.get("score");
+            }, 0);
+        }
     }
 
     return Backbone.Model.extend({
         initialize: function(){
             this.set("stage", "Starting wizard...");
             this.set("progress", 0);
+            this.set("indexes", new IndexCollection());
             this.listenTo(this.get("datasource"), "metricgroup:dataload", this.update, this);
-            this.listenTo(this.get("datasource"), "startload", this.starload, this);
-            console.log(this.get("metrics"));
+            this.listenTo(this.get("datasource"), "metricgroup:startload", this.startload, this);
+            this.set("scoringMethod", ColumnScoringMethod);
         },
 
         startload: function(){
+            this.trigger("wizard:start");
             this.trigger("widget:update_progress", "Fetching top 20 quals...", 0);
+        },
+
+        launchOptimization: function(options){
+            this.get("datasource").set("enabled", true);
+            this.get("datasource").update(options.from_date, options.to_date);
         },
 
         /* Compute the links between quals.
@@ -43,15 +193,19 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
          * */
         computeLinks: function(nodes){
             var nodesToTrash = [];
+            var nodes = nodes.models;
             for(var i=0; i <nodes.length; i++){
                 var firstnode = nodes[i];
+                this.trigger("widget:update_progress", "Building links  for node " + (i + 1) + " out of " + nodes.length,
+                        (20 + ((i + 1) / nodes.length) * 10).toFixed(2));
+
                 for(var j=0; j<i; j++){
                     var secondnode = nodes[j];
                     nodesToTrash = _.uniq(nodesToTrash.concat(this.make_links(firstnode, secondnode)));
                 }
             }
             _.each(nodes, function(nodesource){
-                nodesource.contained = _.difference(nodesource.contained, nodesToTrash);
+                nodesource.get("contained").set( _.difference(nodesource.get("contained").models, nodesToTrash));
             });
             return _.difference(nodes, nodesToTrash);
         },
@@ -60,7 +214,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             // This functions assumes that qual1.quals and qual2.quals are sorted
             // according to the (relid,attnum,opno) tuple.
             // This is basically a merge-join.
-            var idx1 = 0, idx2 = 0, l1 = node1.quals.models, l2 = node2.quals.models;
+            var idx1 = 0, idx2 = 0, l1 = node1.get("quals").models, l2 = node2.get("quals").models;
             var overlap = [];
             var attrs1 = {}, attrs2 = {};
             var relid1, relid2;
@@ -68,6 +222,9 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             var missing1 = [], missing2 = [];
             l1 = new QualCollection(_.uniq(l1, false, function(q){ return [q.get("attnum"), q.get("relid")].join(".")})).models;
             l2 = new QualCollection(_.uniq(l2, false, function(q){ return [q.get("attnum"), q.get("relid")].join(".")})).models;
+            if(node1.get("relid") != node2.get("relid")){
+                return;
+            }
             while(true){
                 if(idx1 >= l1.length || idx2 >= l2.length){
                     for(var i = idx1; i < l1.length; i++){
@@ -88,13 +245,6 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 if(attrs2[attrid2] === undefined){
                     attrs2[attrid2] = false;
                 }
-                if(relid1 && relid1 != q1.get("relid")){
-                    throw "A single qual should NOT touch more than one table!";
-                }
-                relid1 = q1.get("relid");
-                if(relid2 && relid2 != q2.get("relid")){
-                    throw "A single qual should NOT touch more than one table!";
-                }
                 relid2 = q2.get("relid");
                 var isOverlap = false;
                 if(q1.get("relid") == q2.get("relid") &&
@@ -105,7 +255,6 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                     if(common_ams.length > 0){
                         overlap.push({
                             relid: q1.get("relid"),
-                            queryids: [q1.get("queryid"), q2.get("queryid")],
                             attnum: q1.get("attnum"),
                             relname: q1.get("relname"),
                             attname: q1.get("attname"),
@@ -122,38 +271,29 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                     }
                 }
                 if(!isOverlap){
-                    if(node1.quals.comparator.call(q1, q1, q2) > 0){
-                        var newq2 = _.clone(q2);
-                        newq2.qualid = node2.qualid;
-                        missing2.push(newq2);
+                    if(node1.get("quals").comparator.call(q1, q1, q2) > 0){
+                        missing2.push(q2);
                         idx2++;
                     } else {
-                        var newq1 = _.clone(q1);
-                        newq1.qualid = node1.qualid;
-                        missing1.push(newq1);
+                        missing1.push(q1);
                         idx1++;
                     }
                 }
             }
             var samerel = relid1 != undefined && relid2 != undefined && relid1 == relid2;
-            node1.contained_ams[node2.id] = overlap.indexams;
-            node2.contained_ams[node1.id] = overlap.indexams;
             overlap = _.uniq(overlap, function(item){
                 return item.attnum;
             });
 
-            node1.relid = relid1;
-            node2.relid = relid2;
             if(missing1.length == 0 && missing2.length == 0){
-                node1.queries = _.uniq(node1.queries.concat(node2.queries));
-                node1.qualstrs = _.uniq(node1.qualstrs.concat(node2.qualstrs));
+                node1.merge(node2);
                 return [node2];
             }
             if(missing2.length == 0){
-                node1.contained.push(node2);
+                node1.get("contained").add(node2);
             }
             if(missing1.length == 0){
-                node2.contained.push(node1);
+                node2.get("contained").add(node1);
             }
             return [];
         },
@@ -162,79 +302,53 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             var total_quals = _.size(quals);
             if (total_quals == 0){
                 this.trigger("widget:update_progress", "No qual found!", 100);
+                this.trigger("wizard:end");
                 return;
+            } else {
+                this.trigger("widget:update_progress", "Building nodes for " + total_quals + " quals ...", 0);
             }
-            var nodes = [];
+
+            var nodes = new NodeCollection();
             _.each(quals, function(qual, index){
-                var node = {
+                var node = new QualModel({
                     label: qual.where_clause,
                     type: "qual",
-                    quals: new QualCollection(_.filter(qual.quals, function(qual){return _.keys(qual.amops).length > 0})),
+                    quals: qual.quals,
                     from_date: from_date,
                     to_date: to_date,
                     queries: qual.queries,
+                    queryids: qual.queryids,
+                    relid: qual.relid,
+                    relname: qual.relname,
+                    nspname: qual.nspname,
                     links: {},
                     id: qual.qualid,
-                    contained: [],
-                    contained_ams: {}
-                }
-                // Delete quals which do not support the most common access
-                // method.
-                var access_methods = {}
-                node.quals.each(function(qual){
-                    _.each(_.keys(qual.get("amops")), function(am){
-                        access_methods[am] = (access_methods[am] || 0) + 1;
-                    });
                 });
-                var most_common_am = _.max(_.pairs(access_methods), function(pair){
-                    return pair[1];
-                })[0];
-                var grouped = node.quals.groupBy(function(qual){
-                    return qual.get("amops")[most_common_am] ? "keep" : "trash";
-                });
-                var reprs = _.map(grouped.keep, function(qual){
-                    return qual.get("label");
-                });
-                reprs = reprs.concat(_.map(grouped.trash, function(qual){
-                    return "<strike>" + qual.get("label") + "<strike>";
-                }));
-                node.qualstrs = reprs;
-                node.quals.set(grouped.keep);
-                nodes.push(node);
-                node.attnums = _.uniq(_.map(node.quals.models, function(qual){ return qual.attributes.attnum }));
-                node.score = node.attnums.length;
+                nodes.add(node);
+                this.trigger("widget:update_progress", "Building nodes for " + total_quals + " quals ...",
+                        10 + (10 * index / total_quals).toFixed(2));
             }, this);
             nodes = this.computeLinks(nodes);
             this.solve(nodes);
-        },
-
-
-        findContained: function(node1, nodes){
-            var contained = [];
-            _.each(nodes, function(node) {
-                var link = node1.links[node.id];
-                if(link != undefined && link.missing.length == 0){
-                    contained.push(node);
-                }
-            });
-            return contained;
+            this.trigger("wizard:end");
         },
 
         solve: function(nodes){
-            var remainingNodes = _.clone(nodes);
+            var remainingNodes = nodes;
             var pathes = {};
 
             var makePathId = function(nodes){
-                return _.pluck(nodes, "id").join(",");
+                return _.map(nodes, function(node){ return node.get("id")}).join(",");
             };
+            var self = this;
             var getPathes = function(node){
                 var mypath = {
-                    id: node.id,
-                    score: node.score,
+                    id: node.get("id"),
+                    score: node.get("score"),
                     nodes: [node]
                 };
                 var pathes = [];
-                _.each(node.contained, function(contained){
+                node.get("contained").each(function(contained){
                     var child_pathes = getPathes(contained);
                     _.each(child_pathes, function(path){
                         var current_path = _.clone(path.nodes);
@@ -242,7 +356,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                         pathes.push({
                             nodes: current_path,
                             id: makePathId(current_path),
-                            score: node.score + path.score
+                            score: self.get("scoringMethod").scorePath(nodes)
                         });
                     });
                 }, this);
@@ -250,31 +364,44 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 return pathes;
             };
 
+            // Compute score for each node.
             _.each(remainingNodes, function(node){
+                node.set("score", this.get("scoringMethod").scoreNode(node));
+            }, this);
+
+            _.each(remainingNodes, function(node, idx){
+                this.trigger("widget:update_progress", "Building pathes for node " + idx + " out of " +
+                        nodes.length + " nodes ...",
+                        30 + (10 * (idx / nodes.length).toFixed(2)));
+
                 _.each(getPathes(node), function(path){
                     pathes[path.id] = path;
                 });
-            });
-            var indexes = [];
+            }, this);
             var safeguard = 0;
-            while(_.values(pathes).length > 0 && safeguard < 1000){
+            var nbOptimized = 0;
+            var nbPathes = _.keys(pathes).length;
+            while(_.values(pathes).length > 0 && safeguard < 10000){
                 safeguard++;
                 /* Work with the remainging highest-scoring path */
                 var firstPath = _.max(_.pairs(pathes), function(pair){
                     return pair[1].score;
                 })[1];
                 var root = firstPath.nodes.slice(-1)[0];
-                _.each(_.keys(pathes), function(key){
-                    if(key.endsWith(root.id)){
-                        delete pathes[key];
-                    }
-                });
                 /* Find attnum order */
                 var attnums = [];
                 var queryids = [];
-                var qualstrs = [];
+                self.trigger("widget:update_progress", "Optimizing  " + nbOptimized + " out of " +
+                        nbPathes + " pathes ...",
+                        40 + (20 * (nbOptimized / nbPathes).toFixed(2)));
+
+
+
                 _.each(firstPath.nodes, function(node, idx){
-                    var newAttnums = _.difference(node.attnums, attnums);
+                    var nodeAttnum = _.uniq(node.get("quals").pluck(function(qual){
+                        return qual.get("attnum");
+                    }));
+                    var newAttnums = _.difference(nodeAttnum, attnums);
                     var idToDel = makePathId(firstPath.nodes.slice(0, idx+1));
                     attnums = attnums.concat(newAttnums);
                     _.each(_.pairs(pathes), function(pair){
@@ -282,26 +409,29 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                         var path = pair[1];
                         if(path.nodes.indexOf(node) > -1){
                             var pathToDel = pathes[pathid];
+                            nbOptimized++;
+                            if(pathToDel){
+                                self.trigger("widget:update_progress", "Optimizing  " + nbOptimized + " out of " +
+                                        nbPathes + " pathes ...",
+                                        40 + (20 * (nbOptimized / nbPathes).toFixed(2)));
+                           }
                             delete pathes[pathid];
                         }
                     });
-                    delete pathes[idToDel];
                     queryids = _.uniq(queryids.concat(node.queryids));
-                    qualstrs = _.uniq(qualstrs.concat(node.qualstrs));
                 });
-                var ams = _.flatten(firstPath.nodes.slice(-1)[0].quals.map(function(qual){
+                var ams = _.flatten(firstPath.nodes.slice(-1)[0].get("quals").map(function(qual){
                     return _.keys(qual.get("amops"))
                 }));
                 ams = _.uniq(ams);
-                indexes.push({
-                    relid: firstPath.nodes[0].relid,
+                this.get("indexes").add({
+                    node: firstPath.nodes.slice(-1)[0],
                     attnums: attnums,
                     queryids: queryids,
-                    qualstrs: qualstrs,
-                    ams: ams
+                    ams: ams,
+                    stub: true
                 });
             }
-            console.log("INDEXES: ", indexes);
         }
 
     }, {

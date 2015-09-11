@@ -4,7 +4,6 @@ from powa.dashboards import (
     Dashboard, DashboardPage, ContentWidget,
     Widget, MetricGroupDef)
 
-from powa.database import DatabaseOverview
 from powa.sql import (resolve_quals, possible_indexes, get_any_sample_query,
                       get_hypoplans)
 import json
@@ -14,6 +13,7 @@ from powa.sql.utils import inner_cc
 from powa.sql.tables import pg_database
 from sqlalchemy.sql import (bindparam, literal_column, join, select,
                             alias, text, func, column, cast)
+
 
 
 class IndexSuggestionHandler(AuthHandler):
@@ -76,7 +76,7 @@ class WizardMetricGroup(MetricGroupDef):
     xaxis = "quals"
     axis_type = "category"
     data_url = r"/metrics/database/(\w+)/wizard/"
-    enabled = True
+    enabled = False
 
     @property
     def query(self):
@@ -114,52 +114,13 @@ class Wizard(Widget):
     def __init__(self, title):
         self.title = title
 
-    def to_json(self):
+    def parameterized_json(self, handler, database):
         values = self.__dict__.copy()
         values['metrics'] = []
         values['type'] = 'wizard'
         values['datasource'] = 'wizard'
+        hypover = handler.has_extension("hypopg", database=database)
+        qsver = handler.has_extension("pg_qualstats")
+        values['has_hypopg'] = hypover and hypover  >= '0.0.3'
+        values['has_qualstats'] = qsver and qsver >= '0.0.7'
         return values
-
-class NoWizard(ContentWidget):
-
-    title = 'Can not apply wizardry'
-
-    data_url = r"/database/(\w+)/nowizard/"
-
-    def get(self, database):
-        self.render("database/nowizard.html", database = database)
-        return
-
-class WizardPage(DashboardPage):
-
-    base_url = r"/database/(\w+)/wizard/"
-
-    params = ["database"]
-
-    parent = DatabaseOverview
-
-    datasources = [WizardMetricGroup, NoWizard]
-
-    @classmethod
-    def get_menutitle(cls, handler, params):
-        return "Wizard index suggestion"
-
-    @property
-    def dashboard(self):
-        # This COULD be initialized in the constructor, but tornado < 3 doesn't
-        # call it
-        if getattr(self, '_dashboard', None) is not None:
-            return self._dashboard
-
-        self._dashboard = Dashboard("Optimizer for %(database)s")
-
-        hypo_version = self.has_extension("hypopg", database = self.database)
-        if hypo_version and hypo_version >= "0.0.3":
-            self._dashboard.widgets.extend(
-                [[Wizard("Apply wizardry index suggestion to database \"%(database)s\"")]])
-        else:
-            self._dashboard.widgets.extend(
-                [[NoWizard]])
-
-        return self._dashboard

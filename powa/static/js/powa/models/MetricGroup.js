@@ -9,6 +9,7 @@ define(['backbone', 'powa/models/DataSource', 'powa/models/Metric', 'powa/models
             var grouper = this.get('grouper', null),
                 self = this,
                 xaxis = this.get("xaxis");
+            this.trigger("metricgroup:startload");
             self.get("metrics").each(function(metric){
                 metric.trigger("metric:startload");
             });

@@ -146,7 +146,8 @@ class ComposedQual(JSONizable):
                  table_liverows=None,
                  qualid=None,
                  relid=None,
-                 queries=None):
+                 queries=None,
+                 queryids=None):
         super(ComposedQual, self).__init__()
         self.qualid = qualid
         self.relname = relname
@@ -157,6 +158,7 @@ class ComposedQual(JSONizable):
         self.table_liverows = table_liverows
         self.relid = relid
         self.queries = queries or []
+        self.queryids = queryids or []
         self._quals = []
 
     def append(self, element):

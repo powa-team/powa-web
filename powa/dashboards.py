@@ -270,7 +270,6 @@ class ContentWidget(Widget, DataSource, AuthHandler):
     This widget acts as both a Widget and DataSource, since the Data used is
     simplistic.
     """
-
     datasource_handler_cls = ContentHandler
 
     def initialize(self, datasource=None, params=None):
