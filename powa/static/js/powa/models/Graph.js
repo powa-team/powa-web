@@ -6,7 +6,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'powa/models/MetricColle
             var self = this;
             this.hasloading = 0;
             this.listenTo(this.get("metrics"), "change:series", self.update);
-            this.listenTo(this.get("metrics"), "startload", function(){self.hasloading +=1});
+            this.listenTo(this.get("metrics"), "metric:startload", function(){self.hasloading +=1});
         },
 
         update: function(){

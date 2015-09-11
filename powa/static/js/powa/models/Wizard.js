@@ -24,14 +24,9 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
         initialize: function(){
             this.set("stage", "Starting wizard...");
             this.set("progress", 0);
-            this.startNode = { label: "Start", type: "startNode", quals: new QualCollection(), links: {}, id: "start",
-                               x: 0.5, y: 0.5 };
-            this.set("nodes", [this.startNode]);
-            this.set("links", []);
-            this.set("shortest_path", []);
             this.listenTo(this.get("datasource"), "metricgroup:dataload", this.update, this);
             this.listenTo(this.get("datasource"), "startload", this.starload, this);
-            this.set("cache", {});
+            console.log(this.get("metrics"));
         },
 
         startload: function(){

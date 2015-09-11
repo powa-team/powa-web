@@ -10,7 +10,7 @@ define(['backbone', 'powa/models/DataSource', 'powa/models/Metric', 'powa/models
                 self = this,
                 xaxis = this.get("xaxis");
             self.get("metrics").each(function(metric){
-                metric.trigger("startload");
+                metric.trigger("metric:startload");
             });
 
             $.ajax({
