@@ -46,6 +46,25 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
                 }],
                 collection: this.model.get("indexes")
             });
+            this.indexcheckgrid = new Backgrid.Grid({
+                columns: [{
+                    editable: false,
+                    name: "query",
+                    label: "Query",
+                    cell: "query"
+                },{
+                    editable: false,
+                    name: "used",
+                    label: "Index used",
+                    cell: "bool",
+                },{
+                    editable: false,
+                    name: "gain",
+                    label: "Gain",
+                    cell: "string"
+                }],
+              collection: this.model.get("indexeschecks")
+            });
             this.render();
         },
 
@@ -60,6 +79,7 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
             this.$el.find(".summary").show();
             this.$el.find(".launcher").prop("disabled", true);
             this.$gridel.show();
+            this.$gridel2.show();
         },
 
         onEnd: function(state, progress){
@@ -82,6 +102,7 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
             }
             this.$el.html(this.template(this.model.toJSON()));
             this.$el.find(".indexesgrid").hide();
+            this.$el.find(".indexeschecksgrid").hide();
             this.$el.find(".summary").hide();
             this.$el.find(".results").hide();
             this.$el.find(".results").hide();
@@ -89,6 +110,8 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
             this.$progress_label = this.$el.find(".progress_label");
             this.$gridel = this.$el.find(".indexesgrid");
             this.$gridel.append(this.indexgrid.render().el);
+            this.$gridel2 = this.$el.find(".indexeschecksgrid");
+            this.$gridel2.append(this.indexcheckgrid.render().el);
             return this;
         },
 

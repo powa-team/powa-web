@@ -147,6 +147,21 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
         }
     });
 
+    var IndexCheckModel = GetterModel.extend({
+
+        query: function(){
+            return this.get("_query");
+        },
+
+        used: function(){
+            return this.get("_gain") > 0;
+        },
+
+        gain: function(){
+            return this.get("_gain") + "%";
+        }
+    });
+
 
     var NodeCollection = Backbone.Collection.extend({
         model: QualModel
@@ -154,6 +169,10 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
 
     var IndexCollection = Backbone.Collection.extend({
         model: IndexModel
+    });
+
+    var IndexCheckCollection = Backbone.Collection.extend({
+        model: IndexCheckModel
     });
 
     var make_attrid = function(qual){
@@ -179,6 +198,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             this.set("stage", "Starting wizard...");
             this.set("progress", 0);
             this.set("indexes", new IndexCollection());
+            this.set("indexeschecks", new IndexCheckCollection());
             this.listenTo(this.get("datasource"), "metricgroup:dataload", this.update, this);
             this.listenTo(this.get("datasource"), "metricgroup:startload", this.startload, this);
             this.set("scoringMethod", ColumnScoringMethod);
@@ -186,7 +206,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
 
         startload: function(){
             this.trigger("wizard:start");
-            this.trigger("widget:update_progress", "Fetching top 20 quals...", 0);
+            this.trigger("widget:update_progress", "Fetching most executed quals...", 0);
         },
 
         launchOptimization: function(options){
@@ -373,6 +393,12 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 type: 'POST',
                 contentType: 'application/json'
             }).success(function(data){
+                _.each(data, function(stat, id){
+                  self.get("indexeschecks").add({
+                      _query: stat.query,
+                      _gain: stat.gain_percent
+                  });
+                });
                 self.trigger("widget:update_progress", "Done !", 100);
 
             });
