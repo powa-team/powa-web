@@ -33,7 +33,6 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             this.set("contained", new NodeCollection());
             this.set("trashedQuals", new QualCollection());
             this.listenTo(this.get("quals"), "add", this.qualupdate, this);
-            this.listenTo(this.get("quals"), "add", this.qualupdate, this);
             if(values && values.quals){
                 this.get("quals").set(values.quals);
             }
