@@ -381,8 +381,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 queryids = _.uniq(queryids.concat(index.get("queryids")));
             });
             var self = this;
-            this.get("indexes").each(function(index, idx){
-                $.ajax({
+            $.ajax({
                 url: '/database/' + this.get("database") + '/suggest/',
                 data: JSON.stringify({
                     queryids: queryids,
@@ -394,15 +393,14 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 contentType: 'application/json'
             }).success(function(data){
                 _.each(data, function(stat, id){
-                  self.get("indexeschecks").add({
-                      _query: stat.query,
-                      _gain: stat.gain_percent
-                  });
+                    self.get("indexeschecks").add({
+                        _query: stat.query,
+                        _gain: stat.gain_percent
+                    });
                 });
                 self.trigger("widget:update_progress", "Done !", 100);
 
             });
-            }, this);
         },
 
         solve: function(nodes){

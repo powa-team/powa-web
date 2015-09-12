@@ -35,12 +35,16 @@ class IndexSuggestionHandler(AuthHandler):
         not_tested = []
         hypo_version = self.has_extension("hypopg", database=database)
         hypoplans = {}
-        indnames = []
+        indbyname = {}
         if hypo_version and hypo_version >= "0.0.3":
             # identify indexes
             # create them
             for ind in indexes:
-                indnames.append(self.execute(func.hypopg_create_index(ind), database=database).scalar()[1])
+                indname = self.execute(
+                    select(["*"])
+                    .select_from(func.hypopg_create_index(ind)),
+                    database=database).first()[1]
+                indbyname[indname] = ind
             # Build the query and fetch the plans
             for query in queries:
                 querystr = get_any_sample_query(self, database, query.queryid,
@@ -49,7 +53,7 @@ class IndexSuggestionHandler(AuthHandler):
                 if querystr:
                     hypoplans[query.queryid] = get_hypoplans(
                         self.connect(database=database), querystr,
-                        indnames)
+                        indbyname.keys())
             # To value of a link is the the reduction in cost
         self.render_json(hypoplans)
 

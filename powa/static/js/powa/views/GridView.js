@@ -23,9 +23,9 @@ define([
     var BoolFormatter = {
       fromRaw: function(rawData){
           if(rawData == true){
-              return "☑";
+              return "✓";
           }
-          return "☒";
+          return "✗";
       }
     };
 
