@@ -79,9 +79,7 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
             this.$el.find(".summary").show();
             this.$el.find(".launcher").prop("disabled", true);
             this.$gridel.show();
-            this.$gridel.find('tbody').empty();
             this.$gridel2.show();
-            this.$gridel2.find('tbody').empty();
         },
 
         onEnd: function(state, progress){
