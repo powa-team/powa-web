@@ -75,7 +75,8 @@ class WizardMetricGroup(MetricGroupDef):
             func.array_agg(column("queryid")).label("queryids"),
             "qualid",
             cast(column("quals"), JSONB).label('quals'),
-            "count",
+            "occurences",
+            "execution_count",
             func.array_agg(column("query")).label("queries"),
             "avg_filter",
             "filter_ratio"
@@ -86,9 +87,11 @@ class WizardMetricGroup(MetricGroupDef):
             .where(pg_database.c.datname == bindparam("database"))
             .where(column("avg_filter") > 1000)
             .where(column("filter_ratio") > 0.3)
-            .group_by(column("qualid"), column("count"), cast(column("quals"), JSONB),
+            .group_by(column("qualid"), column("execution_count"),
+                      column("occurences"),
+                      cast(column("quals"), JSONB),
                      column("avg_filter"), column("filter_ratio"))
-            .order_by(column("count").desc())
+            .order_by(column("occurences").desc())
             .limit(200))
         return query
 

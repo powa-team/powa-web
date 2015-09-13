@@ -211,6 +211,8 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
         launchOptimization: function(options){
             this.get("datasource").set("enabled", true);
             this.get("datasource").update(options.from_date, options.to_date);
+            this.get("indexes").set([]);
+            this.get("indexeschecks").set([]);
         },
 
         /* Compute the links between quals.
@@ -391,6 +393,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 type: 'POST',
                 contentType: 'application/json'
             }).success(function(data){
+                console.log(data);
                 _.each(data, function(stat, id){
                     self.get("indexeschecks").add({
                         _query: stat.query,

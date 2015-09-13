@@ -229,7 +229,7 @@ def qualstat_base_statdata():
     ) AS unnested
     WHERE tstzrange(:from, :to, '[]') @> (records).ts
     UNION ALL
-    SELECT queryid, qualid, pqnc.ts, pqnc.count, pqnc.nbfiltered
+    SELECT queryid, qualid, pqnc.ts, pqnc.occurences, pqnc.execution_count, pqnc.nbfiltered
     FROM powa_qualstats_quals_history_current pqnc
     WHERE tstzrange(:from, :to, '[]') @> pqnc.ts
     ) h
@@ -248,12 +248,13 @@ def qualstat_getstatdata(condition=None):
         column("query"),
         powa_statements.c.dbid,
         func.to_json(column("quals")).label("quals"),
-        sum(column("count")).label("count"),
-        (sum(column("nbfiltered")) / func.count()).label("avg_filter"),
+        sum(column("execution_count")).label("execution_count"),
+        sum(column("occurences")).label("occurences"),
+        (sum(column("nbfiltered")) / sum(column("occurences"))).label("avg_filter"),
         case(
-            [(sum(column("count")) == 0, 0)],
+            [(sum(column("execution_count")) == 0, 0)],
             else_=sum(column("nbfiltered")) /
-                cast(sum(column("count")), Numeric) * 100
+                cast(sum(column("execution_count")), Numeric) * 100
         ).label("filter_ratio")])
         .select_from(
         join(base_query, powa_statements,

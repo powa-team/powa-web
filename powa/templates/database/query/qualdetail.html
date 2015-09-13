@@ -4,9 +4,10 @@
 <dl >
     <ul class="large-block-grid-3">
     <li>
-    <dt>Executed:</dt><dd>{{qual.count}}</dd>
+    <dt>Seen:</dt><dd>{{qual.occurences}}</dd>
     </li>
     <li>
+      <dt>Average evaluations by query</dt><dd>{{qual.execution_count / qual.occurences}}</dd>
       <dt>Average number of filtered tuples:</dt><dd>{{qual.avg_filter}}</dd>
     <li>
     <dt>Filter ratio</dt><dd>{{"%.6g" % ( qual.filter_ratio ) }} % of tuples are

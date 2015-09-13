@@ -171,7 +171,8 @@ class QueryIndexes(ContentWidget):
         base_query = (base_query
                       .where(c.queryid == query)
                       .having(func.bool_or(column('eval_type') == 'f'))
-                      .having(c.count > 1000)
+                      .having(c.execution_count > 1000)
+                      .having(c.occurences > 0)
                       .having(c.filter_ratio > 0.5)
                       .params(**{'from': '-infinity',
                                  'to': 'infinity'}))
@@ -220,7 +221,7 @@ class QueryExplains(ContentWidget):
                                    self.get_argument("to"),
                                    queries=[query])
         if row != None:
-            for key in ('most filtering', 'least filtering', 'most executed'):
+            for key in ('most filtering', 'least filtering', 'most executed', 'most used'):
                 vals = row[key]
                 query = format_jumbled_query(row['query'], vals['constants'])
                 plan = "N/A"
@@ -231,7 +232,9 @@ class QueryExplains(ContentWidget):
                 except:
                     pass
                 plans.append(Plan(key, vals['constants'], query,
-                                  plan, vals["filter_ratio"], vals['count']))
+                                  plan, vals["filter_ratio"],
+                                  vals['execution_count'],
+                                  vals['occurences']))
         if len(plans) == 0:
             self.flash("No quals found for this query", "warning")
             self.render("xhr.html", content="")
@@ -249,7 +252,7 @@ class QualList(MetricGroupDef):
     axis_type = "category"
     data_url = r"/metrics/database/(\w+)/query/(\w+)/quals"
     filter_ratio = MetricDef(label="Avg filter_ratio (excluding index)", type="percent")
-    count = MetricDef(label="Execution count (excluding index)")
+    execution_count = MetricDef(label="Execution count (excluding index)")
 
     def prepare(self):
         if not self.has_extension("pg_qualstats"):
@@ -387,9 +390,6 @@ class QueryOverview(DashboardPage):
                          "type": "query",
                          "max_length": 60,
                          "url_attr": "url"
-                     }, {
-                         "name": "eval_type",
-                         "label": "Eval Type"
                      }],
                      metrics=QualList.all())],
                 [QueryIndexes],

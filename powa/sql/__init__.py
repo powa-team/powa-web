@@ -141,8 +141,9 @@ class ComposedQual(JSONizable):
 
     def __init__(self, nspname=None, relname=None,
                  avg_filter=None,
-                 filter_ratio = None,
-                 count=None,
+                 filter_ratio=None,
+                 occurences=None,
+                 execution_count=None,
                  table_liverows=None,
                  qualid=None,
                  relid=None,
@@ -154,7 +155,8 @@ class ComposedQual(JSONizable):
         self.nspname = nspname
         self.avg_filter = avg_filter
         self.filter_ratio = filter_ratio
-        self.count = count
+        self.execution_count = execution_count
+        self.occurences = occurences
         self.table_liverows = table_liverows
         self.relid = relid
         self.queries = queries or []
@@ -220,7 +222,8 @@ def resolve_quals(conn, quallist, attribute="quals"):
     for row in quallist:
         row = dict(row)
         newqual = ComposedQual(
-            count=row['count'],
+            occurences=row['occurences'],
+            execution_count=row['execution_count'],
             avg_filter=row['avg_filter'],
             filter_ratio=row['filter_ratio'],
             qualid=row['qualid'],
@@ -259,17 +262,18 @@ def resolve_quals(conn, quallist, attribute="quals"):
 
 Plan = namedtuple(
     "Plan",
-    ("title", "values", "query", "plan", "filter_ratio", "exec_count"))
+    ("title", "values", "query", "plan", "filter_ratio", "exec_count", "occurences"))
 
 
 def qual_constants(type, filter_clause, top=1):
     orders = {
-        'most_executed': "4 DESC",
-        'least_filtering': "6",
-        'most_filtering': "6 DESC"
+        'most_executed': "8 DESC",
+        'least_filtering': "9",
+        'most_filtering': "9 DESC",
+        'most_used': '6 DESC'
     }
     if type not in ('most_executed', 'most_filtering',
-                    'least_filtering'):
+                    'least_filtering', 'most_used'):
         return
     dialect = pgdialect()
     dialect.paramstyle = 'named'
@@ -279,9 +283,10 @@ def qual_constants(type, filter_clause, top=1):
     WITH sample AS (
     SELECT query, s.queryid, qn.qualid, quals as quals,
                 constants,
-                sum(count) as count,
+                sum(occurences) as occurences,
+                sum(execution_count) as execution_count,
                 sum(nbfiltered) as nbfiltered,
-                CASE WHEN sum(count) = 0 THEN 0 ELSE sum(nbfiltered) / sum(count) END AS filter_ratio
+                CASE WHEN sum(execution_count) = 0 THEN 0 ELSE sum(nbfiltered) / sum(execution_count) END AS filter_ratio
         FROM powa_statements s
         JOIN pg_database ON pg_database.oid = s.dbid
         JOIN powa_qualstats_quals qn ON s.queryid = qn.queryid
@@ -293,18 +298,20 @@ def qual_constants(type, filter_clause, top=1):
             FROM powa_qualstats_aggregate_constvalues_current
         ) qnc ON qn.qualid = qnc.qualid AND qn.queryid = qnc.queryid,
         LATERAL
-                unnest(%s) as t(constants,nbfiltered,count)
+                unnest(%s) as t(constants,occurences, nbfiltered,execution_count)
         WHERE %s
         GROUP BY qn.qualid, quals, constants, s.queryid, query
         ORDER BY %s
         LIMIT :top_value
     )
-    SELECT query, queryid, qualid, quals, constants as constants, nbfiltered as nbfiltered,
-                count as count,
+    SELECT query, queryid, qualid, quals, constants as constants,
+                occurences as occurences,
+                nbfiltered as nbfiltered,
+                execution_count as execution_count,
                 filter_ratio as filter_ratio,
-                row_number() OVER (ORDER BY count desc NULLS LAST) as rownumber
+                row_number() OVER (ORDER BY execution_count desc NULLS LAST) as rownumber
         FROM sample
-    ORDER BY 9
+    ORDER BY 10
     LIMIT :top_value
     ) %s
     """ % (type, str(filter_clause), orders[type], type)
@@ -328,11 +335,13 @@ def get_plans(self, query, database, qual):
         except:
             pass
         plans.append(Plan(key, vals['constants'], query,
-                            plan, vals["filter_ratio"], vals['count']))
+                            plan, vals["filter_ratio"], vals['execution_count'],
+                          vals['occurences']))
     return plans
 
 
-def get_unjumbled_query(ctrl, database, queryid, _from, _to, kind = 'most executed'):
+def get_unjumbled_query(ctrl, database, queryid, _from, _to,
+                        kind='most executed'):
     """
     From a queryid, build a query string ready to be executed.
 
@@ -351,7 +360,6 @@ def get_unjumbled_query(ctrl, database, queryid, _from, _to, kind = 'most execut
 
     values = qualstat_get_figures(ctrl, database, _from, _to,
                                   queries=[queryid])
-
     if values is None:
         return normalized_query
 
@@ -383,7 +391,8 @@ def get_any_sample_query(ctrl, database, queryid, _from, _to):
         if example_query is not None:
             return example_query
 
-    return get_unjumbled_query(ctrl, database, _from, _to, 'most executed')
+    return get_unjumbled_query(ctrl, database, queryid,
+                               _from, _to, 'most executed')
 
 
 def qualstat_get_figures(conn, database, tsfrom, tsto, queries=None, quals=None):
@@ -399,7 +408,8 @@ def qualstat_get_figures(conn, database, tsfrom, tsto, queries=None, quals=None)
                   text('most_filtering.query'),
                   text('to_json(most_filtering) as "most filtering"'),
                   text('to_json(least_filtering) as "least filtering"'),
-                  text('to_json(most_executed) as "most executed"')])
+                  text('to_json(most_executed) as "most executed"'),
+                  text('to_json(most_used) as "most used"')])
            .select_from(
                qual_constants("most_filtering", condition)
                .alias("most_filtering")
@@ -411,7 +421,12 @@ def qualstat_get_figures(conn, database, tsfrom, tsto, queries=None, quals=None)
                .join(qual_constants("most_executed", condition)
                      .alias("most_executed"),
                      text("most_executed.rownumber = "
+                          "least_filtering.rownumber"))
+               .join(qual_constants("most_used", condition)
+                     .alias("most_used"),
+                     text("most_used.rownumber = "
                           "least_filtering.rownumber"))))
+
 
     params = {"database": database,
               "from": tsfrom,
