@@ -489,7 +489,7 @@ class HypoIndex(JSONizable):
     def hypo_ddl(self):
         ddl = self.ddl
         if ddl is not None:
-            return func.hypopg_create_index(self.ddl)
+            return select([column("indexname")]).select_from(func.hypopg_create_index(self.ddl))
 
     def to_json(self):
         base = super(HypoIndex, self).to_json()
@@ -538,14 +538,14 @@ def get_hypoplans(conn, query, indexes=None):
         trans.execute("SET hypopg.enabled = off")
         baseplan = "\n".join(v[0] for v in trans.execute("EXPLAIN %s" % query))
         trans.execute("SET hypopg.enabled = on")
-        hypoplan = "\n".join(v[0] for v in trans.execute("EXPLAIN %s" % query))
+        hypoplans = "\n".join(v[0] for v in trans.execute("EXPLAIN %s" % query))
     COST_RE = "(?<=\.\.)\d+\.\d+"
     m = re.search(COST_RE, baseplan)
     basecost = float(m.group(0))
-    m = re.search(COST_RE, hypoplan)
+    m = re.search(COST_RE, hypoplans)
     hypocost = float(m.group(0))
     used_indexes = []
     for ind in indexes:
-        if ind in hypoplan:
+        if ind.name != None and ind.name in hypoplans:
             used_indexes.append(ind)
-    return HypoPlan(baseplan, basecost, hypoplan, hypocost, query, used_indexes)
+    return HypoPlan(baseplan, basecost, hypoplans, hypocost, query, used_indexes)

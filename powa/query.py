@@ -194,7 +194,7 @@ class QueryIndexes(ContentWidget):
             for ind in allindexes:
                 ddl = ind.hypo_ddl
                 if ddl is not None:
-                    ind.name = self.execute(ddl, database=database).scalar()[1]
+                    ind.name = self.execute(ddl, database=database).scalar()
             # Build the query and fetch the plans
             querystr = get_any_sample_query(self, database, query,
                                         self.get_argument("from"),
