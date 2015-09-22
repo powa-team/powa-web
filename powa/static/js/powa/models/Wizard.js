@@ -101,6 +101,9 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 return part;
             }, this).join(" AND ");
             base = base + unmanaged;
+            base = base + this.get("contained").map(function(node){
+              return node.repr();
+            }, this).join("");
             return base;
         },
 
