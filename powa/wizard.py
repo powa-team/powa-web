@@ -5,7 +5,7 @@ from powa.dashboards import (
     Widget, MetricGroupDef)
 
 from powa.sql import (resolve_quals, possible_indexes, get_any_sample_query,
-                      get_hypoplans)
+                      get_hypoplans, HypoIndex)
 import json
 from powa.sql.compat import JSONB
 from powa.sql.views import qualstat_getstatdata
@@ -22,7 +22,13 @@ class IndexSuggestionHandler(AuthHandler):
         payload = json.loads(self.request.body.decode("utf8"))
         from_date = payload['from_date']
         to_date = payload['to_date']
-        indexes = payload['indexes']
+        indexes = []
+        for ind in payload['indexes']:
+            hypoind = HypoIndex(ind['nspname'],
+                                   ind['relname'],
+                                   ind['ams'])
+            hypoind._ddl = ind['ddl']
+            indexes.append(hypoind)
         queryids = payload['queryids']
         powa_conn = self.connect(database="powa")
         conn = self.connect(database=database)
@@ -42,7 +48,7 @@ class IndexSuggestionHandler(AuthHandler):
             for ind in indexes:
                 indname = self.execute(
                     select(["*"])
-                    .select_from(func.hypopg_create_index(ind)),
+                    .select_from(func.hypopg_create_index(ind.ddl)),
                     database=database).first()[1]
                 indbyname[indname] = ind
             # Build the query and fetch the plans
@@ -53,7 +59,7 @@ class IndexSuggestionHandler(AuthHandler):
                 if querystr:
                     hypoplans[query.queryid] = get_hypoplans(
                         self.connect(database=database), querystr,
-                        indbyname.keys())
+                        indbyname.values())
             # To value of a link is the the reduction in cost
         self.render_json(hypoplans)
 

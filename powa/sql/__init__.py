@@ -471,19 +471,32 @@ class HypoIndex(JSONizable):
         self.qual = composed_qual
         self.amname = amname
         self.name = None
+        self._ddl = None
+        self.__setattr__ = self.__setattr
 
-    @property
-    def ddl(self):
-        # Only btree is supported right now
+    def _update_ddl(self):
         if 'btree' == self.amname:
             attrs = []
             for qual in self.qual:
                 if qual.attname not in attrs:
                     attrs.append(qual.attname)
-            return ("""CREATE INDEX ON %s.%s(%s)""" % (
+            super(HypoIndex, self).__setattr__(
+                '_ddl',
+                """CREATE INDEX ON %s.%s(%s)""" % (
                 quote_ident(self.nspname),
                 quote_ident(self.relname),
                 ",".join(attrs)))
+
+
+    def __setattr(self, name, value):
+        super(HypoIndex, self).__setattr__(name, value)
+        # Only btree is supported right now
+        if name in ('amname', 'nspname', 'relname', 'composed_qual'):
+            self._update_ddl()
+
+    @property
+    def ddl(self):
+        return self._ddl
 
     @property
     def hypo_ddl(self):
@@ -538,14 +551,14 @@ def get_hypoplans(conn, query, indexes=None):
         trans.execute("SET hypopg.enabled = off")
         baseplan = "\n".join(v[0] for v in trans.execute("EXPLAIN %s" % query))
         trans.execute("SET hypopg.enabled = on")
-        hypoplans = "\n".join(v[0] for v in trans.execute("EXPLAIN %s" % query))
+        hypoplan = "\n".join(v[0] for v in trans.execute("EXPLAIN %s" % query))
     COST_RE = "(?<=\.\.)\d+\.\d+"
     m = re.search(COST_RE, baseplan)
     basecost = float(m.group(0))
-    m = re.search(COST_RE, hypoplans)
+    m = re.search(COST_RE, hypoplan)
     hypocost = float(m.group(0))
     used_indexes = []
     for ind in indexes:
-        if ind.name != None and ind.name in hypoplans:
+        if ind.name != None and ind.name in hypoplan:
             used_indexes.append(ind)
-    return HypoPlan(baseplan, basecost, hypoplans, hypocost, query, used_indexes)
+    return HypoPlan(baseplan, basecost, hypoplan, hypocost, query, used_indexes)

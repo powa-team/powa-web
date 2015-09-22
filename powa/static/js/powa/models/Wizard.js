@@ -381,7 +381,10 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                     60);
             var indexes = [], queryids = [];
             this.get("indexes").each(function(index){
-                indexes.push(index.get("ddl"));
+                var node = _.clone(index.get("node").attributes);
+                node['ams'] = index.get('ams');
+                node['ddl'] = index.get('ddl');
+                indexes.push(node);
                 queryids = _.uniq(queryids.concat(index.get("queryids")));
             });
             var self = this;
