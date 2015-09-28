@@ -234,7 +234,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 this.trigger("widget:update_progress", "Building links  for node " + (i + 1) + " out of " + nodes.length,
                         (20 + ((i + 1) / nodes.length) * 10).toFixed(2));
                 if(!firstnode.get("quals").some(function(qual){
-                    return _.keys(qual.get("amops").length) > 0;
+                    return _.keys(qual.get("amops")).length > 0;
                 })){
                     nodesToTrash.push(firstnode);
                     continue;
@@ -242,7 +242,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 for(var j=0; j<i; j++){
                     var secondnode = nodes[j];
                     if(!secondnode.get("quals").some(function(qual){
-                        return _.keys(qual.get("amops").length) > 0;
+                        return _.keys(qual.get("amops")).length > 0;
                     })){
                         nodesToTrash.push(secondnode);
                         continue;
