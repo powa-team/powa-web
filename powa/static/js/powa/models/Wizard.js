@@ -336,10 +336,10 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 node1.merge(node2);
                 return [node2];
             }
-            if(missing2.length == 0 && overlap.indexams.length > 0){
+            if(missing2.length == 0){
                 node1.get("contained").add(node2);
             }
-            if(missing1.length == 0 && overlap.indexams.lenght > 0){
+            if(missing1.length == 0){
                 node2.get("contained").add(node1);
             }
             return [];
