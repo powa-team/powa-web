@@ -233,9 +233,21 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 var firstnode = nodes[i];
                 this.trigger("widget:update_progress", "Building links  for node " + (i + 1) + " out of " + nodes.length,
                         (20 + ((i + 1) / nodes.length) * 10).toFixed(2));
-
+                if(!firstnode.get("quals").some(function(qual){
+                    return _.keys(qual.get("amops").length) > 0;
+                })){
+                    nodesToTrash.push(firstnode);
+                    continue;
+                }
                 for(var j=0; j<i; j++){
                     var secondnode = nodes[j];
+                    if(!secondnode.get("quals").some(function(qual){
+                        return _.keys(qual.get("amops").length) > 0;
+                    })){
+                        nodesToTrash.push(secondnode);
+                        continue;
+                    }
+
                     nodesToTrash = _.uniq(nodesToTrash.concat(this.make_links(firstnode, secondnode)));
                 }
             }
@@ -324,10 +336,10 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 node1.merge(node2);
                 return [node2];
             }
-            if(missing2.length == 0){
+            if(missing2.length == 0 && overlap.indexams.length > 0){
                 node1.get("contained").add(node2);
             }
-            if(missing1.length == 0){
+            if(missing1.length == 0 && overlap.indexams.lenght > 0){
                 node2.get("contained").add(node1);
             }
             return [];
@@ -377,6 +389,12 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                         100);
                 return
             }
+
+            if(this.get("indexes").size() == 0){
+                this.trigger("widget:update_progress", "No indexes to suggest!",
+                        100);
+                return
+            }
             this.trigger("widget:update_progress", "Checking solution with hypopg...",
                     60);
             var indexes = [], queryids = [];
@@ -384,7 +402,9 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 var node = _.clone(index.get("node").attributes);
                 node['ams'] = index.get('ams');
                 node['ddl'] = index.get('ddl');
-                indexes.push(node);
+                if(node['ams'].length > 0){
+                    indexes.push(node);
+                }
                 queryids = _.uniq(queryids.concat(index.get("queryids")));
             });
             var self = this;
@@ -399,7 +419,6 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 type: 'POST',
                 contentType: 'application/json'
             }).success(function(data){
-                console.log(data);
                 _.each(data, function(stat, id){
                     self.get("indexeschecks").add({
                         _query: stat.query,
@@ -502,6 +521,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 ams = _.uniq(ams);
                 this.get("indexes").add({
                     node: firstPath.nodes.slice(-1)[0],
+                    path: firstPath.nodes,
                     attnums: attnums,
                     queryids: queryids,
                     ams: ams,
