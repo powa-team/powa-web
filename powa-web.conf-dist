@@ -2,7 +2,8 @@ servers={
   'main': {
     'host': 'localhost',
     'port': '5432',
-    'database': 'powa'
+    'database': 'powa',
+    'query': {'client_encoding': 'utf8'}
   }
 }
 cookie_secret="SUPERSECRET_THAT_YOU_SHOULD_CHANGE"
