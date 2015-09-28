@@ -19,8 +19,15 @@ extract( epoch from
     ELSE min(total_mesure_interval) END)
 """
 
+def unprepare(sql):
+    if sql.startswith('PREPARE'):
+        sql = re.sub('PREPARE.*AS', '', sql)
+        sql = re.sub('\$\d+', '?', sql)
+    return sql
+
 
 def format_jumbled_query(sql, params):
+    sql = unprepare(sql)
     it = iter(params)
     try:
         sql = re.sub("\?", lambda val: next(it), sql)
@@ -361,7 +368,9 @@ def get_unjumbled_query(ctrl, database, queryid, _from, _to,
     values = qualstat_get_figures(ctrl, database, _from, _to,
                                   queries=[queryid])
     if values is None:
-        return normalized_query
+        unprepared = unprepare(normalized_query)
+        if unprepared != normalized_query:
+            return None
 
     # Try to inject values
     sql = format_jumbled_query(normalized_query,
@@ -389,7 +398,9 @@ def get_any_sample_query(ctrl, database, queryid, _from, _to):
         """), params={"queryid": queryid}))[0]
         example_query = rs[1]
         if example_query is not None:
-            return example_query
+            unprepared = unprepare(example_query)
+            if example_query == unprepared:
+                return example_query
 
     return get_unjumbled_query(ctrl, database, queryid,
                                _from, _to, 'most executed')
