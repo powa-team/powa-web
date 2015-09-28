@@ -484,6 +484,7 @@ class HypoIndex(JSONizable):
         self.name = None
         self._ddl = None
         self.__setattr__ = self.__setattr
+        self._update_ddl()
 
     def _update_ddl(self):
         if 'btree' == self.amname:
