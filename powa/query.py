@@ -38,7 +38,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     """
     name = "query_overview"
     xaxis = "ts"
-    data_url = r"/metrics/database/(\w+)/query/(\w+)"
+    data_url = r"/metrics/database/([^\/]+)/query/(\d+)"
     rows = MetricDef(label="#Rows")
     calls = MetricDef(label="#Calls")
     shared_blks_read = MetricDef(label="Shared read", type="sizerate")
@@ -159,7 +159,7 @@ class QueryIndexes(ContentWidget):
     Content widget showing index creation suggestion.
     """
 
-    data_url = r"/metrics/database/(\w+)/query/(\w+)/indexes"
+    data_url = r"/metrics/database/([^\/]+)/query/(\d+)/indexes"
     title = "Query Indexes"
 
     def get(self, database, query):
@@ -209,7 +209,7 @@ class QueryExplains(ContentWidget):
     Content widget showing explain plans for various const values.
     """
     title = "Query Explains"
-    data_url = r"/metrics/database/(\w+)/query/(\w+)/explains"
+    data_url = r"/metrics/database/([^\/]+)/query/(\d+)/explains"
 
     def get(self, database, query):
         if not self.has_extension("pg_qualstats"):
@@ -250,7 +250,7 @@ class QualList(MetricGroupDef):
     name = "query_quals"
     xaxis = "relname"
     axis_type = "category"
-    data_url = r"/metrics/database/(\w+)/query/(\w+)/quals"
+    data_url = r"/metrics/database/([^\/]+)/query/(\d+)/quals"
     filter_ratio = MetricDef(label="Avg filter_ratio (excluding index)", type="percent")
     execution_count = MetricDef(label="Execution count (excluding index)")
 
@@ -278,7 +278,7 @@ class QueryDetail(ContentWidget):
     Detail widget showing summarized information for the query.
     """
     title = "Query Detail"
-    data_url = r"/metrics/database/(\w+)/query/(\w+)/detail"
+    data_url = r"/metrics/database/([^\/]+)/query/(\d+)/detail"
 
     def get(self, database, query):
         bs = block_size.c.block_size
@@ -318,7 +318,7 @@ class QueryOverview(DashboardPage):
     """
     Dashboard page for a query.
     """
-    base_url = r"/database/(\w+)/query/(\w+)/overview"
+    base_url = r"/database/([^\/]+)/query/(\d+)/overview"
     params = ["database", "query"]
     datasources = [QueryOverviewMetricGroup, QueryDetail,
                    QueryExplains, QueryIndexes, QualList]

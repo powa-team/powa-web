@@ -18,7 +18,7 @@ class QualConstantsMetricGroup(MetricGroupDef):
     Metric group used for the qual charts.
     """
     name = "QualConstants"
-    data_url = r"/metrics/database/(\w+)/query/(\w+)/qual/(\w+)/constants"
+    data_url = r"/metrics/database/([^\/]+)/query/(\d+)/qual/(\d+)/constants"
     xaxis = "rownumber"
     occurences = MetricDef(label="<%=group%>")
     grouper = "constants"
@@ -66,7 +66,7 @@ class QualDetail(ContentWidget):
     Content widget showing detail for a specific qual.
     """
     title = "Detail for this Qual"
-    data_url = r"/database/(\w+)/query/(\w+)/qual/(\w+)/detail"
+    data_url = r"/database/([^\/]+)/query/(\d+)/qual/(\d+)/detail"
 
     def get(self, database, query, qual):
         stmt = qualstat_getstatdata()
@@ -104,7 +104,7 @@ class QualOverview(DashboardPage):
     Dashboard page for a specific qual.
     """
 
-    base_url = r"/database/(\w+)/query/(\w+)/qual/(\w+)"
+    base_url = r"/database/([^\/]+)/query/(\d+)/qual/(\d+)"
 
     params = ["database", "query", "qual"]
 

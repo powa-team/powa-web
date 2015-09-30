@@ -36,7 +36,7 @@ URLS = [
     U(r"/logout/", LogoutHandler, name="logout"),
     U(r"/database/select", DatabaseSelector, name="database_selector"),
     U(r"/", IndexHandler, name="index"),
-    U(r"/database/(\w+)/suggest/", IndexSuggestionHandler,
+    U(r"/database/([^\/]+)/suggest/", IndexSuggestionHandler,
       name="index_suggestion")
 ]
 

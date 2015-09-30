@@ -32,7 +32,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     """Metric group for the database global graphs."""
     name = "database_overview"
     xaxis = "ts"
-    data_url = r"/metrics/database_overview/(\w+)/"
+    data_url = r"/metrics/database_overview/([^\/]+)/"
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
     total_blks_hit = MetricDef(label="Total hit", type="sizerate")
     total_blks_read = MetricDef(label="Total read", type="sizerate")
@@ -63,7 +63,7 @@ class ByQueryMetricGroup(MetricGroupDef):
     name = "all_queries"
     xaxis = "queryid"
     axis_type = "category"
-    data_url = r"/metrics/database_all_queries/(\w+)/"
+    data_url = r"/metrics/database_all_queries/([^\/]+)/"
     calls = MetricDef(label="#", type="string")
     runtime = MetricDef(label="Time", type="duration")
     avg_runtime = MetricDef(label="Avg time", type="duration")
@@ -119,7 +119,7 @@ class WizardThisDatabase(ContentWidget):
 
     title = 'Apply wizardry to this database'
 
-    data_url = r"/database/(\w+)/wizardthisdatabase/"
+    data_url = r"/database/([^\/]+)/wizardthisdatabase/"
 
     def get(self, database):
         self.render("database/wizardthisdatabase.html", database = database,
@@ -129,7 +129,7 @@ class WizardThisDatabase(ContentWidget):
 
 class DatabaseOverview(DashboardPage):
     """DatabaseOverview Dashboard."""
-    base_url = r"/database/(\w+)/overview"
+    base_url = r"/database/([^\/]+)/overview"
     datasources = [DatabaseOverviewMetricGroup, ByQueryMetricGroup,
                    WizardMetricGroup]
     params = ["database"]
