@@ -70,7 +70,7 @@ class WizardMetricGroup(MetricGroupDef):
     name = "wizard"
     xaxis = "quals"
     axis_type = "category"
-    data_url = r"/metrics/database/(\[^\/]+w+)/wizard/"
+    data_url = r"/metrics/database/([^\/]+)/wizard/"
     enabled = False
 
     @property
