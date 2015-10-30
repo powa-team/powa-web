@@ -45,7 +45,7 @@ define(['moment'], function(moment){
             }
         }
         if(microsecDiff < 0){
-            microsecDiff = 1000 + msecDiff;
+            microsecDiff = 1000 + microsecDiff;
             msecDiff--;
         }
         if(msecDiff < 0) {
