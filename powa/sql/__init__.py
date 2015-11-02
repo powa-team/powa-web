@@ -9,6 +9,8 @@ from sqlalchemy.types import Numeric
 from sqlalchemy.dialects.postgresql import array, dialect as pgdialect
 from collections import namedtuple, defaultdict
 from powa.json import JSONizable
+from operator import attrgetter
+import sys
 
 TOTAL_MEASURE_INTERVAL = """
 extract( epoch from
@@ -20,27 +22,49 @@ extract( epoch from
 
 def format_jumbled_query(sql, params):
     it = iter(params)
-    to_replace = re.findall("\?", sql)
-    result = None
     try:
         sql = re.sub("\?", lambda val: next(it), sql)
     except StopIteration:
         pass
-    return result
+    return sql
 
 
 RESOLVE_OPNAME = text("""
 SELECT json_object_agg(oid, value)
     FROM (
-    SELECT pg_operator.oid, json_build_object(
+
+    SELECT oproid as oid, json_build_object(
         'name', oprname,
-        'indexams', coalesce(array_agg(distinct pg_am.oid ORDER BY pg_am.oid) FILTER (WHERE pg_am.oid IS NOT NULL), '{}'),
-        'indexam_names', coalesce(array_agg(distinct pg_am.amname ORDER BY pg_am.amname) FILTER (WHERE pg_am.amname IS NOT NULL), '{}')) as value
-    FROM pg_operator
-    LEFT JOIN pg_amop amop ON amop.amopopr = pg_operator.oid
-    LEFT JOIN pg_am ON amop.amopmethod = pg_am.oid AND pg_am.amname != 'hash'
-    WHERE pg_operator.oid in :oid_list
-    GROUP BY pg_operator.oid, oprname
+        'amop',
+        coalesce(
+            json_object_agg(am, opclass_oids::jsonb
+            ORDER BY am)
+                      FILTER (WHERE am is NOT NULL)),
+        'amop_names',
+         coalesce(
+            json_object_agg(
+                      amname,
+                      opclass_names ORDER BY am)
+                      FILTER (WHERE am is NOT NULL))) as value
+    FROM
+    (
+        SELECT oprname, pg_operator.oid as oproid,
+            pg_am.oid as am, to_json(array_agg(distinct c.oid)) as opclass_oids,
+            amname,
+        to_json(array_agg(distinct CASE
+                      WHEN opcdefault IS TRUE THEN ''
+                      WHEN opcdefault IS FALSE THEN opcname
+                      ELSE NULL END)) as opclass_names
+        FROM
+        pg_operator
+        LEFT JOIN pg_amop amop ON amop.amopopr = pg_operator.oid
+        LEFT JOIN pg_am ON amop.amopmethod = pg_am.oid AND pg_am.amname != 'hash'
+        LEFt JOIN pg_opfamily f ON f.opfmethod = pg_am.oid AND amop.amopfamily = f.oid
+        LEFT JOIN pg_opclass c ON c.opcfamily = f.oid
+        WHERE pg_operator.oid in :oid_list
+        GROUP BY pg_operator.oid, oprname, pg_am.oid, amname
+    ) by_am
+    GROUP BY oproid, oprname
     ) detail
 """)
 
@@ -76,22 +100,26 @@ RESOLVE_ATTNAME = text("""
 class ResolvedQual(JSONizable):
 
     def __init__(self, nspname, relname, attname,
-                 opname, indexam_names,
+                 opname, amops,
                  n_distinct=None,
                  most_common_values=None,
                  null_frac=None,
                  example_values=None,
-                 eval_type=None):
+                 eval_type=None,
+                 relid=None,
+                 attnum=None):
         self.nspname = nspname
         self.relname = relname
         self.attname = attname
         self.opname = opname
-        self.indexam_names = indexam_names
+        self.amops = amops or {}
         self.n_distinct = n_distinct
         self.most_common_values = most_common_values
         self.null_frac = null_frac
         self.example_values = example_values or []
         self.eval_type = eval_type
+        self.relid = relid
+        self.attnum = attnum
 
     def __str__(self):
         return "%s.%s %s ?" % (self.relname, self.attname, self.opname)
@@ -103,23 +131,36 @@ class ResolvedQual(JSONizable):
         else:
             return "%s %%" % (abs(self.n_distinct) * 100)
 
+    def to_json(self):
+        base = super(ResolvedQual, self).to_json()
+        base["label"] = str(self)
+        return base
+
 
 class ComposedQual(JSONizable):
 
     def __init__(self, nspname=None, relname=None,
-                 nbfiltered=None,
-                 filter_ratio = None,
-                 count=None,
+                 avg_filter=None,
+                 filter_ratio=None,
+                 occurences=None,
+                 execution_count=None,
                  table_liverows=None,
-                 qualid=None):
+                 qualid=None,
+                 relid=None,
+                 queries=None,
+                 queryids=None):
         super(ComposedQual, self).__init__()
         self.qualid = qualid
         self.relname = relname
         self.nspname = nspname
-        self.nbfiltered = nbfiltered
+        self.avg_filter = avg_filter
         self.filter_ratio = filter_ratio
-        self.count = count
+        self.execution_count = execution_count
+        self.occurences = occurences
         self.table_liverows = table_liverows
+        self.relid = relid
+        self.queries = queries or []
+        self.queryids = queryids or []
         self._quals = []
 
     def append(self, element):
@@ -180,10 +221,13 @@ def resolve_quals(conn, quallist, attribute="quals"):
     for row in quallist:
         row = dict(row)
         newqual = ComposedQual(
-            count=row['count'],
-            nbfiltered=row['nbfiltered'],
+            occurences=row['occurences'],
+            execution_count=row['execution_count'],
+            avg_filter=row['avg_filter'],
             filter_ratio=row['filter_ratio'],
-            qualid=row['qualid']
+            qualid=row['qualid'],
+            queries=row.get('queries'),
+            queryids=row.get('queryids')
         )
         new_qual_list.append(newqual)
         values = [v for v in row[attribute] if v['relid'] != '0']
@@ -198,33 +242,37 @@ def resolve_quals(conn, quallist, attribute="quals"):
             else:
                 newqual.relname = attname["relname"]
                 newqual.nspname = attname["nspname"]
+                newqual.relid = v["relid"]
                 newqual.table_liverows = attname["table_liverows"]
             newqual.append(ResolvedQual(
                 nspname=attname['nspname'],
                 relname=attname['relname'],
                 attname=attname['attname'],
                 opname=operators[v["opno"]]["name"],
-                indexam_names=operators[v["opno"]]["indexam_names"],
+                amops=operators[v["opno"]]["amop_names"],
                 n_distinct=attname["n_distinct"],
                 most_common_values=attname["most_common_values"],
                 null_frac=attname["null_frac"],
-                eval_type=v["eval_type"]))
+                eval_type=v["eval_type"],
+                relid=v["relid"],
+                attnum=v["attnum"]))
     return new_qual_list
 
 
 Plan = namedtuple(
     "Plan",
-    ("title", "values", "query", "plan", "filter_ratio", "exec_count"))
+    ("title", "values", "query", "plan", "filter_ratio", "exec_count", "occurences"))
 
 
 def qual_constants(type, filter_clause, top=1):
     orders = {
-        'most_executed': "4 DESC",
-        'least_filtering': "6",
-        'most_filtering': "6 DESC"
+        'most_executed': "8 DESC",
+        'least_filtering': "9",
+        'most_filtering': "9 DESC",
+        'most_used': '6 DESC'
     }
     if type not in ('most_executed', 'most_filtering',
-                    'least_filtering'):
+                    'least_filtering', 'most_used'):
         return
     dialect = pgdialect()
     dialect.paramstyle = 'named'
@@ -234,9 +282,10 @@ def qual_constants(type, filter_clause, top=1):
     WITH sample AS (
     SELECT query, s.queryid, qn.qualid, quals as quals,
                 constants,
-                sum(count) as count,
+                sum(occurences) as occurences,
+                sum(execution_count) as execution_count,
                 sum(nbfiltered) as nbfiltered,
-                CASE WHEN sum(count) = 0 THEN 0 ELSE sum(nbfiltered) / sum(count) END AS filter_ratio
+                CASE WHEN sum(execution_count) = 0 THEN 0 ELSE sum(nbfiltered) / sum(execution_count) END AS filter_ratio
         FROM powa_statements s
         JOIN pg_database ON pg_database.oid = s.dbid
         JOIN powa_qualstats_quals qn ON s.queryid = qn.queryid
@@ -248,18 +297,20 @@ def qual_constants(type, filter_clause, top=1):
             FROM powa_qualstats_aggregate_constvalues_current
         ) qnc ON qn.qualid = qnc.qualid AND qn.queryid = qnc.queryid,
         LATERAL
-                unnest(%s) as t(constants,nbfiltered,count)
+                unnest(%s) as t(constants,occurences, nbfiltered,execution_count)
         WHERE %s
         GROUP BY qn.qualid, quals, constants, s.queryid, query
         ORDER BY %s
         LIMIT :top_value
     )
-    SELECT query, queryid, qualid, quals, constants as constants, nbfiltered as nbfiltered,
-                count as count,
+    SELECT query, queryid, qualid, quals, constants as constants,
+                occurences as occurences,
+                nbfiltered as nbfiltered,
+                execution_count as execution_count,
                 filter_ratio as filter_ratio,
-                row_number() OVER (ORDER BY count desc NULLS LAST) as rownumber
+                row_number() OVER (ORDER BY execution_count desc NULLS LAST) as rownumber
         FROM sample
-    ORDER BY 9
+    ORDER BY 10
     LIMIT :top_value
     ) %s
     """ % (type, str(filter_clause), orders[type], type)
@@ -283,19 +334,51 @@ def get_plans(self, query, database, qual):
         except:
             pass
         plans.append(Plan(key, vals['constants'], query,
-                            plan, vals["filter_ratio"], vals['count']))
+                            plan, vals["filter_ratio"], vals['execution_count'],
+                          vals['occurences']))
     return plans
 
 
-def get_sample_query(ctrl, database, queryid, _from, _to):
+def get_unjumbled_query(ctrl, database, queryid, _from, _to,
+                        kind='most executed'):
     """
     From a queryid, build a query string ready to be executed.
 
-    If the only constants in the query are in the predicates, use values from
-    the most_executed quals. If not, use the query_example collected by
-    pg_qualstats, as is.
+    Gather a jumbled query from powa_statements, then try to denormalized it
+    using stored const values, by its kind (least/most filtering, most common).
+
+    This function can return None if the query has not been gathered by powa, or
+    a partially or fully normalized query, depending on const values has been
+    found and/or the SELECT clause has been normalized
+    """
+
+    rs = list(ctrl.execute(text("""
+        SELECT query FROM powa_statements WHERE queryid = :queryid LIMIT 1
+    """), params={"queryid": queryid}))[0]
+    normalized_query = rs[0]
+
+    values = qualstat_get_figures(ctrl, database, _from, _to,
+                                  queries=[queryid])
+    if values is None:
+        return normalized_query
+
+    # Try to inject values
+    sql = format_jumbled_query(normalized_query,
+                               values[kind].get('constants', []))
+    return sql
+
+def get_any_sample_query(ctrl, database, queryid, _from, _to):
+    """
+    From a queryid, get a non normalized query.
+
+    If pg_qualstats is available and recent enough, try to retrieve a randomly
+    chosen non normalized query, which is fast.
+
+    If this fail, fallback get_unjumbled_query, with "most executed" const
+    values.
     """
     has_pgqs = ctrl.has_extension("pg_qualstats")
+    example_query = None
     if has_pgqs and has_pgqs >= "0.0.7":
         rs = list(ctrl.execute(text("""
             SELECT query, pg_qualstats_example_query(queryid)
@@ -303,22 +386,11 @@ def get_sample_query(ctrl, database, queryid, _from, _to):
             WHERE queryid = :queryid
             LIMIT 1
         """), params={"queryid": queryid}))[0]
-        normalized_query = rs[0]
         example_query = rs[1]
-    else:
-        rs = list(ctrl.execute(text("""
-            SELECT query FROM powa_statements WHERE queryid = :queryid LIMIT1
-        """), params={"queryid": queryid}))[0]
-        normalized_query = rs[0]
-        example_query = None
-    values = qualstat_get_figures(ctrl, database, _from, _to,
-                                  queries=[queryid])
-    # Try to inject values
-    sql = format_jumbled_query(normalized_query,
-                               values['most executed']['constants'])
-
-    return sql or example_query
-
+        if example_query is not None:
+            return example_query
+    return get_unjumbled_query(ctrl, database, queryid,
+                               _from, _to, 'most executed')
 
 def qualstat_get_figures(conn, database, tsfrom, tsto, queries=None, quals=None):
     condition = text("""datname = :database AND coalesce_range && tstzrange(:from, :to)""")
@@ -333,7 +405,8 @@ def qualstat_get_figures(conn, database, tsfrom, tsto, queries=None, quals=None)
                   text('most_filtering.query'),
                   text('to_json(most_filtering) as "most filtering"'),
                   text('to_json(least_filtering) as "least filtering"'),
-                  text('to_json(most_executed) as "most executed"')])
+                  text('to_json(most_executed) as "most executed"'),
+                  text('to_json(most_used) as "most used"')])
            .select_from(
                qual_constants("most_filtering", condition)
                .alias("most_filtering")
@@ -345,7 +418,12 @@ def qualstat_get_figures(conn, database, tsfrom, tsto, queries=None, quals=None)
                .join(qual_constants("most_executed", condition)
                      .alias("most_executed"),
                      text("most_executed.rownumber = "
+                          "least_filtering.rownumber"))
+               .join(qual_constants("most_used", condition)
+                     .alias("most_used"),
+                     text("most_used.rownumber = "
                           "least_filtering.rownumber"))))
+
 
     params = {"database": database,
               "from": tsfrom,
@@ -376,36 +454,71 @@ class HypoPlan(JSONizable):
     def gain_percent(self):
         return round(100 - float(self.hypocost) * 100 / float(self.basecost), 2)
 
+    def to_json(self):
+        base = super(HypoPlan, self).to_json()
+        base['gain_percent'] = self.gain_percent
+        return base
 
-class HypoIndex(object):
+class HypoIndex(JSONizable):
 
-    def __init__(self, nspname, relname, amname, composed_qual=None):
+    def __init__(self, nspname, relname, amname,
+                 composed_qual=None):
         self.nspname = nspname
         self.relname = relname
         self.qual = composed_qual
         self.amname = amname
         self.name = None
+        self._ddl = None
+        self.__setattr__ = self.__setattr
+        self._update_ddl()
+
+    def _update_ddl(self):
+        if 'btree' == self.amname:
+            attrs = []
+            for qual in self.qual:
+                if qual.attname not in attrs:
+                    attrs.append(qual.attname)
+            super(HypoIndex, self).__setattr__(
+                '_ddl',
+                """CREATE INDEX ON %s.%s(%s)""" % (
+                quote_ident(self.nspname),
+                quote_ident(self.relname),
+                ",".join(attrs)))
+
+
+    def __setattr(self, name, value):
+        super(HypoIndex, self).__setattr__(name, value)
+        # Only btree is supported right now
+        if name in ('amname', 'nspname', 'relname', 'composed_qual'):
+            self._update_ddl()
 
     @property
     def ddl(self):
-        # Only btree is supported right now
-        if 'btree' == self.amname:
-            return ("""CREATE INDEX ON %s.%s(%s)""" % (
-                quote_ident(self.nspname),
-                quote_ident(self.relname),
-                ",".join(quote_ident(qual.attname) for qual in self.qual)))
+        return self._ddl
 
     @property
     def hypo_ddl(self):
         ddl = self.ddl
         if ddl is not None:
-            return func.hypopg_create_index(self.ddl)
+            return select([column("indexname")]).select_from(func.hypopg_create_index(self.ddl))
+
+    def to_json(self):
+        base = super(HypoIndex, self).to_json()
+        base['ddl'] = self.ddl
+        return base
 
 
-def possible_indexes(composed_qual):
+def possible_indexes(composed_qual, order=()):
     by_am = defaultdict(list)
-    for qual in composed_qual:
-        for am in qual.indexam_names:
+    def sorter(qual):
+        attnum = qual.attnum
+        if attnum in order:
+            return order.index(attnum)
+        else:
+            # - attnum to guarantee stable sort
+            return sys.maxsize - attnum
+    for qual in sorted(composed_qual, key=sorter):
+        for am in qual.amops.keys():
             by_am[am].append(qual)
     indexes = []
     for am, quals in by_am.items():
@@ -427,7 +540,7 @@ def get_hypoplans(conn, query, indexes=None):
     Arguments:
         conn: a connection to the target database
         queries: a list of sql queries, already formatted with values
-        indexes: a list of HypoIndex to look for in the plan. They should have been created, and have a name.
+        indexes: a list of hypothetical index names to look for in the plan
     """
     indexes = indexes or []
     with conn.begin() as trans:
@@ -437,13 +550,11 @@ def get_hypoplans(conn, query, indexes=None):
         hypoplan = "\n".join(v[0] for v in trans.execute("EXPLAIN %s" % query))
     COST_RE = "(?<=\.\.)\d+\.\d+"
     m = re.search(COST_RE, baseplan)
-    basecost = m.group(0)
+    basecost = float(m.group(0))
     m = re.search(COST_RE, hypoplan)
-    hypocost = m.group(0)
+    hypocost = float(m.group(0))
     used_indexes = []
     for ind in indexes:
-        if ind.name is None:
-            continue
-        if ind.name in hypoplan:
+        if ind.name != None and ind.name in hypoplan:
             used_indexes.append(ind)
     return HypoPlan(baseplan, basecost, hypoplan, hypocost, query, used_indexes)

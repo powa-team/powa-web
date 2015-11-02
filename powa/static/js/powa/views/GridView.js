@@ -23,9 +23,9 @@ define([
     var BoolFormatter = {
       fromRaw: function(rawData){
           if(rawData == true){
-              return "☑";
+              return "✓";
           }
-          return "☒";
+          return "✗";
       }
     };
 
@@ -80,6 +80,19 @@ define([
                 this.$el.append(tr);
             }
             this.$el.append(this.row.render().$el);
+            return this;
+        }
+    });
+
+    Backgrid.Extension.HtmlCell = Backgrid.Cell.extend({
+        className: "html",
+        render: function(){
+            this.$el.empty();
+            var model = this.model,
+            raw_value = model.get(this.column.get("name")),
+            value = raw_value.replace(/^\s+/g,"").replace(/\n\s+/, "\n");
+            this.$el.append(value);
+            this.delegateEvents();
             return this;
         }
     });

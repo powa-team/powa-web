@@ -19,6 +19,7 @@ from powa.database import DatabaseSelector, DatabaseOverview
 from powa.query import QueryOverview
 from powa.qual import QualOverview
 from powa.config import ConfigOverview
+from powa.wizard import IndexSuggestionHandler
 
 
 class IndexHandler(AuthHandler):
@@ -34,7 +35,9 @@ URLS = [
     U(r"/login/", LoginHandler, name="login"),
     U(r"/logout/", LogoutHandler, name="logout"),
     U(r"/database/select", DatabaseSelector, name="database_selector"),
-    U(r"/", IndexHandler, name="index")
+    U(r"/", IndexHandler, name="index"),
+    U(r"/database/([^\/]+)/suggest/", IndexSuggestionHandler,
+      name="index_suggestion")
 ]
 
 

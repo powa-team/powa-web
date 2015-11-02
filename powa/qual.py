@@ -18,14 +18,14 @@ class QualConstantsMetricGroup(MetricGroupDef):
     Metric group used for the qual charts.
     """
     name = "QualConstants"
-    data_url = r"/metrics/database/(\w+)/query/(\w+)/qual/(\w+)/constants"
+    data_url = r"/metrics/database/([^\/]+)/query/(\d+)/qual/(\d+)/constants"
     xaxis = "rownumber"
-    count = MetricDef(label="<%=group%>")
+    occurences = MetricDef(label="<%=group%>")
     grouper = "constants"
 
     @property
     def query(self):
-        query = (qual_constants("most_executed",
+        query = (qual_constants("most_used",
                                 text("""
             datname = :database AND
             s.queryid = :query AND
@@ -38,7 +38,7 @@ class QualConstantsMetricGroup(MetricGroupDef):
                   .where((c.qualid == bindparam("qual")) &
                          (c.queryid == bindparam("query")))).alias()
         return (query.alias().select()
-                .column(totals.c.count.label('total_count'))
+                .column(totals.c.occurences.label('total_occurences'))
                 .correlate(query))
 
 
@@ -49,13 +49,13 @@ class QualConstantsMetricGroup(MetricGroupDef):
         max_rownumber = 0
         total_top10 = 0
         total = None
-        d = {'total_count': 0}
+        d = {'total_occurences': 0}
         for d in data['data']:
             max_rownumber = max(max_rownumber, d['rownumber'])
-            total_top10 += d['count']
+            total_top10 += d['occurences']
         else:
-            total = d['total_count']
-        data['data'].append({'count': total - total_top10,
+            total = d['total_occurences']
+        data['data'].append({'occurences': total - total_top10,
                      'rownumber': max_rownumber + 1,
                      'constants': 'Others'})
         return data
@@ -66,7 +66,7 @@ class QualDetail(ContentWidget):
     Content widget showing detail for a specific qual.
     """
     title = "Detail for this Qual"
-    data_url = r"/database/(\w+)/query/(\w+)/qual/(\w+)/detail"
+    data_url = r"/database/([^\/]+)/query/(\d+)/qual/(\d+)/detail"
 
     def get(self, database, query, qual):
         stmt = qualstat_getstatdata()
@@ -74,7 +74,7 @@ class QualDetail(ContentWidget):
         stmt = stmt.alias()
         stmt = (stmt.select()
             .where((c.qualid == bindparam("qualid")))
-            .where(stmt.c.count > 0)
+            .where(stmt.c.occurences > 0)
             .column((c.queryid == bindparam("query")).label("is_my_query")))
         quals = list(self.execute(
             stmt,
@@ -104,7 +104,7 @@ class QualOverview(DashboardPage):
     Dashboard page for a specific qual.
     """
 
-    base_url = r"/database/(\w+)/query/(\w+)/qual/(\w+)"
+    base_url = r"/database/([^\/]+)/query/(\d+)/qual/(\d+)"
 
     params = ["database", "query", "qual"]
 
@@ -116,6 +116,6 @@ class QualOverview(DashboardPage):
         "Qual %(qual)s",
         [[QualDetail],
          [Graph("Most executed values",
-               metrics=[QualConstantsMetricGroup.count],
+               metrics=[QualConstantsMetricGroup.occurences],
                x_label_attr="constants",
                renderer="pie")]])

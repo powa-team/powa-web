@@ -138,6 +138,7 @@ class DataSource(JSONizable):
     """
     datasource_handler_cls = None
     data_url = None
+    enabled = True
 
     @classproperty
     def url_name(cls):
@@ -204,7 +205,6 @@ class Dashboard(JSONizable):
     def __init__(self, title, widgets=None):
         self.title = title
         self._widgets = widgets or []
-        self._validate_layout()
 
     def _validate_layout(self):
         """
@@ -234,6 +234,7 @@ class Dashboard(JSONizable):
         self._widgets = widgets
 
     def to_json(self):
+        self._validate_layout()
         return {'title': self.title,
                 'widgets': self.widgets}
 
@@ -269,7 +270,6 @@ class ContentWidget(Widget, DataSource, AuthHandler):
     This widget acts as both a Widget and DataSource, since the Data used is
     simplistic.
     """
-
     datasource_handler_cls = ContentHandler
 
     def initialize(self, datasource=None, params=None):
@@ -403,6 +403,8 @@ class MetaMetricGroup(type, JSONizable):
         if not isinstance(dct.get('name', ''), str):
             raise ValueError("The metric group name must be of type str")
         for base in bases:
+            if hasattr(base, "enabled"):
+                dct.setdefault("enabled", base.enabled)
             if hasattr(base, '_stubs'):
                 for key, stub in base._stubs.items():
                     dct[key] = stub.__class__(*stub.args,

@@ -3,12 +3,13 @@ Module containing the by-database dashboard.
 """
 from powa.framework import AuthHandler
 from powa.dashboards import (
-    Dashboard, Graph, Grid,
+    Dashboard, Graph, Grid, ContentWidget,
     MetricGroupDef, MetricDef,
     DashboardPage)
 
 from powa.sql.views import (powa_getstatdata_detailed_db,
                             powa_getstatdata_sample)
+from powa.wizard import WizardMetricGroup, Wizard
 from powa.overview import Overview
 from sqlalchemy.sql import ColumnCollection, bindparam, column, select
 from sqlalchemy.sql.functions import sum
@@ -31,7 +32,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     """Metric group for the database global graphs."""
     name = "database_overview"
     xaxis = "ts"
-    data_url = r"/metrics/database_overview/(\w+)/"
+    data_url = r"/metrics/database_overview/([^\/]+)/"
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
     total_blks_hit = MetricDef(label="Total hit", type="sizerate")
     total_blks_read = MetricDef(label="Total read", type="sizerate")
@@ -62,7 +63,7 @@ class ByQueryMetricGroup(MetricGroupDef):
     name = "all_queries"
     xaxis = "queryid"
     axis_type = "category"
-    data_url = r"/metrics/database_all_queries/(\w+)/"
+    data_url = r"/metrics/database_all_queries/([^\/]+)/"
     calls = MetricDef(label="#", type="string")
     runtime = MetricDef(label="Time", type="duration")
     avg_runtime = MetricDef(label="Avg time", type="duration")
@@ -114,48 +115,76 @@ class ByQueryMetricGroup(MetricGroupDef):
             "QueryOverview", database, val["queryid"])
         return val
 
+class WizardThisDatabase(ContentWidget):
+
+    title = 'Apply wizardry to this database'
+
+    data_url = r"/database/([^\/]+)/wizardthisdatabase/"
+
+    def get(self, database):
+        self.render("database/wizardthisdatabase.html", database = database,
+                    url = self.reverse_url("WizardPage", database))
+        return
+
 
 class DatabaseOverview(DashboardPage):
     """DatabaseOverview Dashboard."""
-    base_url = r"/database/(\w+)/overview"
-    datasources = [DatabaseOverviewMetricGroup, ByQueryMetricGroup]
+    base_url = r"/database/([^\/]+)/overview"
+    datasources = [DatabaseOverviewMetricGroup, ByQueryMetricGroup,
+                   WizardMetricGroup]
     params = ["database"]
     parent = Overview
-    dashboard = Dashboard(
-        "Database overview for %(database)s",
-        [[Graph("Calls (On database %(database)s)",
-                metrics=[DatabaseOverviewMetricGroup.avg_runtime]),
-          Graph("Blocks (On database %(database)s)",
-                metrics=[DatabaseOverviewMetricGroup.total_blks_read,
-                         DatabaseOverviewMetricGroup.total_blks_hit])],
-         [Grid("Details for all queries",
-                toprow=[{
-                    'merge': True
-                },{
-                    'name': 'Execution',
-                    'merge': False,
-                    'colspan': 3
-                }, {
-                    'name': 'I/O Time',
-                    'merge': False,
-                    'colspan': 2
-                }, {
-                    'name': 'Blocks',
-                    'merge': False,
-                    'colspan': 4,
-                }, {
-                    'name': 'Temp blocks',
-                    'merge': False,
-                    'colspan': 2
-                }],
-               columns=[{
-                   "name": "query",
-                   "label": "Query",
-                   "type": "query",
-                   "url_attr": "url",
-                   "max_length": 70
-               }],
-               metrics=ByQueryMetricGroup.all())]])
+
+    @property
+    def dashboard(self):
+        # This COULD be initialized in the constructor, but tornado < 3 doesn't
+        # call it
+        if getattr(self, '_dashboard', None) is not None:
+            return self._dashboard
+
+        has_qualstats = self.has_extension('pg_qualstats')
+        has_hypopg = self.has_extension('hypopg', database = self.database)
+
+        self._dashboard = Dashboard("Database overview for %(database)s")
+
+
+        self._dashboard.widgets.extend(
+            [[Graph("Calls (On database %(database)s)",
+                    metrics=[DatabaseOverviewMetricGroup.avg_runtime]),
+              Graph("Blocks (On database %(database)s)",
+                    metrics=[DatabaseOverviewMetricGroup.total_blks_read,
+                             DatabaseOverviewMetricGroup.total_blks_hit])],
+             [Grid("Details for all queries",
+                    toprow=[{
+                        'merge': True
+                    },{
+                        'name': 'Execution',
+                        'merge': False,
+                        'colspan': 3
+                    }, {
+                        'name': 'I/O Time',
+                        'merge': False,
+                        'colspan': 2
+                    }, {
+                        'name': 'Blocks',
+                        'merge': False,
+                        'colspan': 4,
+                    }, {
+                        'name': 'Temp blocks',
+                        'merge': False,
+                        'colspan': 2
+                    }],
+                   columns=[{
+                       "name": "query",
+                       "label": "Query",
+                       "type": "query",
+                       "url_attr": "url",
+                       "max_length": 70
+                   }],
+                   metrics=ByQueryMetricGroup.all())]])
+
+        self._dashboard.widgets.extend([[Wizard("Index suggestions")]])
+        return self._dashboard
 
     @classmethod
     def get_menutitle(cls, handler, params):

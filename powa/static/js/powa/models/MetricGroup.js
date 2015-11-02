@@ -9,8 +9,9 @@ define(['backbone', 'powa/models/DataSource', 'powa/models/Metric', 'powa/models
             var grouper = this.get('grouper', null),
                 self = this,
                 xaxis = this.get("xaxis");
+            this.trigger("metricgroup:startload");
             self.get("metrics").each(function(metric){
-                metric.trigger("startload");
+                metric.trigger("metric:startload");
             });
 
             $.ajax({
@@ -21,7 +22,7 @@ define(['backbone', 'powa/models/DataSource', 'powa/models/Metric', 'powa/models
                 self.get("metrics").each(function(metric){
                     series_by_metric[metric.get("name")] = {};
                 });
-                self.trigger("metricgroup:dataload", response.data);
+                self.trigger("metricgroup:dataload", response.data, from_date, to_date);
                 $.each(response.data, function(){
                     var row = this,
                         group = this[grouper] || "";

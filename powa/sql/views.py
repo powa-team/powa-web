@@ -4,6 +4,7 @@ from sqlalchemy.types import Numeric
 from sqlalchemy.sql.functions import max, min, sum
 from powa.sql.utils import diff
 from powa.sql import resolve_quals
+from powa.sql.compat import JSONB
 from powa.sql.tables import powa_statements
 from collections import defaultdict
 
@@ -228,7 +229,7 @@ def qualstat_base_statdata():
     ) AS unnested
     WHERE tstzrange(:from, :to, '[]') @> (records).ts
     UNION ALL
-    SELECT queryid, qualid, pqnc.ts, pqnc.count, pqnc.nbfiltered
+    SELECT queryid, qualid, pqnc.ts, pqnc.occurences, pqnc.execution_count, pqnc.nbfiltered
     FROM powa_qualstats_quals_history_current pqnc
     WHERE tstzrange(:from, :to, '[]') @> pqnc.ts
     ) h
@@ -237,26 +238,58 @@ def qualstat_base_statdata():
     return base_query
 
 
-def qualstat_getstatdata():
+def qualstat_getstatdata(condition=None):
     base_query = qualstat_base_statdata()
+    if condition:
+        base_query = basequery.where(condition)
     return (select([
         column("qualid"),
         powa_statements.c.queryid,
         column("query"),
+        powa_statements.c.dbid,
         func.to_json(column("quals")).label("quals"),
-        sum(column("count")).label("count"),
-        sum(column("nbfiltered")).label("nbfiltered"),
+        sum(column("execution_count")).label("execution_count"),
+        sum(column("occurences")).label("occurences"),
+        (sum(column("nbfiltered")) / sum(column("occurences"))).label("avg_filter"),
         case(
-            [(sum(column("count")) == 0, 0)],
+            [(sum(column("execution_count")) == 0, 0)],
             else_=sum(column("nbfiltered")) /
-                cast(sum(column("count")), Numeric) * 100
+                cast(sum(column("execution_count")), Numeric) * 100
         ).label("filter_ratio")])
         .select_from(
         join(base_query, powa_statements,
                 powa_statements.c.queryid ==
                 literal_column("pqnh.queryid")))
         .group_by(column("qualid"), powa_statements.c.queryid,
+                  powa_statements.c.dbid,
                   powa_statements.c.query, column("quals")))
+
+
+TEXTUAL_INDEX_QUERY = """
+SELECT 'CREATE INDEX idx_' || q.relid || '_' || array_to_string(attnames, '_') || ' ON ' || nspname || '.' || q.relid ||  ' USING ' || idxtype || ' (' || array_to_string(attnames, ', ') || ')'  AS index_ddl
+ FROM (SELECT t.nspname,
+    t.relid,
+    t.attnames,
+    unnest(t.possible_types) AS idxtype
+   FROM ( SELECT nl.nspname AS nspname,
+            qs.relid::regclass AS relid,
+            array_agg(DISTINCT attnames.attnames) AS attnames,
+            array_agg(DISTINCT pg_am.amname) AS possible_types,
+            array_agg(DISTINCT attnum.attnum) AS attnums
+            FROM (VALUES (:relid, (:attnums)::smallint[], (:indexam))) as qs(relid, attnums, indexam)
+           LEFT JOIN (pg_class cl JOIN pg_namespace nl ON nl.oid = cl.relnamespace) ON cl.oid = qs.relid
+           JOIN pg_am  ON pg_am.amname = qs.indexam AND pg_am.amname <> 'hash',
+           LATERAL ( SELECT pg_attribute.attname AS attnames
+                       FROM pg_attribute
+                       JOIN unnest(qs.attnums) a(a) ON a.a = pg_attribute.attnum AND pg_attribute.attrelid = qs.relid
+                      ORDER BY pg_attribute.attnum) attnames,
+           LATERAL unnest(qs.attnums) attnum(attnum)
+          WHERE NOT (EXISTS ( SELECT 1
+                               FROM pg_index i
+                              WHERE i.indrelid = qs.relid AND ((i.indkey::smallint[])[0:array_length(qs.attnums, 1) - 1] @> qs.attnums OR qs.attnums @> (i.indkey::smallint[])[0:array_length(i.indkey, 1) + 1] AND i.indisunique)))
+          GROUP BY nl.nspname, qs.relid) t
+  GROUP BY t.nspname, t.relid, t.attnames, t.possible_types) q
+"""
 
 
 

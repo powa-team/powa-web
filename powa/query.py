@@ -21,7 +21,7 @@ from powa.sql import (Plan, format_jumbled_query, quote_ident,
                       resolve_quals, qual_constants,
                       qualstat_get_figures,
                       get_hypoplans,
-                      get_sample_query,
+                      get_any_sample_query,
                       possible_indexes)
 from powa.sql.views import (powa_getstatdata_sample,
                             kcache_getstatdata_sample,
@@ -38,7 +38,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     """
     name = "query_overview"
     xaxis = "ts"
-    data_url = r"/metrics/database/(\w+)/query/(\w+)"
+    data_url = r"/metrics/database/([^\/]+)/query/(\d+)"
     rows = MetricDef(label="#Rows")
     calls = MetricDef(label="#Calls")
     shared_blks_read = MetricDef(label="Shared read", type="sizerate")
@@ -159,7 +159,7 @@ class QueryIndexes(ContentWidget):
     Content widget showing index creation suggestion.
     """
 
-    data_url = r"/metrics/database/(\w+)/query/(\w+)/indexes"
+    data_url = r"/metrics/database/([^\/]+)/query/(\d+)/indexes"
     title = "Query Indexes"
 
     def get(self, database, query):
@@ -171,7 +171,8 @@ class QueryIndexes(ContentWidget):
         base_query = (base_query
                       .where(c.queryid == query)
                       .having(func.bool_or(column('eval_type') == 'f'))
-                      .having(c.count > 1000)
+                      .having(c.execution_count > 1000)
+                      .having(c.occurences > 0)
                       .having(c.filter_ratio > 0.5)
                       .params(**{'from': '-infinity',
                                  'to': 'infinity'}))
@@ -193,9 +194,9 @@ class QueryIndexes(ContentWidget):
             for ind in allindexes:
                 ddl = ind.hypo_ddl
                 if ddl is not None:
-                    ind.name = self.execute(ddl, database=database).scalar()[1]
+                    ind.name = self.execute(ddl, database=database).scalar()
             # Build the query and fetch the plans
-            querystr = get_sample_query(self, database, query,
+            querystr = get_any_sample_query(self, database, query,
                                         self.get_argument("from"),
                                         self.get_argument("to"))
             hypoplan = get_hypoplans(self.connect(database=database), querystr,
@@ -209,7 +210,7 @@ class QueryExplains(ContentWidget):
     Content widget showing explain plans for various const values.
     """
     title = "Query Explains"
-    data_url = r"/metrics/database/(\w+)/query/(\w+)/explains"
+    data_url = r"/metrics/database/([^\/]+)/query/(\d+)/explains"
 
     def get(self, database, query):
         if not self.has_extension("pg_qualstats"):
@@ -221,7 +222,7 @@ class QueryExplains(ContentWidget):
                                    self.get_argument("to"),
                                    queries=[query])
         if row != None:
-            for key in ('most filtering', 'least filtering', 'most executed'):
+            for key in ('most filtering', 'least filtering', 'most executed', 'most used'):
                 vals = row[key]
                 query = format_jumbled_query(row['query'], vals['constants'])
                 plan = "N/A"
@@ -232,7 +233,9 @@ class QueryExplains(ContentWidget):
                 except:
                     pass
                 plans.append(Plan(key, vals['constants'], query,
-                                  plan, vals["filter_ratio"], vals['count']))
+                                  plan, vals["filter_ratio"],
+                                  vals['execution_count'],
+                                  vals['occurences']))
         if len(plans) == 0:
             self.flash("No quals found for this query", "warning")
             self.render("xhr.html", content="")
@@ -248,9 +251,9 @@ class QualList(MetricGroupDef):
     name = "query_quals"
     xaxis = "relname"
     axis_type = "category"
-    data_url = r"/metrics/database/(\w+)/query/(\w+)/quals"
+    data_url = r"/metrics/database/([^\/]+)/query/(\d+)/quals"
     filter_ratio = MetricDef(label="Avg filter_ratio (excluding index)", type="percent")
-    count = MetricDef(label="Execution count (excluding index)")
+    execution_count = MetricDef(label="Execution count (excluding index)")
 
     def prepare(self):
         if not self.has_extension("pg_qualstats"):
@@ -276,7 +279,7 @@ class QueryDetail(ContentWidget):
     Detail widget showing summarized information for the query.
     """
     title = "Query Detail"
-    data_url = r"/metrics/database/(\w+)/query/(\w+)/detail"
+    data_url = r"/metrics/database/([^\/]+)/query/(\d+)/detail"
 
     def get(self, database, query):
         bs = block_size.c.block_size
@@ -316,7 +319,7 @@ class QueryOverview(DashboardPage):
     """
     Dashboard page for a query.
     """
-    base_url = r"/database/(\w+)/query/(\w+)/overview"
+    base_url = r"/database/([^\/]+)/query/(\d+)/overview"
     params = ["database", "query"]
     datasources = [QueryOverviewMetricGroup, QueryDetail,
                    QueryExplains, QueryIndexes, QualList]
@@ -388,9 +391,6 @@ class QueryOverview(DashboardPage):
                          "type": "query",
                          "max_length": 60,
                          "url_attr": "url"
-                     }, {
-                         "name": "eval_type",
-                         "label": "Eval Type"
                      }],
                      metrics=QualList.all())],
                 [QueryIndexes],
