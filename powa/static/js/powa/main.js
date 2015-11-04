@@ -4,6 +4,7 @@ require(['jquery',
         'underscore',
         'backbone',
         'powa/views/DashboardView',
+        'powa/models/Dashboard',
         'powa/models/Graph',
         'powa/models/Grid',
         'powa/models/Content',
@@ -14,12 +15,14 @@ require(['jquery',
         'powa/utils/timeurls',
         'highlight',
         'modernizr',
+        'foundation/foundation.tab',
         'foundation/foundation.tooltip',
         'foundation/foundation.dropdown',
         'foundation/foundation.offcanvas',
         'foundation/foundation.topbar',
         'foundation/foundation.alert'],
         function($, Foundation, _, BackBone, DashboardView,
+            Dashboard,
             Graph,
             Grid,
             Content,
@@ -70,31 +73,12 @@ require(['jquery',
 
         $('.dashboard').each(function(){
             var widgets = new Backbone.Collection();
+            var self = this;
             $(this).find('script[type="text/dashboard"]').each(function(){
-                try{
-                var raw_widgets = JSON.parse($(this).text());
-                $.each(raw_widgets, function(y){
-                    $.each(this, function(x){
-                        this.x = x;
-                        this.y = y;
-                        if(this.type == "graph"){
-                            widgets.add(Graph.fromJSON(this));
-                        } else if (this.type == "grid") {
-                            widgets.add(Grid.fromJSON(this));
-                        } else if (this.type == "content") {
-                            widgets.add(Content.fromJSON(this));
-                        } else if (this.type == "wizard") {
-                            widgets.add(Wizard.fromJSON(this));
-                        }
-                    });
-                });
-                } catch(e){
-                    console.error("Could not instantiate widgets. Check the dashboard definition");
-                    console.error(e);
-                }
+                var dashboard = Dashboard.fromJSON(JSON.parse(this.text));
+                var dashboardview = new DashboardView({el: self, dashboard: dashboard, data_sources:ds, picker: picker});
+                dashboards.push(dashboard);
             });
-            var dashboard = new DashboardView({el: this, widgets: widgets, data_sources:ds, picker: picker});
-            dashboards.push(dashboard);
         });
     });
     return {};

@@ -12,7 +12,7 @@ from sqlalchemy.sql.functions import sum
 from sqlalchemy.types import Numeric
 
 from powa.dashboards import (
-    Dashboard, Graph, Grid,
+    Dashboard, TabbedDashboard, Graph, Grid,
     MetricGroupDef, MetricDef,
     DashboardPage, ContentWidget)
 from powa.database import DatabaseOverview
@@ -340,15 +340,16 @@ class QueryOverview(DashboardPage):
                                 renderer="bar",
                                 stack=True,
                                 color_scheme=['#73c03a','#65b9ac','#cb513a'])
-        self._dashboard = Dashboard(
-            "Query %(query)s on database %(database)s",
-            [[QueryDetail],
-             [Graph("General",
+        tabs = []
+        dashes = []
+        dashes.append(Dashboard("Query detail",
+            [[QueryDetail], [Graph("General",
                     metrics=[QueryOverviewMetricGroup.avg_runtime,
                              QueryOverviewMetricGroup.rows,
-                             QueryOverviewMetricGroup.calls]),
-              hit_ratio_graph],
-             [Graph("Shared block (in Bps)",
+                             QueryOverviewMetricGroup.calls ])]]))
+        dashes.append(Dashboard(
+            "PG Cache",
+            [[Graph("Shared block (in Bps)",
                     metrics=[QueryOverviewMetricGroup.shared_blks_read,
                              QueryOverviewMetricGroup.shared_blks_hit,
                              QueryOverviewMetricGroup.shared_blks_dirtied,
@@ -360,12 +361,15 @@ class QueryOverview(DashboardPage):
                              QueryOverviewMetricGroup.local_blks_written]),
               Graph("Temp block (in Bps)",
                     metrics=[QueryOverviewMetricGroup.temp_blks_read,
-                             QueryOverviewMetricGroup.temp_blks_written])],
-             [Graph("Read / Write time",
+                             QueryOverviewMetricGroup.temp_blks_written])]]))
+        iodash = Dashboard("IO",
+            [[hit_ratio_graph,
+              Graph("Read / Write time",
                     metrics=[QueryOverviewMetricGroup.blk_read_time,
                              QueryOverviewMetricGroup.blk_write_time])]])
+        dashes.append(iodash)
         if self.has_extension("pg_stat_kcache"):
-            self._dashboard.widgets.extend([[
+            iodash.widgets.extend([[
                 Graph("Physical block (in Bps)",
                       metrics=[QueryOverviewMetricGroup.reads,
                                QueryOverviewMetricGroup.writes]),
@@ -383,7 +387,8 @@ class QueryOverview(DashboardPage):
                 QueryOverviewMetricGroup.miss_ratio)
 
         if self.has_extension("pg_qualstats"):
-            self._dashboard.widgets.extend([[
+            dashes.append(Dashboard("Predicates",
+                [[
                 Grid("Predicates used by this query",
                      columns=[{
                          "name": "where_clause",
@@ -394,5 +399,7 @@ class QueryOverview(DashboardPage):
                      }],
                      metrics=QualList.all())],
                 [QueryIndexes],
-                [QueryExplains]])
+                [QueryExplains]]))
+        self._dashboard = TabbedDashboard("Query %(query)s on database %(database)s",
+                                          dashes)
         return self._dashboard

@@ -35,11 +35,7 @@ class DashboardHandler(AuthHandler):
         params = OrderedDict(zip(self.params,
                                  args))
         param_rows = []
-        for row in self.dashboard.widgets:
-            param_row = []
-            for widget in row:
-                param_row.append(widget.parameterized_json(self, **params))
-            param_rows.append(param_row)
+        param_dashboard = self.dashboard.parameterized_json(self, **params)
         param_datasource = []
         for datasource in self.datasources:
             value = datasource.parameterized_json(self, **params)
@@ -47,7 +43,7 @@ class DashboardHandler(AuthHandler):
                                                  *args)
             param_datasource.append(value)
         return self.render(self.template,
-                           widgets=param_rows,
+                           dashboard=param_dashboard,
                            datasources=param_datasource,
                            title=self.dashboard.title % params)
 
@@ -236,7 +232,50 @@ class Dashboard(JSONizable):
     def to_json(self):
         self._validate_layout()
         return {'title': self.title,
-                'widgets': self.widgets}
+                'tabs': [{
+                    'title': '',
+                    'widgets': self.widgets}]}
+
+    def param_widgets(self, _, **params):
+        param_rows = []
+        for row in self.widgets:
+            param_row = []
+            for widget in row:
+                param_row.append(widget.parameterized_json(_, **params))
+            param_rows.append(param_row)
+        return param_rows
+
+    def parameterized_json(self, _, **params):
+        return {'title': self.title % params,
+                'tabs': [{
+                    'title': '',
+                    'widgets': self.param_widgets(_, **params)
+                }]}
+
+
+class TabbedDashboard(JSONizable):
+
+    def __init__(self, title, dashboards=None):
+        self.title = title
+        self.dashboards = dashboards or []
+
+    def to_json(self):
+        tabs = []
+        for dashboard in self.dashboards:
+            tabs.append({'title': dashboard.title,
+                         'widgets': dashboard.widgets})
+        return {'title': self.title,
+                'tabs': tabs}
+
+    def parameterized_json(self, _, **params):
+        tabs = []
+        for dashboard in self.dashboards:
+            tabs.append({'title': dashboard.title % params,
+                         'widgets': dashboard.param_widgets(_, **params)})
+        return {'title': self.title,
+                'tabs': tabs}
+
+
 
 
 class Widget(JSONizable):

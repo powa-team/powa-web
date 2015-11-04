@@ -37,6 +37,9 @@ require.config({
         "jquery"
       ]
     },
+    "foundation/foundation.tab": [
+      "foundation/foundation"
+    ],
     "foundation/foundation.topbar": [
       "foundation/foundation"
     ],
