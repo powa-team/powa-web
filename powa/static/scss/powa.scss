@@ -160,6 +160,11 @@ footer {
     padding: 0;
 }
 
+#daterangepicker input {
+  display: inline-block;
+  width: auto;
+}
+
 .graph_visualisation {
     display: none
 }
