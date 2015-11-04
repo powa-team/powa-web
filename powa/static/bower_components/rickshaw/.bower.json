@@ -9,6 +9,6 @@
     "commit": "7f80d3f28904167617d35f092a374da216a8e197"
   },
   "_source": "git://github.com/shutterstock/rickshaw.git",
-  "_target": "~1.5.1",
+  "_target": "*",
   "_originalSource": "rickshaw"
 }

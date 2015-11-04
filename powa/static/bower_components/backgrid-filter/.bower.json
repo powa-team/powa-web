@@ -36,7 +36,6 @@
     "commit": "402f6620c5d2459f520c5dc7743f6c3193b3c21c"
   },
   "_source": "git://github.com/wyuenho/backgrid-filter.git",
-  "_target": "~0.3.5",
-  "_originalSource": "backgrid-filter",
-  "_direct": true
+  "_target": "*",
+  "_originalSource": "backgrid-filter"
 }
