@@ -11,7 +11,7 @@ from sqlalchemy.sql.functions import sum
 from sqlalchemy.types import Numeric
 
 from powa.dashboards import (
-    Dashboard, TabbedDashboard, Graph, Grid,
+    Dashboard, TabContainer, Tab, Graph, Grid,
     MetricGroupDef, MetricDef,
     DashboardPage, ContentWidget)
 from powa.database import DatabaseOverview
@@ -394,6 +394,6 @@ class QueryOverview(DashboardPage):
                      metrics=QualList.all())],
                 [QueryIndexes],
                 [QueryExplains]]))
-        self._dashboard = TabbedDashboard("Query %(query)s on database %(database)s",
+        self._dashboard = TabContainer("Query %(query)s on database %(database)s",
                                           dashes)
         return self._dashboard

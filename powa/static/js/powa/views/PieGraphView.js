@@ -1,7 +1,7 @@
 define(["powa/views/GraphView", "rickshaw", "powa/rickshaw/Rickshaw.Graph.Renderer.Pie"],
 function(GraphView, Rickshaw){
     return GraphView.extend({
-
+        rendername: "pie",
         initGraph: function(series){
             this.graph = new Rickshaw.Graph($.extend({}, this.model.attributes, {
                         element: this.graph_elem,

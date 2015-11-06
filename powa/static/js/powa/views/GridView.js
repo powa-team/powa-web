@@ -142,6 +142,7 @@ define([
             template: template,
             tag: "div",
             model: Grid,
+            typname: "grid",
 
             initialize: function(){
                 var self = this;
@@ -198,6 +199,6 @@ define([
                 this.$el.find(".grid_paginator").append(this.paginator.render().el);
                 return this;
             }
-        });
+        }, {});
 
 });

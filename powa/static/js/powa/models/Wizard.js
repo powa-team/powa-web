@@ -1,5 +1,6 @@
 define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
-        'powa/views/GridView', 'highlight'], function(Backbone, DataSourceCollection, $, GridView, highlight){
+        'powa/views/GridView', 'highlight', 'powa/models/Widget'],
+        function(Backbone, DataSourceCollection, $, GridView, highlight, Widget){
 
     var QualCollection = Backbone.Collection.extend({
         comparator: function (qual1, qual2){
@@ -195,7 +196,8 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
         }
     }
 
-    return Backbone.Model.extend({
+    return Widget.extend({
+        typname: "wizard",
         initialize: function(){
             this.set("stage", "Starting wizard...");
             this.set("progress", 0);

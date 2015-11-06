@@ -7,6 +7,7 @@ define([
 function(WidgetView, Content, highlight, moment, duration){
     return WidgetView.extend({
         model: Content,
+        typname: "content",
 
         initialize: function(args){
             this.model = args.model;

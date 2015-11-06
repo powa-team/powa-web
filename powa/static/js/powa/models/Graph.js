@@ -1,7 +1,8 @@
-define(['backbone', 'powa/models/DataSourceCollection', 'powa/models/MetricCollection'],
-        function(Backbone, DataSourceCollection, MetricCollection){
-    return Backbone.Model.extend({
-
+define(['backbone', 'powa/models/DataSourceCollection', 'powa/models/MetricCollection',
+        'powa/models/Widget'],
+        function(Backbone, DataSourceCollection, MetricCollection, Widget){
+    return Widget.extend({
+        typname: "graph",
         initialize: function(){
             var self = this;
             this.hasloading = 0;

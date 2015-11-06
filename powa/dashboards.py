@@ -231,9 +231,8 @@ class Dashboard(JSONizable):
     def to_json(self):
         self._validate_layout()
         return {'title': self.title,
-                'tabs': [{
-                    'title': '',
-                    'widgets': self.widgets}]}
+                'type': 'dashboard',
+                'widgets': self.widgets}
 
     def param_widgets(self, _, **params):
         param_rows = []
@@ -246,35 +245,43 @@ class Dashboard(JSONizable):
 
     def parameterized_json(self, _, **params):
         return {'title': self.title % params,
-                'tabs': [{
-                    'title': '',
-                    'widgets': self.param_widgets(_, **params)
-                }]}
+                'type': 'dashboard',
+                'widgets': self.param_widgets(_, **params)}
 
+class Panel(JSONizable):
 
-class TabbedDashboard(JSONizable):
-
-    def __init__(self, title, dashboards=None):
+    def __init__(self, title, widget):
         self.title = title
-        self.dashboards = dashboards or []
+        self.widget = widget
+
+    def to_json(self):
+        return {"title": self.title,
+                "widget": self.widget}
+
+    def parameterized_json(self, _, **args):
+        return {"title": self.title % args,
+                "type": "panel",
+                "widget": self.widget.parameterized_json(_, **args)}
+
+
+class TabContainer(JSONizable):
+
+    def __init__(self, title, tabs=None):
+        self.title = title
+        self.tabs = tabs or []
 
     def to_json(self):
         tabs = []
-        for dashboard in self.dashboards:
-            tabs.append({'title': dashboard.title,
-                         'widgets': dashboard.widgets})
         return {'title': self.title,
-                'tabs': tabs}
+                'tabs': self.tabs}
 
     def parameterized_json(self, _, **params):
         tabs = []
-        for dashboard in self.dashboards:
-            tabs.append({'title': dashboard.title % params,
-                         'widgets': dashboard.param_widgets(_, **params)})
-        return {'title': self.title,
+        for tab in self.tabs
+            tabs.append(tab.parameterized_json(_, **params))
+        return {'title': self.title % params,
+                'type': 'tabcontainer',
                 'tabs': tabs}
-
-
 
 
 class Widget(JSONizable):

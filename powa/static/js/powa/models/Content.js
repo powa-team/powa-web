@@ -1,5 +1,9 @@
-define(['backbone', 'powa/models/DataSourceCollection'], function(Backbone, DataSourceCollection){
-    return Backbone.Model.extend({
+define(['backbone',
+        'powa/models/Widget',
+        'powa/models/DataSourceCollection'],
+function(Backbone, Widget, DataSourceCollection){
+    return Widget.extend({
+        typname: "content",
         initialize: function(){
             this.listenTo(this.get("contentsource"), "contentsource:dataload", this.update);
             this.listenTo(this.get("contentsource"), "contentsource:dataload-failed", function(message){
@@ -9,6 +13,7 @@ define(['backbone', 'powa/models/DataSourceCollection'], function(Backbone, Data
         update: function(content){
             this.trigger("widget:needrefresh", content);
         }
+
     }, {
         fromJSON: function(jsonobj){
             var group = DataSourceCollection.get_instance();

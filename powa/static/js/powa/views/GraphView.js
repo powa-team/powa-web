@@ -10,11 +10,16 @@ define([
         'powa/rickshaw/Rickshaw.Graph.DragZoom'
 ],
         function(Backbone, d3, Rickshaw, WidgetView, Graph, template, duration, size, DragZoom){
+    var registry = {};
+    var makeInstance = function(options){
+        return new registry[options.model.get("renderer") || "line"](options);
+    };
 
     var GraphView = WidgetView.extend({
             template: template,
             tag: "div",
             model: Graph,
+            typname: "graph",
             axisFormats: {
                 "number": Rickshaw.Fixtures.Number.formatKMBT,
                 "size": new size.SizeFormatter().fromRaw,
@@ -190,6 +195,17 @@ define([
             render: function(){
                 return this;
             },
+        }, {
+            extend: function(instanceattrs, clsattrs){
+                var newcls = WidgetView.extend.apply(this, [instanceattrs, clsattrs]);
+                registry[newcls.prototype.rendername] = newcls;
+                if(!newcls.makeInstance){
+                    newcls.makeInstance = makeInstance;
+                }
+                return newcls;
+            },
+            makeInstance: makeInstance
+
         });
     return GraphView;
 

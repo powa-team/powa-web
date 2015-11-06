@@ -1,7 +1,7 @@
 define(["rickshaw", "d3", "powa/views/TimeView"],
         function(rickshaw, d3, TimeView){
     return TimeView.extend({
-
+        rendername: "line",
         initGraph: function(series){
             this.graph = new Rickshaw.Graph($.extend(this.getSize(), this.model.attributes, {
                         element: this.graph_elem,
@@ -35,5 +35,5 @@ define(["rickshaw", "d3", "powa/views/TimeView"],
 
         },
 
-    });
+    }, {});
 });

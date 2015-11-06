@@ -2,6 +2,10 @@ define([
         'backbone',
         'spin'
     ], function(backbone, Spinner){
+    var registry = {};
+    var makeInstance = function(options){
+        return new this(options);
+    };
 
     return Backbone.View.extend({
 
@@ -40,6 +44,18 @@ define([
         }
 
 
+    }, {
+        extend: function(instanceattrs, clsattrs){
+            var newcls = Backbone.View.extend.apply(this, [instanceattrs, clsattrs]);
+            registry[newcls.prototype.typname] = newcls;
+            if(!newcls.makeInstance){
+                newcls.makeInstance = makeInstance;
+            }
+            return newcls;
+        },
+        makeView: function(model){
+            return registry[model.get("type")].makeInstance({model: model});
+        }
     });
 });
 

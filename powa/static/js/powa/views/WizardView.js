@@ -15,6 +15,7 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
     return WidgetView.extend({
         model: Wizard,
         template: template,
+        typname: "wizard",
 
         events: {
             "click .launcher": "launchOptimization"

@@ -1,9 +1,9 @@
 define(['backbone',  'powa/models/DataSourceCollection', 'powa/models/MetricCollection',
-        'backbone-pageable'
+        'backbone-pageable', 'powa/models/Widget',
 ],
-        function(Backbone, DataSourceCollection, MetricCollection){
-    return Backbone.Model.extend({
-
+        function(Backbone, DataSourceCollection, MetricCollection, _, Widget){
+    return Widget.extend({
+        typname: "grid",
         initialize: function(){
             var self = this;
             this.set("collection", new (Backbone.PageableCollection.extend({

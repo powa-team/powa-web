@@ -4,16 +4,23 @@ require(['jquery',
         'underscore',
         'backbone',
         'powa/views/DashboardView',
+        'powa/models/Widget',
         'powa/models/Dashboard',
-        'powa/models/Graph',
-        'powa/models/Grid',
-        'powa/models/Content',
-        'powa/models/Wizard',
         'powa/models/DataSourceCollection',
         'powa/models/MetricGroup',
         'powa/models/ContentSource',
         'powa/utils/timeurls',
         'highlight',
+        'powa/views/LineGraphView',
+        'powa/views/BarGraphView',
+        'powa/views/PieGraphView',
+        'powa/views/GridView',
+        'powa/views/ContentView',
+        'powa/views/WizardView',
+        'powa/models/Graph',
+        'powa/models/Grid',
+        'powa/models/Content',
+        'powa/models/Wizard',
         'modernizr',
         'foundation/foundation.tab',
         'foundation/foundation.tooltip',
@@ -22,11 +29,8 @@ require(['jquery',
         'foundation/foundation.topbar',
         'foundation/foundation.alert'],
         function($, Foundation, _, BackBone, DashboardView,
+            Widget,
             Dashboard,
-            Graph,
-            Grid,
-            Content,
-            Wizard,
             DataSourceCollection,
             MetricGroup,
             ContentSource,
@@ -75,8 +79,8 @@ require(['jquery',
             var widgets = new Backbone.Collection();
             var self = this;
             $(this).find('script[type="text/dashboard"]').each(function(){
-                var dashboard = Dashboard.fromJSON(JSON.parse(this.text));
-                var dashboardview = new DashboardView({el: self, dashboard: dashboard, data_sources:ds, picker: picker});
+                var dashboard = Widget.fromJSON(JSON.parse(this.text));
+                var dashboardview = dashboard.makeView({picker: picker, el: self});
                 dashboards.push(dashboard);
             });
         });

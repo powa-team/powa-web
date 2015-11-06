@@ -1,6 +1,6 @@
 define(["powa/views/GraphView","powa/views/GraphPreview"], function(GraphView, GraphPreview){
     return GraphView.extend({
-
+        rendername: "time",
         update: function(newseries){
             GraphView.prototype.update.call(this, newseries);
             if(this.preview){
@@ -48,5 +48,9 @@ define(["powa/views/GraphView","powa/views/GraphPreview"], function(GraphView, G
             });
         },
 
+    }, {
+        extend: function(){
+            return GraphView.extend.apply(this, arguments);
+        }
     });
 });
