@@ -2,10 +2,10 @@
 {% block content %}
 <div>
   <h4><pre class="sql"><code>{{ stats['query'] }}</code></pre></h4>
-<dl>
-  <dt># of execution:</dt><dl> {{ stats['calls'] }}</dl>
-  <dt>Total runtime:</dt><dl><span class="duration">{{ stats['runtime'] }}</span></dl>
-  <dt>Hit ratio:</dt><dl>{{ (str(round(stats['shared_blks_hit'] * 100 / stats['total_blks'], 2)) + "%") if stats['total_blks'] > 0 else 'N/A' }} </dl>
-</dl>
+  <div clas"row">
+    <div class="columns large-4"><b># of execution:</b> {{ stats['calls'] }}</div>
+    <div class="columns large-4"><b>Total runtime:</b> <span class="duration">{{ stats['runtime'] }}</span></div>
+    <div class="columns large-4"><b>Hit ratio:</b> {{ (str(round(stats['shared_blks_hit'] * 100 / stats['total_blks'], 2)) + "%") if stats['total_blks'] > 0 else 'N/A' }} </div>
+  </div>
 </div>
 {% end %}
