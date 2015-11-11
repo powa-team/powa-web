@@ -43,6 +43,7 @@ class PgExtensionsMetricGroup(MetricGroupDef):
                 SELECT 'pg_stat_statements' AS extname
                 UNION SELECT 'pg_qualstats'
                 UNION SELECT 'pg_stat_kcache'
+                UNION SELECT 'pg_track_settings'
            ) s
            LEFT JOIN pg_available_extensions avail on s.extname = avail.name
            LEFT JOIN pg_extension ins on s.extname = ins.extname
