@@ -32,15 +32,22 @@ class PgExtensionsMetricGroup(MetricGroupDef):
     available = MetricDef(label="Extension available", type="bool")
     installed = MetricDef(label="Extension installed", type="bool")
     handled = MetricDef(label="Extension handled", type="bool")
+    extversion = MetricDef(label="Extension version", type="string")
     query = """
            SELECT DISTINCT s.extname,
              CASE WHEN avail.name IS NULL then false ELSE true END AS available,
              CASE WHEN ins.extname IS NULL then false ELSE true END AS installed,
-             CASE WHEN f.module IS NULL then false ELSE true END AS handled
-           FROM (SELECT 'pg_stat_statements' AS extname UNION SELECT 'pg_qualstats' UNION SELECT 'pg_stat_kcache') s
+             CASE WHEN f.module IS NULL then false ELSE true END AS handled,
+             COALESCE(ins.extversion, '-') AS extversion
+           FROM (
+                SELECT 'pg_stat_statements' AS extname
+                UNION SELECT 'pg_qualstats'
+                UNION SELECT 'pg_stat_kcache'
+           ) s
            LEFT JOIN pg_available_extensions avail on s.extname = avail.name
            LEFT JOIN pg_extension ins on s.extname = ins.extname
            LEFT JOIN powa_functions f ON s.extname = f.module
+           ORDER BY 1
             """
 
 
