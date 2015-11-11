@@ -8,6 +8,7 @@ from powa.dashboards import (
     DashboardPage)
 
 from powa.sql.views import (powa_getstatdata_detailed_db,
+                            powa_getstatdata_user_func,
                             powa_getstatdata_sample)
 from powa.wizard import WizardMetricGroup, Wizard
 from powa.overview import Overview
@@ -115,6 +116,50 @@ class ByQueryMetricGroup(MetricGroupDef):
             "QueryOverview", database, val["queryid"])
         return val
 
+class ByUserFuncMetricGroup(MetricGroupDef):
+    """Metric group for indivual user functions stats (displayed on the grid)."""
+    name = "all_user_functions"
+    xaxis = "funcid"
+    axis_type = "category"
+    data_url = r"/metrics/database_user_functions/([^\/]+)/"
+    calls = MetricDef(label="#", type="string")
+    total_time = MetricDef(label="Total Time", type="duration")
+    self_time = MetricDef(label="Self Time", type="duration")
+    avg_total_time = MetricDef(label="Avg total time", type="duration")
+    avg_self_time = MetricDef(label="Avg self time", type="duration")
+
+    @property
+    def query(self):
+        # Working from the statdata detailed_db base query
+        inner_query = powa_getstatdata_user_func()
+        inner_query = inner_query.alias()
+        c = inner_query.c
+        # Multiply each measure by the size of one block.
+        columns = [c.funcid,
+                   sum(c.calls).label("calls"),
+                   sum(c.total_time).label("total_time"),
+                   sum(c.self_time).label("self_time"),
+                   (sum(c.total_time) / greatest(sum(c.calls), 1)).label("avg_total_time"),
+                   (sum(c.self_time) / greatest(sum(c.calls), 1)).label("avg_self_time")]
+
+        toto = (select(columns)
+                .select_from(inner_query)
+                .where(c.datname == bindparam("database"))
+                .group_by(c.funcid)
+                .order_by(sum(c.calls).desc()))
+        return (select(columns)
+                .select_from(inner_query)
+                .where(c.datname == bindparam("database"))
+                .group_by(c.funcid)
+                .order_by(sum(c.calls).desc()))
+
+
+    def process(self, val, database=None, **kwargs):
+        val = dict(val)
+        val["url"] = self.reverse_url(
+            "QueryOverview", database, val["funcid"])
+        return val
+
 class WizardThisDatabase(ContentWidget):
 
     title = 'Apply wizardry to this database'
@@ -131,7 +176,7 @@ class DatabaseOverview(DashboardPage):
     """DatabaseOverview Dashboard."""
     base_url = r"/database/([^\/]+)/overview"
     datasources = [DatabaseOverviewMetricGroup, ByQueryMetricGroup,
-                   WizardMetricGroup]
+                   ByUserFuncMetricGroup, WizardMetricGroup]
     params = ["database"]
     parent = Overview
 
@@ -182,6 +227,17 @@ class DatabaseOverview(DashboardPage):
                        "max_length": 70
                    }],
                    metrics=ByQueryMetricGroup.all())]])
+
+        if (self.has_extension('powa') >= '3.0.0'):
+            self._dashboard.widgets.extend(
+                [[Grid("Details for all functions",
+                   columns=[{
+                       "name": "funcid",
+                       "label": "Func id",
+                       "url_attr": "url",
+                       "max_length": 70
+                   }],
+                   metrics=ByUserFuncMetricGroup.all())]])
 
         self._dashboard.widgets.extend([[Wizard("Index suggestions")]])
         return self._dashboard

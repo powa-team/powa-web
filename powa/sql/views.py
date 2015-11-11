@@ -49,6 +49,28 @@ def powa_base_statdata_detailed_db():
     """)
     return base_query
 
+def powa_base_statdata_user_func():
+    base_query = text("""
+    pg_database,
+    LATERAL
+    (
+        SELECT unnested.dbid, unnested.funcid, (unnested.records).*
+        FROM (
+            SELECT pufh.dbid, pufh.funcid, pufh.coalesce_range, unnest(records) AS records
+            FROM powa_user_functions_history pufh
+            WHERE coalesce_range && tstzrange(:from, :to, '[]')
+            AND pufh.dbid = pg_database.oid
+        ) AS unnested
+        WHERE tstzrange(:from, :to, '[]') @> (records).ts
+        UNION ALL
+        SELECT pufhc.dbid, pufhc.funcid,(pufhc.record).*
+        FROM powa_user_functions_history_current pufhc
+        WHERE tstzrange(:from,:to,'[]') @> (record).ts
+        AND pufhc.dbid = pg_database.oid
+    ) h
+    """)
+    return base_query
+
 def powa_base_statdata_db():
     base_query = text("""
     (
@@ -113,6 +135,19 @@ def powa_getstatdata_detailed_db():
 ] + diffs)
         .select_from(base_query)
         .group_by(column("queryid"), column("dbid"), column("userid"), column("datname"))
+        .having(max(column("calls")) - min(column("calls")) > 0))
+
+def powa_getstatdata_user_func():
+    base_query = powa_base_statdata_user_func()
+    return (select([
+        column("funcid"),
+        column("dbid"),
+        column("datname"),
+        diff("calls"),
+        diff("total_time"),
+        diff("self_time")])
+        .select_from(base_query)
+        .group_by(column("funcid"), column("dbid"), column("datname"))
         .having(max(column("calls")) - min(column("calls")) > 0))
 
 def powa_getstatdata_db():
