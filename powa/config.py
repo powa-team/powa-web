@@ -31,7 +31,7 @@ class PgExtensionsMetricGroup(MetricGroupDef):
     axis_type = "category"
     available = MetricDef(label="Extension available", type="bool")
     installed = MetricDef(label="Extension installed", type="bool")
-    handled = MetricDef(label="Extension handled", type="bool")
+    handled = MetricDef(label="Extension sampled", type="bool")
     extversion = MetricDef(label="Extension version", type="string")
     query = """
            SELECT DISTINCT s.extname,
@@ -44,6 +44,8 @@ class PgExtensionsMetricGroup(MetricGroupDef):
                 UNION SELECT 'pg_qualstats'
                 UNION SELECT 'pg_stat_kcache'
                 UNION SELECT 'pg_track_settings'
+                UNION SELECT 'hypopg'
+                UNION SELECT 'powa'
            ) s
            LEFT JOIN pg_available_extensions avail on s.extname = avail.name
            LEFT JOIN pg_extension ins on s.extname = ins.extname
