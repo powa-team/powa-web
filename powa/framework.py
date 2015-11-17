@@ -4,7 +4,6 @@ Utilities for the basis of Powa
 from tornado.web import RequestHandler, authenticated, HTTPError
 from powa import ui_methods
 from powa.json import to_json
-from powa.sql import Plan, format_jumbled_query
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine.url import URL
 from tornado.options import options
@@ -43,7 +42,7 @@ class BaseHandler(RequestHandler):
             try:
                 self.connect()
                 return raw or 'anonymous'
-            except Exception as _:
+            except:
                 return None
 
     @property

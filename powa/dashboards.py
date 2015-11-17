@@ -7,7 +7,7 @@ This module provides several classes to define a Dashboard.
 from powa.json import JSONizable
 from powa.framework import AuthHandler
 from powa.ui_modules import MenuEntry, GlobalMenu
-from powa.compat import with_metaclass, classproperty, hybridmethod
+from powa.compat import with_metaclass, classproperty
 from tornado.web import URLSpec
 from operator import attrgetter
 try:
@@ -34,7 +34,6 @@ class DashboardHandler(AuthHandler):
             self.path_args = args
         params = OrderedDict(zip(self.params,
                                  args))
-        param_rows = []
         param_dashboard = self.dashboard.parameterized_json(self, **params)
         param_datasource = []
         for datasource in self.datasources:
@@ -331,7 +330,7 @@ class ContentWidget(Widget, DataSource, AuthHandler):
         }
 
     @classmethod
-    def parameterized_json(cls,  _, **params):
+    def parameterized_json(cls, _, **params):
         return cls.to_json()
 
 
@@ -488,7 +487,7 @@ class MetricGroupDef(with_metaclass(MetaMetricGroup, DataSource)):
     @classmethod
     def to_json(cls):
         values = dict(((key, val) for key, val in cls.__dict__.items()
-                if not key.startswith("_") and not isfunction(val)))
+                       if not key.startswith("_") and not isfunction(val)))
         values['type'] = 'metric_group'
         values.setdefault("xaxis", "ts")
         values['metrics'] = list(cls.metrics.values())
@@ -550,7 +549,7 @@ class DashboardPage(object):
         url_specs = []
         url_specs.append(URLSpec(
             r"%s/" % cls.base_url.rstrip("/"),
-            type(cls.__name__, (cls.dashboard_handler_cls, cls), {}),{
+            type(cls.__name__, (cls.dashboard_handler_cls, cls), {}), {
                 "template": cls.template,
                 "params": cls.params},
             name=cls.__name__))
@@ -561,7 +560,7 @@ class DashboardPage(object):
             url_specs.append(URLSpec(
                 datasource.data_url,
                 type(datasource.__name__, (datasource, datasource.datasource_handler_cls),
-                    dict(datasource.__dict__)),
+                     dict(datasource.__dict__)),
                 {"datasource": datasource, "params": cls.params}, name=datasource.url_name))
         return url_specs
 

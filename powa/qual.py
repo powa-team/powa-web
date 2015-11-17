@@ -1,16 +1,12 @@
 from powa.dashboards import (
-    Dashboard, Graph, Grid,
+    Dashboard, Graph,
     MetricGroupDef, MetricDef,
-    DashboardPage,
-    ContentWidget)
-from sqlalchemy.sql import (
-    text, bindparam, table, select,
-    literal_column, column, cast, case)
-from sqlalchemy.types import Numeric
-from powa.sql import qual_constants, resolve_quals, func
+    DashboardPage, ContentWidget)
+from sqlalchemy.sql import text, bindparam
+from powa.sql import qual_constants, resolve_quals
 from powa.sql.utils import inner_cc
 from powa.query import QueryOverview
-from powa.sql.views import qualstat_getstatdata, qualstat_getstatdata
+from powa.sql.views import qualstat_getstatdata
 
 
 class QualConstantsMetricGroup(MetricGroupDef):

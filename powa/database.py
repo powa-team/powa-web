@@ -11,11 +11,10 @@ from powa.sql.views import (powa_getstatdata_detailed_db,
                             powa_getstatdata_sample)
 from powa.wizard import WizardMetricGroup, Wizard
 from powa.overview import Overview
-from sqlalchemy.sql import ColumnCollection, bindparam, column, select
+from sqlalchemy.sql import bindparam, column, select
 from sqlalchemy.sql.functions import sum
 from powa.sql.utils import (greatest, block_size, mulblock,
-                            total_read, total_hit,
-                            total_measure_interval, to_epoch)
+                            total_read, total_hit, to_epoch)
 from powa.sql.tables import powa_statements
 
 
@@ -141,9 +140,6 @@ class DatabaseOverview(DashboardPage):
         # call it
         if getattr(self, '_dashboard', None) is not None:
             return self._dashboard
-
-        has_qualstats = self.has_extension('pg_qualstats')
-        has_hypopg = self.has_extension('hypopg', database = self.database)
 
         self._dashboard = Dashboard("Database overview for %(database)s")
 

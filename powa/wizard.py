@@ -1,15 +1,13 @@
 from __future__ import absolute_import
 from powa.framework import AuthHandler
 from powa.dashboards import (
-    Dashboard, DashboardPage, ContentWidget,
     Widget, MetricGroupDef)
 
-from powa.sql import (resolve_quals, possible_indexes, get_any_sample_query,
+from powa.sql import (resolve_quals, get_any_sample_query,
                       get_hypoplans, HypoIndex)
 import json
 from powa.sql.compat import JSONB
 from powa.sql.views import qualstat_getstatdata
-from powa.sql.utils import inner_cc
 from powa.sql.tables import pg_database
 from sqlalchemy.sql import (bindparam, literal_column, join, select,
                             alias, text, func, column, cast)
@@ -38,7 +36,6 @@ class IndexSuggestionHandler(AuthHandler):
             WHERE queryid IN :queryids
         """), queryids=tuple(queryids)))
         # Create all possible indexes for this qual
-        not_tested = []
         hypo_version = self.has_extension("hypopg", database=database)
         hypoplans = {}
         indbyname = {}

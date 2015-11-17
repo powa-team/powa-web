@@ -2,7 +2,6 @@
 Dashboard for the by-query page.
 """
 
-import re
 from tornado.web import HTTPError
 from sqlalchemy.sql import (
     bindparam, text, column, select,
@@ -17,11 +16,8 @@ from powa.dashboards import (
     DashboardPage, ContentWidget)
 from powa.database import DatabaseOverview
 
-from powa.sql import (Plan, format_jumbled_query, quote_ident,
-                      resolve_quals, qual_constants,
-                      qualstat_get_figures,
-                      get_hypoplans,
-                      get_any_sample_query,
+from powa.sql import (Plan, format_jumbled_query, resolve_quals,
+                      qualstat_get_figures, get_hypoplans, get_any_sample_query,
                       possible_indexes)
 from powa.sql.views import (powa_getstatdata_sample,
                             kcache_getstatdata_sample,
@@ -188,7 +184,6 @@ class QueryIndexes(ContentWidget):
         if hypo_version and hypo_version >= "0.0.3":
             # identify indexes
             # create them
-            hypo_index_names = []
             allindexes = [ind for indcollection in indexes.values()
                           for ind in indcollection]
             for ind in allindexes:
@@ -340,7 +335,6 @@ class QueryOverview(DashboardPage):
                                 renderer="bar",
                                 stack=True,
                                 color_scheme=['#73c03a','#65b9ac','#cb513a'])
-        tabs = []
         dashes = []
         dashes.append(Dashboard("Query detail",
             [[QueryDetail], [Graph("General",

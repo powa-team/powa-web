@@ -66,5 +66,5 @@ def make_app(**kwargs):
         login_url="/login/",
         static_path=os.path.join(POWA_ROOT, "static"),
         cookie_secret=options.cookie_secret,
-        template_path=os.path.join(POWA_ROOT,  "templates"),
+        template_path=os.path.join(POWA_ROOT, "templates"),
         **kwargs)
