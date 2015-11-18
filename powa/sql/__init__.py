@@ -2,14 +2,11 @@
 Utilities for commonly used SQL constructs.
 """
 import re
-from sqlalchemy.sql import (text, select, func, case, column, extract,
-                            cast, bindparam, and_, literal_column)
-from sqlalchemy.sql.operators import op
-from sqlalchemy.types import Numeric
+from sqlalchemy.sql import (text, select, func, column,
+                            and_, literal_column)
 from sqlalchemy.dialects.postgresql import array, dialect as pgdialect
 from collections import namedtuple, defaultdict
 from powa.json import JSONizable
-from operator import attrgetter
 import sys
 
 TOTAL_MEASURE_INTERVAL = """
@@ -173,7 +170,7 @@ class ComposedQual(JSONizable):
     def append(self, element):
         if not isinstance(element, ResolvedQual):
             raise ValueError(("ComposedQual elements must be instances of ",
-                             "ResolvedQual"))
+                              "ResolvedQual"))
         self._quals.append(element)
 
     def __iter__(self):
@@ -321,7 +318,7 @@ def qual_constants(type, filter_clause, top=1):
     LIMIT :top_value
     ) %s
     """ % (type, str(filter_clause), orders[type], type)
-                )
+               )
     base = base.params(top_value=top, **filter_clause.params)
     return select(["*"]).select_from(base)
 
@@ -336,12 +333,12 @@ def get_plans(self, query, database, qual):
         plan = "N/A"
         try:
             result = self.execute("EXPLAIN %s" % query,
-                                    database=database)
+                                  database=database)
             plan = "\n".join(v[0] for v in result)
         except:
             pass
         plans.append(Plan(key, vals['constants'], query,
-                            plan, vals["filter_ratio"], vals['execution_count'],
+                          plan, vals["filter_ratio"], vals['execution_count'],
                           vals['occurences']))
     return plans
 
@@ -411,13 +408,14 @@ def qualstat_get_figures(conn, database, tsfrom, tsto, queries=None, quals=None)
     if quals is not None:
         condition = and_(condition, array([int(q) for q in quals])
                          .any(literal_column("qnc.qualid")))
+
     sql = (select([
-                  text('most_filtering.quals'),
-                  text('most_filtering.query'),
-                  text('to_json(most_filtering) as "most filtering"'),
-                  text('to_json(least_filtering) as "least filtering"'),
-                  text('to_json(most_executed) as "most executed"'),
-                  text('to_json(most_used) as "most used"')])
+        text('most_filtering.quals'),
+        text('most_filtering.query'),
+        text('to_json(most_filtering) as "most filtering"'),
+        text('to_json(least_filtering) as "least filtering"'),
+        text('to_json(most_executed) as "most executed"'),
+        text('to_json(most_used) as "most used"')])
            .select_from(
                qual_constants("most_filtering", condition)
                .alias("most_filtering")
@@ -492,9 +490,9 @@ class HypoIndex(JSONizable):
             super(HypoIndex, self).__setattr__(
                 '_ddl',
                 """CREATE INDEX ON %s.%s(%s)""" % (
-                quote_ident(self.nspname),
-                quote_ident(self.relname),
-                ",".join(attrs)))
+                    quote_ident(self.nspname),
+                    quote_ident(self.relname),
+                    ",".join(attrs)))
 
 
     def __setattr(self, name, value):

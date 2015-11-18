@@ -1,10 +1,8 @@
 from sqlalchemy import select, cast, func
 from sqlalchemy.types import Numeric
-from sqlalchemy.sql import (extract, column, case, table, column, text,
+from sqlalchemy.sql import (extract, column, case, column,
                             ColumnCollection)
 from sqlalchemy.sql.functions import sum, min, max
-from powa.sql import qual_constants, format_jumbled_query, quote_ident
-import re
 
 block_size = select([cast(func.current_setting('block_size'), Numeric)
                      .label('block_size')]).alias('block_size')
@@ -21,7 +19,7 @@ def total_measure_interval(column):
     return extract(
         "epoch",
         case([(min(column) == '0 second', '1 second')],
-             else_= min(column)))
+             else_=min(column)))
 
 
 def diff(var):
@@ -34,13 +32,13 @@ def to_epoch(column):
 def total_read(c):
     bs = block_size.c.block_size
     return (sum(c.shared_blks_read + c.local_blks_read
-               + c.temp_blks_read) * bs /
+                + c.temp_blks_read) * bs /
             total_measure_interval(c.mesure_interval)).label("total_blks_read")
 
 def total_hit(c):
     bs = block_size.c.block_size
     return ((sum(c.shared_blks_hit + c.local_blks_hit) * bs /
-            total_measure_interval(c.mesure_interval))
+             total_measure_interval(c.mesure_interval))
             .label("total_blks_hit"))
 
 def inner_cc(selectable):

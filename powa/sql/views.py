@@ -1,9 +1,8 @@
-from sqlalchemy.sql import (select, cast, func, column, text, extract, case,
+from sqlalchemy.sql import (select, cast, func, column, text, case,
                             bindparam, literal_column, ColumnCollection, join, alias)
 from sqlalchemy.types import Numeric
 from sqlalchemy.sql.functions import max, min, sum
 from powa.sql.utils import diff
-from powa.sql import resolve_quals
 from powa.sql.compat import JSONB
 from powa.sql.tables import powa_statements
 from collections import defaultdict
@@ -21,7 +20,7 @@ class Biggest(object):
             func.lead(column(var))
             .over(order_by=self.order_by,
                   partition_by=self.base_columns)
-                - column(var),
+            - column(var),
             minval).label(label)
 
 
@@ -110,10 +109,10 @@ def powa_getstatdata_detailed_db():
         column("dbid"),
         column("userid"),
         column("datname"),
-] + diffs)
-        .select_from(base_query)
-        .group_by(column("queryid"), column("dbid"), column("userid"), column("datname"))
-        .having(max(column("calls")) - min(column("calls")) > 0))
+    ] + diffs)
+            .select_from(base_query)
+            .group_by(column("queryid"), column("dbid"), column("userid"), column("datname"))
+            .having(max(column("calls")) - min(column("calls")) > 0))
 
 def powa_getstatdata_db():
     base_query = powa_base_statdata_db()
@@ -254,15 +253,15 @@ def qualstat_getstatdata(condition=None):
         case(
             [(sum(column("execution_count")) == 0, 0)],
             else_=sum(column("nbfiltered")) /
-                cast(sum(column("execution_count")), Numeric) * 100
+            cast(sum(column("execution_count")), Numeric) * 100
         ).label("filter_ratio")])
-        .select_from(
-        join(base_query, powa_statements,
-                powa_statements.c.queryid ==
-                literal_column("pqnh.queryid")))
-        .group_by(column("qualid"), powa_statements.c.queryid,
-                  powa_statements.c.dbid,
-                  powa_statements.c.query, column("quals")))
+            .select_from(
+                join(base_query, powa_statements,
+                     powa_statements.c.queryid ==
+                     literal_column("pqnh.queryid")))
+            .group_by(column("qualid"), powa_statements.c.queryid,
+                      powa_statements.c.dbid,
+                      powa_statements.c.query, column("quals")))
 
 
 TEXTUAL_INDEX_QUERY = """
@@ -338,5 +337,5 @@ def kcache_getstatdata_sample():
         biggest("writes"),
         biggest("user_time"),
         biggest("system_time")])
-        .select_from(base_query)
-        .apply_labels())
+            .select_from(base_query)
+            .apply_labels())
