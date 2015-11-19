@@ -240,7 +240,7 @@ def qualstat_base_statdata():
 def qualstat_getstatdata(condition=None):
     base_query = qualstat_base_statdata()
     if condition:
-        base_query = basequery.where(condition)
+        base_query = base_query.where(condition)
     return (select([
         column("qualid"),
         powa_statements.c.queryid,
