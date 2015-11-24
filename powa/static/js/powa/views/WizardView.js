@@ -96,7 +96,8 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
             if(!this.model.get("has_qualstats")){
                 this.$el.html('<h4>' + this.model.get("title") + '</h4>' +
                         '<span>Impossible to suggest indexes: please ' +
-                        ' enable support for pg_qualstats in powa ' +
+                        ' enable support for pg_qualstats in powa or update ' +
+                        ' pg_qualstats extension to a newer version. ' +
                         ' See <a href="http://powa.readthedocs.org"> ' +
                         ' the documentation for more information</span>');
                 return this;
