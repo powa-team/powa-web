@@ -277,7 +277,7 @@ class TabContainer(JSONizable):
 
     def parameterized_json(self, _, **params):
         tabs = []
-        for tab in self.tabs
+        for tab in self.tabs:
             tabs.append(tab.parameterized_json(_, **params))
         return {'title': self.title % params,
                 'type': 'tabcontainer',

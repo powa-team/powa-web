@@ -11,7 +11,7 @@ from sqlalchemy.sql.functions import sum
 from sqlalchemy.types import Numeric
 
 from powa.dashboards import (
-    Dashboard, TabContainer, Tab, Graph, Grid,
+    Dashboard, TabContainer, Graph, Grid,
     MetricGroupDef, MetricDef,
     DashboardPage, ContentWidget)
 from powa.database import DatabaseOverview
