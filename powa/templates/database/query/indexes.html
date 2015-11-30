@@ -21,7 +21,11 @@
                         <dt>Attribute</dt>
                         <dd>{{ qual.relname }}.{{ qual.attname}}</dd>
                         <dt>Data distribution</dt>
+                        {% if qual.distinct_values is None %}
+                        <dd>Unknown</dd>
+                        {% else %}
                         <dd>approximately <b>{{ qual.distinct_values }}</b> distinct values</dd>
+                        {% end %}
                         <dt>
                       </dl>
                     </li>

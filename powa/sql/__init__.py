@@ -79,7 +79,7 @@ RESOLVE_ATTNAME = text("""
         'relname', relname,
         'attname', attname,
         'nspname', nspname,
-        'n_distinct', stadistinct,
+        'n_distinct', COALESCE(stadistinct, 0),
         'null_frac', stanullfrac,
         'most_common_values', CASE
             WHEN s.stakind1 = 1 THEN s.stavalues1
@@ -105,7 +105,7 @@ class ResolvedQual(JSONizable):
 
     def __init__(self, nspname, relname, attname,
                  opname, amops,
-                 n_distinct=None,
+                 n_distinct=0,
                  most_common_values=None,
                  null_frac=None,
                  example_values=None,
@@ -130,7 +130,9 @@ class ResolvedQual(JSONizable):
 
     @property
     def distinct_values(self):
-        if self.n_distinct > 0:
+        if self.n_distinct == 0:
+            return None
+        elif self.n_distinct > 0:
             return "%s" % self.n_distinct
         else:
             return "%s %%" % (abs(self.n_distinct) * 100)
