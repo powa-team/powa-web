@@ -6884,7 +6884,8 @@ th.hide-for-touch {
     font-weight: normal;
     line-height: normal;
     padding: 0px;
-    text-shadow: none; }
+    text-shadow: none;
+    cursor: pointer; }
   .rickshaw_legend .action {
     margin-right: 0.2em;
     opacity: 0.8;
@@ -8947,5 +8948,11 @@ footer {
 
 .graph_visualisation {
   display: none; }
+
+.breadcrumbs > *.current a {
+  cursor: pointer; }
+
+.breadcrumbs > *.current a:hover {
+  text-decoration: underline; }
 
 /*# sourceMappingURL=powa-all.min.css.map */

@@ -168,3 +168,11 @@ footer {
 .graph_visualisation {
     display: none
 }
+
+.breadcrumbs > *.current a {
+    cursor: pointer;
+}
+
+.breadcrumbs > *.current a:hover {
+    text-decoration: underline;
+}
