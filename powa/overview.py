@@ -75,6 +75,7 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
     name = "all_databases"
     data_url = r"/metrics/databases_globals/"
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
+    load = MetricDef(label="Runtime per sec", type="duration")
     total_blks_hit = MetricDef(label="Total hit", type="sizerate")
     total_blks_read = MetricDef(label="Total read", type="sizerate")
 
@@ -87,10 +88,11 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
         return (select([
                 extract("epoch", c.ts).label("ts"),
                 (sum(c.runtime) / greatest(sum(c.calls), 1)).label("avg_runtime"),
+                (sum(c.runtime) / greatest(extract("epoch", c.mesure_interval),1)).label("load"),
                 total_read(c),
                 total_hit(c)])
             .where(c.calls != None)
-            .group_by(c.ts, bs)
+            .group_by(c.ts, bs, c.mesure_interval)
             .order_by(c.ts)
             .params(samples=100))
 
@@ -105,7 +107,8 @@ class Overview(DashboardPage):
     dashboard = Dashboard(
         "All databases",
         [[Graph("Query runtime per second (all databases)",
-                metrics=[GlobalDatabasesMetricGroup.avg_runtime]),
+                metrics=[GlobalDatabasesMetricGroup.avg_runtime,
+                         GlobalDatabasesMetricGroup.load]),
           Graph("Block access in Bps",
                 metrics=[GlobalDatabasesMetricGroup.total_blks_hit,
                          GlobalDatabasesMetricGroup.total_blks_read],

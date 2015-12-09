@@ -11,7 +11,7 @@ from powa.sql.views import (powa_getstatdata_detailed_db,
                             powa_getstatdata_sample)
 from powa.wizard import WizardMetricGroup, Wizard
 from powa.overview import Overview
-from sqlalchemy.sql import bindparam, column, select
+from sqlalchemy.sql import bindparam, column, select, extract
 from sqlalchemy.sql.functions import sum
 from powa.sql.utils import (greatest, block_size, mulblock,
                             total_read, total_hit, to_epoch)
@@ -33,6 +33,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     xaxis = "ts"
     data_url = r"/metrics/database_overview/([^\/]+)/"
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
+    load = MetricDef(label="Runtime per sec", type="duration")
     total_blks_hit = MetricDef(label="Total hit", type="sizerate")
     total_blks_read = MetricDef(label="Total read", type="sizerate")
 
@@ -48,10 +49,11 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
         return (select([
                 to_epoch(c.ts),
                 (sum(c.runtime) / greatest(sum(c.calls), 1.)).label("avg_runtime"),
+                (sum(c.runtime) / greatest(extract("epoch", c.mesure_interval),1)).label("load"),
                 total_read(c),
                 total_hit(c)])
             .where(c.calls != None)
-            .group_by(c.ts, bs)
+            .group_by(c.ts, bs, c.mesure_interval)
             .order_by(c.ts)
             .params(samples=100))
 
@@ -146,7 +148,8 @@ class DatabaseOverview(DashboardPage):
 
         self._dashboard.widgets.extend(
             [[Graph("Calls (On database %(database)s)",
-                    metrics=[DatabaseOverviewMetricGroup.avg_runtime]),
+                    metrics=[DatabaseOverviewMetricGroup.avg_runtime,
+                             DatabaseOverviewMetricGroup.load]),
               Graph("Blocks (On database %(database)s)",
                     metrics=[DatabaseOverviewMetricGroup.total_blks_read,
                              DatabaseOverviewMetricGroup.total_blks_hit])],
