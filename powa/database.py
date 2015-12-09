@@ -65,7 +65,7 @@ class ByQueryMetricGroup(MetricGroupDef):
     xaxis = "queryid"
     axis_type = "category"
     data_url = r"/metrics/database_all_queries/([^\/]+)/"
-    calls = MetricDef(label="#", type="string")
+    calls = MetricDef(label="#", type="string", direction="descending")
     runtime = MetricDef(label="Time", type="duration")
     avg_runtime = MetricDef(label="Avg time", type="duration")
     blk_read_time = MetricDef(label="Read", type="duration")
