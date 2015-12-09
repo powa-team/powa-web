@@ -74,7 +74,7 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
     """
     name = "all_databases"
     data_url = r"/metrics/databases_globals/"
-    avg_runtime = MetricDef(label="Total runtime", type="duration")
+    avg_runtime = MetricDef(label="Avg runtime", type="duration")
     total_blks_hit = MetricDef(label="Total hit", type="sizerate")
     total_blks_read = MetricDef(label="Total read", type="sizerate")
 
