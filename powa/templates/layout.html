@@ -21,34 +21,34 @@
             <h1><a href="#"><img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA</a></h1>
             </li>
           </ul>
+
+          {% if current_user %}
           <section class="top-bar-section">
             <ul class="left">
-            <li>
-            <a id="menu-toggle" class="menu-icon" href="#" ><span></span></a>
-            </li>
+              <li>
+                <a id="menu-toggle" class="menu-icon" href="#" ><span></span></a>
+              </li>
             </ul>
           </section>
 
           <section class="top-bar-section">
-            {% if current_user %}
-              <ul class="right">
-                <li>
-                  <div class="" type="text" id="daterangepicker">
-                    <input data-role="start_date"></input>
-                    <input data-role="end_date"></input>
-                  </div>
-                </li>
-                <li class="title powa-text">
-                  <a href="#"><span>{{title}}</span></a>
-                </li>
+            <ul class="right">
+              <li>
+                <div class="" type="text" id="daterangepicker">
+                  <input data-role="start_date"></input>
+                  <input data-role="end_date"></input>
+                </div>
+              </li>
+              <li class="title powa-text">
+                <a href="#"><span>{{title}}</span></a>
+              </li>
 
-                <li>
-                  <a href="{{ reverse_url('logout')}}">Logout</a>
-                </li>
-              </ul>
-
-            {% end %}
+              <li>
+                <a href="{{ reverse_url('logout')}}">Logout</a>
+              </li>
+            </ul>
           </section>
+          {% end %}
         </nav>
     <div class="row full-width">
       <div class="main">
