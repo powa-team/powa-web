@@ -1,3 +1,6 @@
+"""
+Global optimization widget
+"""
 from __future__ import absolute_import
 from powa.framework import AuthHandler
 from powa.dashboards import (
@@ -23,8 +26,8 @@ class IndexSuggestionHandler(AuthHandler):
         indexes = []
         for ind in payload['indexes']:
             hypoind = HypoIndex(ind['nspname'],
-                                   ind['relname'],
-                                   ind['ams'])
+                                ind['relname'],
+                                ind['ams'])
             hypoind._ddl = ind['ddl']
             indexes.append(hypoind)
         queryids = payload['queryids']
@@ -51,8 +54,8 @@ class IndexSuggestionHandler(AuthHandler):
             # Build the query and fetch the plans
             for query in queries:
                 querystr = get_any_sample_query(self, database, query.queryid,
-                                            from_date,
-                                            to_date)
+                                                from_date,
+                                                to_date)
                 if querystr:
                     hypoplans[query.queryid] = get_hypoplans(
                         self.connect(database=database), querystr,

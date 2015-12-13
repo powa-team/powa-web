@@ -46,7 +46,7 @@ class MenuEntry(UIModule):
 
     def render(self, handler):
         return handler.render_string("menuitem.html",
-                           menu=self)
+                                     menu=self)
 
     def get_breadcrumb(self):
         base = []

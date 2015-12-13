@@ -5,7 +5,6 @@ Set of helper functions available from the templates.
 from powa import __VERSION__
 from powa.json import JSONEncoder
 from tornado.options import options
-import pickle
 try:
     from urllib import urlencode  # py2
 except ImportError:

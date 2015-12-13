@@ -1,3 +1,6 @@
+"""
+Dashboard for the configuration summary page.
+"""
 from powa.dashboards import (
     Dashboard, Grid,
     MetricGroupDef, MetricDef,
@@ -65,14 +68,14 @@ class ConfigOverview(DashboardPage):
 
     dashboard = Dashboard(
         "Configuration overview",
-         [[Grid("Extensions",
+        [[Grid("Extensions",
                columns=[{
                    "name": "extname",
                    "label": "Extensions",
                    "url_attr": "url"
                }],
                metrics=PgExtensionsMetricGroup.all()
-          ),
+              ),
           Grid("PostgreSQL settings",
                columns=[{
                    "name": "setting_name",
@@ -80,7 +83,7 @@ class ConfigOverview(DashboardPage):
                    "url_attr": "url"
                }],
                metrics=PgSettingsMetricGroup.all()
-               )
+              )
          ]]
     )
 

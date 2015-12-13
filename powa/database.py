@@ -47,15 +47,16 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
         query = subquery.alias()
         c = query.c
         return (select([
-                to_epoch(c.ts),
-                (sum(c.runtime) / greatest(sum(c.calls), 1.)).label("avg_runtime"),
-                (sum(c.runtime) / greatest(extract("epoch", c.mesure_interval),1)).label("load"),
-                total_read(c),
-                total_hit(c)])
-            .where(c.calls != None)
-            .group_by(c.ts, bs, c.mesure_interval)
-            .order_by(c.ts)
-            .params(samples=100))
+            to_epoch(c.ts),
+            (sum(c.runtime) / greatest(sum(c.calls), 1.)).label("avg_runtime"),
+            (sum(c.runtime) / greatest(extract("epoch", c.mesure_interval),
+                                       1)).label("load"),
+            total_read(c),
+            total_hit(c)])
+                .where(c.calls != None)
+                .group_by(c.ts, bs, c.mesure_interval)
+                .order_by(c.ts)
+                .params(samples=100))
 
 
 
@@ -123,8 +124,8 @@ class WizardThisDatabase(ContentWidget):
     data_url = r"/database/([^\/]+)/wizardthisdatabase/"
 
     def get(self, database):
-        self.render("database/wizardthisdatabase.html", database = database,
-                    url = self.reverse_url("WizardPage", database))
+        self.render("database/wizardthisdatabase.html", database=database,
+                    url=self.reverse_url("WizardPage", database))
         return
 
 
@@ -154,25 +155,25 @@ class DatabaseOverview(DashboardPage):
                     metrics=[DatabaseOverviewMetricGroup.total_blks_read,
                              DatabaseOverviewMetricGroup.total_blks_hit])],
              [Grid("Details for all queries",
-                    toprow=[{
-                        'merge': True
-                    },{
-                        'name': 'Execution',
-                        'merge': False,
-                        'colspan': 3
-                    }, {
-                        'name': 'I/O Time',
-                        'merge': False,
-                        'colspan': 2
-                    }, {
-                        'name': 'Blocks',
-                        'merge': False,
-                        'colspan': 4,
-                    }, {
-                        'name': 'Temp blocks',
-                        'merge': False,
-                        'colspan': 2
-                    }],
+                   toprow=[{
+                       'merge': True
+                   }, {
+                       'name': 'Execution',
+                       'merge': False,
+                       'colspan': 3
+                   }, {
+                       'name': 'I/O Time',
+                       'merge': False,
+                       'colspan': 2
+                   }, {
+                       'name': 'Blocks',
+                       'merge': False,
+                       'colspan': 4,
+                   }, {
+                       'name': 'Temp blocks',
+                       'merge': False,
+                       'colspan': 2
+                   }],
                    columns=[{
                        "name": "query",
                        "label": "Query",

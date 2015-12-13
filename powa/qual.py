@@ -1,3 +1,6 @@
+"""
+Dashboard for the qual page
+"""
 from powa.dashboards import (
     Dashboard, Graph,
     MetricGroupDef, MetricDef,
