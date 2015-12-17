@@ -88,6 +88,7 @@ define([
                     data_source.update(startDate, endDate);
                 }
             });
+            this.updatePeriod(startDate, endDate);
         },
 
         zoomIn: function(startDate, endDate){
