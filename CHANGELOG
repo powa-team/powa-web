@@ -1,3 +1,5 @@
+3.0.2:
+  - fix regression in period updates
 3.0.1:
   - Display installed version of handled extensions
   - Display information on pg_track_settings
