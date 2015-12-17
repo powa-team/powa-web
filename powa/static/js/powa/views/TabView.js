@@ -2,7 +2,7 @@ define([
         'backbone',
         'powa/views/WidgetView',
         'powa/models/TabContainer',
-        'tpl!powa/templates/tabs.html']
+        'tpl!powa/templates/tabs.html'],
 function(Backbone, WidgetView, TabContainer, template){
     return WidgetView.extend({
         template: template,
@@ -12,24 +12,63 @@ function(Backbone, WidgetView, TabContainer, template){
         initialize: function(args){
             this.model = args.model;
             this.tabs = this.model.get("tabs").map(WidgetView.makeView);
+            this.datasources = new Backbone.Collection();
+            _.each(this.tabs, function(tab){
+                this.datasources.add(tab.model.data_sources.models);
+            }, this);
+            this.render();
         },
 
         render: function(){
+            var self = this;
             this.$el.html(this.template(this.model.toJSON()));
             this.$tabtitles = this.$el.find(".tabs");
             this.$tabs = this.$el.find(".tabs-content");
             this.model.get("tabs").each(function(elem, index){
-                var tabtitle = $("<li>").addClass("tab-title");
-                if(index == 0){
-                    tabtitle.addClass("active");
-                }
-                tabtitle.append($("<a>").attr("href", "#tab" + index).html(elem.get("title"));
+                var tabtitle = $("<li>").addClass("tab-title").attr("data-tabid", index);
+                tabtitle.append($("<a>").attr("href", "#tab" + index).html(elem.get("title")));
                 this.$tabtitles.append(tabtitle);
                 var tabcontent = $("<div>").addClass("content").attr("id", "tab" + index);
-                tabcontent.append(elem.widget.$el);
+                if(index == 0){
+                    tabtitle.addClass("active");
+                    tabcontent.addClass("active");
+                }
+
+                tabcontent.append(this.tabs[index].render().el);
                 this.$tabs.append(tabcontent);
             }, this);
+            this.postRender();
+            this.$el.find(".tabs").on("toggled", function (event, tab){
+                var widget = self.tabs[parseInt(tab.attr("data-tabid"), 10)];
+                widget.show();
+            });
             return this;
+        },
+
+        postRender: function(){
+            this.$el.foundation();
+        },
+
+
+        refreshSources: function(startDate, endDate){
+            this.datasources.each(function(data_source){
+                if(data_source.get("enabled") != false){
+                    data_source.update(startDate, endDate);
+                }
+            });
+            this.updatePeriod(startDate, endDate);
+        },
+        updatePeriod: function(startDate, endDate){
+            var self = this;
+            if(startDate.isValid()){
+                this.from_date = startDate;
+            }
+            if(endDate.isValid()){
+                this.to_date = endDate;
+            }
+            _.each(this.tabs, function(tab){
+                tab.updatePeriod(this.from_date, this.to_date);
+            }, this);
         }
 
     });

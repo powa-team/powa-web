@@ -21,6 +21,7 @@ require(['jquery',
         'powa/models/Grid',
         'powa/models/Content',
         'powa/models/Wizard',
+        'powa/models/TabContainer',
         'modernizr',
         'foundation/foundation.tab',
         'foundation/foundation.tooltip',
@@ -80,8 +81,10 @@ require(['jquery',
             var self = this;
             $(this).find('script[type="text/dashboard"]').each(function(){
                 var dashboard = Widget.fromJSON(JSON.parse(this.text));
-                var dashboardview = dashboard.makeView({picker: picker, el: self});
+                var dashboardview = dashboard.makeView({el: $(self).find('.widgets')});
                 dashboards.push(dashboard);
+                dashboardview.listenTo(picker, "pickerChanged", dashboardview.refreshSources, dashboardview);
+                dashboardview.refreshSources(picker.start_date, picker.end_date);
             });
         });
     });

@@ -337,7 +337,7 @@ class QueryOverview(DashboardPage):
                                 color_scheme=['#73c03a','#65b9ac','#cb513a'])
         dashes = []
         dashes.append(Dashboard("Query detail",
-            [[QueryDetail], [Graph("General",
+            [[Graph("General",
                     metrics=[QueryOverviewMetricGroup.avg_runtime,
                              QueryOverviewMetricGroup.rows,
                              QueryOverviewMetricGroup.calls ])]]))
@@ -394,6 +394,8 @@ class QueryOverview(DashboardPage):
                      metrics=QualList.all())],
                 [QueryIndexes],
                 [QueryExplains]]))
-        self._dashboard = TabContainer("Query %(query)s on database %(database)s",
-                                          dashes)
-        return self._dashboard
+            self._dashboard = Dashboard("Query %(query)s on database %(database)s",
+                                        [[QueryDetail], [
+                                            TabContainer("Query %(query)s on database %(database)s",
+                                                         dashes)]])
+            return self._dashboard

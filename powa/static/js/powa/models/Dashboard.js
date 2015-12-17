@@ -23,7 +23,7 @@ define([
         },
 
         makeView: function(options){
-            options.dashboard = this;
+            options.model = this;
             return new DashboardView(options);
         }
 
@@ -33,10 +33,14 @@ define([
                 var self = this;
                 _.each(jsonobj.widgets, function(row, y){
                     _.each(row, function(widget, x){
+                        var widgetmodel; 
                         widget.x = x;
                         widget.y = y;
                         widget.dashboard = self;
-                        widgets.add(Widget.fromJSON(widget));
+                        widgetmodel = Widget.fromJSON(widget);
+                        widgetmodel.set("x", x);
+                        widgetmodel.set("y",  y);
+                        widgets.add(widgetmodel);
                     });
                 });
             return new this({

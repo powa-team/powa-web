@@ -158,12 +158,15 @@ define([
             },
 
             _resize: function(){
-               this.graph.setSize({width: this.$graph_elem.parent().innerWidth()});
-               _.each(this.y_axes, function(axis){
-                   var width = axis.orientation === "left" ? 0 : this.$el.innerWidth();
-                   axis.setSize({height: this.graph.height + 4, auto: true});
-               }, this);
-               this.trigger("graph:resize");
+               if(this.graph){
+                this.graph.configure({width: this.$graph_elem.parent().innerWidth()});
+                _.each(this.y_axes, function(axis){
+                    var width = axis.orientation === "left" ? 0 : this.$el.innerWidth();
+                    axis.setSize({height: this.graph.height + 4, auto: true});
+                }, this);
+                this.graph.render();
+                this.trigger("graph:resize");
+               }
             },
 
             onResize: function(){},
@@ -190,6 +193,10 @@ define([
                    }
                 }
                 this.trigger("widget:update");
+            },
+
+            show: function(){
+                this._resize();
             },
 
             render: function(){

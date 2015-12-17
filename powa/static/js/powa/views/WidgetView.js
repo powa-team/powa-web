@@ -41,6 +41,10 @@ define([
 
         zoomIn: function(startDate, endDate){
             this.showload();
+        },
+
+        show: function(){
+
         }
 
 
@@ -54,7 +58,7 @@ define([
             return newcls;
         },
         makeView: function(model){
-            return registry[model.get("type")].makeInstance({model: model});
+            return registry[model.typname].makeInstance({model: model});
         }
     });
 });

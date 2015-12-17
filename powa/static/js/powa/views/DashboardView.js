@@ -10,24 +10,24 @@ define([
     moment, timeurls){
     return WidgetView.extend({
         tagName: "div",
+        typname: "dashboard",
 
         initialize: function(args){
             var self = this;
-            this.dashboard = args.dashboard;
+            this.dashboard = args.model;
             this.data_sources = args.data_sources;
             this.views = [];
-            this.layout();
-            this.picker = args.picker;
-            this.listenTo(this.picker, "pickerChanged", this.updatePeriod, this);
-            this.updatePeriod(this.picker.start_date, this.picker.end_date);
+            this.render();
         },
 
-        layout: function(){
-            var wc = this.$('.widgets');
+        render: function(){
+            var wc = this.$el;
+            wc.html("");
             var widgets = this.dashboard.get("widgets");
             var maxy = widgets.max(function(wg){
                 return wg.get("y");
             });
+            this.views = [];
             for(var y = 0; y <= maxy.get("y"); y++){
                 var newrow = $('<div>').addClass("row"),
                     rowwidgets = widgets.where({y: y});
@@ -61,11 +61,17 @@ define([
                     }
                 }, this);
             }
+            return this;
+        },
+
+        show: function(){
+            _.each(this.views, function(view){
+                view.show();
+            });
         },
 
         postRender: function(){
             this.$el.foundation();
-            this.picker.updateUrls(this.from_date, this.to_date);
         },
 
         makeView: function(widget){
@@ -102,7 +108,6 @@ define([
             _.each(this.views, function(widget){
                 widget.updatePeriod(this.from_date, this.to_date);
             }, this);
-            this.refreshSources(this.from_date, this.to_date);
         },
 
     });
