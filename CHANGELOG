@@ -1,3 +1,23 @@
+3.0.1:
+  - Display installed version of handled extensions
+  - Display information on pg_track_settings
+  - Make query detail widget smaller
+  - Fix qualstat_getstatdata, condition was ignored
+  - Better hint on fail wizard.
+  - Fix some syntax erors
+  - Handle case n_distinct is unkown.
+  - On per-cluster view, the avg runtime is displayed, not the total runtime.
+  - Add a "runtime per sec" serie on per-cluster and per-db views.
+  - Show the initially sorted column in grids.
+  - Don't display sidebar on login page.
+  - Add tabbed dashboards
+3.0.0:
+  - Add indexes suggestion for the whole database workload.
+  - Fix bug with negative microsecond differences
+  - Add support for hypopg
+  - Handle example queries from pg_qualstats
+  - Handle prepared statements
+  - Add example on how to specify a client encoding
 2.0.11:
   - fix bug on "other queries" panel on qual page
   - other bug fixes
