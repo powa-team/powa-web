@@ -15,7 +15,7 @@ from sqlalchemy.sql import select, cast, extract
 from sqlalchemy.types import Numeric
 from powa.sql.utils import (total_read, total_hit, mulblock, round, greatest,
                             block_size)
-from powa.sql.tables import pg_database
+from powa.sql.tables import powa_databases
 
 
 class ByDatabaseMetricGroup(MetricGroupDef):
@@ -42,11 +42,11 @@ class ByDatabaseMetricGroup(MetricGroupDef):
         inner_query = powa_getstatdata_db().alias()
         c = inner_query.c
         from_clause = inner_query.join(
-            pg_database,
-            c.dbid == pg_database.c.oid)
+            powa_databases,
+            c.dbid == powa_databases.c.oid)
 
         return (select([
-            pg_database.c.datname,
+            powa_databases.c.datname,
             sum(c.calls).label("calls"),
             sum(c.runtime).label("runtime"),
             round(cast(sum(c.runtime), Numeric) / greatest(sum(c.calls), 1), 2).label("avg_runtime"),
@@ -59,7 +59,7 @@ class ByDatabaseMetricGroup(MetricGroupDef):
         ])
             .select_from(from_clause)
             .order_by(sum(c.calls).desc())
-            .group_by(pg_database.c.datname, bs))
+            .group_by(powa_databases.c.datname, bs))
 
 
     def process(self, val, **kwargs):

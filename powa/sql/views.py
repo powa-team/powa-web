@@ -26,7 +26,7 @@ class Biggest(object):
 
 def powa_base_statdata_detailed_db():
     base_query = text("""
-    pg_database,
+    powa_databases,
     LATERAL
     (
         SELECT unnested.dbid, unnested.userid, unnested.queryid,(unnested.records).*
@@ -34,16 +34,16 @@ def powa_base_statdata_detailed_db():
             SELECT psh.dbid, psh.userid, psh.queryid, psh.coalesce_range, unnest(records) AS records
             FROM powa_statements_history psh
             WHERE coalesce_range && tstzrange(:from, :to, '[]')
-            AND psh.dbid = pg_database.oid
-            AND psh.queryid IN ( SELECT powa_statements.queryid FROM powa_statements WHERE powa_statements.dbid = pg_database.oid )
+            AND psh.dbid = powa_databases.oid
+            AND psh.queryid IN ( SELECT powa_statements.queryid FROM powa_statements WHERE powa_statements.dbid = powa_databases.oid )
         ) AS unnested
         WHERE tstzrange(:from, :to, '[]') @> (records).ts
         UNION ALL
         SELECT psc.dbid, psc.userid, psc.queryid,(psc.record).*
         FROM powa_statements_history_current psc
         WHERE tstzrange(:from,:to,'[]') @> (record).ts
-        AND psc.dbid = pg_database.oid
-        AND psc.queryid IN ( SELECT powa_statements.queryid FROM powa_statements WHERE powa_statements.dbid = pg_database.oid )
+        AND psc.dbid = powa_databases.oid
+        AND psc.queryid IN ( SELECT powa_statements.queryid FROM powa_statements WHERE powa_statements.dbid = powa_databases.oid )
     ) h
     """)
     return base_query
@@ -51,15 +51,15 @@ def powa_base_statdata_detailed_db():
 def powa_base_statdata_db():
     base_query = text("""
     (
-    SELECT pg_database.oid as dbid, h.*
+    SELECT powa_databases.oid as dbid, h.*
     FROM
-    pg_database LEFT JOIN
+    powa_databases LEFT JOIN
     (
           SELECT dbid, min(lower(coalesce_range)) AS min_ts, max(upper(coalesce_range)) AS max_ts
           FROM powa_statements_history_db dbh
           WHERE coalesce_range && tstzrange(:from, :to, '[]')
           GROUP BY dbid
-    ) ranges ON pg_database.oid = ranges.dbid,
+    ) ranges ON powa_databases.oid = ranges.dbid,
     LATERAL (
         SELECT (unnested1.records).*
         FROM (
@@ -82,7 +82,7 @@ def powa_base_statdata_db():
         SELECT (dbc.record).*
         FROM powa_statements_history_current_db dbc
         WHERE tstzrange(:from, :to, '[]') @> (dbc.record).ts
-        AND dbc.dbid = pg_database.oid
+        AND dbc.dbid = powa_databases.oid
     ) AS h) AS db_history
     """)
     return base_query
@@ -124,7 +124,7 @@ def powa_getstatdata_db():
 
 
 BASE_QUERY_SAMPLE_DB = text("""(
-    SELECT datname, base.* FROM pg_database,
+    SELECT datname, base.* FROM powa_databases,
     LATERAL (
         SELECT *
         FROM (
@@ -138,14 +138,14 @@ BASE_QUERY_SAMPLE_DB = text("""(
                     SELECT psh.dbid, psh.coalesce_range, unnest(records) AS records
                     FROM powa_statements_history_db psh
                     WHERE coalesce_range && tstzrange(:from, :to,'[]')
-                    AND psh.dbid = pg_database.oid
+                    AND psh.dbid = powa_databases.oid
                 ) AS unnested
                 WHERE tstzrange(:from, :to, '[]') @> (records).ts
                 UNION ALL
                 SELECT dbid, (record).*
                 FROM powa_statements_history_current_db
                 WHERE tstzrange(:from, :to, '[]') @> (record).ts
-                AND dbid = pg_database.oid
+                AND dbid = powa_databases.oid
             ) AS statements_history
         ) AS sh
         WHERE number % ( int8larger((total)/(:samples+1),1) ) = 0
@@ -155,7 +155,7 @@ BASE_QUERY_SAMPLE_DB = text("""(
 
 BASE_QUERY_SAMPLE = text("""(
     SELECT datname, dbid, queryid, base.*
-    FROM powa_statements JOIN pg_database ON pg_database.oid = powa_statements.dbid,
+    FROM powa_statements JOIN powa_databases ON powa_databases.oid = powa_statements.dbid,
     LATERAL (
         SELECT *
         FROM (SELECT
@@ -293,7 +293,7 @@ SELECT 'CREATE INDEX idx_' || q.relid || '_' || array_to_string(attnames, '_') |
 
 
 BASE_QUERY_KCACHE_SAMPLE = text("""
-        powa_statements s JOIN pg_database ON pg_database.oid = s.dbid,
+        powa_statements s JOIN powa_databases ON powa_databases.oid = s.dbid,
         LATERAL (
             SELECT *
             FROM (

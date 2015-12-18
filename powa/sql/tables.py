@@ -6,8 +6,8 @@ powa_statements = table("powa_statements",
                         column("dbid"),
                         column("userid"))
 
-pg_database = table(
-    "pg_database",
+powa_databases = table(
+    "powa_databases",
     column("oid"),
     column("datname"))
 

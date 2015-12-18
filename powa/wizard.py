@@ -11,7 +11,7 @@ from powa.sql import (resolve_quals, get_any_sample_query,
 import json
 from powa.sql.compat import JSONB
 from powa.sql.views import qualstat_getstatdata
-from powa.sql.tables import pg_database
+from powa.sql.tables import powa_databases
 from sqlalchemy.sql import (bindparam, literal_column, join, select,
                             alias, text, func, column, cast)
 
@@ -87,10 +87,10 @@ class WizardMetricGroup(MetricGroupDef):
             "avg_filter",
             "filter_ratio"
         ]).select_from(
-            join(base, pg_database,
+            join(base, powa_databases,
                  onclause=(
-                     pg_database.c.oid == literal_column("dbid"))))
-            .where(pg_database.c.datname == bindparam("database"))
+                     powa_databases.c.oid == literal_column("dbid"))))
+            .where(powa_databases.c.datname == bindparam("database"))
             .where(column("avg_filter") > 1000)
             .where(column("filter_ratio") > 0.3)
             .group_by(column("qualid"), column("execution_count"),

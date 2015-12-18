@@ -71,7 +71,13 @@ class BaseHandler(RequestHandler):
         if self.current_user:
             if self._databases is None:
                 self._databases = [d[0] for d in self.execute(
-                    "SELECT datname FROM pg_database WHERE datallowconn ORDER BY DATNAME",
+                    """
+                    SELECT p.datname
+                    FROM powa_databases p
+                    LEFT JOIN pg_database d ON p.oid = d.oid
+                    WHERE COALESCE(datallowconn, true)
+                    ORDER BY DATNAME
+                    """,
                     **kwargs)]
             return self._databases
 
@@ -117,10 +123,14 @@ class BaseHandler(RequestHandler):
         Returns the version of the specific extension on the specific database,
         or None if the extension is not installed.
         """
-        extversion = self.execute(text(
-            """
-            SELECT extversion FROM pg_extension WHERE extname = :extname LIMIT 1
-            """), database=database, params={"extname": extname}).scalar()
+        try:
+            extversion = self.execute(text(
+                """
+                SELECT extversion FROM pg_extension WHERE extname = :extname LIMIT 1
+                """), database=database, params={"extname": extname}).scalar()
+        except Exception:
+            return None
+
         return extversion
 
     def write_error(self, status_code, **kwargs):

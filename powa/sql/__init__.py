@@ -293,7 +293,7 @@ def qual_constants(type, filter_clause, top=1):
                 sum(nbfiltered) as nbfiltered,
                 CASE WHEN sum(execution_count) = 0 THEN 0 ELSE sum(nbfiltered) / sum(execution_count) END AS filter_ratio
         FROM powa_statements s
-        JOIN pg_database ON pg_database.oid = s.dbid
+        JOIN powa_databases ON powa_databases.oid = s.dbid
         JOIN powa_qualstats_quals qn ON s.queryid = qn.queryid
         JOIN (
             SELECT *
