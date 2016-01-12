@@ -396,8 +396,8 @@ class QueryOverview(DashboardPage):
                      metrics=QualList.all())],
                 [QueryIndexes],
                 [QueryExplains]]))
-            self._dashboard = Dashboard("Query %(query)s on database %(database)s",
-                                        [[QueryDetail], [
-                                            TabContainer("Query %(query)s on database %(database)s",
-                                                         dashes)]])
-            return self._dashboard
+        self._dashboard = Dashboard("Query %(query)s on database %(database)s",
+                                    [[QueryDetail], [
+                                        TabContainer("Query %(query)s on database %(database)s",
+                                                     dashes)]])
+        return self._dashboard
