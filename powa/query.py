@@ -297,6 +297,7 @@ class QueryDetail(ContentWidget):
             wblk,
             (rblk + wblk).label("total_blks")])
             .select_from(from_clause)
+            .where(powa_statements.c.queryid == bindparam("query"))
             .group_by(column("query"), bs))
 
         value = self.execute(stmt, params={
