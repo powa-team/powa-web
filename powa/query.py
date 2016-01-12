@@ -9,6 +9,7 @@ from sqlalchemy.sql import (
     func, extract)
 from sqlalchemy.sql.functions import sum
 from sqlalchemy.types import Numeric
+from sqlalchemy.orm import outerjoin
 
 from powa.dashboards import (
     Dashboard, TabContainer, Graph, Grid,
@@ -283,8 +284,8 @@ class QueryDetail(ContentWidget):
             (column("datname") == bindparam("database")) &
             (column("queryid") == bindparam("query")))
         stmt = stmt.alias()
-        from_clause = stmt.join(powa_statements,
-                                powa_statements.c.queryid == stmt.c.queryid)
+        from_clause = outerjoin(powa_statements, stmt,
+                           powa_statements.c.queryid == stmt.c.queryid)
         c = stmt.c
         rblk = mulblock(sum(c.shared_blks_read).label("shared_blks_read"))
         wblk = mulblock(sum(c.shared_blks_hit).label("shared_blks_hit"))
