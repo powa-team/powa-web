@@ -46,6 +46,30 @@ class BaseHandler(RequestHandler):
                 return None
 
     @property
+    def current_server(self):
+        """
+        Return the server connected to if any
+        """
+        return self.get_secure_cookie('server')
+
+    @property
+    def current_connection(self):
+        """
+        Return the host and port connected to if any
+        """
+        server = self.current_server
+        if server is None:
+            return None
+        connoptions = options.servers[server].copy()
+        host = "localhost"
+        port = "5432"
+        if 'host' in connoptions:
+            host = connoptions['host']
+        if 'port' in connoptions:
+            port = connoptions['port']
+        return "%s:%s" % ( host, port )
+
+    @property
     def menu(self):
         return None
 
