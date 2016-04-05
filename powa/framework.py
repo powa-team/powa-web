@@ -57,7 +57,7 @@ class BaseHandler(RequestHandler):
         """
         Return the host and port connected to if any
         """
-        server = self.current_server
+        server = self.current_server.decode('utf8')
         if server is None:
             return None
         connoptions = options.servers[server].copy()
