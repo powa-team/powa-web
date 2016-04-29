@@ -6,6 +6,6 @@ PoWA Web
 
 This project is a User Interface to the [PoWA](http://dalibo.github.io/powa/) project.
 
-For more information, please read the [PoWA-web documentation](http://powa.readthedocs.org/en/latest/powa-web/index.html):
+For more information, please read the [PoWA-web documentation](http://powa.readthedocs.io/en/latest/powa-web/index.html):
 
-http://powa.readthedocs.org/en/latest/powa-web/index.html
+http://powa.readthedocs.io/en/latest/powa-web/index.html

@@ -98,7 +98,7 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
                         '<span>Impossible to suggest indexes: please ' +
                         ' enable support for pg_qualstats in powa or update ' +
                         ' pg_qualstats extension to a newer version. ' +
-                        ' See <a href="http://powa.readthedocs.org"> ' +
+                        ' See <a href="http://powa.readthedocs.io"> ' +
                         ' the documentation for more information</span>');
                 return this;
             }
