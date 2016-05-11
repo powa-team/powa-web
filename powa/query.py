@@ -5,7 +5,7 @@ Dashboard for the by-query page.
 from tornado.web import HTTPError
 from sqlalchemy.sql import (
     bindparam, text, column, select,
-    case, cast,
+    case, cast, and_,
     func, extract)
 from sqlalchemy.sql.functions import sum
 from sqlalchemy.types import Numeric
@@ -285,7 +285,7 @@ class QueryDetail(ContentWidget):
             (column("queryid") == bindparam("query")))
         stmt = stmt.alias()
         from_clause = outerjoin(powa_statements, stmt,
-                           powa_statements.c.queryid == stmt.c.queryid)
+                           and_(powa_statements.c.queryid == stmt.c.queryid, powa_statements.c.dbid == stmt.c.dbid))
         c = stmt.c
         rblk = mulblock(sum(c.shared_blks_read).label("shared_blks_read"))
         wblk = mulblock(sum(c.shared_blks_hit).label("shared_blks_hit"))
