@@ -10,11 +10,9 @@ define(["rickshaw", "d3", "powa/views/TimeView"],
                         series: series || [],
                         interpolation: 'linear'
             }));
-            var time = new Rickshaw.Fixtures.Time();
-            var seconds = time.unit('second');
             this.x_axis = new Rickshaw.Graph.Axis.Time( {
                 graph: this.graph,
-                tickFormat: this.graph.x.tickFormat(),
+                timeFixture: new Rickshaw.Fixtures.Time.Local()
             } );
         },
 

@@ -8,18 +8,9 @@ define(["rickshaw", "d3", "powa/views/TimeView"],
                         renderer: 'bar',
                         series: series || []
             }));
-            var time = new Rickshaw.Fixtures.Time();
-            var seconds = time.unit('second');
-            var self = this;
             this.x_axis = new Rickshaw.Graph.Axis.Time({
                 graph: this.graph,
-                tickFormat: function(x, index){
-                    var value = self.graph.series[0].data[x - 1.5];
-                    if(value){
-                        return value[self.model.get("x_label_attr")];
-                    }
-                    return "";
-                }
+                timeFixture: new Rickshaw.Fixtures.Time.Local()
             });
             this.adaptGraph(series);
         },

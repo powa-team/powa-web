@@ -22,10 +22,11 @@ define(["powa/views/GraphView","powa/views/GraphPreview"], function(GraphView, G
             var self = this;
             var hoverDetail = new Rickshaw.Graph.HoverDetail( {
                 graph: this.graph,
+                xFormatter: function(x){ return new moment.unix(x).format("LLLL");},
                 formatter: function(series, x, y){
                     var type = series.metric.get("type") || "number";
                     var formatter = self.axisFormats[type];
-                    var date = '<span class="date">' + new Date(x * 1000).toUTCString() + '</span>';
+                    var date = '<span class="date">' + new moment.unix(x).format("lll") + '</span>';
                     var swatch = '<span class="detail_swatch" style="background-color: ' + series.color + '"></span>';
                     var content = swatch + series.label + ": " + formatter(y) + '<br/>' + date;
                     return content;

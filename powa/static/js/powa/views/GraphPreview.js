@@ -39,7 +39,7 @@ define(["rickshaw", "d3"], function(rickshaw, d3){
                 var graph = new Rickshaw.Graph(graphArgs);
                 new Rickshaw.Graph.Axis.Time({
                     graph: graph,
-                    tickFormat: parent.x.tickFormat()
+                    timeFixture: new Rickshaw.Fixtures.Time.Local()
                 });
                 self.previews.push(graph);
 
