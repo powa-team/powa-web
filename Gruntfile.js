@@ -26,7 +26,7 @@ module.exports = function(grunt) {
         },
         requirejs: {
             files: [
-            {    
+            {
                 cwd: 'powa:static/',
                 src: ['bower_components/requirejs/require.js'],
                 dest: ['powa/static/js/'],
@@ -61,7 +61,7 @@ module.exports = function(grunt) {
         }
     },
 
-    bower: {
+    bowerRequirejs: {
       all: {
         options: {
           baseUrl: "",
@@ -85,7 +85,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-uglify');
   grunt.loadNpmTasks('grunt-contrib-sass');
 
-  grunt.registerTask('default', ['bower', 'copy', 'sass']);
-  grunt.registerTask('dist', ['bower', 'copy', 'requirejs', 'sass']);
+  grunt.registerTask('default', ['bowerRequirejs', 'copy', 'sass']);
+  grunt.registerTask('dist', ['bowerRequirejs', 'copy', 'requirejs', 'sass']);
 
 };
