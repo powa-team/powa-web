@@ -19,21 +19,21 @@
     "tests"
   ],
   "dependencies": {
-    "backbone": "latest",
-    "d3": "latest",
-    "foundation-daterangepicker": "latest",
-    "foundation": "latest",
-    "jquery": "latest",
-    "rickshaw": "latest",
-    "requirejs": "latest",
-    "underscore": "latest",
-    "moment": "latest",
-    "requirejs-text": "latest",
-    "requirejs-tpl": "latest",
-    "backgrid": "latest",
-    "spin.js": "latest",
-    "backbone-pageable": "latest",
-    "backgrid-paginator": "latest",
-    "backgrid-filter": "latest"
+    "backbone": "1.1.2",
+    "d3": "3.5.11",
+    "foundation-daterangepicker": "1.0.1",
+    "foundation": "5.5.3",
+    "jquery": "2.1.4",
+    "rickshaw": "1.5.1",
+    "requirejs": "2.1.22",
+    "underscore": "1.8.3",
+    "moment": "2.5.1",
+    "requirejs-text": "2.0.14",
+    "requirejs-tpl": "7438735aa8",
+    "backgrid": "0.3.5",
+    "spin.js": "2.3.2",
+    "backbone-pageable": "1.4.8",
+    "backgrid-paginator": "0.3.5",
+    "backgrid-filter": "0.3.5"
   }
 }
