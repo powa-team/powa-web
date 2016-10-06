@@ -1,3 +1,15 @@
+3.1.0:
+  - Fix figures in query details, thanks to Eric Champigny for the patch
+  - Fix graphs to display local time instead of UTC time
+  - Fix IO timing figures on database overview (thanks to ribbles for the
+    report)
+  - Fix query page when pg_qualstats isn't available
+  - Display dropped databases in the UI (requires at least powa-archvist 3.0.1)
+  - Notify that server is listening, display socket information (thanks to
+    Pierre Hilbert for the feature request)
+  - Always display overall informations on a query, even if not statistics is
+    present
+  - Display server and connection information in top-bar
 3.0.2:
   - fix regression in period updates
 3.0.1:
