@@ -165,7 +165,7 @@ define([
             },
 
             getColumnDefinitions: function(){
-                var columns = this.model.get("columns");
+                var columns = this.model.get("columns").slice();
                 this.model.get("metrics").each(function(metric){
                     columns.push($.extend({}, metric.attributes, {
                         editable: false,
