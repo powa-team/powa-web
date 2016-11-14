@@ -43,13 +43,13 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             if(options.internal){
                 return;
             }
-            this.trashQuals();
             var relids = _.uniq(this.get("quals").pluck("relid"));
             if(relids.length > 1){
                 throw "A qual should not span more than one table";
             }
             this.set("relid", relids[0]);
             this.set("relname", this.get("quals").models[0].get("relname"));
+            this.trashQuals();
         },
 
         relfqn: function(){
@@ -83,14 +83,18 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
         },
 
         repr: function(){
-            var base = "WHERE " +  _.uniq(this.get("quals").map(function(qual){
-                return qual.get("label")
-            }, this)).join(" AND ");
+            var base = "WHERE ",
+                hasquals = this.get("quals").size() > 0;
+            if(hasquals){
+                base += _.uniq(this.get("quals").map(function(qual){
+                    return qual.get("label")
+                }, this)).join(" AND ");
+            }
             base = "<pre>" + highlight.highlight("sql", base, true).value + "</pre>";
             var unmanaged = this.get("trashedQuals").map(function(qual, idx){
                 var part = "<strike><pre>";
                 var value = qual.get("label");
-                if(idx == 0){
+                if(idx == 0 && hasquals){
                     value = " AND " + value;
                 }
                 if(idx < this.get("trashedQuals").length - 1){
@@ -203,6 +207,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             this.set("progress", 0);
             this.set("indexes", new IndexCollection());
             this.set("indexeschecks", new IndexCheckCollection());
+            this.set("unoptimizable", new QualCollection());
             this.listenTo(this.get("datasource"), "metricgroup:dataload", this.update, this);
             this.listenTo(this.get("datasource"), "metricgroup:startload", this.startload, this);
             this.set("scoringMethod", ColumnScoringMethod);
@@ -218,6 +223,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             this.get("datasource").update(options.from_date, options.to_date);
             this.get("indexes").set([]);
             this.get("indexeschecks").set([]);
+            this.get("unoptimizable").set([]);
         },
 
         /* Compute the links between quals.
@@ -256,7 +262,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             _.each(nodes, function(nodesource){
                 nodesource.get("contained").set( _.difference(nodesource.get("contained").models, nodesToTrash));
             });
-            return _.difference(nodes, nodesToTrash);
+            return [_.difference(nodes, nodesToTrash), nodesToTrash];
         },
 
         make_links: function (node1, node2) {
@@ -379,8 +385,9 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 this.trigger("widget:update_progress", "Building nodes for " + total_quals + " quals ...",
                         10 + (10 * index / total_quals).toFixed(2));
             }, this);
-            nodes = this.computeLinks(nodes);
-            this.solve(nodes);
+            result = this.computeLinks(nodes);
+            this.get("unoptimizable").set(result[1]);
+            this.solve(result[0]);
             this.checkSolution();
             this.trigger("wizard:end");
         },
@@ -435,7 +442,6 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
         solve: function(nodes){
             var remainingNodes = nodes;
             var pathes = {};
-
             var makePathId = function(nodes){
                 return _.map(nodes, function(node){ return node.get("id")}).join(",");
             };

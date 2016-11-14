@@ -45,6 +45,7 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
                     label: "# Queries boosted",
                     cell: "string"
                 }],
+                emptyText: "No qual to optimize !",
                 collection: this.model.get("indexes")
             });
             this.indexcheckgrid = new Backgrid.Grid({
@@ -64,7 +65,18 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
                     label: "Gain",
                     cell: "string"
                 }],
+              emptyText: "No index validation done.",
               collection: this.model.get("indexeschecks")
+            });
+            this.unoptimizablegrid = new Backgrid.Grid({
+                columns: [{
+                    editable: false,
+                    name: "repr",
+                    label: "Unoptimized quals",
+                    cell: "html"
+                }],
+                emptyText: "No qual which cannot be optimized",
+                collection: this.model.get("unoptimizable")
             });
             this.render();
         },
@@ -81,6 +93,7 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
             this.$el.find(".launcher").prop("disabled", true);
             this.$gridel.show();
             this.$gridel2.show();
+            this.$unoptimizedGrid.show();
         },
 
         onEnd: function(state, progress){
@@ -103,6 +116,7 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
                 return this;
             }
             this.$el.html(this.template(this.model.toJSON()));
+            this.$el.find(".unoptimizablegrid").hide();
             this.$el.find(".indexesgrid").hide();
             this.$el.find(".indexeschecksgrid").hide();
             this.$el.find(".summary").hide();
@@ -110,6 +124,8 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
             this.$el.find(".results").hide();
             this.$progress_elem = this.$el.find(".progress");
             this.$progress_label = this.$el.find(".progress_label");
+            this.$unoptimizedGrid = this.$el.find(".unoptimizablegrid");
+            this.$unoptimizedGrid.append(this.unoptimizablegrid.render().el);
             this.$gridel = this.$el.find(".indexesgrid");
             this.$gridel.append(this.indexgrid.render().el);
             this.$gridel2 = this.$el.find(".indexeschecksgrid");
