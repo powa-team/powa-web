@@ -21,7 +21,7 @@ define(['backbone',  'powa/models/DataSourceCollection', 'powa/models/MetricColl
         update: function(data){
             var col = this.get("collection"),
                 state = col.state;
-            col.reset(data);
+            col.fullCollection.reset(data);
             state.lastPage = Math.ceil(data.length / state.pageSize);
             this.get("collection").getFirstPage({reset: true});
             this.trigger("widget:needrefresh");
