@@ -138,6 +138,20 @@ define([
         }
     });
 
+    var DescHeaderCell = Backgrid.HeaderCell.extend({
+        onClick: function(e){
+            e.preventDefault();
+            var column = this.column;
+            var collection = this.collection;
+            var event = "backgrid:sort";
+            var sortable = Backgrid.callByNeed(column.sortable(), column, this.collection);
+            if(sortable){
+                if (column.get("direction") === "descending") collection.trigger(event, column, "ascending");
+                else collection.trigger(event, column, "descending");
+            }
+        }
+    });
+
     return WidgetView.extend({
             template: template,
             tag: "div",
@@ -169,6 +183,7 @@ define([
                 this.model.get("metrics").each(function(metric){
                     columns.push($.extend({}, metric.attributes, {
                         editable: false,
+                        headerCell: DescHeaderCell,
                         cell: BaseCell.extend({
                             cell: metric.get("type")
                         })
