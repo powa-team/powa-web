@@ -66,8 +66,8 @@ class ByQueryMetricGroup(MetricGroupDef):
     xaxis = "queryid"
     axis_type = "category"
     data_url = r"/metrics/database_all_queries/([^\/]+)/"
-    calls = MetricDef(label="#", type="string", direction="descending")
-    runtime = MetricDef(label="Time", type="duration")
+    calls = MetricDef(label="#", type="string")
+    runtime = MetricDef(label="Time", type="duration", direction="descending")
     avg_runtime = MetricDef(label="Avg time", type="duration")
     blks_read_time = MetricDef(label="Read", type="duration")
     blks_write_time = MetricDef(label="Write", type="duration")
@@ -108,7 +108,7 @@ class ByQueryMetricGroup(MetricGroupDef):
                 .select_from(from_clause)
                 .where(c.datname == bindparam("database"))
                 .group_by(c.queryid, ps.c.query)
-                .order_by(sum(c.calls).desc()))
+                .order_by(sum(c.runtime).desc()))
 
 
     def process(self, val, database=None, **kwargs):
