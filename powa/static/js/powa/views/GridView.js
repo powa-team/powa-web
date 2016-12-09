@@ -9,10 +9,11 @@ define([
         'tpl!powa/templates/grid.html',
         'powa/utils/size',
         'highlight',
+        'powa/utils/timeurls',
         'powa/utils/duration',
         'backgrid-filter',
         'backgrid-paginator'],
-        function(jquery, foundation, Backbone, WidgetView, Grid, Backgrid, moment, template, size, highlight){
+        function(jquery, foundation, Backbone, WidgetView, Grid, Backgrid, moment, template, size, highlight, timeurls){
 
     var DurationFormatter = {
         fromRaw: function(rawData){
@@ -42,7 +43,9 @@ define([
                 model = this.model,
                 base = this.$el;
             if(this.column.get("url_attr")){
+                var params = timeurls.parseUrl(window.location.search);
                 base = $("<a>").attr("data-url-has-params", "").attr("href", model.get(this.column.get("url_attr")));
+                base.get(0).search = $.param(params, true);
                 this.$el.append(base);
             }
             base.append(cell.$el);

@@ -1,5 +1,5 @@
 define(["jquery", "foundation-daterangepicker"], function($){
-    return Backbone.View.extend({
+    var DateRangePicker = Backbone.View.extend({
 
         events: {
             'change [data-role="start_date"]': "inputChange",
@@ -9,7 +9,7 @@ define(["jquery", "foundation-daterangepicker"], function($){
         initialize: function(args){
             var now = this.now = moment(),
                 self = this,
-                params = this.parseUrl(window.location.search);
+                params = DateRangePicker.parseUrl(window.location.search);
             this.format = "YYYY-MM-DD HH:mm:ss";
             this.$el = args.$el;
             this.$el.daterangepicker({
@@ -39,7 +39,7 @@ define(["jquery", "foundation-daterangepicker"], function($){
             this.daterangepicker.updateCalendars();
         },
         updateUrls : function(start_date, end_date){
-                var params = this.parseUrl(window.location.search),
+                var params = DateRangePicker.parseUrl(window.location.search),
                     self = this,
                     defaultrange = this.daterangepicker.ranges['hour'];
                 this.startInput.val(start_date.format(this.format));
@@ -56,7 +56,7 @@ define(["jquery", "foundation-daterangepicker"], function($){
                 }
 
                 $('[data-url-has-params]').each(function(){
-                        var params = self.parseUrl(this.search);
+                        var params = DateRangePicker.parseUrl(this.search);
                         params["from"] = start_date.format();
                         params["to"] = end_date.format();
                         self.startInput.val(start_date.format(self.format));
@@ -86,7 +86,7 @@ define(["jquery", "foundation-daterangepicker"], function($){
                 this.updateUrls(start_date, end_date);
                 this.trigger("pickerChanged", start_date, end_date);
             }
-        },
+        }}, {
         parseUrl : function(search){
                 var params = {},
                 pairs = search.replace(/^\?/,'').split('&');
@@ -112,4 +112,5 @@ define(["jquery", "foundation-daterangepicker"], function($){
         }
 
         });
+    return DateRangePicker;
 });
