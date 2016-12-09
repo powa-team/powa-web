@@ -85,6 +85,7 @@ require(['jquery',
                 dashboards.push(dashboard);
                 dashboardview.listenTo(picker, "pickerChanged", dashboardview.refreshSources, dashboardview);
                 dashboardview.refreshSources(picker.start_date, picker.end_date);
+                picker.listenTo(dashboardview, "dashboard:updatePeriod", picker.updateUrls, picker);
             });
         });
     });

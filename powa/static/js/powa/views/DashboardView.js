@@ -96,6 +96,7 @@ define([
                 widget.zoomIn(startDate, endDate);
             }, this);
             this.refreshSources(startDate, endDate);
+            this.trigger("dashboard:updatePeriod", startDate, endDate);
         },
 
         updatePeriod: function(startDate, endDate){
