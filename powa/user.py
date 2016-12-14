@@ -29,11 +29,13 @@ class LoginHandler(BaseHandler):
                        'You should check your installation.', 'alert')
             self.redirect('/')
         # Major.Minor version should be the same
-        if version[0:1] != __VERSION_NUM__[0:1]:
+        if version[0:2] != __VERSION_NUM__[0:2]:
             self.flash(
-                'PoWA version does not match the PoWA-Web version: %s %s' %
-                    (version, __VERSION_NUM__),
-            'alert')
+                'Unable to connect: powa-archivist version %s.X does not match powa-web version %s.X' %
+                ('.'.join(str(x) for x in version[0:2]),
+                 '.'.join(str(x) for x in __VERSION_NUM__[0:2])),
+                'alert')
+            self.redirect('/')
         self.set_secure_cookie('username', username)
         self.set_secure_cookie('password', password)
         self.set_secure_cookie('server', server)
