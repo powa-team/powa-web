@@ -20,7 +20,8 @@ require.config({
     twix: "../bower_components/twix/bin/twix",
     "backgrid-filter": "../bower_components/backgrid-filter/backgrid-filter",
     "backgrid-paginator": "../bower_components/backgrid-paginator/backgrid-paginator",
-    "backbone-pageable": "../bower_components/backbone-pageable/lib/backbone-pageable"
+    "backbone-pageable": "../bower_components/backbone-pageable/lib/backbone-pageable",
+    "file-saver": "../bower_components/file-saver/FileSaver"
   },
   urlArgs: {
     date: {

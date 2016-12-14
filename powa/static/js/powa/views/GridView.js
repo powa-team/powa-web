@@ -10,10 +10,13 @@ define([
         'powa/utils/size',
         'highlight',
         'powa/utils/timeurls',
+        'file-saver',
         'powa/utils/duration',
         'backgrid-filter',
         'backgrid-paginator'],
-        function(jquery, foundation, Backbone, WidgetView, Grid, Backgrid, moment, template, size, highlight, timeurls){
+        function(jquery, foundation, Backbone, WidgetView, Grid, Backgrid, moment, template,
+            size, highlight, timeurls, FileSaver){
+
 
     var DurationFormatter = {
         fromRaw: function(rawData){
@@ -161,6 +164,10 @@ define([
             model: Grid,
             typname: "grid",
 
+            events: {
+                "click .export_csv button": "exportCsv"
+            },
+
             initialize: function(){
                 var self = this;
                 this.grid = new Backgrid.Grid({
@@ -169,6 +176,7 @@ define([
                     header: ComposedHeader,
                     toprow: this.model.get("toprow")
                 });
+                this
                 this.grid.body.emptyText = "No data";
                 this.filter = new Backgrid.Extension.ClientSideFilter({
                       collection: this.model.get("collection")
@@ -179,6 +187,25 @@ define([
 
                 this.listenTo(this.model, "widget:needrefresh", this.update);
                 this.listenTo(this.model, "widget:dataload-failed", this.fail);
+            },
+
+            exportCsv: function(){
+                var jscols = _.pluck(this.grid.columns.models, "attributes"),
+                    columns = _.indexBy(jscols, "name"),
+                    labels = _.pluck(jscols, 'label'),
+                    keys = _.pluck(jscols, 'name');
+                var csv = labels.join(',') + '\n';
+                csv += this.model.get("collection").map(function(item) {
+                    return _.map(keys, function(key) {
+                        var cell = columns[key].cell,
+                            // suppose you want to preserve custom formatters
+                            formatter = cell.prototype && cell.prototype.formatter;
+                        return '"' + (formatter && formatter.fromRaw ?
+                            formatter.fromRaw(item.get(key), item) : item.get(key)).toString()  + '"';
+                    }).join(',');
+                }).join('\n');
+                var blob = new Blob([csv], {type: "text/csv;charset=utf-8"});
+                saveAs(blob, "export_powa.csv");
             },
 
             getColumnDefinitions: function(){
