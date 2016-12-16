@@ -194,14 +194,18 @@ define([
                     columns = _.indexBy(jscols, "name"),
                     labels = _.pluck(jscols, 'label'),
                     keys = _.pluck(jscols, 'name');
-                var csv = labels.join(',') + '\n';
-                csv += this.model.get("collection").map(function(item) {
+                var csv = this.model.get("collection").map(function(item) {
                     return _.map(keys, function(key) {
                         var cell = columns[key].cell,
-                            // suppose you want to preserve custom formatters
-                            formatter = cell.prototype && cell.prototype.formatter;
-                        return '"' + (formatter && formatter.fromRaw ?
-                            formatter.fromRaw(item.get(key), item) : item.get(key)).toString()  + '"';
+                        formatter = cell.prototype && cell.prototype.formatter;
+                        value = formatter && formatter.fromRaw ?
+                                    formatter.fromRaw(item.get(key), item) : item.get(key);
+                        value = value.toString();
+                        if(value.indexOf(',') != -1 || value.indexOf('\n') != -1){
+                            value = value.replace(/"/g, '""');
+                            value = '"' + value + '"';
+                        }
+                        return value;
                     }).join(',');
                 }).join('\n');
                 var blob = new Blob([csv], {type: "text/csv;charset=utf-8"});
