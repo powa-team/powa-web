@@ -278,7 +278,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             l1 = new QualCollection(_.uniq(l1, false, function(q){ return [q.get("attnum"), q.get("relid")].join(".")})).models;
             l2 = new QualCollection(_.uniq(l2, false, function(q){ return [q.get("attnum"), q.get("relid")].join(".")})).models;
             if(node1.get("relid") != node2.get("relid")){
-                return;
+                return [];
             }
             while(true){
                 if(idx1 >= l1.length || idx2 >= l2.length){
