@@ -194,7 +194,9 @@ define([
                     columns = _.indexBy(jscols, "name"),
                     labels = _.pluck(jscols, 'label'),
                     keys = _.pluck(jscols, 'name');
-                var csv = this.model.get("collection").map(function(item) {
+
+                var csv = labels.join(',') + '\n';
+                csv += this.model.get("collection").map(function(item) {
                     return _.map(keys, function(key) {
                         var cell = columns[key].cell,
                         formatter = cell.prototype && cell.prototype.formatter;
