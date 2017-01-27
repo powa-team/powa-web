@@ -1,3 +1,14 @@
+3.1.1:
+  - Detect powa-archivist / powa-web incompatibility
+  - Handle quals which are not optimizable at all
+  - Fix grid rendering.
+  - Change default sorting order to DESC
+  - Change default sort order on query page to duration desc
+  - Use the time interval when rendering urls in Grids
+  - Propagate updatePeriod on zoom to picker
+  - Add export to CSV feature on grid
+  - Fix case when quals dont belong to the same rel
+  - Ignore errors while getting hypoplans
 3.1.0:
   - Fix figures in query details, thanks to Eric Champigny for the patch
   - Fix graphs to display local time instead of UTC time
