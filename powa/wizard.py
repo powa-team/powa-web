@@ -57,9 +57,13 @@ class IndexSuggestionHandler(AuthHandler):
                                                 from_date,
                                                 to_date)
                 if querystr:
-                    hypoplans[query.queryid] = get_hypoplans(
-                        self.connect(database=database), querystr,
-                        indbyname.values())
+                    try:
+                        hypoplans[query.queryid] = get_hypoplans(
+                            self.connect(database=database), querystr,
+                            indbyname.values())
+                    except:
+                        # TODO: stop ignoring the error
+                        continue
             # To value of a link is the the reduction in cost
         self.render_json(hypoplans)
 
