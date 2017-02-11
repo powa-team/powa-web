@@ -76,9 +76,9 @@ RESOLVE_ATTNAME = text("""
     SELECT json_object_agg(attrelid || '.'|| attnum, value)
     FROM (
     SELECT attrelid, attnum, json_build_object(
-        'relname', relname,
-        'attname', attname,
-        'nspname', nspname,
+        'relname', quote_ident(relname),
+        'attname', quote_ident(attname),
+        'nspname', quote_ident(nspname),
         'n_distinct', COALESCE(stadistinct, 0),
         'null_frac', stanullfrac,
         'most_common_values', CASE
