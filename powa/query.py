@@ -239,7 +239,9 @@ class QueryExplains(ContentWidget):
                 query = format_jumbled_query(row['query'], vals['constants'])
                 plan = "N/A"
                 try:
-                    result = self.execute("EXPLAIN %s" % query,
+                    from sqlalchemy import text
+                    sqlQuery = text("EXPLAIN %s" % query)
+                    result = self.execute(sqlQuery,
                                           database=database)
                     plan = "\n".join(v[0] for v in result)
                 except:
