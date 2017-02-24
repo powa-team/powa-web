@@ -19,7 +19,7 @@ extract( epoch from
 def unprepare(sql):
     if sql.startswith('PREPARE'):
         sql = re.sub('PREPARE.*AS', '', sql)
-        sql = re.sub('\$\d+', '?', sql)
+    sql = re.sub('\$\d+', '?', sql)
     return sql
 
 
@@ -362,7 +362,6 @@ def get_unjumbled_query(ctrl, database, queryid, _from, _to,
         SELECT query FROM powa_statements WHERE queryid = :queryid LIMIT 1
     """), params={"queryid": queryid}))[0]
     normalized_query = rs[0]
-
     values = qualstat_get_figures(ctrl, database, _from, _to,
                                   queries=[queryid])
     if values is None:

@@ -205,8 +205,14 @@ class QueryIndexes(ContentWidget):
             querystr = get_any_sample_query(self, database, query,
                                         self.get_argument("from"),
                                         self.get_argument("to"))
-            hypoplan = get_hypoplans(self.connect(database=database), querystr,
-                                     allindexes)
+            try:
+                hypoplan = get_hypoplans(self.connect(database=database), querystr,
+                                         allindexes)
+            except:
+                # TODO: offer the possibility to fill in parameters from the UI
+                self.flash("We couldn't get plans for this query, presumably "
+                           "because some parameters are missing ")
+
         self.render("database/query/indexes.html", indexes=indexes,
                     hypoplan=hypoplan)
 
