@@ -54,7 +54,9 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     reads = MetricDef(label="Physical read", type="sizerate")
     writes = MetricDef(label="Physical writes", type="sizerate")
     user_time = MetricDef(label="CPU user time / Query time", type="percent")
-    system_time = MetricDef(label="CPU system time / Query time", type="percent")
+    system_time = MetricDef(label="CPU system time / Query time", type="percent",
+                            )
+    other_time = MetricDef(label="CPU other time / Query time", type="percent")
     hit_ratio = MetricDef(label="Shared buffers hit ratio", type="percent")
     miss_ratio = MetricDef(label="Shared buffers miss ratio", type="percent")
     sys_hit_ratio = MetricDef(label="System cache hit ratio", type="percent")
@@ -65,6 +67,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
         base = cls.metrics.copy()
         if not handler.has_extension("pg_stat_kcache"):
             for key in ("reads", "writes", "user_time", "system_time",
+                        "other_time",
                         "sys_hit_ratio", "disk_hit_ratio"):
                 base.pop(key)
         else:
@@ -130,6 +133,8 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                 kc.writes,
                 ((kc.user_time * 1000 * 100) / total_time).label("user_time"),
                 ((kc.system_time * 1000 * 100) / total_time).label("system_time"),
+                ((c.runtime - ((kc.user_time + kc.system_time) * 1000)) * 100 / total_time)
+                    .label("other_time"),
                 case([(total_blocks == 0, 0)],
                      else_=disk_hit_ratio).label("disk_hit_ratio"),
                 case([(total_blocks == 0, 0)],
@@ -369,11 +374,13 @@ class QueryOverview(DashboardPage):
                 Graph("Physical block (in Bps)",
                       metrics=[QueryOverviewMetricGroup.reads,
                                QueryOverviewMetricGroup.writes]),
-                Graph("CPU usage",
+                Graph("CPU Time repartition",
                       metrics=[QueryOverviewMetricGroup.user_time,
-                               QueryOverviewMetricGroup.system_time],
+                               QueryOverviewMetricGroup.system_time,
+                               QueryOverviewMetricGroup.other_time],
                       renderer="bar",
-                      stack=True)]])
+                      stack=True,
+                      color_scheme=['#73c03a','#cb513a','#65b9ac'])]])
             hit_ratio_graph.metrics.append(
                 QueryOverviewMetricGroup.sys_hit_ratio)
             hit_ratio_graph.metrics.append(
