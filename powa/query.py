@@ -24,7 +24,7 @@ from powa.sql.views import (powa_getstatdata_sample,
                             kcache_getstatdata_sample,
                             powa_getstatdata_detailed_db,
                             qualstat_getstatdata)
-from powa.sql.utils import (block_size, mulblock, greatest,
+from powa.sql.utils import (block_size, mulblock, greatest, least,
                             to_epoch, inner_cc)
 from powa.sql.tables import powa_statements
 
@@ -128,13 +128,18 @@ class QueryOverviewMetricGroup(MetricGroupDef):
             disk_hit_ratio = (kc.reads /
                               mulblock(total_blocks))
             total_time = greatest(c.runtime, 1);
+            # Rusage can return values > real time due to sampling bias
+            # aligned to kernel ticks. As such, we have to clamp values to 100%
+            total_time_percent = lambda x: least(100, (x * 100) /
+                                                 total_time)
             cols.extend([
                 kc.reads,
                 kc.writes,
-                ((kc.user_time * 1000 * 100) / total_time).label("user_time"),
-                ((kc.system_time * 1000 * 100) / total_time).label("system_time"),
-                ((c.runtime - ((kc.user_time + kc.system_time) * 1000)) * 100 / total_time)
-                    .label("other_time"),
+                total_time_percent(kc.user_time * 1000).label("user_time"),
+                total_time_percent(kc.system_time * 1000).label("system_time"),
+                greatest(total_time_percent(
+                    c.runtime - (kc.user_time + kc.system_time) *
+                    1000), 0).label("other_time"),
                 case([(total_blocks == 0, 0)],
                      else_=disk_hit_ratio).label("disk_hit_ratio"),
                 case([(total_blocks == 0, 0)],
