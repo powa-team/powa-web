@@ -34,7 +34,7 @@ class ByDatabaseMetricGroup(MetricGroupDef):
     shared_blks_dirtied = MetricDef(label="Blocks dirtied", type="size")
     shared_blks_written = MetricDef(label="Blocks written", type="size")
     temp_blks_written = MetricDef(label="Temp Blocks written", type="size")
-    io_time = MetricDef(label="I/O time")
+    io_time = MetricDef(label="I/O time", type="duration")
 
     @property
     def query(self):
