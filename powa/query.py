@@ -239,7 +239,6 @@ class QueryExplains(ContentWidget):
                 query = format_jumbled_query(row['query'], vals['constants'])
                 plan = "N/A"
                 try:
-                    from sqlalchemy import text
                     sqlQuery = text("EXPLAIN %s" % query)
                     result = self.execute(sqlQuery,
                                           database=database)
