@@ -1,3 +1,7 @@
+3.1.2:
+  - Fix I/O time unit on overview dashboard
+  - Fix problem with explain queries (thanks to dblugeon)
+  - Cosmetic changes to CPU time
 3.1.1:
   - Detect powa-archivist / powa-web incompatibility
   - Handle quals which are not optimizable at all
