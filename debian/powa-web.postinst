@@ -1,0 +1,25 @@
+#!/bin/sh
+
+set -eu
+
+case $1 in
+  configure)
+    if [ -z "${2:-}" ]; then
+      echo "Creating /etc/powa-web.conf"
+      COOKIE="$(dd if=/dev/urandom bs=1k count=1 2>/dev/null | sha1sum | cut -d ' ' -f 1)"
+      cat > /etc/powa-web.conf <<-EOF
+	servers={
+	  'main': {
+	    'host': 'localhost',
+	    'port': '5432',
+	    'database': 'powa',
+	    'query': {'client_encoding': 'utf8'}
+	  }
+	}
+	cookie_secret="$COOKIE"
+EOF
+    fi
+  ;;
+esac
+
+#DEBHELPER#

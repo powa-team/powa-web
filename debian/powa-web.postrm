@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -eu
+
+case $1 in
+  purge)
+    rm -f /etc/powa-web.conf
+  ;;
+esac
+
+#DEBHELPER#

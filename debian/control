@@ -1,0 +1,26 @@
+Source: powa-web
+Section: database
+Priority: optional
+Maintainer: Debian PostgreSQL Maintainers <pkg-postgresql-public@lists.alioth.debian.org>
+Uploaders: Christoph Berg <myon@debian.org>
+Build-Depends: debhelper (>= 9),
+ dh-python,
+ python,
+Standards-Version: 3.9.8
+Homepage: http://dalibo.github.io/powa/
+Vcs-Git: https://github.com/dalibo/powa-web.git
+Vcs-Browser: https://github.com/dalibo/powa-web
+
+Package: powa-web
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends},
+ ${python:Depends},
+ python,
+ python-sqlalchemy,
+ python-tornado,
+Description: PostgreSQL Workload Analyzer - web interface
+ PoWA is a PostgreSQL Workload Analyzer that gathers performance stats and
+ provides real-time charts and graphs to help monitor and tune your PostgreSQL
+ servers.
+ .
+ This package provides the web interface. It supports PostgreSQL 9.4 and later.
