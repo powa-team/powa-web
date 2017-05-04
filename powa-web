@@ -9,5 +9,5 @@ if __name__ == "__main__":
     application = make_app(debug=False, gzip=True, compress_response=True)
     application.listen(options.port, address=options.address)
     logger = logging.getLogger("tornado.application")
-    logger.info("Starting powa-web on %s:%s", options.address, options.port)
+    logger.info("Starting powa-web on http://%s:%s", options.address, options.port)
     tornado.ioloop.IOLoop.instance().start()
