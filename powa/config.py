@@ -86,7 +86,3 @@ class ConfigOverview(DashboardPage):
               )
          ]]
     )
-
-    @classmethod
-    def get_menutitle(cls, handler, params):
-        return "Configuration overview"

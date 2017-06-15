@@ -26,7 +26,6 @@ require(['jquery',
         'foundation/foundation.tab',
         'foundation/foundation.tooltip',
         'foundation/foundation.dropdown',
-        'foundation/foundation.offcanvas',
         'foundation/foundation.topbar',
         'foundation/foundation.alert'],
         function($, Foundation, _, BackBone, DashboardView,
@@ -39,20 +38,6 @@ require(['jquery',
             highlight) {
 
     $(function(){
-        $(document).foundation({
-            offcanvas: {
-                open_method: 'overlap',
-                close_on_click: true
-            }
-        });
-
-        $('.side-nav a.close').click(function(){
-            $('.off-canvas-wrap').foundation('offcanvas', 'toggle', 'offcanvas-overlap-right');
-        });
-
-        $('#menu-toggle').click(function(){
-            $('.off-canvas-wrap').foundation('offcanvas', 'toggle', 'offcanvas-overlap-right');
-        });
 
         var colors = ["#c05020", "#30c020", "#6060c0"];
         var ds = DataSourceCollection.get_instance();

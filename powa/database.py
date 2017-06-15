@@ -185,7 +185,3 @@ class DatabaseOverview(DashboardPage):
 
         self._dashboard.widgets.extend([[Wizard("Index suggestions")]])
         return self._dashboard
-
-    @classmethod
-    def get_menutitle(cls, handler, params):
-        return params.get("database")

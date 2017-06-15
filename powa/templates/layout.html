@@ -12,95 +12,72 @@
     {% block header %} {% end %}
   </head>
   <body>
-    <div class="off-canvas-wrap" id="offcanvas" data-offcanvas>
-      <div class="inner-wrap">
-        <nav class="top-bar" data-topbar role="navigation">
-          <ul class="title-area">
-            <li class="name">
+    <div class="inner-wrap">
+      <nav class="top-bar" data-topbar role="navigation">
+        <ul class="title-area">
+          <li class="name">
 
             <h1><a href="#"><img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA</a></h1>
+          </li>
+        </ul>
+
+        {% if current_user %}
+        <section class="top-bar-section">
+          <ul class="left">
+            <li class="title powa-text">
+              <a href="#">Server <b>{{ handler.current_server }}</b>
+                ({{ handler.current_connection }})</a>
             </li>
           </ul>
+        </section>
 
-          {% if current_user %}
-          <section class="top-bar-section">
-            <ul class="left">
-              <li>
-                <a id="menu-toggle" class="menu-icon" href="#" ><span></span></a>
-              </li>
-              <li class="title powa-text">
-                <a href="#">Server <b>{{ handler.current_server }}</b>
-                  ({{ handler.current_connection }})</a>
-              </li>
-            </ul>
-          </section>
-
-          <section class="top-bar-section">
-            <ul class="right">
-              <li>
-                <div class="" type="text" id="daterangepicker">
-                  <input data-role="start_date"></input>
-                  <input data-role="end_date"></input>
-                </div>
-              </li>
-              <li class="title powa-text">
-                <a href="#"><span>{{title}}</span></a>
-              </li>
-
-              <li>
-                <a href="{{ reverse_url('logout')}}">Logout</a>
-              </li>
-            </ul>
-          </section>
-          {% end %}
-        </nav>
-    <div class="row full-width">
-      <div class="main">
-        <div class="row">
-        <div>
-          {% if handler.menu %}
-          <ul class="breadcrumbs">
-            {% set last = len(handler.menu.get_breadcrumb()) - 1 %}
-            {% for i, crumb_item in enumerate(handler.menu.get_breadcrumb()) %}
-            <li class="{{'current' if last == i else ''}}">
-            <a data-url-has-params href="{{ reverse_url_with_params(crumb_item.url_name, url_args=crumb_item.url_params.values())}}">{{crumb_item.title}}</a>
+        <section class="top-bar-section">
+          <ul class="right">
+            <li>
+              <div class="" type="text" id="daterangepicker">
+                <input data-role="start_date"></input>
+                <input data-role="end_date"></input>
+              </div>
             </li>
-            {% end %}
-          </ul>
-          {% end %}
-        </div>
-        </div>
-        <div>
-        {% module Messages() %}
-        </div>
-        {% block content %} {% end %}
-      </div>
-    <footer class="row full-width" >
-    <div class="large-12 columns" >
-      <div class="row hide-for-small">
-        <div class="large-6 columns">
-          <ul class="inline-list ">
-            <li>Version {{version()}}</li>
-            <li>&copy; 2014-2017 Dalibo</li>
-            <li>&copy; 2018 The PoWA-team</li>
-            <li><a href="https://powa.readthedocs.io">https://powa.readthedocs.io</a></li>
-          </ul>
-        </div>
-        <div class="large-6 columns">
-          <ul class="inline-list right">
-            <li><a href="https://github.com/powa-team/powa-web/issues">Report a bug</a></li>
-          </ul>
-        </div>
+            <li class="title powa-text">
+              <a href="#"><span>{{title}}</span></a>
+            </li>
 
-      </div>
-    </div>
-    </footer>
-    </div>
-
-      <aside class="left-off-canvas-menu" id="left-menu">
-      {% module SideBar(handler.menu) %}
-      </aside>
-      <a class="exit-off-canvas"></a>
+            <li>
+              <a href="{{ reverse_url('logout')}}">Logout</a>
+            </li>
+          </ul>
+        </section>
+        {% end %}
+      </nav>
+      <div class="row full-width">
+        <div class="main">
+          <div class="row">
+          </div>
+          <div>
+            {% module Messages() %}
+          </div>
+          {% block content %} {% end %}
+        </div>
+        <footer class="row full-width" >
+          <div class="large-12 columns" >
+            <div class="row hide-for-small">
+              <div class="large-6 columns">
+                <ul class="inline-list ">
+                  <li>Version {{version()}}</li>
+                  <li>&copy; 2014-2017 Dalibo</li>
+                  <li>&copy; 2018 The PoWA-team</li>
+                  <li><a href="https://powa.readthedocs.io">https://powa.readthedocs.io</a></li>
+                </ul>
+              </div>
+              <div class="large-6 columns">
+                <ul class="inline-list right">
+                  <li><a href="https://github.com/powa-team/powa-web/issues">Report a bug</a></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
 

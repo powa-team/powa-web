@@ -20,60 +20,6 @@
 );
 }
 
-.sidebar .side-nav li {
-  background-color: scale-color($oil, $lightness: 1%);
-}
-
-.top-bar .menu-icon {
-    span {
-        width: rem-calc(45);
-        height: rem-calc(45);
-        display: block;
-    }
-    span::after {
-        box-shadow: 0 0 0 1px #ffffff, 0 7px 0 1px #ffffff, 0 14px 0 1px #ffffff;
-        content: "";
-        display: block;
-        height: 0;
-        margin-top: 1rem;
-        position: absolute;
-        top: 50%;
-        width: 1rem;
-    }
-}
-
-.left-off-canvas-menu {
-    height: 100%;
-    min-height: 100%;
-    overflow: hidden;
-}
-
-.offcanvas-overlap-right .left-off-canvas-menu {
-    box-shadow: 5px 10px 15px 5px rgba(0, 0, 0, 0.5);
-}
-
-.side-nav {
-
-  a.close {
-    opacity: 0.3;
-    color: $white;
-    &:hover {
-        opacity: 0.8;
-    }
-    padding-right: 5px;
-  }
-
-  li a.dropdown {
-  @include dropdown-button(
-    $padding: small
-  );
-  }
-
-  li.active {
-    background: none repeat scroll scale-color($oil, $lightness: 10%);
-  }
-}
-
 ul.unstyled {
     list-style: none;
 }

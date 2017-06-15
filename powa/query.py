@@ -339,10 +339,6 @@ class QueryOverview(DashboardPage):
                    QueryExplains, QueryIndexes, QualList]
     parent = DatabaseOverview
 
-    @classmethod
-    def get_menutitle(cls, handler, params):
-        return "Query detail"
-
     @property
     def dashboard(self):
         # This COULD be initialized in the constructor, but tornado < 3 doesn't

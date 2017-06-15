@@ -8653,61 +8653,6 @@ pre .tex .formula {
     .widget-icon-bar.eight-up.large-vertical .item {
       width: auto; } }
 
-.sidebar .side-nav li {
-  background-color: #353535; }
-
-.top-bar .menu-icon span {
-  width: 2.8125rem;
-  height: 2.8125rem;
-  display: block; }
-
-.top-bar .menu-icon span::after {
-  box-shadow: 0 0 0 1px #ffffff, 0 7px 0 1px #ffffff, 0 14px 0 1px #ffffff;
-  content: "";
-  display: block;
-  height: 0;
-  margin-top: 1rem;
-  position: absolute;
-  top: 50%;
-  width: 1rem; }
-
-.left-off-canvas-menu {
-  height: 100%;
-  min-height: 100%;
-  overflow: hidden; }
-
-.offcanvas-overlap-right .left-off-canvas-menu {
-  box-shadow: 5px 10px 15px 5px rgba(0, 0, 0, 0.5); }
-
-.side-nav a.close {
-  opacity: 0.3;
-  color: #FFFFFF;
-  padding-right: 5px; }
-  .side-nav a.close:hover {
-    opacity: 0.8; }
-
-.side-nav li a.dropdown {
-  position: relative;
-  padding-right: 3.0625rem; }
-  .side-nav li a.dropdown::after {
-    border-color: #FFFFFF transparent transparent transparent;
-    border-style: solid;
-    content: "";
-    display: block;
-    height: 0;
-    position: absolute;
-    top: 50%;
-    width: 0; }
-  .side-nav li a.dropdown::after {
-    border-width: 0.4375rem;
-    right: 1.3125rem;
-    margin-top: -0.15625rem; }
-  .side-nav li a.dropdown::after {
-    border-color: #FFFFFF transparent transparent transparent; }
-
-.side-nav li.active {
-  background: none repeat scroll #474747; }
-
 ul.unstyled {
   list-style: none; }
 
