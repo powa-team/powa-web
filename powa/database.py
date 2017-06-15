@@ -176,6 +176,7 @@ class DatabaseOverview(DashboardPage):
                    ByQueryWaitSamplingMetricGroup, WizardMetricGroup]
     params = ["database"]
     parent = Overview
+    title = '%(database)s'
 
     @property
     def dashboard(self):
@@ -243,7 +244,3 @@ class DatabaseOverview(DashboardPage):
 
         self._dashboard.widgets.extend([[Wizard("Index suggestions")]])
         return self._dashboard
-
-    @classmethod
-    def get_menutitle(cls, handler, params):
-        return params.get("database")

@@ -70,10 +70,6 @@ class BaseHandler(RequestHandler):
         return "%s:%s" % ( host, port )
 
     @property
-    def menu(self):
-        return None
-
-    @property
     def database(self):
         """Return the current database."""
         return None

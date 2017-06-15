@@ -438,10 +438,7 @@ class QueryOverview(DashboardPage):
                    QueryDetail, QueryExplains, QueryIndexes, WaitSamplingList,
                    QualList]
     parent = DatabaseOverview
-
-    @classmethod
-    def get_menutitle(cls, handler, params):
-        return "Query detail"
+    title = 'Query Overview'
 
     @property
     def dashboard(self):

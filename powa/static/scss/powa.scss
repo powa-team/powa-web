@@ -20,58 +20,10 @@
 );
 }
 
-.sidebar .side-nav li {
-  background-color: scale-color($oil, $lightness: 1%);
-}
-
-.top-bar .menu-icon {
-    span {
-        width: rem-calc(45);
-        height: rem-calc(45);
-        display: block;
-    }
-    span::after {
-        box-shadow: 0 0 0 1px #ffffff, 0 7px 0 1px #ffffff, 0 14px 0 1px #ffffff;
-        content: "";
-        display: block;
-        height: 0;
-        margin-top: 1rem;
-        position: absolute;
-        top: 50%;
-        width: 1rem;
-    }
-}
-
-.left-off-canvas-menu {
-    height: 100%;
-    min-height: 100%;
-    overflow: hidden;
-}
-
-.offcanvas-overlap-right .left-off-canvas-menu {
-    box-shadow: 5px 10px 15px 5px rgba(0, 0, 0, 0.5);
-}
-
-.side-nav {
-
-  a.close {
-    opacity: 0.3;
+.top-bar-section li.powa-text {
+    line-height: $topbar-height;
     color: $white;
-    &:hover {
-        opacity: 0.8;
-    }
-    padding-right: 5px;
-  }
-
-  li a.dropdown {
-  @include dropdown-button(
-    $padding: small
-  );
-  }
-
-  li.active {
-    background: none repeat scroll scale-color($oil, $lightness: 10%);
-  }
+    font-size: $topbar-link-font-size;
 }
 
 ul.unstyled {
@@ -102,7 +54,6 @@ footer {
 
 .panel {
   &.widget {
-    margin: 8px;
     padding: 1em;
     min-height: 200px;
     .content-widget {
@@ -149,26 +100,35 @@ footer {
     text-transform: none;
 }
 
-.main {
-    min-height: 12em;
-    padding-left: 3em;
-    padding-right: 3em;
-}
-
 .daterangepicker select {
     height: inherit;
     padding: 0;
+}
+#daterangepicker {
+  background-color: $crumb-bg;
+  border-radius: $crumb-radius;
+  border: $crumb-border-size $crumb-border-style $crumb-border-color;
+  padding: 0 $crumb-side-padding;
 }
 
 #daterangepicker input {
   display: inline-block;
   width: auto;
+  margin: 0;
+  border: none;
+  box-shadow: none;
+  text-align: right;
 }
 
 .graph_visualisation {
     display: none
 }
 
+.breadcrumbs > * {
+    font-size: 1rem;
+    line-height: 1rem;
+    text-transform: none;
+}
 .breadcrumbs > *.current a {
     cursor: pointer;
 }
@@ -180,6 +140,33 @@ footer {
 .breadcrumbs button {
     margin-top: -1em;
     margin-bottom: -1em;
+}
+
+.breadcrumbs .button-link {
+    padding-left: 0;
+}
+
+.button-link {
+    &,
+    &:hover,
+    &:focus {
+        background-color: transparent;
+    }
+
+    color: $anchor-font-color;
+
+    &:hover,
+    &:focus {
+        color: $anchor-font-color-hover;
+    }
+}
+.dropdown.button-link {
+    &::after {
+        border-color: $anchor-font-color transparent transparent transparent;
+    }
+    &:hover::after {
+        border-color: $anchor-font-color-hover transparent transparent transparent;
+    }
 }
 
 .backgrid-filter.form-search {

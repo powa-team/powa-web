@@ -139,6 +139,7 @@ class Overview(DashboardPage):
     base_url = r"/overview/"
     datasources = [GlobalDatabasesMetricGroup, ByDatabaseMetricGroup,
                    ByDatabaseWaitSamplingMetricGroup]
+    title = 'All Databases'
 
     @property
     def dashboard(self):
@@ -179,10 +180,6 @@ class Overview(DashboardPage):
 
         self._dashboard = Dashboard("All databases", dashes)
         return self._dashboard
-
-    @classmethod
-    def get_menutitle(cls, handler, params):
-        return "All databases"
 
     @classmethod
     def get_childmenu(cls, handler, params):
