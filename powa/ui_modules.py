@@ -1,10 +1,5 @@
 from tornado.web import UIModule
 
-class UserMenu(UIModule):
-
-    def render(self):
-        return ""
-
 
 class SideBar(UIModule):
 
