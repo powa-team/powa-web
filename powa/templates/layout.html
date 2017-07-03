@@ -17,7 +17,7 @@
         <ul class="title-area">
           <li class="name">
 
-            <h1><a href="#"><img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA</a></h1>
+            <h1><a href="{{ reverse_url('Overview')}}"><img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA</a></h1>
           </li>
         </ul>
 
@@ -25,8 +25,11 @@
         <section class="top-bar-section">
           <ul class="left">
             <li class="title powa-text">
-              <a href="#">Server <b>{{ handler.current_server }}</b>
+              <a href="{{ reverse_url('Overview')}}">Server <b>{{ handler.current_server }}</b>
                 ({{ handler.current_connection }})</a>
+            </li>
+            <li>
+              <a href="{{ reverse_url('ConfigOverview')}}">Configuration</a>
             </li>
           </ul>
         </section>
@@ -38,9 +41,6 @@
                 <input data-role="start_date"></input>
                 <input data-role="end_date"></input>
               </div>
-            </li>
-            <li class="title powa-text">
-              <a href="#"><span>{{title}}</span></a>
             </li>
 
             <li>
