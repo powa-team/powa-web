@@ -7,6 +7,7 @@ This module provides several classes to define a Dashboard.
 from powa.json import JSONizable
 from powa.framework import AuthHandler
 from powa.compat import with_metaclass, classproperty
+from powa.ui_modules import BreadcrumbEntry
 from tornado.web import URLSpec
 from operator import attrgetter
 try:
@@ -50,6 +51,11 @@ class DashboardHandler(AuthHandler):
         params = dict(zip(self.params, self.path_args))
         return params.get("database", None)
 
+    @property
+    def breadcrumb(self):
+        params = OrderedDict(zip(self.params, self.path_args))
+        breadcrumb = self.get_breadcrumb(self, params)
+        return breadcrumb
 
 class MetricGroupHandler(AuthHandler):
     """
@@ -556,3 +562,21 @@ class DashboardPage(object):
                      dict(datasource.__dict__)),
                 {"datasource": datasource, "params": cls.params}, name=datasource.url_name))
         return url_specs
+
+    @classmethod
+    def get_breadcrumb(cls, handler, params):
+        title = cls.title % params
+        entry = BreadcrumbEntry(title, cls.__name__, params)
+        items = [entry]
+
+        if len(params) > 0:
+            parent_params = params.copy()
+            parent_params.popitem()
+        else:
+            parent_params = []
+
+        if cls.parent is not None and hasattr(handler, 'parent') and \
+            hasattr(cls.parent, 'get_breadcrumb'):
+            items.extend(cls.parent.get_breadcrumb(handler.parent,
+                                                   parent_params))
+        return items

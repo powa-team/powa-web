@@ -53,6 +53,22 @@
       <div class="row full-width">
         <div class="main">
           <div class="row">
+            {% if hasattr(handler, 'breadcrumb') %}
+            <div>
+              <ul class="breadcrumbs">
+                {% set last = len(handler.breadcrumb) - 1 %}
+                {% for i, crumb_item in enumerate(reversed(handler.breadcrumb)) %}
+                <li class="{{'current' if last == i else ''}}">
+                  {% if i != last %}
+                  <a data-url-has-params href="{{ reverse_url_with_params(crumb_item.url_name, url_args=crumb_item.url_params.values())}}">{{crumb_item.title}}</a>
+                  {% else %}
+                  {{ crumb_item.title}}
+                  {% end %}
+                </li>
+                {% end %}
+              </ul>
+            </div>
+            {% end %}
           </div>
           <div>
             {% module Messages() %}

@@ -338,6 +338,7 @@ class QueryOverview(DashboardPage):
     datasources = [QueryOverviewMetricGroup, QueryDetail,
                    QueryExplains, QueryIndexes, QualList]
     parent = DatabaseOverview
+    title = 'Query Overview'
 
     @property
     def dashboard(self):

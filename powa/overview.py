@@ -120,3 +120,4 @@ class Overview(DashboardPage):
                    "url_attr": "url"
                }],
                metrics=ByDatabaseMetricGroup.all())]])
+    title = 'All Databases'

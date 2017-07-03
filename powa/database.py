@@ -136,6 +136,7 @@ class DatabaseOverview(DashboardPage):
                    WizardMetricGroup]
     params = ["database"]
     parent = Overview
+    title = '%(database)s'
 
     @property
     def dashboard(self):
