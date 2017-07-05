@@ -37,13 +37,6 @@
         <section class="top-bar-section">
           <ul class="right">
             <li>
-              <div class="" type="text" id="daterangepicker">
-                <input data-role="start_date"></input>
-                <input data-role="end_date"></input>
-              </div>
-            </li>
-
-            <li>
               <a href="{{ reverse_url('logout')}}">Logout</a>
             </li>
           </ul>
@@ -53,8 +46,8 @@
       <div class="row full-width">
         <div class="main">
           <div class="row">
+            <div class="large-6 columns">
             {% if hasattr(handler, 'breadcrumb') %}
-            <div>
               <ul class="breadcrumbs">
                 {% set last = len(handler.breadcrumb) - 1 %}
                 {% for i, crumb_item in enumerate(reversed(handler.breadcrumb)) %}
@@ -67,8 +60,14 @@
                 </li>
                 {% end %}
               </ul>
-            </div>
             {% end %}
+            </div>
+            <div class="large-6 columns">
+              <div class="right" type="text" id="daterangepicker">
+                <input data-role="start_date"></input>
+                <input data-role="end_date"></input>
+              </div>
+            </div>
           </div>
           <div>
             {% module Messages() %}
