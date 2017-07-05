@@ -180,7 +180,7 @@ define([
             typname: "grid",
 
             events: {
-                "click .export_csv button": "exportCsv"
+                "click .export_csv a": "exportCsv"
             },
 
             initialize: function(){
