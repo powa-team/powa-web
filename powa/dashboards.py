@@ -7,7 +7,7 @@ This module provides several classes to define a Dashboard.
 from powa.json import JSONizable
 from powa.framework import AuthHandler
 from powa.compat import with_metaclass, classproperty
-from powa.ui_modules import BreadcrumbEntry
+from powa.ui_modules import MenuEntry
 from tornado.web import URLSpec
 from operator import attrgetter
 try:
@@ -563,10 +563,22 @@ class DashboardPage(object):
                 {"datasource": datasource, "params": cls.params}, name=datasource.url_name))
         return url_specs
 
+
+    @classmethod
+    def get_childmenu(cls, handler, params):
+        return None
+
+    @classmethod
+    def get_selfmenu(cls, handler, params):
+        my_params = OrderedDict((key, params.get(key))
+                                for key in cls.params)
+        return MenuEntry(cls.title % params, cls.__name__, my_params)
+
     @classmethod
     def get_breadcrumb(cls, handler, params):
         title = cls.title % params
-        entry = BreadcrumbEntry(title, cls.__name__, params)
+        entry = MenuEntry(title, cls.__name__, params)
+        entry.children = cls.get_childmenu(handler, params)
         items = [entry]
 
         if len(params) > 0:
@@ -577,6 +589,6 @@ class DashboardPage(object):
 
         if cls.parent is not None and hasattr(handler, 'parent') and \
             hasattr(cls.parent, 'get_breadcrumb'):
-            items.extend(cls.parent.get_breadcrumb(handler.parent,
+            items.extend(cls.parent.get_breadcrumb(handler,
                                                    parent_params))
         return items

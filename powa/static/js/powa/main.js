@@ -73,6 +73,9 @@ require(['jquery',
                 picker.listenTo(dashboardview, "dashboard:updatePeriod", picker.updateUrls, picker);
             });
         });
+
+        // ensure that dropdown are taken into account
+        $(document).foundation();
     });
     return {};
 });

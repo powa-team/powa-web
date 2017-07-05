@@ -121,3 +121,14 @@ class Overview(DashboardPage):
                }],
                metrics=ByDatabaseMetricGroup.all())]])
     title = 'All Databases'
+
+
+    @classmethod
+    def get_childmenu(cls, handler, params):
+        from powa.database import DatabaseOverview
+        children = []
+        for d in list(handler.databases):
+            new_params = params.copy()
+            new_params["database"] = d
+            children.append(DatabaseOverview.get_selfmenu(handler, new_params))
+        return children

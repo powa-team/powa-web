@@ -62,6 +62,17 @@
             {% else %}
             {{ crumb_item.title}}
             {% end %}
+            {% if crumb_item.children and i == last %}
+            &nbsp;
+            <button href="#" data-dropdown="drop-{{crumb_item.url_name}}" aria-controls="drop-{{crumb_item.url_name}}" aria-expanded="false" class="dropdown tiny button">Choose one ...</button>
+            <ul id="drop-{{crumb_item.url_name}}" data-dropdown-content class="f-dropdown" aria-hidden="true">
+              {% for child in crumb_item.children %}
+              <li>
+                <a data-url-has-params href="{{ reverse_url_with_params(child.url_name, url_args=child.url_params.values())}}">{{child.title}}</a>
+              </li>
+              {% end %}
+            </ul>
+            {% end %}
           </li>
           {% end %}
         </ul>
