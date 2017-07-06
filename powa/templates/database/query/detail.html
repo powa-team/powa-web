@@ -6,8 +6,8 @@
   </div>
 </div>
 <div class="row">
-  <div class="columns large-4"><b># of execution:</b> {{ stats['calls'] }}</div>
-  <div class="columns large-4"><b>Total runtime:</b> <span class="duration">{{ stats['runtime'] }}</span></div>
-  <div class="columns large-4"><b>Hit ratio:</b> {{ (str(round(stats['shared_blks_hit'] * 100 / stats['total_blks'], 2)) + "%") if stats['total_blks'] > 0 else 'N/A' }} </div>
+  <div class="columns large-4 text-center"><b># of execution:</b> {{ stats['calls'] }}</div>
+  <div class="columns large-4 text-center"><b>Total runtime:</b> <span class="duration">{{ stats['runtime'] }}</span></div>
+  <div class="columns large-4 text-center"><b>Hit ratio:</b> {{ (str(round(stats['shared_blks_hit'] * 100 / stats['total_blks'], 2)) + "%") if stats['total_blks'] > 0 else 'N/A' }} </div>
 </div>
 {% end %}
