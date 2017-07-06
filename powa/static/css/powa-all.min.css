@@ -4543,7 +4543,7 @@ meta.foundation-mq-topbar {
       line-height: 2.8125rem;
       margin: 0; }
       .top-bar .name h1 a, .top-bar .name h2 a, .top-bar .name h3 a, .top-bar .name h4 a, .top-bar .name p a, .top-bar .name span a {
-        color: #FFFFFF;
+        color: #859145;
         display: block;
         font-weight: normal;
         padding: 0 0.9375rem;
@@ -4553,7 +4553,7 @@ meta.foundation-mq-topbar {
     right: 0;
     top: 0; }
     .top-bar .toggle-topbar a {
-      color: #FFFFFF;
+      color: #859145;
       display: block;
       font-size: 0.8125rem;
       font-weight: bold;
@@ -4620,7 +4620,7 @@ meta.foundation-mq-topbar {
   .top-bar-section ul li {
     background: #333333; }
     .top-bar-section ul li > a {
-      color: #FFFFFF;
+      color: #859145;
       display: block;
       font-family: "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif;
       font-size: 0.8125rem;
@@ -4796,7 +4796,7 @@ meta.foundation-mq-topbar {
         margin-top: 0;
         font-size: 1.125rem; }
         .top-bar-section .dropdown li.title h5 a, .top-bar-section .dropdown li.parent-link a {
-          color: #FFFFFF;
+          color: #859145;
           display: block; }
           .top-bar-section .dropdown li.title h5 a:hover, .top-bar-section .dropdown li.parent-link a:hover {
             background: none; }
@@ -8652,6 +8652,11 @@ pre .tex .formula {
   @media only screen and (min-width: 64.0625em) {
     .widget-icon-bar.eight-up.large-vertical .item {
       width: auto; } }
+
+.top-bar-section li.powa-text {
+  line-height: 2.8125rem;
+  color: #FFFFFF;
+  font-size: 0.8125rem; }
 
 ul.unstyled {
   list-style: none; }

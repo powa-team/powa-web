@@ -20,6 +20,12 @@
 );
 }
 
+.top-bar-section li.powa-text {
+    line-height: $topbar-height;
+    color: $white;
+    font-size: $topbar-link-font-size;
+}
+
 ul.unstyled {
     list-style: none;
 }
