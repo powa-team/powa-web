@@ -192,3 +192,8 @@ footer {
         border-bottom: 0;
     }
 }
+
+pre.sql {
+    max-height: 400px;
+    overflow: auto;
+}
