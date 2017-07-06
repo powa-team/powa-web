@@ -46,6 +46,7 @@
       </section>
       {% end %}
     </nav>
+    {% if current_user %}
     <div class="row">
       <div class="large-7 columns">
       {% if hasattr(handler, 'breadcrumb') %}
@@ -89,6 +90,7 @@
         </div>
       </div>
     </div>
+    {% end %}
     <div>
       {% module Messages() %}
     </div>
