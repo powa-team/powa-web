@@ -48,11 +48,13 @@
       {% end %}
     </nav>
     <div class="row">
-      <div class="large-6 columns">
+      <div class="large-7 columns">
       {% if hasattr(handler, 'breadcrumb') %}
         <ul class="breadcrumbs">
           <li>
-            <a href="{{ reverse_url('Overview') }}"><i class="fi-home"></i></a>
+            <strong>
+              <a href="{{ reverse_url('Overview') }}"><i class="fi-home"></i></a>
+            </strong>
           </li>
           {% set last = len(handler.breadcrumb) - 1 %}
           {% for i, crumb_item in enumerate(reversed(handler.breadcrumb)) %}
@@ -64,7 +66,7 @@
             {% end %}
             {% if crumb_item.children and i == last %}
             &nbsp;
-            <button href="#" data-dropdown="drop-{{crumb_item.url_name}}" aria-controls="drop-{{crumb_item.url_name}}" aria-expanded="false" class="dropdown tiny button">Choose one ...</button>
+            <button href="#" data-dropdown="drop-{{crumb_item.url_name}}" aria-controls="drop-{{crumb_item.url_name}}" aria-expanded="false" class="dropdown button">Choose one ...</button>
             <ul id="drop-{{crumb_item.url_name}}" data-dropdown-content class="f-dropdown" aria-hidden="true">
               {% for child in crumb_item.children %}
               <li>
@@ -78,8 +80,11 @@
         </ul>
       {% end %}
       </div>
-      <div class="large-6 columns">
+      <div class="large-5 columns">
         <div class="right" type="text" id="daterangepicker">
+          <strong>
+            <i class="fi-calendar"></i>&nbsp;
+          </strong>
           <input data-role="start_date"></input>
           <input data-role="end_date"></input>
         </div>

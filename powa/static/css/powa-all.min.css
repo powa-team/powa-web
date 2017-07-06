@@ -8705,12 +8705,27 @@ footer {
   height: inherit;
   padding: 0; }
 
+#daterangepicker {
+  background-color: #fcfcfc;
+  border-radius: 3px;
+  border: 1px solid #e3e3e3;
+  padding: 0 0.75rem; }
+
 #daterangepicker input {
   display: inline-block;
-  width: auto; }
+  width: auto;
+  margin: 0;
+  border: none;
+  box-shadow: none;
+  text-align: right; }
 
 .graph_visualisation {
   display: none; }
+
+.breadcrumbs > * {
+  font-size: 1rem;
+  line-height: 1rem;
+  text-transform: none; }
 
 .breadcrumbs > *.current a {
   cursor: pointer; }
