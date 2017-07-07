@@ -6998,7 +6998,7 @@ th.hide-for-touch {
     font-style: italic;
     color: gray; }
     .backgrid tbody tr.empty td, .backgrid tbody tr.empty th {
-      display: inherit;
+      display: table-cell;
       text-align: center; }
   .backgrid tbody tr:hover {
     background-color: #FFFFFF; }
