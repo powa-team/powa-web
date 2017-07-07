@@ -64,9 +64,11 @@
             {% else %}
             {{ crumb_item.title}}
             {% end %}
-            {% if crumb_item.children and i == last %}
+          </li>
+          {% if crumb_item.children and i == last %}
+          <li class="current">
             &nbsp;
-            <button href="#" data-dropdown="drop-{{crumb_item.url_name}}" aria-controls="drop-{{crumb_item.url_name}}" aria-expanded="false" class="dropdown button">Choose one ...</button>
+            <button href="#" data-dropdown="drop-{{crumb_item.url_name}}" aria-controls="drop-{{crumb_item.url_name}}" aria-expanded="false" class="dropdown button button-link">Choose one ...</button>
             <ul id="drop-{{crumb_item.url_name}}" data-dropdown-content class="f-dropdown" aria-hidden="true">
               {% for child in crumb_item.children %}
               <li>
@@ -74,8 +76,8 @@
               </li>
               {% end %}
             </ul>
-            {% end %}
           </li>
+          {% end %}
           {% end %}
         </ul>
       {% end %}

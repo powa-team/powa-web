@@ -142,6 +142,33 @@ footer {
     margin-bottom: -1em;
 }
 
+.breadcrumbs .button-link {
+    padding-left: 0;
+}
+
+.button-link {
+    &,
+    &:hover,
+    &:focus {
+        background-color: transparent;
+    }
+
+    color: $anchor-font-color;
+
+    &:hover,
+    &:focus {
+        color: $anchor-font-color-hover;
+    }
+}
+.dropdown.button-link {
+    &::after {
+        border-color: $anchor-font-color transparent transparent transparent;
+    }
+    &:hover::after {
+        border-color: $anchor-font-color-hover transparent transparent transparent;
+    }
+}
+
 .backgrid-filter.form-search {
     margin-left: 0;
     margin-top: 0;
