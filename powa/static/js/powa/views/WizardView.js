@@ -75,7 +75,7 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
                     label: "Unoptimized quals",
                     cell: "html"
                 }],
-                emptyText: "No qual which cannot be optimized",
+                emptyText: "All quals could be optimized.",
                 collection: this.model.get("unoptimizable")
             });
             this.render();
