@@ -1,3 +1,5 @@
+3.1.5:
+  - Show a sorted list of servers on login screen (meikomeik)
 3.1.4:
   - Export all data in csv export
   - Reword double negation, thanks to Pierre Giraud for noticing
