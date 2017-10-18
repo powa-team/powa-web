@@ -83,7 +83,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-copy');
   grunt.loadNpmTasks('grunt-contrib-requirejs');
   grunt.loadNpmTasks('grunt-contrib-uglify');
-  grunt.loadNpmTasks('grunt-contrib-sass');
+  grunt.loadNpmTasks('grunt-sass');
 
   grunt.registerTask('default', ['bowerRequirejs', 'copy', 'sass']);
   grunt.registerTask('dist', ['bowerRequirejs', 'copy', 'requirejs', 'sass']);
