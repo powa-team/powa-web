@@ -17,8 +17,10 @@ class PgSettingsMetricGroup(MetricGroupDef):
     axis_type = "category"
     setting_value = MetricDef(label="Value", type="string")
     setting_unit = MetricDef(label="Unit", type="string")
+    category_value = MetricDef(label="Category", type="string")
     query = """
-            SELECT name as setting_name, setting as setting_value, COALESCE(unit,'') AS setting_unit
+            SELECT name as setting_name, setting as setting_value,
+            COALESCE(unit,'') AS setting_unit, category as category_value
             FROM pg_settings
             --WHERE name like 'powa%%'
             ORDER BY name"""
