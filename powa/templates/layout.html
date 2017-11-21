@@ -108,7 +108,7 @@
       {% if handler.application.settings['debug'] %}
         <script data-main="{{ static_url('js/config.js')}}" src="{{static_url('js/require.js')}}"></script>
       {% else %}
-        <script data-main="{{ static_url('js/powa.min-all.js')}}" src="{{static_url('js/require.js')}}"></script>
+        <script data-main="{{ static_url('js/powa.all.js')}}" src="{{static_url('js/require.js')}}"></script>
       {% end %}
   </body>
 </html>
