@@ -74,7 +74,7 @@ define([
                     var cell = $("<th>")
                             .attr("colspan",  col.get("colspan") || 1)
                             .append(
-                                    $("<a>")
+                                    $("<span>")
                                     .attr("title", col.get("name"))
                                     .html(col.get("name")));
                     cell.addClass("renderable");
