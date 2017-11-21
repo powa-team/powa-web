@@ -127,9 +127,10 @@ define([
             this.$el.empty();
             var model = this.model,
                 raw_value = model.get(this.column.get("name")),
-                value = raw_value.replace(/^\s+/g,"").replace(/\n\s+/, "\n"),
+                value = raw_value.replace(/^\s+/g,"").replace(/\n\s*/g, " "),
                 max_length = this.column.get("max_length"),
-                truncated_value = max_length ? value.substring(0, max_length) : value;
+                too_long = value.length > max_length,
+                truncated_value = too_long ? value.substring(0, max_length) + '…' : value;
                 code_elem = $("<pre>").addClass("has-tip").addClass("tip-top").attr("data-tooltip", "")
                             .html(highlight.highlight("sql", truncated_value, true).value),
                 base = this.$el;
