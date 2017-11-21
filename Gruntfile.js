@@ -2,15 +2,6 @@ module.exports = function(grunt) {
 
   // Project configuration.
   grunt.initConfig({
-    uglify: {
-      options: {
-        banner: '/*! <%= grunt.template.today("yyyy-mm-dd") %> */\n'
-      },
-      build: {
-        src: 'powa/static/build/powa/main.js',
-        dest: 'powa/static/js/powa.min-all.js'
-      }
-    },
     copy: {
         cssAsScss: {
             files: [
@@ -41,14 +32,11 @@ module.exports = function(grunt) {
                 baseUrl: "./powa/static/js",
                 wrap: true,
                 name: "powa/main",
-                optimize: "uglify",
-                uglify: {
-                    "except": ["$super"]
-                },
+                optimize: "none",
                 preserveLicenseComments: false,
                 generateSourceMaps: false,
                 mainConfigFile: "./powa/static/js/config.js",
-                out: "powa/static/js/powa.min-all.js",
+                out: "powa/static/js/powa.all.js"
             }
         }
     },
@@ -75,14 +63,10 @@ module.exports = function(grunt) {
     }
   });
 
-
-  // Load the plugin that provides the "uglify" task.
-
   // Default task(s).
   grunt.loadNpmTasks('grunt-bower-requirejs');
   grunt.loadNpmTasks('grunt-contrib-copy');
   grunt.loadNpmTasks('grunt-contrib-requirejs');
-  grunt.loadNpmTasks('grunt-contrib-uglify');
   grunt.loadNpmTasks('grunt-sass');
 
   grunt.registerTask('default', ['bowerRequirejs', 'copy', 'sass']);
