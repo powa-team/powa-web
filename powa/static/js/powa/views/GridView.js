@@ -20,7 +20,7 @@ define([
 
     var DurationFormatter = {
         fromRaw: function(rawData){
-            return moment(parseFloat(rawData, 10)).preciseDiff(moment(0));
+            return moment(parseFloat(rawData, 10)).preciseDiff(moment(0), true);
         }
     };
 
