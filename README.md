@@ -1,10 +1,10 @@
 
-![PostgreSQL Workload Analyzer](https://github.com/dalibo/powa/blob/master/img/powa_logo.410x161.png)
+![PostgreSQL Workload Analyzer](https://github.com/powa-team/powa/blob/master/img/powa_logo.410x161.png)
 
 PoWA Web
 =========
 
-This project is a User Interface to the [PoWA](http://dalibo.github.io/powa/) project.
+This project is a User Interface to the [PoWA](http://powa-team.github.io/powa/) project.
 
 For more information, please read the [PoWA-web documentation](http://powa.readthedocs.io/en/latest/powa-web/index.html):
 

@@ -24,14 +24,14 @@ if sys.version_info < (2, 7, 0):
 setup(
     name='powa-web',
     version=__VERSION__,
-    author='Dalibo',
+    author='powa-team',
     license='Postgresql',
     packages=find_packages(),
     install_requires=requires,
     include_package_data=True,
-    url="http://dalibo.github.io/powa",
+    url="https://powa.readthedocs.io/",
     description="A User Interface for the PoWA project",
-    long_description="See http://dalibo.github.io/powa",
+    long_description="See https://powa.readthedocs.io/",
     scripts=['powa-web'],
     classifiers=[
     "Development Status :: 4 - Beta",
