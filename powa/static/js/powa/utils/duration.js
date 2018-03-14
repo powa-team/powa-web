@@ -19,10 +19,10 @@ define(['moment'], function(moment){
         microseconds: 'µs',
         delimiter: ' '
     };
-    moment.fn.preciseDiff = function(d2) {
-        return moment.preciseDiff(this, d2);
+    moment.fn.preciseDiff = function(d2, imprecise) {
+        return moment.preciseDiff(this, d2, imprecise);
     };
-    moment.preciseDiff = function(d1, d2) {
+    moment.preciseDiff = function(d1, d2, imprecise) {
         var m1 = moment(d1), m2 = moment(d2);
         if (m1.isAfter(m2) || (m1.isSame(m2) && m1._i > m2._i)) {
             var tmp = m1;
@@ -107,6 +107,10 @@ define(['moment'], function(moment){
         }
         if(result.length == 0){
             return "0";
+        }
+        // Keep only the first 2 results, more it too precise
+        if (imprecise) {
+            result = result.slice(0, 2);
         }
         return result.join(STRINGS.delimiter);
     };

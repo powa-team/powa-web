@@ -18,13 +18,17 @@
   width: 100%;
   background-color: transparent;
   border-collapse: collapse;
+  border: 0;
   -webkit-border-radius: 4px;
      -moz-border-radius: 4px;
           border-radius: 4px;
 
-  &.backgrid-striped tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
+  & thead,
+  & th:nth-child(even),
+  & tr:nth-child(even) {
+    background-color: transparent;
   }
+
   .sort-caret {
     display: inline-block;
     width: 0;
@@ -56,10 +60,8 @@
     display: none;
     padding: 4px 5px;
     overflow: hidden;
-    text-align: center;
     text-overflow: ellipsis;
     vertical-align: middle;
-    border-bottom: 1px solid #DDD;
     &.renderable {
       display: table-cell;
     }
@@ -67,7 +69,6 @@
 
   td.error,
   tbody tr:nth-child(odd) td.error {
-    background-color: rgba(255, 210, 77, 0.1);
     outline: 1px solid #ffd24d;
   }
 
@@ -75,7 +76,6 @@
   th {
     @extend td;
     font-weight: bold;
-    text-align: center;
     &.sortable a {
       cursor: pointer;
       text-decoration: none;
@@ -84,16 +84,18 @@
 
   thead th {
     vertical-align: top;
-    background-color: #f9f9f9;
-    border-right: 1px solid #DDD;
+    border-bottom: 1px solid #DDD;
     a {
       display: block;
     }
 
-
     &.merge {
         border-bottom: none;
     }
+  }
+
+  thead tr.toprow th {
+    text-align: center;
   }
 
   tbody tr.empty {
@@ -105,13 +107,17 @@
     }
   }
 
+  tbody tr:hover {
+    background-color: $white;
+  }
+
   .string-cell,
   .uri-cell,
   .email-cell,
   .string-cell.editor input[type=text],
   .uri-cell.editor input[type=text],
   .email-cell.editor input[type=text] {
-    text-align: center;
+    text-align: left;
   }
 
   .date-cell,
@@ -126,11 +132,21 @@
   .number-cell.editor input[type=text],
   .integer-cell.editor input[type=text],
   .percent-cell.editor input[type=text] {
-    text-align: center;
+    text-align: right;
   }
 
   .boolean-cell,
   .boolean-cell.editor input[type=checkbox] {
     text-align: center;
+  }
+
+  /* Powa specific cell formats */
+  .query-cell {
+    text-align: left;
+  }
+  .size-cell,
+  .sizerate-cell,
+  .duration-cell {
+    text-align: right;
   }
 }

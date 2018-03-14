@@ -20,7 +20,7 @@ define([
 
     var DurationFormatter = {
         fromRaw: function(rawData){
-            return moment(parseFloat(rawData, 10)).preciseDiff(moment(0));
+            return moment(parseFloat(rawData, 10)).preciseDiff(moment(0), true);
         }
     };
 
@@ -69,12 +69,12 @@ define([
 
         render: function () {
             if(this.toprow){
-                var tr = $("<tr>");
+                var tr = $("<tr>", {'class': 'toprow'});
                 this.toprow.each(function(col){
                     var cell = $("<th>")
                             .attr("colspan",  col.get("colspan") || 1)
                             .append(
-                                    $("<a>")
+                                    $("<span>")
                                     .attr("title", col.get("name"))
                                     .html(col.get("name")));
                     cell.addClass("renderable");
@@ -104,32 +104,33 @@ define([
     });
 
     Backgrid.Extension.DurationCell = Backgrid.Cell.extend({
-        className: "duration",
+        className: "duration-cell",
         formatter: DurationFormatter
     });
     Backgrid.Extension.BoolCell = Backgrid.Cell.extend({
-        className: "bool",
+        className: "boolean-cell",
         formatter: BoolFormatter
     });
     Backgrid.Extension.SizeCell = Backgrid.Cell.extend({
-        className: "size",
+        className: "size-cell",
         formatter: size.SizeFormatter
     });
 
     Backgrid.Extension.SizerateCell = Backgrid.Cell.extend({
-        className: "sizerate",
+        className: "sizerate-cell",
         formatter: new size.SizeFormatter({suffix: 'ps'})
     });
 
     Backgrid.Extension.QueryCell= Backgrid.Cell.extend({
-        className: "query",
+        className: "query-cell",
         render: function(){
             this.$el.empty();
             var model = this.model,
                 raw_value = model.get(this.column.get("name")),
-                value = raw_value.replace(/^\s+/g,"").replace(/\n\s+/, "\n"),
+                value = raw_value.replace(/^\s+/g,"").replace(/\n\s*/g, " "),
                 max_length = this.column.get("max_length"),
-                truncated_value = max_length ? value.substring(0, max_length) : value;
+                too_long = value.length > max_length,
+                truncated_value = too_long ? value.substring(0, max_length) + '…' : value;
                 code_elem = $("<pre>").addClass("has-tip").addClass("tip-top").attr("data-tooltip", "")
                             .html(highlight.highlight("sql", truncated_value, true).value),
                 base = this.$el;
@@ -155,6 +156,20 @@ define([
                 if (column.get("direction") === "descending") collection.trigger(event, column, "ascending");
                 else collection.trigger(event, column, "descending");
             }
+        },
+        initialize: function(options) {
+          /*
+           * Custom header cell to get the same alignment as in underlying cells.
+           */
+          DescHeaderCell.__super__.initialize.apply(this, arguments);
+          // first get the cell type
+          // Note that we use BaseCell which has a 'cell' property
+          var cell = this.column.get('cell').prototype.cell;
+          // then get the className for the cell class
+          var cellClass = Backgrid.resolveNameToClass(cell || "string", "Cell");
+          var className = cellClass.prototype.className;
+          // finally apply the className as other cells in the column
+          this.$el.addClass(className);
         }
     });
 
@@ -165,7 +180,7 @@ define([
             typname: "grid",
 
             events: {
-                "click .export_csv button": "exportCsv"
+                "click .export_csv a": "exportCsv"
             },
 
             initialize: function(){

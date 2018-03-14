@@ -26,7 +26,7 @@ class ByDatabaseMetricGroup(MetricGroupDef):
     xaxis = "datname"
     data_url = r"/metrics/by_databases/"
     axis_type = "category"
-    calls = MetricDef(label="#Calls", type="string", direction="descending")
+    calls = MetricDef(label="#Calls", type="integer", direction="descending")
     runtime = MetricDef(label="Runtime", type="duration")
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
     shared_blks_read = MetricDef(label="Blocks read", type="size")
