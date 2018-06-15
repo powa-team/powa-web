@@ -50,8 +50,7 @@ html, body {
   -moz-box-sizing: border-box;
   box-sizing: border-box; }
 
-html,
-body {
+html, body {
   font-size: 100%; }
 
 body {
@@ -3421,7 +3420,7 @@ kbd {
         width: 100%; }
   .orbit-container .orbit-slide-number {
     left: 10px;
-    background: transparent;
+    background: rgba(0, 0, 0, 0);
     color: #FFFFFF;
     font-size: 12px;
     position: absolute;
@@ -4251,8 +4250,8 @@ table {
     background: #F5F5F5; }
     table thead tr th,
     table thead tr td,
-    table thead tr .backgrid th, .backgrid
-    table thead tr th {
+    table thead tr .backgrid th,
+    .backgrid table thead tr th {
       color: #222222;
       font-size: 0.875rem;
       font-weight: bold;
@@ -4261,16 +4260,16 @@ table {
     background: #F5F5F5; }
     table tfoot tr th,
     table tfoot tr td,
-    table tfoot tr .backgrid th, .backgrid
-    table tfoot tr th {
+    table tfoot tr .backgrid th,
+    .backgrid table tfoot tr th {
       color: #222222;
       font-size: 0.875rem;
       font-weight: bold;
       padding: 0.5rem 0.625rem 0.625rem; }
   table tr th,
   table tr td,
-  table tr .backgrid th, .backgrid
-  table tr th {
+  table tr .backgrid th,
+  .backgrid table tr th {
     color: #222222;
     font-size: 0.875rem;
     padding: 0.5625rem 0.625rem;
@@ -4280,15 +4279,15 @@ table {
   table thead tr th,
   table tfoot tr th,
   table tfoot tr td,
-  table tfoot tr .backgrid th, .backgrid
-  table tfoot tr th,
+  table tfoot tr .backgrid th,
+  .backgrid table tfoot tr th,
   table tbody tr th,
   table tbody tr td,
-  table tbody tr .backgrid th, .backgrid
-  table tbody tr th,
+  table tbody tr .backgrid th,
+  .backgrid table tbody tr th,
   table tr td,
-  table tr .backgrid th, .backgrid
-  table tr th {
+  table tr .backgrid th,
+  .backgrid table tr th {
     display: table-cell;
     line-height: 1.125rem; }
 
@@ -5639,7 +5638,7 @@ ul.off-canvas-list {
   box-shadow: -4px 0 4px rgba(0, 0, 0, 0.5), 4px 0 4px rgba(0, 0, 0, 0.5);
   cursor: pointer;
   transition: background 300ms ease;
-  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
   background: rgba(255, 255, 255, 0.2);
   bottom: 0;
   display: block;
@@ -5664,7 +5663,7 @@ ul.off-canvas-list {
   box-shadow: -4px 0 4px rgba(0, 0, 0, 0.5), 4px 0 4px rgba(0, 0, 0, 0.5);
   cursor: pointer;
   transition: background 300ms ease;
-  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
   background: rgba(255, 255, 255, 0.2);
   bottom: 0;
   display: block;
@@ -5689,7 +5688,7 @@ ul.off-canvas-list {
   box-shadow: -4px 0 4px rgba(0, 0, 0, 0.5), 4px 0 4px rgba(0, 0, 0, 0.5);
   cursor: pointer;
   transition: background 300ms ease;
-  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
   background: rgba(255, 255, 255, 0.2);
   bottom: 0;
   display: block;
@@ -5714,7 +5713,7 @@ ul.off-canvas-list {
   box-shadow: -4px 0 4px rgba(0, 0, 0, 0.5), 4px 0 4px rgba(0, 0, 0, 0.5);
   cursor: pointer;
   transition: background 300ms ease;
-  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
   background: rgba(255, 255, 255, 0.2);
   bottom: 0;
   display: block;
@@ -5741,7 +5740,7 @@ ul.off-canvas-list {
   box-shadow: -4px 0 4px rgba(0, 0, 0, 0.5), 4px 0 4px rgba(0, 0, 0, 0.5);
   cursor: pointer;
   transition: background 300ms ease;
-  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
   background: rgba(255, 255, 255, 0.2);
   bottom: 0;
   display: block;
@@ -5767,7 +5766,7 @@ ul.off-canvas-list {
   box-shadow: -4px 0 4px rgba(0, 0, 0, 0.5), 4px 0 4px rgba(0, 0, 0, 0.5);
   cursor: pointer;
   transition: background 300ms ease;
-  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
   background: rgba(255, 255, 255, 0.2);
   bottom: 0;
   display: block;
@@ -5793,7 +5792,7 @@ ul.off-canvas-list {
   box-shadow: -4px 0 4px rgba(0, 0, 0, 0.5), 4px 0 4px rgba(0, 0, 0, 0.5);
   cursor: pointer;
   transition: background 300ms ease;
-  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
   background: rgba(255, 255, 255, 0.2);
   bottom: 0;
   display: block;
@@ -5819,7 +5818,7 @@ ul.off-canvas-list {
   box-shadow: -4px 0 4px rgba(0, 0, 0, 0.5), 4px 0 4px rgba(0, 0, 0, 0.5);
   cursor: pointer;
   transition: background 300ms ease;
-  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
   background: rgba(255, 255, 255, 0.2);
   bottom: 0;
   display: block;
@@ -5845,7 +5844,7 @@ ul.off-canvas-list {
   box-shadow: -4px 0 4px rgba(0, 0, 0, 0.5), 4px 0 4px rgba(0, 0, 0, 0.5);
   cursor: pointer;
   transition: background 300ms ease;
-  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
   background: rgba(255, 255, 255, 0.2);
   bottom: 0;
   display: block;
@@ -6978,7 +6977,8 @@ th.hide-for-touch {
     .backgrid td.renderable, .backgrid th.renderable {
       display: table-cell; }
   .backgrid td.error, .backgrid th.error,
-  .backgrid tbody tr:nth-child(odd) td.error, .backgrid tbody tr:nth-child(odd) th.error {
+  .backgrid tbody tr:nth-child(odd) td.error,
+  .backgrid tbody tr:nth-child(odd) th.error {
     outline: 1px solid #ffd24d; }
   .backgrid th {
     font-weight: bold; }
