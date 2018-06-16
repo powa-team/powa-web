@@ -32,7 +32,6 @@ def field(_, **kwargs):
     Returns:
         a form field formatted with the given attributes.
     """
-    kwargs.setdefault('id', kwargs.get('username'))
     kwargs.setdefault('tag', 'input')
     kwargs.setdefault('type', 'text')
     kwargs.setdefault('class', 'form-control')
@@ -47,10 +46,11 @@ def field(_, **kwargs):
         kwargs['content'] = content.decode('utf8')
         return """
 <div class="large-12 columns">
-    <label for="%(id)s">%(label)s:</label>
+    <label>%(label)s:
     <%(tag)s %(attrs)s>
         %(content)s
     </%(tag)s>
+    </label>
 </div>
 """ % kwargs
 
