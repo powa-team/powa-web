@@ -34,10 +34,10 @@ class PgExtensionsMetricGroup(MetricGroupDef):
     xaxis = "extname"
     data_url = r"/config/pg_extensions/"
     axis_type = "category"
-    available = MetricDef(label="Extension available", type="bool")
-    installed = MetricDef(label="Extension installed", type="bool")
-    handled = MetricDef(label="Extension sampled", type="bool")
-    extversion = MetricDef(label="Extension version", type="string")
+    available = MetricDef(label="Available", type="bool")
+    installed = MetricDef(label="Installed", type="bool")
+    handled = MetricDef(label="Sampled", type="bool")
+    extversion = MetricDef(label="Version", type="string")
     query = """
            SELECT DISTINCT s.extname,
              CASE WHEN avail.name IS NULL then false ELSE true END AS available,
@@ -73,7 +73,7 @@ class ConfigOverview(DashboardPage):
         [[Grid("Extensions",
                columns=[{
                    "name": "extname",
-                   "label": "Extensions",
+                   "label": "Extension",
                }],
                metrics=PgExtensionsMetricGroup.all()
               ),
