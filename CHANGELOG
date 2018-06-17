@@ -2,6 +2,7 @@
   - Show a sorted list of servers on login screen (meikomeik)
   - Add category to the list of column in the config overview page (thanks to
     Nehemiah I. Dacres for the feature request)
+  - Various UI improvements (Pierre Giraud)
 3.1.4:
   - Export all data in csv export (thanks to jdeshayes for the feature request)
   - Reword double negation, thanks to Pierre Giraud for noticing
