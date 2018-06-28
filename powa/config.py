@@ -67,6 +67,7 @@ class ConfigOverview(DashboardPage):
     base_url = r"/config/"
 
     datasources = [PgSettingsMetricGroup, PgExtensionsMetricGroup]
+    title = 'Configuration'
 
     dashboard = Dashboard(
         "Configuration overview",
@@ -86,7 +87,3 @@ class ConfigOverview(DashboardPage):
               )
          ]]
     )
-
-    @classmethod
-    def get_menutitle(cls, handler, params):
-        return "Configuration overview"

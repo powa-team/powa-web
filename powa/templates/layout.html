@@ -12,97 +12,110 @@
     {% block header %} {% end %}
   </head>
   <body>
-    <div class="off-canvas-wrap" id="offcanvas" data-offcanvas>
-      <div class="inner-wrap">
-        <nav class="top-bar" data-topbar role="navigation">
-          <ul class="title-area">
-            <li class="name">
+    <nav class="top-bar" data-topbar role="navigation">
+      <ul class="title-area">
+        <li class="name">
+          <h1><a href="{{ reverse_url('Overview')}}"><img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA</a></h1>
+        </li>
+      </ul>
 
-            <h1><a href="#"><img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA</a></h1>
-            </li>
-          </ul>
+      {% if current_user %}
+      <section class="top-bar-section">
+        <ul class="left">
+          <li class="title powa-text">
+            Server <b>{{ handler.current_server }}</b>
+            ({{ handler.current_connection }})
+          </li>
+          <li>
+            <a href="{{ reverse_url('ConfigOverview')}}" title="Configuration">
+              <i class="fi-widget"></i>
+            </a>
+          </li>
+        </ul>
+      </section>
 
-          {% if current_user %}
-          <section class="top-bar-section">
-            <ul class="left">
-              <li>
-                <a id="menu-toggle" class="menu-icon" href="#" ><span></span></a>
-              </li>
-              <li class="title powa-text">
-                <a href="#">Server <b>{{ handler.current_server }}</b>
-                  ({{ handler.current_connection }})</a>
-              </li>
-            </ul>
-          </section>
-
-          <section class="top-bar-section">
-            <ul class="right">
-              <li>
-                <div class="" type="text" id="daterangepicker">
-                  <input data-role="start_date"></input>
-                  <input data-role="end_date"></input>
-                </div>
-              </li>
-              <li class="title powa-text">
-                <a href="#"><span>{{title}}</span></a>
-              </li>
-
-              <li>
-                <a href="{{ reverse_url('logout')}}">Logout</a>
-              </li>
-            </ul>
-          </section>
-          {% end %}
-        </nav>
-    <div class="row full-width">
-      <div class="main">
-        <div class="row">
-        <div>
-          {% if handler.menu %}
-          <ul class="breadcrumbs">
-            {% set last = len(handler.menu.get_breadcrumb()) - 1 %}
-            {% for i, crumb_item in enumerate(handler.menu.get_breadcrumb()) %}
-            <li class="{{'current' if last == i else ''}}">
+      <section class="top-bar-section">
+        <ul class="right">
+          <li>
+            <a href="{{ reverse_url('logout')}}">
+              <i class="fi-power"></i>
+              Logout
+            </a>
+          </li>
+        </ul>
+      </section>
+      {% end %}
+    </nav>
+    {% if current_user %}
+    <div class="row">
+      <div class="large-7 columns">
+      {% if hasattr(handler, 'breadcrumb') %}
+        <ul class="breadcrumbs">
+          <li>
+            <strong>
+              <a href="{{ reverse_url('Overview') }}"><i class="fi-home"></i></a>
+            </strong>
+          </li>
+          {% set last = len(handler.breadcrumb) - 1 %}
+          {% for i, crumb_item in enumerate(reversed(handler.breadcrumb)) %}
+          <li class="{{'current' if last == i else ''}}">
+            {% if i != last %}
             <a data-url-has-params href="{{ reverse_url_with_params(crumb_item.url_name, url_args=crumb_item.url_params.values())}}">{{crumb_item.title}}</a>
-            </li>
+            {% else %}
+            {{ crumb_item.title}}
             {% end %}
-          </ul>
+          </li>
+          {% if crumb_item.children and i == last %}
+          <li class="current">
+            &nbsp;
+            <button href="#" data-dropdown="drop-{{crumb_item.url_name}}" aria-controls="drop-{{crumb_item.url_name}}" aria-expanded="false" class="dropdown button button-link">Choose one ...</button>
+            <ul id="drop-{{crumb_item.url_name}}" data-dropdown-content class="f-dropdown" aria-hidden="true">
+              {% for child in crumb_item.children %}
+              <li>
+                <a data-url-has-params href="{{ reverse_url_with_params(child.url_name, url_args=child.url_params.values())}}">{{child.title}}</a>
+              </li>
+              {% end %}
+            </ul>
+          </li>
           {% end %}
-        </div>
-        </div>
-        <div>
-        {% module Messages() %}
-        </div>
-        {% block content %} {% end %}
+          {% end %}
+        </ul>
+      {% end %}
       </div>
+      <div class="large-5 columns">
+        <div class="right" type="text" id="daterangepicker">
+          <strong>
+            <i class="fi-calendar"></i>&nbsp;
+          </strong>
+          <input data-role="start_date"></input>
+          <input data-role="end_date"></input>
+        </div>
+      </div>
+    </div>
+    {% end %}
+    <div>
+      {% module Messages() %}
+    </div>
+    {% block content %} {% end %}
     <footer class="row full-width" >
-    <div class="large-12 columns" >
-      <div class="row hide-for-small">
-        <div class="large-6 columns">
-          <ul class="inline-list ">
-            <li>Version {{version()}}</li>
-            <li>&copy; 2014-2017 Dalibo</li>
-            <li>&copy; 2018 The PoWA-team</li>
-            <li><a href="https://powa.readthedocs.io">https://powa.readthedocs.io</a></li>
-          </ul>
+      <div class="large-12 columns" >
+        <div class="row hide-for-small">
+          <div class="large-6 columns">
+            <ul class="inline-list ">
+              <li>Version {{version()}}</li>
+              <li>&copy; 2014-2017 Dalibo</li>
+              <li>&copy; 2018 The PoWA-team</li>
+              <li><a href="https://powa.readthedocs.io">https://powa.readthedocs.io</a></li>
+            </ul>
+          </div>
+          <div class="large-6 columns">
+            <ul class="inline-list right">
+              <li><a href="https://github.com/powa-team/powa-web/issues">Report a bug</a></li>
+            </ul>
+          </div>
         </div>
-        <div class="large-6 columns">
-          <ul class="inline-list right">
-            <li><a href="https://github.com/powa-team/powa-web/issues">Report a bug</a></li>
-          </ul>
-        </div>
-
       </div>
-    </div>
     </footer>
-    </div>
-
-      <aside class="left-off-canvas-menu" id="left-menu">
-      {% module SideBar(handler.menu) %}
-      </aside>
-      <a class="exit-off-canvas"></a>
-      </div>
-    </div>
 
       {% if handler.application.settings['debug'] %}
         <script data-main="{{ static_url('js/config.js')}}" src="{{static_url('js/require.js')}}"></script>

@@ -120,10 +120,8 @@ class Overview(DashboardPage):
                    "url_attr": "url"
                }],
                metrics=ByDatabaseMetricGroup.all())]])
+    title = 'All Databases'
 
-    @classmethod
-    def get_menutitle(cls, handler, params):
-        return "All databases"
 
     @classmethod
     def get_childmenu(cls, handler, params):

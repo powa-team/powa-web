@@ -6,8 +6,8 @@ This module provides several classes to define a Dashboard.
 
 from powa.json import JSONizable
 from powa.framework import AuthHandler
-from powa.ui_modules import MenuEntry, GlobalMenu
 from powa.compat import with_metaclass, classproperty
+from powa.ui_modules import MenuEntry
 from tornado.web import URLSpec
 from operator import attrgetter
 try:
@@ -52,18 +52,10 @@ class DashboardHandler(AuthHandler):
         return params.get("database", None)
 
     @property
-    def menu(self):
+    def breadcrumb(self):
         params = OrderedDict(zip(self.params, self.path_args))
-        new_top_level = list(GlobalMenu)
-        menu = self.get_menu(self, params)
-        for i, child in enumerate(GlobalMenu):
-            if child.url_name == menu.url_name:
-                new_top_level[i] = menu
-                break
-        else:
-            new_top_level.append(menu)
-        return MenuEntry(None, None, None, new_top_level, active=True)
-
+        breadcrumb = self.get_breadcrumb(self, params)
+        return breadcrumb
 
 class MetricGroupHandler(AuthHandler):
     """
@@ -571,33 +563,32 @@ class DashboardPage(object):
                 {"datasource": datasource, "params": cls.params}, name=datasource.url_name))
         return url_specs
 
-    @classmethod
-    def get_menutitle(cls, handler, params):
-        return cls.__name__
 
     @classmethod
     def get_childmenu(cls, handler, params):
-        return []
+        return None
 
     @classmethod
     def get_selfmenu(cls, handler, params):
         my_params = OrderedDict((key, params.get(key))
                                 for key in cls.params)
-        return MenuEntry(cls.get_menutitle(handler, params),
-                         cls.__name__,
-                         my_params)
+        return MenuEntry(cls.title % params, cls.__name__, my_params)
 
     @classmethod
-    def get_menu(cls, handler, params, parent=None):
-        if cls.parent is not None:
-            base = cls.parent.get_menu(handler, params)
-            self_entry = base.findMenu(cls.__name__, params)
-            if self_entry is None:
-                self_entry = cls.get_selfmenu(handler, params)
-                parent = base.findMenu(cls.parent.__name__, params)
-                parent.children.append(self_entry)
+    def get_breadcrumb(cls, handler, params):
+        title = cls.title % params
+        entry = MenuEntry(title, cls.__name__, params)
+        entry.children = cls.get_childmenu(handler, params)
+        items = [entry]
+
+        if len(params) > 0:
+            parent_params = params.copy()
+            parent_params.popitem()
         else:
-            self_entry = base = cls.get_selfmenu(handler, params)
-        self_entry.active = True
-        self_entry.children.extend(cls.get_childmenu(handler, params))
-        return base
+            parent_params = []
+
+        if cls.parent is not None and hasattr(handler, 'parent') and \
+            hasattr(cls.parent, 'get_breadcrumb'):
+            items.extend(cls.parent.get_breadcrumb(handler,
+                                                   parent_params))
+        return items
