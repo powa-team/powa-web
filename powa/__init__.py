@@ -4,7 +4,7 @@ Powa main application.
 """
 import os
 
-__VERSION__ = '3.1.5'
+__VERSION__ = '3.2.0'
 __VERSION_NUM__ = [int(part) for part in __VERSION__.split('.')]
 POWA_ROOT = os.path.dirname(__file__)
 

@@ -9,6 +9,7 @@ from powa.dashboards import (
 
 from powa.sql.views import (
     powa_getstatdata_db,
+    powa_getwaitdata_db,
     powa_getstatdata_sample)
 from sqlalchemy.sql.functions import sum
 from sqlalchemy.sql import select, cast, extract
@@ -67,6 +68,39 @@ class ByDatabaseMetricGroup(MetricGroupDef):
         val["url"] = self.reverse_url("DatabaseOverview", val["datname"])
         return val
 
+class ByDatabaseWaitSamplingMetricGroup(MetricGroupDef):
+    """
+    Metric group used by the "wait sampling by database" grid
+    """
+    name = "wait_sampling_by_database"
+    xaxis = "datname"
+    data_url = r"/metrics/wait_event_by_databases/"
+    axis_type = "category"
+    counts = MetricDef(label="# of events", type="integer", direction="descending")
+
+    @property
+    def query(self):
+        inner_query = powa_getwaitdata_db().alias()
+        c = inner_query.c
+        from_clause = inner_query.join(
+            powa_databases,
+            c.dbid == powa_databases.c.oid)
+
+        return (select([
+            powa_databases.c.datname,
+            c.event_type, c.event,
+            sum(c.count).label("counts"),
+        ])
+            .select_from(from_clause)
+            .order_by(sum(c.count).desc())
+            .group_by(powa_databases.c.datname, c.event_type, c.event))
+
+
+    def process(self, val, **kwargs):
+        val = dict(val)
+        val["url"] = self.reverse_url("DatabaseOverview", val["datname"])
+        return val
+
 
 class GlobalDatabasesMetricGroup(MetricGroupDef):
     """
@@ -103,23 +137,48 @@ class Overview(DashboardPage):
     Overview dashboard page.
     """
     base_url = r"/overview/"
-    datasources = [GlobalDatabasesMetricGroup, ByDatabaseMetricGroup]
-    dashboard = Dashboard(
-        "All databases",
-        [[Graph("Query runtime per second (all databases)",
-                metrics=[GlobalDatabasesMetricGroup.avg_runtime,
-                         GlobalDatabasesMetricGroup.load]),
-          Graph("Block access in Bps",
-                metrics=[GlobalDatabasesMetricGroup.total_blks_hit,
-                         GlobalDatabasesMetricGroup.total_blks_read],
-                color_scheme=['#73c03a','#cb513a'])],
-         [Grid("Details for all databases",
-               columns=[{
-                   "name": "datname",
-                   "label": "Database",
-                   "url_attr": "url"
-               }],
-               metrics=ByDatabaseMetricGroup.all())]])
+    datasources = [GlobalDatabasesMetricGroup, ByDatabaseMetricGroup,
+                   ByDatabaseWaitSamplingMetricGroup]
+
+    @property
+    def dashboard(self):
+        # This COULD be initialized in the constructor, but tornado < 3 doesn't
+        # call it
+        if getattr(self, '_dashboard', None) is not None:
+            return self._dashboard
+
+        dashes = [[Graph("Query runtime per second (all databases)",
+                         metrics=[GlobalDatabasesMetricGroup.avg_runtime,
+                                  GlobalDatabasesMetricGroup.load]),
+                   Graph("Block access in Bps",
+                         metrics=[GlobalDatabasesMetricGroup.total_blks_hit,
+                                  GlobalDatabasesMetricGroup.total_blks_read],
+                         color_scheme=['#73c03a','#cb513a'])],
+                  [Grid("Details for all databases",
+                        columns=[{
+                            "name": "datname",
+                            "label": "Database",
+                            "url_attr": "url"
+                        }],
+                        metrics=ByDatabaseMetricGroup.all())]]
+
+        if self.has_extension("pg_wait_sampling"):
+            dashes.append([Grid("Wait events for all databases",
+                                columns=[{
+                                    "name": "datname",
+                                    "label": "Database",
+                                    "url_attr": "url"
+                                }, {
+                                    "name": "event_type",
+                                    "label": "Event Type",
+                                }, {
+                                    "name": "event",
+                                    "label": "Event",
+                                }],
+                                metrics=ByDatabaseWaitSamplingMetricGroup.all())])
+
+        self._dashboard = Dashboard("All databases", dashes)
+        return self._dashboard
 
     @classmethod
     def get_menutitle(cls, handler, params):

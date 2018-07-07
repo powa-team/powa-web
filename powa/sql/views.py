@@ -48,6 +48,40 @@ def powa_base_statdata_detailed_db():
     """)
     return base_query
 
+def powa_base_waitdata_detailed_db():
+    base_query = text("""
+    powa_databases,
+    LATERAL
+    (
+        SELECT unnested.dbid, unnested.queryid,
+            unnested.event_type, unnested.event, (unnested.records).*
+        FROM (
+            SELECT wsh.dbid, wsh.queryid, wsh.event_type, wsh.event,
+                wsh.coalesce_range, unnest(records) AS records
+            FROM powa_wait_sampling_history wsh
+            WHERE coalesce_range && tstzrange(:from, :to, '[]')
+            AND wsh.dbid = powa_databases.oid
+            AND wsh.queryid IN (
+                SELECT ps.queryid
+                FROM powa_statements ps
+                WHERE ps.dbid = powa_databases.oid
+            )
+        ) AS unnested
+        WHERE tstzrange(:from, :to, '[]') @> (records).ts
+        UNION ALL
+        SELECT wsc.dbid, wsc.queryid, wsc.event_type, wsc.event, (wsc.record).*
+        FROM powa_wait_sampling_history_current wsc
+        WHERE tstzrange(:from,:to,'[]') @> (record).ts
+        AND wsc.dbid = powa_databases.oid
+        AND wsc.queryid IN (
+            SELECT ps.queryid
+            FROM powa_statements ps
+            WHERE ps.dbid = powa_databases.oid
+        )
+    ) h
+    """)
+    return base_query
+
 def powa_base_statdata_db():
     base_query = text("""
     (
@@ -87,6 +121,45 @@ def powa_base_statdata_db():
     """)
     return base_query
 
+def powa_base_waitdata_db():
+    base_query = text("""
+    (
+    SELECT powa_databases.oid as dbid, h.*
+    FROM
+    powa_databases LEFT JOIN
+    (
+          SELECT dbid, min(lower(coalesce_range)) AS min_ts, max(upper(coalesce_range)) AS max_ts
+          FROM powa_wait_sampling_history_db wsh
+          WHERE coalesce_range && tstzrange(:from, :to, '[]')
+          GROUP BY dbid
+    ) ranges ON powa_databases.oid = ranges.dbid,
+    LATERAL (
+        SELECT event_type, event, (unnested1.records).*
+        FROM (
+            SELECT wsh.event_type, wsh.event, unnest(records) AS records
+            FROM powa_wait_sampling_history_db wsh
+            WHERE coalesce_range @> min_ts
+            AND wsh.dbid = ranges.dbid
+        ) AS unnested1
+        WHERE tstzrange(:from, :to, '[]') @> (unnested1.records).ts
+        UNION ALL
+        SELECT event_type, event, (unnested2.records).*
+        FROM (
+            SELECT wsh.event_type, wsh.event, unnest(records) AS records
+            FROM powa_wait_sampling_history_db wsh
+            WHERE coalesce_range @> max_ts
+            AND wsh.dbid = ranges.dbid
+        ) AS unnested2
+        WHERE tstzrange(:from, :to, '[]') @> (unnested2.records).ts
+        UNION ALL
+        SELECT event_type, event, (wsc.record).*
+        FROM powa_wait_sampling_history_current_db wsc
+        WHERE tstzrange(:from, :to, '[]') @> (wsc.record).ts
+        AND wsc.dbid = powa_databases.oid
+    ) AS h) AS ws_history
+    """)
+    return base_query
+
 def get_diffs_forstatdata():
     return [
         diff("calls"),
@@ -114,6 +187,21 @@ def powa_getstatdata_detailed_db():
             .group_by(column("queryid"), column("dbid"), column("userid"), column("datname"))
             .having(max(column("calls")) - min(column("calls")) > 0))
 
+def powa_getwaitdata_detailed_db():
+    base_query = powa_base_waitdata_detailed_db()
+    return (select([
+        column("queryid"),
+        column("dbid"),
+        column("datname"),
+        column("event_type"),
+        column("event"),
+        diff("count")
+    ])
+        .select_from(base_query)
+        .group_by(column("queryid"), column("dbid"), column("datname"),
+                  column("event_type"), column("event"))
+        .having(max(column("count")) - min(column("count")) > 0))
+
 def powa_getstatdata_db():
     base_query = powa_base_statdata_db()
     diffs = get_diffs_forstatdata()
@@ -121,6 +209,19 @@ def powa_getstatdata_db():
             .select_from(base_query)
             .group_by(column("dbid"))
             .having(max(column("calls")) - min(column("calls")) > 0))
+
+def powa_getwaitdata_db():
+    base_query = powa_base_waitdata_db()
+
+    return (select([
+        column("dbid"),
+        column("event_type"),
+        column("event"),
+        diff("count")
+    ])
+        .select_from(base_query)
+        .group_by(column("dbid"), column("event_type"), column("event"))
+        .having(max(column("count")) - min(column("count")) > 0))
 
 
 BASE_QUERY_SAMPLE_DB = text("""(

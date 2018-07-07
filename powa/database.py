@@ -8,6 +8,7 @@ from powa.dashboards import (
     DashboardPage)
 
 from powa.sql.views import (powa_getstatdata_detailed_db,
+                            powa_getwaitdata_detailed_db,
                             powa_getstatdata_sample)
 from powa.wizard import WizardMetricGroup, Wizard
 from powa.overview import Overview
@@ -117,6 +118,45 @@ class ByQueryMetricGroup(MetricGroupDef):
             "QueryOverview", database, val["queryid"])
         return val
 
+class ByQueryWaitSamplingMetricGroup(MetricGroupDef):
+    """
+    Metric group for indivual query wait events stats (displayed on the grid).
+    """
+    name = "all_queries_waits"
+    xaxis = "query"
+    axis_type = "category"
+    data_url = r"/metrics/database_all_queries_waits/([^\/]+)/"
+    counts = MetricDef(label="# of events", type="integer", direction="descending")
+
+    @property
+    def query(self):
+        # Working from the waitdata detailed_db base query
+        inner_query = powa_getwaitdata_detailed_db()
+        inner_query = inner_query.alias()
+        c = inner_query.c
+        ps = powa_statements
+
+        columns = [c.queryid,
+                   ps.c.query,
+                   c.event_type,
+                   c.event,
+                   sum(c.count).label("counts")]
+        from_clause = inner_query.join(ps,
+                                       (ps.c.queryid == c.queryid) &
+                                       (ps.c.dbid == c.dbid))
+        return (select(columns)
+                .select_from(from_clause)
+                .where(c.datname == bindparam("database"))
+                .group_by(c.queryid, ps.c.query, c.event_type, c.event)
+                .order_by(sum(c.count).desc()))
+
+
+    def process(self, val, database=None, **kwargs):
+        val = dict(val)
+        val["url"] = self.reverse_url(
+            "QueryOverview", database, val["queryid"])
+        return val
+
 class WizardThisDatabase(ContentWidget):
 
     title = 'Apply wizardry to this database'
@@ -133,7 +173,7 @@ class DatabaseOverview(DashboardPage):
     """DatabaseOverview Dashboard."""
     base_url = r"/database/([^\/]+)/overview"
     datasources = [DatabaseOverviewMetricGroup, ByQueryMetricGroup,
-                   WizardMetricGroup]
+                   ByQueryWaitSamplingMetricGroup, WizardMetricGroup]
     params = ["database"]
     parent = Overview
 
@@ -182,6 +222,24 @@ class DatabaseOverview(DashboardPage):
                        "max_length": 70
                    }],
                    metrics=ByQueryMetricGroup.all())]])
+
+        if self.has_extension("pg_wait_sampling"):
+            self._dashboard.widgets.extend([[
+                Grid("Wait events for all queries",
+                     columns=[{
+                       "name": "query",
+                       "label": "Query",
+                       "type": "query",
+                       "url_attr": "url",
+                       "max_length": 70
+                     }, {
+                         "name": "event_type",
+                         "label": "Event Type",
+                     }, {
+                         "name": "event",
+                         "label": "Event",
+                     }],
+                     metrics=ByQueryWaitSamplingMetricGroup.all())]])
 
         self._dashboard.widgets.extend([[Wizard("Index suggestions")]])
         return self._dashboard

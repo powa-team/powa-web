@@ -23,6 +23,7 @@ from powa.sql import (Plan, format_jumbled_query, resolve_quals,
 from powa.sql.views import (powa_getstatdata_sample,
                             kcache_getstatdata_sample,
                             powa_getstatdata_detailed_db,
+                            powa_getwaitdata_detailed_db,
                             qualstat_getstatdata)
 from powa.sql.utils import (block_size, mulblock, greatest, least,
                             to_epoch, inner_cc)
@@ -257,6 +258,44 @@ class QueryExplains(ContentWidget):
         self.render("database/query/explains.html", plans=plans)
 
 
+class WaitSamplingList(MetricGroupDef):
+    """
+    Datasource used for the wait events grid.
+    """
+    name = "query_wait_events"
+    xaxis = "event"
+    axis_type = "category"
+    data_url = r"/metrics/database/([^\/]+)/query/(-?\d+)/wait_events"
+    counts = MetricDef(label="# of events", type="integer", direction="descending")
+
+    def prepare(self):
+        if not self.has_extension("pg_wait_sampling"):
+            raise HTTPError(501, "pg_wait_sampling is not installed")
+
+    @property
+    def query(self):
+        # Working from the waitdata detailed_db base query
+        inner_query = powa_getwaitdata_detailed_db()
+        inner_query = inner_query.alias()
+        c = inner_query.c
+        ps = powa_statements
+
+        columns = [c.queryid,
+                   ps.c.query,
+                   c.event_type,
+                   c.event,
+                   sum(c.count).label("counts")]
+        from_clause = inner_query.join(ps,
+                                       (ps.c.queryid == c.queryid) &
+                                       (ps.c.dbid == c.dbid))
+        return (select(columns)
+                .select_from(from_clause)
+                .where((c.datname == bindparam("database")) &
+                       (c.queryid == bindparam("query")))
+                .group_by(c.queryid, ps.c.query, c.event_type, c.event)
+                .order_by(sum(c.count).desc()))
+
+
 class QualList(MetricGroupDef):
     """
     Datasource used for the Qual table.
@@ -336,7 +375,8 @@ class QueryOverview(DashboardPage):
     base_url = r"/database/([^\/]+)/query/(-?\d+)/overview"
     params = ["database", "query"]
     datasources = [QueryOverviewMetricGroup, QueryDetail,
-                   QueryExplains, QueryIndexes, QualList]
+                   QueryExplains, QueryIndexes, WaitSamplingList,
+                   QualList]
     parent = DatabaseOverview
 
     @classmethod
@@ -400,6 +440,19 @@ class QueryOverview(DashboardPage):
         else:
             hit_ratio_graph.metrics.append(
                 QueryOverviewMetricGroup.miss_ratio)
+
+        if self.has_extension("pg_wait_sampling"):
+            dashes.append(Dashboard("Wait Events",
+                [[
+                Grid("Wait events for this query",
+                     columns=[{
+                         "name": "event_type",
+                         "label": "Event Type",
+                     }, {
+                         "name": "event",
+                         "label": "Event",
+                     }],
+                     metrics=WaitSamplingList.all())]]))
 
         if self.has_extension("pg_qualstats"):
             dashes.append(Dashboard("Predicates",
