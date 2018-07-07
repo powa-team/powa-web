@@ -81,7 +81,7 @@ class BaseHandler(RequestHandler):
     def get_powa_version(self, **kwargs):
         version = self.execute(text(
             """
-            SELECT extversion FROM pg_extension WHERE extname = 'powa'
+            SELECT replace(extversion, 'dev', '') FROM pg_extension WHERE extname = 'powa'
             """), **kwargs).scalar()
         if version is None:
             return None
