@@ -21,6 +21,7 @@ from powa.sql import (Plan, format_jumbled_query, resolve_quals,
                       qualstat_get_figures, get_hypoplans, get_any_sample_query,
                       possible_indexes)
 from powa.sql.views import (powa_getstatdata_sample,
+                            powa_getwaitdata_sample,
                             kcache_getstatdata_sample,
                             powa_getstatdata_detailed_db,
                             powa_getwaitdata_detailed_db,
@@ -258,6 +259,65 @@ class QueryExplains(ContentWidget):
         self.render("database/query/explains.html", plans=plans)
 
 
+class WaitsQueryOverviewMetricGroup(MetricGroupDef):
+    """
+    Metric Group for the wait event graph on the by query page.
+    """
+    name = "waits_query_overview"
+    xaxis = "ts"
+    data_url = r"/metrics/database/([^\/]+)/query/(-?\d+)/wait_events_sampled"
+    # pg 9.6 only metrics
+    count_lwlocknamed = MetricDef(label="Lightweight Named")
+    count_lwlocktranche = MetricDef(label="Lightweight Tranche")
+    # pg 10+ metrics
+    count_lwlock = MetricDef(label="Lightweight Lock")
+    count_lock = MetricDef(label="Lock")
+    count_bufferpin = MetricDef(label="Buffer pin")
+    count_activity = MetricDef(label="Activity")
+    count_client = MetricDef(label="Client")
+    count_extension = MetricDef(label="Extension")
+    count_ipc = MetricDef(label="IPC")
+    count_timeout = MetricDef(label="Timeout")
+    count_io = MetricDef(label="IO")
+
+    def prepare(self):
+        if not self.has_extension("pg_wait_sampling"):
+            raise HTTPError(501, "pg_wait_sampling is not installed")
+
+    @property
+    def query(self):
+
+        query = powa_getwaitdata_sample("query")
+        query = query.where(
+            (column("datname") == bindparam("database")) &
+            (column("queryid") == bindparam("query")))
+        query = query.alias()
+        c = query.c
+
+        def wps(col):
+            ts = extract("epoch", greatest(c.mesure_interval, '1 second'))
+            return (col / ts).label(col.name)
+
+        cols = [to_epoch(c.ts)]
+
+        pg_version_num = self.get_pg_version_num()
+        if pg_version_num < 100000:
+            cols += [wps(c.count_lwlocknamed), wps(c.count_lwlocktranche),
+                     wps(c.count_lock), wps(c.count_bufferpin)]
+        else:
+            cols += [wps(c.count_lwlock), wps(c.count_lock),
+                     wps(c.count_bufferpin), wps(c.count_activity),
+                     wps(c.count_client), wps(c.count_extension),
+                     wps(c.count_ipc), wps(c.count_timeout), wps(c.count_io)]
+
+        from_clause = query
+
+        return (select(cols)
+                .select_from(from_clause)
+                #.where(c.count != None)
+                .order_by(c.ts)
+                .params(samples=100))
+
 class WaitSamplingList(MetricGroupDef):
     """
     Datasource used for the wait events grid.
@@ -374,8 +434,8 @@ class QueryOverview(DashboardPage):
     """
     base_url = r"/database/([^\/]+)/query/(-?\d+)/overview"
     params = ["database", "query"]
-    datasources = [QueryOverviewMetricGroup, QueryDetail,
-                   QueryExplains, QueryIndexes, WaitSamplingList,
+    datasources = [QueryOverviewMetricGroup, WaitsQueryOverviewMetricGroup,
+                   QueryDetail, QueryExplains, QueryIndexes, WaitSamplingList,
                    QualList]
     parent = DatabaseOverview
 
@@ -442,17 +502,35 @@ class QueryOverview(DashboardPage):
                 QueryOverviewMetricGroup.miss_ratio)
 
         if self.has_extension("pg_wait_sampling"):
+            # Get the metrics depending on the pg server version
+            metrics=None
+            if self.get_pg_version_num() < 100000:
+                metrics=[WaitsQueryOverviewMetricGroup.count_lwlocknamed,
+                         WaitsQueryOverviewMetricGroup.count_lwlocktranche,
+                         WaitsQueryOverviewMetricGroup.count_lock,
+                         WaitsQueryOverviewMetricGroup.count_bufferpin]
+            else:
+                metrics=[WaitsQueryOverviewMetricGroup.count_lwlock,
+                         WaitsQueryOverviewMetricGroup.count_lock,
+                         WaitsQueryOverviewMetricGroup.count_bufferpin,
+                         WaitsQueryOverviewMetricGroup.count_activity,
+                         WaitsQueryOverviewMetricGroup.count_client,
+                         WaitsQueryOverviewMetricGroup.count_extension,
+                         WaitsQueryOverviewMetricGroup.count_ipc,
+                         WaitsQueryOverviewMetricGroup.count_timeout,
+                         WaitsQueryOverviewMetricGroup.count_io]
             dashes.append(Dashboard("Wait Events",
-                [[
-                Grid("Wait events for this query",
-                     columns=[{
-                         "name": "event_type",
-                         "label": "Event Type",
-                     }, {
-                         "name": "event",
-                         "label": "Event",
-                     }],
-                     metrics=WaitSamplingList.all())]]))
+                [[Graph("Wait Events (per second)",
+                        metrics=metrics),
+                  Grid("Wait events summary",
+                       columns=[{
+                           "name": "event_type",
+                           "label": "Event Type",
+                       }, {
+                           "name": "event",
+                           "label": "Event",
+                       }],
+                       metrics=WaitSamplingList.all())]]))
 
         if self.has_extension("pg_qualstats"):
             dashes.append(Dashboard("Predicates",
