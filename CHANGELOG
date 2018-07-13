@@ -1,8 +1,10 @@
-3.1.5(WIP):
+3.2.0(WIP):
+  - Add support for pg_wait_sampling to display wait events statistics and
+    graphs, require pg9.6+ (Julien Rouhaud)
   - Show a sorted list of servers on login screen (meikomeik)
-  - Add category to the list of column in the config overview page (thanks to
-    Nehemiah I. Dacres for the feature request)
-  - Various UI improvements (Pierre Giraud)
+  - Add category to the list of column in the config overview page (Julien
+    Rouhaud, thanks to Nehemiah I. Dacres for the feature request)
+  - New breadcrumb and many other UI improvements (Pierre Giraud)
 3.1.4:
   - Export all data in csv export (thanks to jdeshayes for the feature request)
   - Reword double negation, thanks to Pierre Giraud for noticing
