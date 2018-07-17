@@ -5,6 +5,8 @@
   - Add category to the list of column in the config overview page (Julien
     Rouhaud, thanks to Nehemiah I. Dacres for the feature request)
   - New breadcrumb and many other UI improvements (Pierre Giraud)
+  - Fix behavior when changing time interval and then changing back to last
+    hour (Julien Rouhaud, reported by Thomas Reiss)
 3.1.4:
   - Export all data in csv export (thanks to jdeshayes for the feature request)
   - Reword double negation, thanks to Pierre Giraud for noticing

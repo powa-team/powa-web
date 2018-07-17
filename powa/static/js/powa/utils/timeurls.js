@@ -44,9 +44,14 @@ define(["jquery", "foundation-daterangepicker"], function($){
                     defaultrange = this.daterangepicker.ranges['hour'];
                 this.startInput.val(start_date.format(this.format));
                 this.endInput.val(end_date.format(this.format));
-                // If the range is the default range, ignore
+                // If the range is the default range, reset all params as they
+                // could have been set by other range selection
                 if(start_date.isSame(defaultrange[0]) && end_date.isSame(defaultrange[1])){
-                    return;
+                  $('[data-url-has-params]').each(function(){
+                    this.search = $.param([], true);
+                  });
+                  history.pushState({}, "", window.location.pathname);
+                  return;
                 }
                 if(!(params["from"] == start_date.format() &&
                    params["to"] == end_date.format())){
