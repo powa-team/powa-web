@@ -7,6 +7,7 @@
   - New breadcrumb and many other UI improvements (Pierre Giraud)
   - Fix behavior when changing time interval and then changing back to last
     hour (Julien Rouhaud, reported by Thomas Reiss)
+  - Allow both "user" and "username" in configuration files (Julien Rouhaud)
 3.1.4:
   - Export all data in csv export (thanks to jdeshayes for the feature request)
   - Reword double negation, thanks to Pierre Giraud for noticing
