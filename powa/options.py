@@ -65,3 +65,10 @@ def parse_options():
             print("\n\t".join([""] + CONF_LOCATIONS))
             print(SAMPLE_CONFIG_FILE)
             sys.exit(-1)
+
+    # we expect a field named "username", but many people expect to be able to
+    # use "user" instead, so accept "user" as en alias for "username"
+    for key, conf in options['servers'].items():
+        if 'user' in conf.keys():
+            conf['username'] = conf['user']
+            del conf['user']
