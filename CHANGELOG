@@ -1,4 +1,4 @@
-3.2.0(WIP):
+3.2.0:
   - Add support for pg_wait_sampling to display wait events statistics and
     graphs, require pg9.6+ (Julien Rouhaud)
   - Show a sorted list of servers on login screen (meikomeik)
