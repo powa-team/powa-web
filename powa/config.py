@@ -51,6 +51,7 @@ class PgExtensionsMetricGroup(MetricGroupDef):
                 UNION SELECT 'pg_track_settings'
                 UNION SELECT 'hypopg'
                 UNION SELECT 'powa'
+                UNION SELECT 'pg_wait_sampling'
            ) s
            LEFT JOIN pg_available_extensions avail on s.extname = avail.name
            LEFT JOIN pg_extension ins on s.extname = ins.extname
