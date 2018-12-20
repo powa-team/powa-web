@@ -519,9 +519,9 @@ class QueryDetail(ContentWidget):
             (column("queryid") == bindparam("query")))
         stmt = stmt.alias()
         from_clause = outerjoin(powa_statements, stmt,
-                                and_(powa_statements.c.queryid ==
-                                     stmt.c.queryid, powa_statements.c.dbid ==
-                                     stmt.c.dbid))
+                                and_(powa_statements.c.queryid == stmt.c.queryid,
+                                     powa_statements.c.dbid == stmt.c.dbid,
+                                     powa_statements.c.userid == stmt.c.userid))
         c = stmt.c
         rblk = mulblock(sum(c.shared_blks_read).label("shared_blks_read"))
         wblk = mulblock(sum(c.shared_blks_hit).label("shared_blks_hit"))
