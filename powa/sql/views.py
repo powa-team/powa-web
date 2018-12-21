@@ -243,7 +243,7 @@ BASE_QUERY_SAMPLE_DB = text("""(
 
 
 BASE_QUERY_SAMPLE = text("""(
-  SELECT powa_statements.srvid, datname, dbid, queryid, base.*
+  SELECT powa_statements.srvid, datname, dbid, queryid, userid, base.*
   FROM powa_statements
   JOIN powa_databases ON powa_databases.oid = powa_statements.dbid
    AND powa_databases.srvid = powa_statements.srvid,
@@ -263,6 +263,7 @@ BASE_QUERY_SAMPLE = text("""(
                   FROM powa_statements_history psh
                   WHERE coalesce_range && tstzrange(:from, :to, '[]')
                   AND psh.queryid = powa_statements.queryid
+                  AND psh.userid = powa_statements.userid
                   AND psh.srvid = :server
               ) AS unnested
               WHERE tstzrange(:from, :to, '[]') @> (records).ts
@@ -271,6 +272,7 @@ BASE_QUERY_SAMPLE = text("""(
               FROM powa_statements_history_current phc
               WHERE tstzrange(:from, :to, '[]') @> (record).ts
               AND phc.queryid = powa_statements.queryid
+              AND phc.userid = powa_statements.userid
               AND phc.srvid = :server
           ) AS statements_history
       ) AS sh
@@ -289,7 +291,8 @@ def powa_getstatdata_sample(mode, srvid):
 
     elif mode == "query":
         base_query = BASE_QUERY_SAMPLE
-        base_columns = [column("srvid"), column("dbid"), column("queryid")]
+        base_columns = [column("srvid"), column("dbid"), column("queryid"),
+                        column("userid")]
 
     ts = column('ts')
     biggest = Biggest(base_columns, ts)
@@ -321,13 +324,14 @@ def powa_getstatdata_sample(mode, srvid):
 def qualstat_base_statdata():
     base_query = text("""
     (
-    SELECT srvid, queryid, qualid, (unnested.records).*
+    SELECT srvid, userid, queryid, qualid, (unnested.records).*
     FROM (
         SELECT pqnh.srvid, pqnh.qualid, pqnh.queryid, pqnh.dbid, pqnh.userid,
           pqnh.coalesce_range, unnest(records) AS records
         FROM powa_qualstats_quals_history pqnh
         WHERE coalesce_range  && tstzrange(:from, :to, '[]')
         AND pqnh.srvid = :server
+        AND pqnh.queryid = :query
     ) AS unnested
     WHERE tstzrange(:from, :to, '[]') @> (records).ts
     UNION ALL
@@ -336,6 +340,7 @@ def qualstat_base_statdata():
     FROM powa_qualstats_quals_history_current pqnc
     WHERE tstzrange(:from, :to, '[]') @> pqnc.ts
     AND pqnc.srvid = :server
+    AND pqnc.queryid = :query
     ) h
     JOIN powa_qualstats_quals pqnh USING (srvid, queryid, qualid)
     """)
@@ -527,7 +532,8 @@ def kcache_getstatdata_sample(mode):
     elif (mode == "query"):
         base_query = BASE_QUERY_KCACHE_SAMPLE
         base_columns = [literal_column("d.srvid").label("srvid"),
-                        column("datname"), column("queryid")]
+                        column("datname"), column("queryid"),
+                        column("userid")]
 
     ts = column('ts')
     biggestsum = Biggestsum(base_columns, ts)
