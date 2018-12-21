@@ -89,7 +89,7 @@ class MetricGroupHandler(AuthHandler):
             for key, value
             in self.request.arguments.items()))
         url_params.update(url_query_params)
-
+        url_params = self.add_params(url_params)
         query = self.query
         if (query is not None):
             values = self.execute(query, params=url_params)
@@ -100,6 +100,9 @@ class MetricGroupHandler(AuthHandler):
 
         data = self.post_process(data, **url_params)
         self.render_json(data)
+
+    def add_params(self, params):
+        return params
 
     def process(self, val, **kwargs):
         """

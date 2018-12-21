@@ -456,7 +456,8 @@ def qualstat_get_figures(conn, srvid, database, tsfrom, tsto,
     params = {"server": srvid,
               "database": database,
               "from": tsfrom,
-              "to": tsto}
+              "to": tsto,
+              "queryids": queries}
     quals = conn.execute(sql, params=params)
 
     if quals.rowcount == 0:
