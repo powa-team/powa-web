@@ -220,7 +220,10 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                      else_=sys_hitratio).label("sys_hit_ratio")])
             from_clause = from_clause.join(
                 kcache_query,
-                kcache_query.c.ts == c.ts)
+                and_(kcache_query.c.ts == c.ts,
+                     kcache_query.c.queryid == c.queryid,
+                     kcache_query.c.userid == c.userid,
+                     kcache_query.c.dbid == c.dbid))
         else:
             cols.extend([
                 case([(total_blocks == 0, 0)],
