@@ -137,17 +137,17 @@ class QueryOverviewMetricGroup(MetricGroupDef):
             (column("queryid") == bindparam("query")))
         query = query.alias()
         c = query.c
-        total_blocks = ((c.shared_blks_read + c.shared_blks_hit)
+        total_blocks = ((sum(c.shared_blks_read) + sum(c.shared_blks_hit))
                         .label("total_blocks"))
 
         def bps(col):
             ts = extract("epoch", greatest(c.mesure_interval, '1 second'))
-            return (mulblock(col) / ts).label(col.name)
+            return (mulblock(sum(col)) / ts).label(col.name)
         cols = [to_epoch(c.ts),
-                c.rows,
-                c.calls,
+                sum(c.rows).label("rows"),
+                sum(c.calls).label("calls"),
                 case([(total_blocks == 0, 0)],
-                     else_=cast(c.shared_blks_hit, Numeric) * 100 /
+                     else_=cast(sum(c.shared_blks_hit), Numeric) * 100 /
                      total_blocks).label("hit_ratio"),
                 bps(c.shared_blks_read),
                 bps(c.shared_blks_hit),
@@ -159,13 +159,13 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                 bps(c.local_blks_written),
                 bps(c.temp_blks_read),
                 bps(c.temp_blks_written),
-                (c.blk_read_time /
+                sum(c.blk_read_time /
                  extract("epoch", greatest(c.mesure_interval, '1 second'))
                  ).label("blk_read_time"),
-                (c.blk_write_time /
+                sum(c.blk_write_time /
                  extract("epoch", greatest(c.mesure_interval, '1 second'))
                  ).label("blk_write_time"),
-                (c.runtime / greatest(c.calls, 1)).label("avg_runtime")]
+                (sum(c.runtime) / greatest(sum(c.calls), 1)).label("avg_runtime")]
 
         from_clause = query
         if self.has_extension(self.path_args[0], "pg_stat_kcache"):
@@ -182,14 +182,14 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                     )
                 .alias())
             kc = kcache_query.c
-            sys_hits = (greatest(mulblock(c.shared_blks_read) -
-                                 kc.reads, 0)
+            sys_hits = (greatest(mulblock(sum(c.shared_blks_read)) -
+                                 sum(kc.reads), 0)
                         .label("kcache_hitblocks"))
             sys_hitratio = (cast(sys_hits, Numeric) * 100 /
                             mulblock(total_blocks))
-            disk_hit_ratio = (kc.reads * 100 /
+            disk_hit_ratio = (sum(kc.reads) * 100 /
                               mulblock(total_blocks))
-            total_time = greatest(c.runtime, 1);
+            total_time = greatest(sum(c.runtime), 1)
             # Rusage can return values > real time due to sampling bias
             # aligned to kernel ticks. As such, we have to clamp values to 100%
             total_time_percent = lambda x: least(100, (x * 100) /
@@ -197,7 +197,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
 
             def per_sec(col):
                 ts = extract("epoch", greatest(c.mesure_interval, '1 second'))
-                return (col / ts).label(col.name)
+                return (sum(col) / ts).label(col.name)
             cols.extend([
                 per_sec(kc.reads),
                 per_sec(kc.writes),
@@ -209,10 +209,10 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                 # per_sec(kc.nsignals),
                 per_sec(kc.nvcsws),
                 per_sec(kc.nivcsws),
-                total_time_percent(kc.user_time * 1000).label("user_time"),
-                total_time_percent(kc.system_time * 1000).label("system_time"),
+                total_time_percent(sum(kc.user_time) * 1000).label("user_time"),
+                total_time_percent(sum(kc.system_time) * 1000).label("system_time"),
                 greatest(total_time_percent(
-                    c.runtime - ((kc.user_time + kc.system_time) *
+                    sum(c.runtime) - ((sum(kc.user_time) + sum(kc.system_time)) *
                     1000)), 0).label("other_time"),
                 case([(total_blocks == 0, 0)],
                      else_=disk_hit_ratio).label("disk_hit_ratio"),
@@ -227,13 +227,14 @@ class QueryOverviewMetricGroup(MetricGroupDef):
         else:
             cols.extend([
                 case([(total_blocks == 0, 0)],
-                     else_=cast(c.shared_blks_read, Numeric) * 100 /
+                     else_=cast(sum(c.shared_blks_read), Numeric) * 100 /
                      total_blocks).label("miss_ratio")
             ])
 
         return (select(cols)
                 .select_from(from_clause)
                 .where(c.calls != None)
+                .group_by(c.ts, block_size.c.block_size, c.mesure_interval)
                 .order_by(c.ts)
                 .params(samples=100))
 
