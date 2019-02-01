@@ -3,7 +3,9 @@
     to Adrien Nayrat for the report)
   - Don't try to detect if a hypotetical index would be used if no suitable
     index is detected (Julien Rouhaud, thanks to Guillaume Lelarge for the
-    repot)
+    report)
+  - Fix lost filter when changing the time range (Pierre Giraud, thanks to Marc
+    Cousin for the report)
 3.2.0:
   - Add support for pg_wait_sampling to display wait events statistics and
     graphs, require pg9.6+ (Julien Rouhaud)
