@@ -254,6 +254,8 @@ define([
             },
 
             update: function(){
+                // apply search filter when new data is received
+                this.filter.search();
                 this.hideload();
                 this.trigger("widget:update");
             },
