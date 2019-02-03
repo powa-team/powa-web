@@ -11,7 +11,7 @@ from powa.sql.views import (powa_getstatdata_detailed_db,
                             powa_getwaitdata_detailed_db,
                             powa_getstatdata_sample)
 from powa.wizard import WizardMetricGroup, Wizard
-from powa.overview import Overview
+from powa.server import ServerOverview
 from sqlalchemy.sql import bindparam, column, select, extract
 from sqlalchemy.sql.functions import sum
 from powa.sql.utils import (greatest, block_size, mulblock,
@@ -25,6 +25,7 @@ class DatabaseSelector(AuthHandler):
     def get(self):
         self.redirect(self.reverse_url(
             'DatabaseOverview',
+            self.get_argument("server"),
             self.get_argument("database")))
 
 
@@ -32,7 +33,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     """Metric group for the database global graphs."""
     name = "database_overview"
     xaxis = "ts"
-    data_url = r"/metrics/database_overview/([^\/]+)/"
+    data_url = r"/server/(\d+)/metrics/database_overview/([^\/]+)/"
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
     load = MetricDef(label="Runtime per sec", type="duration")
     total_blks_hit = MetricDef(label="Total hit", type="sizerate")
@@ -42,12 +43,13 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     def query(self):
         # Fetch the base query for sample, and filter them on the database
         bs = block_size.c.block_size
-        subquery = powa_getstatdata_sample("db")
+        subquery = powa_getstatdata_sample("db", bindparam("server"))
         # Put the where clause inside the subquery
         subquery = subquery.where(column("datname") == bindparam("database"))
         query = subquery.alias()
         c = query.c
         return (select([
+            c.srvid,
             to_epoch(c.ts),
             (sum(c.runtime) / greatest(sum(c.calls), 1.)).label("avg_runtime"),
             (sum(c.runtime) / greatest(extract("epoch", c.mesure_interval),
@@ -55,7 +57,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
             total_read(c),
             total_hit(c)])
                 .where(c.calls != None)
-                .group_by(c.ts, bs, c.mesure_interval)
+                .group_by(c.srvid, c.ts, bs, c.mesure_interval)
                 .order_by(c.ts)
                 .params(samples=100))
 
@@ -66,7 +68,7 @@ class ByQueryMetricGroup(MetricGroupDef):
     name = "all_queries"
     xaxis = "queryid"
     axis_type = "category"
-    data_url = r"/metrics/database_all_queries/([^\/]+)/"
+    data_url = r"/server/(\d+)/metrics/database_all_queries/([^\/]+)/"
     calls = MetricDef(label="#", type="integer")
     runtime = MetricDef(label="Time", type="duration", direction="descending")
     avg_runtime = MetricDef(label="Avg time", type="duration")
@@ -83,12 +85,13 @@ class ByQueryMetricGroup(MetricGroupDef):
     @property
     def query(self):
         # Working from the statdata detailed_db base query
-        inner_query = powa_getstatdata_detailed_db()
+        inner_query = powa_getstatdata_detailed_db(bindparam("server"))
         inner_query = inner_query.alias()
         c = inner_query.c
         ps = powa_statements
         # Multiply each measure by the size of one block.
-        columns = [c.queryid,
+        columns = [c.srvid,
+                   c.queryid,
                    ps.c.query,
                    sum(c.calls).label("calls"),
                    sum(c.runtime).label("runtime"),
@@ -108,15 +111,15 @@ class ByQueryMetricGroup(MetricGroupDef):
         return (select(columns)
                 .select_from(from_clause)
                 .where(c.datname == bindparam("database"))
-                .group_by(c.queryid, ps.c.query)
+                .group_by(c.srvid, c.queryid, ps.c.query)
                 .order_by(sum(c.runtime).desc()))
-
 
     def process(self, val, database=None, **kwargs):
         val = dict(val)
         val["url"] = self.reverse_url(
-            "QueryOverview", database, val["queryid"])
+            "QueryOverview", val["srvid"], database, val["queryid"])
         return val
+
 
 class ByQueryWaitSamplingMetricGroup(MetricGroupDef):
     """
@@ -125,18 +128,19 @@ class ByQueryWaitSamplingMetricGroup(MetricGroupDef):
     name = "all_queries_waits"
     xaxis = "query"
     axis_type = "category"
-    data_url = r"/metrics/database_all_queries_waits/([^\/]+)/"
+    data_url = r"/server/(\d+)/metrics/database_all_queries_waits/([^\/]+)/"
     counts = MetricDef(label="# of events", type="integer", direction="descending")
 
     @property
     def query(self):
         # Working from the waitdata detailed_db base query
-        inner_query = powa_getwaitdata_detailed_db()
+        inner_query = powa_getwaitdata_detailed_db(bindparam("server"))
         inner_query = inner_query.alias()
         c = inner_query.c
         ps = powa_statements
 
-        columns = [c.queryid,
+        columns = [c.srvid,
+                   c.queryid,
                    ps.c.query,
                    c.event_type,
                    c.event,
@@ -147,21 +151,20 @@ class ByQueryWaitSamplingMetricGroup(MetricGroupDef):
         return (select(columns)
                 .select_from(from_clause)
                 .where(c.datname == bindparam("database"))
-                .group_by(c.queryid, ps.c.query, c.event_type, c.event)
+                .group_by(c.srvid, c.queryid, ps.c.query, c.event_type, c.event)
                 .order_by(sum(c.count).desc()))
-
 
     def process(self, val, database=None, **kwargs):
         val = dict(val)
         val["url"] = self.reverse_url(
-            "QueryOverview", database, val["queryid"])
+            "QueryOverview", val["srvid"], database, val["queryid"])
         return val
 
 class WizardThisDatabase(ContentWidget):
 
     title = 'Apply wizardry to this database'
 
-    data_url = r"/database/([^\/]+)/wizardthisdatabase/"
+    data_url = r"/server/(\d+)/database/([^\/]+)/wizardthisdatabase/"
 
     def get(self, database):
         self.render("database/wizardthisdatabase.html", database=database,
@@ -171,14 +174,13 @@ class WizardThisDatabase(ContentWidget):
 
 class DatabaseOverview(DashboardPage):
     """DatabaseOverview Dashboard."""
-    base_url = r"/database/([^\/]+)/overview"
+    base_url = r"/server/(\d+)/database/([^\/]+)/overview"
     datasources = [DatabaseOverviewMetricGroup, ByQueryMetricGroup,
                    ByQueryWaitSamplingMetricGroup, WizardMetricGroup]
-    params = ["database"]
-    parent = Overview
+    params = ["server", "database"]
+    parent = ServerOverview
     title = '%(database)s'
 
-    @property
     def dashboard(self):
         # This COULD be initialized in the constructor, but tornado < 3 doesn't
         # call it
@@ -186,7 +188,6 @@ class DatabaseOverview(DashboardPage):
             return self._dashboard
 
         self._dashboard = Dashboard("Database overview for %(database)s")
-
 
         self._dashboard.widgets.extend(
             [[Graph("Calls (On database %(database)s)",
@@ -224,7 +225,7 @@ class DatabaseOverview(DashboardPage):
                    }],
                    metrics=ByQueryMetricGroup.all())]])
 
-        if self.has_extension("pg_wait_sampling"):
+        if self.has_extension(self.path_args[0], "pg_wait_sampling"):
             self._dashboard.widgets.extend([[
                 Grid("Wait events for all queries",
                      columns=[{

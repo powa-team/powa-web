@@ -19,10 +19,22 @@ define(['backbone', 'powa/models/DataSource', 'powa/models/Metric', 'powa/models
                 type: 'GET'
             }).done(function (response) {
                 var series_by_metric = {}
+
                 self.get("metrics").each(function(metric){
                     series_by_metric[metric.get("name")] = {};
                 });
+
                 self.trigger("metricgroup:dataload", response.data, from_date, to_date);
+
+                if (response.alerts) {
+                  $.each(response.alerts, function(){
+                    var msg = '<div data-alert class="alert-box alert">'
+                      + '<ul><li>' + this + '</li></ul>'
+                      + '<a href="#" class="close">&times;</a></div>'
+                    $("#messages").append(msg);
+                  })
+                }
+
                 $.each(response.data, function(){
                     var row = this,
                         group = this[grouper] || "";

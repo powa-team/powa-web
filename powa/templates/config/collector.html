@@ -1,0 +1,32 @@
+{% extends "../xhr.html" %}
+{% block content %}
+
+<div class="row">
+  <div class="columns large-12">
+    <h4>Collector processes</h4>
+  {% if (collector) %}
+    {% for c in collector %}
+    <ul class="large-block-grid-4">
+      {% if (c.start) %}
+      <li><b>{{c.powa_kind}}:</b> <i class="fi-check ok"></i></li>
+      <li><b>Connected as:</b> {{c.usename}}</li>
+      <li><b>Connected from:</b> {{c.client_addr}}</li>
+      <li><b>Connected since:</b> {{c.start}}</li>
+      {% else %}
+      <li><b>{{c.powa_kind}}:</b> <i class="fi-x ko"></i></li>
+      {% end %}
+    </ul>
+    {% end %}
+  {% else %}
+  <div class="columns large-12">
+    <p class="alert-box alert">No PoWA collector daemon is running!</p>
+    <ul class="large-block-grid-2">
+      <li><b>Background worker status:</b> <i class="fi-x ko"></i></li>
+    </ul>
+    <ul class="large-block-grid-2">
+      <li><b>Remote Collector status:</b> <i class="fi-x ko"></i></li>
+    </ul>
+  {% end %}
+  </div>
+</div>
+{% end %}

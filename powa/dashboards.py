@@ -34,7 +34,7 @@ class DashboardHandler(AuthHandler):
             self.path_args = args
         params = OrderedDict(zip(self.params,
                                  args))
-        param_dashboard = self.dashboard.parameterized_json(self, **params)
+        param_dashboard = self.dashboard().parameterized_json(self, **params)
         param_datasource = []
         for datasource in self.datasources:
             value = datasource.parameterized_json(self, **params)
@@ -44,7 +44,7 @@ class DashboardHandler(AuthHandler):
         return self.render(self.template,
                            dashboard=param_dashboard,
                            datasources=param_datasource,
-                           title=self.dashboard.title % params)
+                           title=self.dashboard().title % params)
 
     @property
     def database(self):
@@ -56,6 +56,7 @@ class DashboardHandler(AuthHandler):
         params = OrderedDict(zip(self.params, self.path_args))
         breadcrumb = self.get_breadcrumb(self, params)
         return breadcrumb
+
 
 class MetricGroupHandler(AuthHandler):
     """
@@ -73,9 +74,15 @@ class MetricGroupHandler(AuthHandler):
             for key, value
             in self.request.arguments.items()))
         url_params.update(url_query_params)
+
         query = self.query
-        values = self.execute(query, params=url_params)
-        data = {"data": [self.process(val, **url_params) for val in values]}
+        if (query is not None):
+            values = self.execute(query, params=url_params)
+            data = {"data": [self.process(val, **url_params)
+                             for val in values]}
+        else:
+            data = {}
+
         data = self.post_process(data, **url_params)
         self.render_json(data)
 
@@ -111,7 +118,6 @@ class MetricGroupHandler(AuthHandler):
             A dictionary containing the processed values.
         """
         return data
-
 
 
 class DataSource(JSONizable):
@@ -563,7 +569,6 @@ class DashboardPage(object):
                 {"datasource": datasource, "params": cls.params}, name=datasource.url_name))
         return url_specs
 
-
     @classmethod
     def get_childmenu(cls, handler, params):
         return None
@@ -576,7 +581,10 @@ class DashboardPage(object):
 
     @classmethod
     def get_breadcrumb(cls, handler, params):
-        title = cls.title % params
+        if (getattr(cls, "breadcrum_title", None)):
+            title = cls.breadcrum_title(handler, params)
+        else:
+            title = cls.title % params
         entry = MenuEntry(title, cls.__name__, params)
         entry.children = cls.get_childmenu(handler, params)
         items = [entry]

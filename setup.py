@@ -9,7 +9,6 @@ with open('powa/__init__.py') as f:
             __VERSION__ = line.split('=')[1].replace("'", '').strip()
 
 
-
 requires = [
     'sqlalchemy>=0.7.2',
     'tornado>=2.0',
@@ -34,12 +33,13 @@ setup(
     long_description="See https://powa.readthedocs.io/",
     scripts=['powa-web'],
     classifiers=[
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: System Administrators",
-    "License :: Other/Proprietary License",
-    "License :: OSI Approved :: BSD License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 2",
-    "Programming Language :: Python :: 3",
-    "Topic :: Database :: Front-Ends"]
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: System Administrators",
+        "Intended Audience :: End Users/Desktop",
+        "License :: Other/Proprietary License",
+        "License :: OSI Approved :: BSD License",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 2",
+        "Programming Language :: Python :: 3",
+        "Topic :: Database :: Front-Ends"]
 )

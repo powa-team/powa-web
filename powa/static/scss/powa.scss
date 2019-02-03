@@ -51,11 +51,20 @@ footer {
   color: $white;
 }
 
+table {
+    margin: 0px;
+}
+
+.columns {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
 
 .panel {
   &.widget {
-    padding: 1em;
-    min-height: 200px;
+    padding: 0.3em 0.8em;
+    min-height: 80px;
+    margin-bottom: 1rem;
     .content-widget {
         title {
         color: $powa-color;
@@ -64,7 +73,7 @@ footer {
 
   }
   .row.graph {
-      padding-left: 3rem;
+      padding-left: 2.2rem;
       padding-right: 1.5rem;
       .columns, .row {
           padding-left: 0;
@@ -172,6 +181,7 @@ footer {
 .backgrid-filter.form-search {
     margin-left: 0;
     margin-top: 0;
+    margin-bottom: 10px;
 }
 
 .has-tip {
@@ -183,4 +193,12 @@ footer {
 pre.sql {
     max-height: 400px;
     overflow: auto;
+}
+
+.ok {
+    color: #10f010;
+}
+
+.ko {
+    color: #f01010;
 }

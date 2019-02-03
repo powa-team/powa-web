@@ -9,3 +9,13 @@
     </div>
 {% end %}
 
+{% for cat, messages in sanitycheck_messages().items() %}
+    <div data-alert class="alert-box {{cat}}">
+        <ul>
+            {% for message in messages %}
+            <li>{{message}}</li>
+            {% end %}
+        </ul>
+        <a href="#" class="close">&times;</a>
+    </div>
+{% end %}

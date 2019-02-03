@@ -435,7 +435,8 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             });
             var self = this;
             $.ajax({
-                url: '/database/' + this.get("database") + '/suggest/',
+                url: '/server/' + this.get("server") +
+                  '/database/' + this.get("database") + '/suggest/',
                 data: JSON.stringify({
                     queryids: queryids,
                     indexes: indexes,

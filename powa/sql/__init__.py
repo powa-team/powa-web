@@ -270,7 +270,7 @@ Plan = namedtuple(
     ("title", "values", "query", "plan", "filter_ratio", "exec_count", "occurences"))
 
 
-def qual_constants(type, filter_clause, top=1):
+def qual_constants(srvid, type, tsfrom, tsto, filter_clause, top=1):
     orders = {
         'most_executed': "8 DESC",
         'least_filtering': "9",
@@ -286,41 +286,47 @@ def qual_constants(type, filter_clause, top=1):
     base = text("""
     (
     WITH sample AS (
-    SELECT query, s.queryid, qn.qualid, quals as quals,
+    SELECT s.srvid, query, s.queryid, qn.qualid, quals as quals,
                 constants,
                 sum(occurences) as occurences,
                 sum(execution_count) as execution_count,
                 sum(nbfiltered) as nbfiltered,
                 CASE WHEN sum(execution_count) = 0 THEN 0 ELSE sum(nbfiltered) / sum(execution_count) END AS filter_ratio
         FROM powa_statements s
-        JOIN powa_databases ON powa_databases.oid = s.dbid
-        JOIN powa_qualstats_quals qn ON s.queryid = qn.queryid
+        JOIN powa_databases d ON d.oid = s.dbid AND d.srvid = s.srvid
+        JOIN powa_qualstats_quals qn ON s.queryid = qn.queryid AND s.srvid = qn.srvid
         JOIN (
             SELECT *
             FROM powa_qualstats_constvalues_history qnc
+            WHERE srvid = :server
+            AND coalesce_range && tstzrange(:from, :to)
             UNION ALL
             SELECT *
-            FROM powa_qualstats_aggregate_constvalues_current
-        ) qnc ON qn.qualid = qnc.qualid AND qn.queryid = qnc.queryid,
+            FROM powa_qualstats_aggregate_constvalues_current(:server, :from, :to)
+            WHERE srvid = :server
+        ) qnc ON qnc.srvid = s.srvid AND qn.qualid = qnc.qualid AND qn.queryid = qnc.queryid,
         LATERAL
-                unnest(%s) as t(constants,occurences, nbfiltered,execution_count)
-        WHERE %s
-        GROUP BY qn.qualid, quals, constants, s.queryid, query
-        ORDER BY %s
+                unnest(%(qual_type)s) as t(constants,occurences, nbfiltered,execution_count)
+        WHERE %(filter)s
+        AND s.srvid = :server
+        GROUP BY s.srvid, qn.qualid, quals, constants, s.queryid, query
+        ORDER BY %(order)s
         LIMIT :top_value
     )
-    SELECT query, queryid, qualid, quals, constants as constants,
+    SELECT srvid, query, queryid, qualid, quals, constants as constants,
                 occurences as occurences,
                 nbfiltered as nbfiltered,
                 execution_count as execution_count,
                 filter_ratio as filter_ratio,
                 row_number() OVER (ORDER BY execution_count desc NULLS LAST) as rownumber
         FROM sample
-    ORDER BY 10
+    ORDER BY 11
     LIMIT :top_value
-    ) %s
-    """ % (type, str(filter_clause), orders[type], type)
-               )
+    ) %(qual_type)s
+    """ % {
+        'qual_type': type,
+        'filter': str(filter_clause),
+        'order': orders[type]})
     base = base.params(top_value=top, **filter_clause.params)
     return select(["*"]).select_from(base)
 
@@ -345,7 +351,7 @@ def get_plans(self, query, database, qual):
     return plans
 
 
-def get_unjumbled_query(ctrl, database, queryid, _from, _to,
+def get_unjumbled_query(ctrl, srvid, database, queryid, _from, _to,
                         kind='most executed'):
     """
     From a queryid, build a query string ready to be executed.
@@ -362,8 +368,9 @@ def get_unjumbled_query(ctrl, database, queryid, _from, _to,
         SELECT query FROM powa_statements WHERE queryid = :queryid LIMIT 1
     """), params={"queryid": queryid}))[0]
     normalized_query = rs[0]
-    values = qualstat_get_figures(ctrl, database, _from, _to,
+    values = qualstat_get_figures(ctrl, srvid, database, _from, _to,
                                   queries=[queryid])
+
     if values is None:
         unprepared = unprepare(normalized_query)
         if unprepared != normalized_query:
@@ -374,7 +381,7 @@ def get_unjumbled_query(ctrl, database, queryid, _from, _to,
                                values[kind].get('constants', []))
     return sql
 
-def get_any_sample_query(ctrl, database, queryid, _from, _to):
+def get_any_sample_query(ctrl, srvid, database, queryid, _from, _to):
     """
     From a queryid, get a non normalized query.
 
@@ -384,7 +391,7 @@ def get_any_sample_query(ctrl, database, queryid, _from, _to):
     If this fail, fallback get_unjumbled_query, with "most executed" const
     values.
     """
-    has_pgqs = ctrl.has_extension("pg_qualstats")
+    has_pgqs = ctrl.has_extension(srvid, "pg_qualstats")
     example_query = None
     if has_pgqs and has_pgqs >= "0.0.7":
         rs = list(ctrl.execute(text("""
@@ -398,14 +405,19 @@ def get_any_sample_query(ctrl, database, queryid, _from, _to):
             unprepared = unprepare(example_query)
             if example_query == unprepared:
                 return example_query
-    return get_unjumbled_query(ctrl, database, queryid,
+    return get_unjumbled_query(ctrl, srvid, database, queryid,
                                _from, _to, 'most executed')
 
-def qualstat_get_figures(conn, database, tsfrom, tsto, queries=None, quals=None):
-    condition = text("""datname = :database AND coalesce_range && tstzrange(:from, :to)""")
+
+def qualstat_get_figures(conn, srvid, database, tsfrom, tsto,
+        queries=None, quals=None):
+    condition = text("""datname = :database
+            AND coalesce_range && tstzrange(:from, :to)""")
+
     if queries is not None:
         condition = and_(condition, array([int(q) for q in queries])
                          .any(literal_column("s.queryid")))
+
     if quals is not None:
         condition = and_(condition, array([int(q) for q in quals])
                          .any(literal_column("qnc.qualid")))
@@ -418,24 +430,27 @@ def qualstat_get_figures(conn, database, tsfrom, tsto, queries=None, quals=None)
         text('to_json(most_executed) as "most executed"'),
         text('to_json(most_used) as "most used"')])
            .select_from(
-               qual_constants("most_filtering", condition)
+               qual_constants(srvid, "most_filtering", tsfrom, tsto, condition)
                .alias("most_filtering")
                .join(
-                   qual_constants("least_filtering", condition)
+                   qual_constants(srvid, "least_filtering",
+                                  tsfrom, tsto, condition)
                    .alias("least_filtering"),
                    text("most_filtering.rownumber = "
                         "least_filtering.rownumber"))
-               .join(qual_constants("most_executed", condition)
+               .join(qual_constants(srvid, "most_executed",
+                                    tsfrom, tsto, condition)
                      .alias("most_executed"),
                      text("most_executed.rownumber = "
                           "least_filtering.rownumber"))
-               .join(qual_constants("most_used", condition)
+               .join(qual_constants(srvid, "most_used",
+                                    tsfrom, tsto, condition)
                      .alias("most_used"),
                      text("most_used.rownumber = "
                           "least_filtering.rownumber"))))
 
-
-    params = {"database": database,
+    params = {"server": srvid,
+              "database": database,
               "from": tsfrom,
               "to": tsto}
     quals = conn.execute(sql, params=params)

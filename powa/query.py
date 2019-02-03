@@ -37,7 +37,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     """
     name = "query_overview"
     xaxis = "ts"
-    data_url = r"/metrics/database/([^\/]+)/query/(-?\d+)"
+    data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)"
     rows = MetricDef(label="#Rows")
     calls = MetricDef(label="#Calls")
     shared_blks_read = MetricDef(label="Shared read", type="sizerate")
@@ -67,7 +67,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     @classmethod
     def _get_metrics(cls, handler, **params):
         base = cls.metrics.copy()
-        if not handler.has_extension("pg_stat_kcache"):
+        if not handler.has_extension(params["server"], "pg_stat_kcache"):
             for key in ("reads", "writes", "user_time", "system_time",
                         "other_time",
                         "sys_hit_ratio", "disk_hit_ratio"):
@@ -79,7 +79,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        query = powa_getstatdata_sample("query")
+        query = powa_getstatdata_sample("query", bindparam("server"))
         query = query.where(
             (column("datname") == bindparam("database")) &
             (column("queryid") == bindparam("query")))
@@ -112,14 +112,17 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                 (c.runtime / greatest(c.calls, 1)).label("avg_runtime")]
 
         from_clause = query
-        if self.has_extension("pg_stat_kcache"):
+        if self.has_extension(self.path_args[0], "pg_stat_kcache"):
             # Add system metrics from pg_stat_kcache,
             # and detailed hit ratio.
             kcache_query = kcache_getstatdata_sample()
             kc = inner_cc(kcache_query)
             kcache_query = (
                 kcache_query
-                .where(kc.queryid == bindparam("query"))
+                .where(
+                    (kc.datname == bindparam("database")) &
+                    (kc.queryid == bindparam("query"))
+                    )
                 .alias())
             kc = kcache_query.c
             sys_hits = (greatest(mulblock(c.shared_blks_read) -
@@ -140,8 +143,8 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                 total_time_percent(kc.user_time * 1000).label("user_time"),
                 total_time_percent(kc.system_time * 1000).label("system_time"),
                 greatest(total_time_percent(
-                    c.runtime - (kc.user_time + kc.system_time) *
-                    1000), 0).label("other_time"),
+                    c.runtime - ((kc.user_time + kc.system_time) *
+                    1000)), 0).label("other_time"),
                 case([(total_blocks == 0, 0)],
                      else_=disk_hit_ratio).label("disk_hit_ratio"),
                 case([(total_blocks == 0, 0)],
@@ -168,13 +171,13 @@ class QueryIndexes(ContentWidget):
     Content widget showing index creation suggestion.
     """
 
-    data_url = r"/metrics/database/([^\/]+)/query/(-?\d+)/indexes"
+    data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)/indexes"
     title = "Query Indexes"
 
-    def get(self, database, query):
-        if not self.has_extension("pg_qualstats"):
+    def get(self, srvid, database, query):
+        if not self.has_extension(srvid, "pg_qualstats"):
             raise HTTPError(501, "PG qualstats is not installed")
-        base_query = qualstat_getstatdata()
+        base_query = qualstat_getstatdata(srvid)
         c = inner_cc(base_query)
         base_query.append_from(text("""LATERAL unnest(quals) as qual"""))
         base_query = (base_query
@@ -185,15 +188,16 @@ class QueryIndexes(ContentWidget):
                       .having(c.filter_ratio > 0.5)
                       .params(**{'from': '-infinity',
                                  'to': 'infinity'}))
-        optimizable = list(self.execute(base_query, params={'query': query}))
-        optimizable = resolve_quals(self.connect(database=database),
+        optimizable = list(self.execute(base_query, params={'server': srvid,
+                                                            'query': query}))
+        optimizable = resolve_quals(self.connect(srvid, database=database),
                                     optimizable,
                                     'quals')
         hypoplan = None
         indexes = {}
         for qual in optimizable:
             indexes[qual.where_clause] = possible_indexes(qual)
-        hypo_version = self.has_extension("hypopg", database=database)
+        hypo_version = self.has_extension(srvid, "hypopg", database=database)
         if indexes and hypo_version and hypo_version >= "0.0.3":
             # identify indexes
             # create them
@@ -202,15 +206,17 @@ class QueryIndexes(ContentWidget):
             for ind in allindexes:
                 ddl = ind.hypo_ddl
                 if ddl is not None:
-                    ind.name = self.execute(ddl, database=database).scalar()
+                    ind.name = self.execute(ddl, srvid=srvid,
+                                            database=database).scalar()
             # Build the query and fetch the plans
-            querystr = get_any_sample_query(self, database, query,
-                                        self.get_argument("from"),
-                                        self.get_argument("to"))
+            querystr = get_any_sample_query(self, srvid, database, query,
+                                            self.get_argument("from"),
+                                            self.get_argument("to"))
             try:
-                hypoplan = get_hypoplans(self.connect(database=database), querystr,
-                                         allindexes)
-            except:
+                hypoplan = get_hypoplans(self.connect(srvid,
+                                                      database=database),
+                                         querystr, allindexes)
+            except Exception:
                 # TODO: offer the possibility to fill in parameters from the UI
                 self.flash("We couldn't get plans for this query, presumably "
                            "because some parameters are missing ")
@@ -224,18 +230,18 @@ class QueryExplains(ContentWidget):
     Content widget showing explain plans for various const values.
     """
     title = "Query Explains"
-    data_url = r"/metrics/database/([^\/]+)/query/(-?\d+)/explains"
+    data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)/explains"
 
-    def get(self, database, query):
-        if not self.has_extension("pg_qualstats"):
+    def get(self, server, database, query):
+        if not self.has_extension(server, "pg_qualstats"):
             raise HTTPError(501, "PG qualstats is not installed")
 
         plans = []
-        row = qualstat_get_figures(self, database,
+        row = qualstat_get_figures(self, server, database,
                                    self.get_argument("from"),
                                    self.get_argument("to"),
                                    queries=[query])
-        if row != None:
+        if row is not None:
             for key in ('most filtering', 'least filtering', 'most executed', 'most used'):
                 vals = row[key]
                 query = format_jumbled_query(row['query'], vals['constants'])
@@ -243,6 +249,7 @@ class QueryExplains(ContentWidget):
                 try:
                     sqlQuery = text("EXPLAIN %s" % query)
                     result = self.execute(sqlQuery,
+                                          srvid=server,
                                           database=database)
                     plan = "\n".join(v[0] for v in result)
                 except:
@@ -265,7 +272,7 @@ class WaitsQueryOverviewMetricGroup(MetricGroupDef):
     """
     name = "waits_query_overview"
     xaxis = "ts"
-    data_url = r"/metrics/database/([^\/]+)/query/(-?\d+)/wait_events_sampled"
+    data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)/wait_events_sampled"
     # pg 9.6 only metrics
     count_lwlocknamed = MetricDef(label="Lightweight Named")
     count_lwlocktranche = MetricDef(label="Lightweight Tranche")
@@ -281,13 +288,13 @@ class WaitsQueryOverviewMetricGroup(MetricGroupDef):
     count_io = MetricDef(label="IO")
 
     def prepare(self):
-        if not self.has_extension("pg_wait_sampling"):
+        if not self.has_extension(self.path_args[0], "pg_wait_sampling"):
             raise HTTPError(501, "pg_wait_sampling is not installed")
 
     @property
     def query(self):
 
-        query = powa_getwaitdata_sample("query")
+        query = powa_getwaitdata_sample(bindparam("server"), "query")
         query = query.where(
             (column("datname") == bindparam("database")) &
             (column("queryid") == bindparam("query")))
@@ -325,17 +332,17 @@ class WaitSamplingList(MetricGroupDef):
     name = "query_wait_events"
     xaxis = "event"
     axis_type = "category"
-    data_url = r"/metrics/database/([^\/]+)/query/(-?\d+)/wait_events"
+    data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)/wait_events"
     counts = MetricDef(label="# of events", type="integer", direction="descending")
 
     def prepare(self):
-        if not self.has_extension("pg_wait_sampling"):
+        if not self.has_extension(self.path_args[0], "pg_wait_sampling"):
             raise HTTPError(501, "pg_wait_sampling is not installed")
 
     @property
     def query(self):
         # Working from the waitdata detailed_db base query
-        inner_query = powa_getwaitdata_detailed_db()
+        inner_query = powa_getwaitdata_detailed_db(bindparam("server"))
         inner_query = inner_query.alias()
         c = inner_query.c
         ps = powa_statements
@@ -363,25 +370,25 @@ class QualList(MetricGroupDef):
     name = "query_quals"
     xaxis = "relname"
     axis_type = "category"
-    data_url = r"/metrics/database/([^\/]+)/query/(-?\d+)/quals"
+    data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)/quals"
     filter_ratio = MetricDef(label="Avg filter_ratio (excluding index)", type="percent")
     execution_count = MetricDef(label="Execution count (excluding index)")
 
     def prepare(self):
-        if not self.has_extension("pg_qualstats"):
+        if not self.has_extension(self.path_args[0], "pg_qualstats"):
             raise HTTPError(501, "PG qualstats is not installed")
 
     @property
     def query(self):
-        base = qualstat_getstatdata()
+        base = qualstat_getstatdata(bindparam("server"))
         c = inner_cc(base)
         return (base.where(c.queryid == bindparam("query")))
 
-    def post_process(self, data, database, query, **kwargs):
-        conn = self.connect(database=database)
+    def post_process(self, data, server, database, query, **kwargs):
+        conn = self.connect(server, database=database)
         data["data"] = resolve_quals(conn, data["data"])
         for qual in data["data"]:
-            qual.url = self.reverse_url('QualOverview', database, query,
+            qual.url = self.reverse_url('QualOverview', server, database, query,
                                         qual.qualid)
         return data
 
@@ -391,17 +398,19 @@ class QueryDetail(ContentWidget):
     Detail widget showing summarized information for the query.
     """
     title = "Query Detail"
-    data_url = r"/metrics/database/([^\/]+)/query/(-?\d+)/detail"
+    data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)/detail"
 
-    def get(self, database, query):
+    def get(self, srvid, database, query):
         bs = block_size.c.block_size
-        stmt = powa_getstatdata_detailed_db()
+        stmt = powa_getstatdata_detailed_db(srvid)
         stmt = stmt.where(
             (column("datname") == bindparam("database")) &
             (column("queryid") == bindparam("query")))
         stmt = stmt.alias()
         from_clause = outerjoin(powa_statements, stmt,
-                           and_(powa_statements.c.queryid == stmt.c.queryid, powa_statements.c.dbid == stmt.c.dbid))
+                                and_(powa_statements.c.queryid ==
+                                     stmt.c.queryid, powa_statements.c.dbid ==
+                                     stmt.c.dbid))
         c = stmt.c
         rblk = mulblock(sum(c.shared_blks_read).label("shared_blks_read"))
         wblk = mulblock(sum(c.shared_blks_hit).label("shared_blks_hit"))
@@ -417,6 +426,7 @@ class QueryDetail(ContentWidget):
             .group_by(column("query"), bs))
 
         value = self.execute(stmt, params={
+            "server": srvid,
             "query": query,
             "database": database,
             "from": self.get_argument("from"),
@@ -432,20 +442,20 @@ class QueryOverview(DashboardPage):
     """
     Dashboard page for a query.
     """
-    base_url = r"/database/([^\/]+)/query/(-?\d+)/overview"
-    params = ["database", "query"]
+    base_url = r"/server/(\d+)/database/([^\/]+)/query/(-?\d+)/overview"
+    params = ["server", "database", "query"]
     datasources = [QueryOverviewMetricGroup, WaitsQueryOverviewMetricGroup,
                    QueryDetail, QueryExplains, QueryIndexes, WaitSamplingList,
                    QualList]
     parent = DatabaseOverview
     title = 'Query Overview'
 
-    @property
     def dashboard(self):
         # This COULD be initialized in the constructor, but tornado < 3 doesn't
         # call it
         if getattr(self, '_dashboard', None) is not None:
             return self._dashboard
+
         hit_ratio_graph = Graph("Hit ratio",
                                 metrics=[QueryOverviewMetricGroup.hit_ratio],
                                 renderer="bar",
@@ -478,7 +488,8 @@ class QueryOverview(DashboardPage):
                     metrics=[QueryOverviewMetricGroup.blk_read_time,
                              QueryOverviewMetricGroup.blk_write_time])]])
         dashes.append(iodash)
-        if self.has_extension("pg_stat_kcache"):
+
+        if self.has_extension(self.path_args[0], "pg_stat_kcache"):
             iodash.widgets.extend([[
                 Graph("Physical block (in Bps)",
                       metrics=[QueryOverviewMetricGroup.reads,
@@ -498,7 +509,7 @@ class QueryOverview(DashboardPage):
             hit_ratio_graph.metrics.append(
                 QueryOverviewMetricGroup.miss_ratio)
 
-        if self.has_extension("pg_wait_sampling"):
+        if self.has_extension(self.path_args[0], "pg_wait_sampling"):
             # Get the metrics depending on the pg server version
             metrics=None
             if self.get_pg_version_num() < 100000:
@@ -529,7 +540,7 @@ class QueryOverview(DashboardPage):
                        }],
                        metrics=WaitSamplingList.all())]]))
 
-        if self.has_extension("pg_qualstats"):
+        if self.has_extension(self.path_args[0], "pg_qualstats"):
             dashes.append(Dashboard("Predicates",
                 [[
                 Grid("Predicates used by this query",

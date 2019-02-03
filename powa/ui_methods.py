@@ -80,6 +80,52 @@ def flashed_messages(self):
     return messages
 
 
+def sanitycheck_messages(self):
+    messages = {'alert': []}
+
+    # Check if now collector is running
+    sql = """SELECT
+        CASE WHEN val LIKE 'PoWA collector - main thread (%%'
+            THEN 'Remote collector'
+            ELSE 'Backgound worker'
+        END AS powa_kind,
+        date_trunc('second', backend_start) as start,
+        datname, usename,
+        coalesce(host(client_addr), '<local>') AS client_addr,
+        count(datname) OVER () AS nb_found
+        FROM (
+            SELECT 'PoWA - %%' AS val
+            UNION ALL
+            SELECT 'PoWA collector - main thread (%%'
+        ) n
+        JOIN pg_stat_activity a ON a.application_name LIKE n.val"""
+    rows = self.execute(sql).fetchall()
+
+    if (rows is None):
+        messages["alert"].append("No collector is running!")
+
+    sql = """SELECT
+       CASE WHEN id = 0 THEN
+          '<local>'
+       ELSE
+          COALESCE(alias, hostname || ':' || port)
+       END AS alias,
+        error
+        FROM powa_servers s
+        JOIN (SELECT srvid, unnest(errors) error
+            FROM powa_snapshot_metas
+            WHERE errors IS NOT NULL
+        ) m ON m.srvid = s.id"""
+    rows = self.execute(sql).fetchall()
+
+    if (rows is not None and len(rows) > 0):
+        for r in rows:
+            messages["alert"].append("%s: %s" % (r[0], r[1]))
+        return messages
+
+    return {}
+
+
 def to_json(_, value):
     """
     Utility function to render json in templates.

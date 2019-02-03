@@ -27,8 +27,9 @@
             ({{ handler.current_connection }})
           </li>
           <li>
-            <a href="{{ reverse_url('ConfigOverview')}}" title="Configuration">
+            <a href="{{ reverse_url('RepositoryConfigOverview')}}" title="Configuration">
               <i class="fi-widget"></i>
+              Configuration
             </a>
           </li>
         </ul>
@@ -93,7 +94,7 @@
       </div>
     </div>
     {% end %}
-    <div>
+    <div id="messages">
       {% module Messages() %}
     </div>
     {% block content %} {% end %}

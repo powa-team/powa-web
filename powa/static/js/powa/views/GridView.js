@@ -24,15 +24,6 @@ define([
         }
     };
 
-    var BoolFormatter = {
-      fromRaw: function(rawData){
-          if(rawData == true){
-              return "✓";
-          }
-          return "✗";
-      }
-    };
-
     var BaseCell = Backgrid.Cell.extend({
         initialize: function(options){
             BaseCell.__super__.initialize.apply(this, arguments);
@@ -109,7 +100,19 @@ define([
     });
     Backgrid.Extension.BoolCell = Backgrid.Cell.extend({
         className: "boolean-cell",
-        formatter: BoolFormatter
+        render: function() {
+          this.$el.empty();
+
+          raw = this.model.get(this.column.get('name'));
+          if (raw === undefined)
+            this.$el.html('<i class="fi-prohibited"></i>');
+          else if (raw)
+            this.$el.html('<i class="fi-check ok"></i>');
+          else
+            this.$el.html('<i class="fi-x ko"></i>');
+
+          return this;
+        }
     });
     Backgrid.Extension.SizeCell = Backgrid.Cell.extend({
         className: "size-cell",
@@ -143,6 +146,10 @@ define([
             this.delegateEvents();
             return this;
         }
+    });
+
+    Backgrid.Extension.TextCell = Backgrid.Cell.extend({
+        className: "text-cell"
     });
 
     var DescHeaderCell = Backgrid.HeaderCell.extend({

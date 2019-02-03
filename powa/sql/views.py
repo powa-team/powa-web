@@ -1,5 +1,6 @@
-from sqlalchemy.sql import (select, cast, func, column, text, case,
-                            bindparam, literal_column, ColumnCollection, join, alias)
+from sqlalchemy.sql import (select, cast, func, column, text, case, and_,
+                            bindparam, literal_column, ColumnCollection, join,
+                            alias)
 from sqlalchemy.types import Numeric
 from sqlalchemy.sql.functions import max, min, sum
 from powa.sql.utils import diff
@@ -51,6 +52,7 @@ def powa_base_statdata_detailed_db():
             WHERE coalesce_range && tstzrange(:from, :to, '[]')
             AND psh.dbid = powa_databases.oid
             AND psh.queryid IN ( SELECT powa_statements.queryid FROM powa_statements WHERE powa_statements.dbid = powa_databases.oid )
+            AND psh.srvid = :server
         ) AS unnested
         WHERE tstzrange(:from, :to, '[]') @> (records).ts
         UNION ALL
@@ -59,8 +61,8 @@ def powa_base_statdata_detailed_db():
         WHERE tstzrange(:from,:to,'[]') @> (record).ts
         AND psc.dbid = powa_databases.oid
         AND psc.queryid IN ( SELECT powa_statements.queryid FROM powa_statements WHERE powa_statements.dbid = powa_databases.oid )
-    ) h
-    """)
+        AND psc.srvid = :server
+    ) h""")
     return base_query
 
 def powa_base_waitdata_detailed_db():
@@ -81,6 +83,7 @@ def powa_base_waitdata_detailed_db():
                 FROM powa_statements ps
                 WHERE ps.dbid = powa_databases.oid
             )
+            AND wsh.srvid = :server
         ) AS unnested
         WHERE tstzrange(:from, :to, '[]') @> (records).ts
         UNION ALL
@@ -93,22 +96,25 @@ def powa_base_waitdata_detailed_db():
             FROM powa_statements ps
             WHERE ps.dbid = powa_databases.oid
         )
+        AND wsc.srvid = :server
     ) h
+    WHERE powa_databases.srvid = :server
     """)
     return base_query
 
 def powa_base_statdata_db():
     base_query = text("""
     (
-    SELECT powa_databases.oid as dbid, h.*
+    SELECT d.srvid, d.oid as dbid, h.*
     FROM
-    powa_databases LEFT JOIN
+    powa_databases d LEFT JOIN
     (
-          SELECT dbid, min(lower(coalesce_range)) AS min_ts, max(upper(coalesce_range)) AS max_ts
+          SELECT srvid, dbid, min(lower(coalesce_range)) AS min_ts, max(upper(coalesce_range)) AS max_ts
           FROM powa_statements_history_db dbh
           WHERE coalesce_range && tstzrange(:from, :to, '[]')
-          GROUP BY dbid
-    ) ranges ON powa_databases.oid = ranges.dbid,
+          AND dbh.srvid = :server
+          GROUP BY srvid, dbid
+    ) ranges ON d.oid = ranges.dbid AND d.srvid = ranges.srvid,
     LATERAL (
         SELECT (unnested1.records).*
         FROM (
@@ -116,6 +122,7 @@ def powa_base_statdata_db():
             FROM powa_statements_history_db dbh
             WHERE coalesce_range @> min_ts
             AND dbh.dbid = ranges.dbid
+            AND dbh.srvid = :server
         ) AS unnested1
         WHERE tstzrange(:from, :to, '[]') @> (unnested1.records).ts
         UNION ALL
@@ -125,27 +132,32 @@ def powa_base_statdata_db():
             FROM powa_statements_history_db dbh
             WHERE coalesce_range @> max_ts
             AND dbh.dbid = ranges.dbid
+            AND dbh.srvid = :server
         ) AS unnested2
         WHERE tstzrange(:from, :to, '[]') @> (unnested2.records).ts
         UNION ALL
         SELECT (dbc.record).*
         FROM powa_statements_history_current_db dbc
         WHERE tstzrange(:from, :to, '[]') @> (dbc.record).ts
-        AND dbc.dbid = powa_databases.oid
+        AND dbc.dbid = d.oid
+        AND dbc.srvid = d.srvid
+        AND dbc.srvid = :server
     ) AS h) AS db_history
     """)
     return base_query
 
+
 def powa_base_waitdata_db():
     base_query = text("""
     (
-    SELECT powa_databases.oid as dbid, h.*
+    SELECT powa_databases.srvid, powa_databases.oid as dbid, h.*
     FROM
     powa_databases LEFT JOIN
     (
           SELECT dbid, min(lower(coalesce_range)) AS min_ts, max(upper(coalesce_range)) AS max_ts
           FROM powa_wait_sampling_history_db wsh
           WHERE coalesce_range && tstzrange(:from, :to, '[]')
+          AND wsh.srvid = :server
           GROUP BY dbid
     ) ranges ON powa_databases.oid = ranges.dbid,
     LATERAL (
@@ -155,6 +167,7 @@ def powa_base_waitdata_db():
             FROM powa_wait_sampling_history_db wsh
             WHERE coalesce_range @> min_ts
             AND wsh.dbid = ranges.dbid
+            AND wsh.srvid = :server
         ) AS unnested1
         WHERE tstzrange(:from, :to, '[]') @> (unnested1.records).ts
         UNION ALL
@@ -164,6 +177,7 @@ def powa_base_waitdata_db():
             FROM powa_wait_sampling_history_db wsh
             WHERE coalesce_range @> max_ts
             AND wsh.dbid = ranges.dbid
+            AND wsh.srvid = :server
         ) AS unnested2
         WHERE tstzrange(:from, :to, '[]') @> (unnested2.records).ts
         UNION ALL
@@ -171,9 +185,13 @@ def powa_base_waitdata_db():
         FROM powa_wait_sampling_history_current_db wsc
         WHERE tstzrange(:from, :to, '[]') @> (wsc.record).ts
         AND wsc.dbid = powa_databases.oid
-    ) AS h) AS ws_history
+        AND wsc.srvid = :server
+    ) AS h
+    WHERE powa_databases.srvid = :server
+) AS ws_history
     """)
     return base_query
+
 
 def get_diffs_forstatdata():
     return [
@@ -189,22 +207,26 @@ def get_diffs_forstatdata():
         diff("blk_write_time")
     ]
 
-def powa_getstatdata_detailed_db():
+def powa_getstatdata_detailed_db(srvid):
     base_query = powa_base_statdata_detailed_db()
     diffs = get_diffs_forstatdata()
     return (select([
+        column("srvid"),
         column("queryid"),
         column("dbid"),
         column("userid"),
         column("datname"),
     ] + diffs)
             .select_from(base_query)
-            .group_by(column("queryid"), column("dbid"), column("userid"), column("datname"))
+            .where(column("srvid") == srvid)
+            .group_by(column("srvid"), column("queryid"), column("dbid"),
+                      column("userid"), column("datname"))
             .having(max(column("calls")) - min(column("calls")) > 0))
 
-def powa_getwaitdata_detailed_db():
+def powa_getwaitdata_detailed_db(srvid):
     base_query = powa_base_waitdata_detailed_db()
     return (select([
+        column("srvid"),
         column("queryid"),
         column("dbid"),
         column("datname"),
@@ -213,29 +235,31 @@ def powa_getwaitdata_detailed_db():
         diff("count")
     ])
         .select_from(base_query)
-        .group_by(column("queryid"), column("dbid"), column("datname"),
+        .group_by(column("srvid"), column("queryid"), column("dbid"), column("datname"),
                   column("event_type"), column("event"))
         .having(max(column("count")) - min(column("count")) > 0))
 
-def powa_getstatdata_db():
+def powa_getstatdata_db(srvid):
     base_query = powa_base_statdata_db()
     diffs = get_diffs_forstatdata()
-    return (select([column("dbid")] + diffs)
+    return (select([column("srvid")] + [column("dbid")] + diffs)
             .select_from(base_query)
-            .group_by(column("dbid"))
+            .where(column("srvid") == srvid)
+            .group_by(column("srvid"), column("dbid"))
             .having(max(column("calls")) - min(column("calls")) > 0))
 
-def powa_getwaitdata_db():
+def powa_getwaitdata_db(srvid):
     base_query = powa_base_waitdata_db()
 
     return (select([
+        column("srvid"),
         column("dbid"),
         column("event_type"),
         column("event"),
         diff("count")
     ])
         .select_from(base_query)
-        .group_by(column("dbid"), column("event_type"), column("event"))
+        .group_by(column("srvid"), column("dbid"), column("event_type"), column("event"))
         .having(max(column("count")) - min(column("count")) > 0))
 
 
@@ -270,6 +294,7 @@ BASE_QUERY_WAIT_SAMPLE_DB = text("""(
                     FROM powa_wait_sampling_history_db wsh
                     WHERE coalesce_range && tstzrange(:from, :to,'[]')
                     AND wsh.dbid = powa_databases.oid
+                    AND wsh.srvid = :server
                 ) AS unnested
                 WHERE tstzrange(:from, :to, '[]') @> (records).ts
                 GROUP BY wshc.dbid, unnested.event_type, (unnested.records).ts
@@ -279,17 +304,22 @@ BASE_QUERY_WAIT_SAMPLE_DB = text("""(
                 FROM powa_wait_sampling_history_current_db wshc
                 WHERE tstzrange(:from, :to, '[]') @> (wsh.record).ts
                 AND wshc.dbid = powa_databases.oid
-                GROUP BY wshc.dbid, wshc.event_type, (wshc.record).ts
+                AND wshc.srvid = :server
+                GROUP BY wshc.srvid, wshc.dbid, wshc.event_type, (wshc.record).ts
             ) AS waits_history
         ) AS wh
         WHERE number % ( int8larger((total)/(:samples+1),1) ) = 0
     ) AS base
+    WHERE srvid = :server
 ) AS by_db
 """)
 
+
 BASE_QUERY_WAIT_SAMPLE = text("""(
-    SELECT datname, dbid, queryid, base.*
-    FROM powa_statements JOIN powa_databases ON powa_databases.oid = powa_statements.dbid,
+    SELECT d.srvid, datname, dbid, queryid, base.*
+    FROM powa_statements s
+    JOIN powa_databases d ON d.oid = s.dbid
+        AND d.srvid = s.srvid,
     LATERAL (
         SELECT *
         FROM (SELECT
@@ -317,7 +347,8 @@ BASE_QUERY_WAIT_SAMPLE = text("""(
                         unnest(records) AS records
                     FROM powa_wait_sampling_history wsh
                     WHERE coalesce_range && tstzrange(:from, :to, '[]')
-                    AND wsh.queryid = powa_statements.queryid
+                    AND wsh.queryid = s.queryid
+                    AND wsh.srvid = :server
                 ) AS unnested
                 WHERE tstzrange(:from, :to, '[]') @> (records).ts
                 GROUP BY unnested.event_type, (unnested.records).ts
@@ -326,30 +357,31 @@ BASE_QUERY_WAIT_SAMPLE = text("""(
                     sum((wshc.record).count) AS count
                 FROM powa_wait_sampling_history_current wshc
                 WHERE tstzrange(:from, :to, '[]') @> (wshc.record).ts
-                AND wshc.queryid = powa_statements.queryid
-                GROUP BY wshc.event_type, (wshc.record).ts
+                AND wshc.queryid = s.queryid
+                AND wshc.srvid = :server
+                GROUP BY wshc.srvid, wshc.event_type, (wshc.record).ts
             ) AS waits_history
             GROUP BY waits_history.ts
         ) AS sh
         WHERE number % ( int8larger((total)/(:samples+1),1) ) = 0
     ) AS base
+    WHERE d.srvid = :server
 ) AS by_query
 """)
 
 
-def powa_getwaitdata_sample(mode):
+def powa_getwaitdata_sample(srvid, mode):
     if mode == "db":
         base_query = BASE_QUERY_WAIT_SAMPLE_DB
-        base_columns = [column("dbid")]
+        base_columns = [column("srvid"), column("dbid")]
 
     elif mode == "query":
         base_query = BASE_QUERY_WAIT_SAMPLE
-        base_columns = [column("dbid"), column("queryid")]
+        base_columns = [column("srvid"), column("dbid"), column("queryid")]
 
     ts = column('ts')
     biggest = Biggest(base_columns, ts)
     biggestsum = Biggestsum(base_columns, ts)
-
 
     return (select(base_columns + [
         ts,
@@ -373,7 +405,7 @@ def powa_getwaitdata_sample(mode):
 
 
 BASE_QUERY_SAMPLE_DB = text("""(
-    SELECT datname, base.* FROM powa_databases,
+    SELECT srvid, datname, base.* FROM powa_databases,
     LATERAL (
         SELECT *
         FROM (
@@ -388,6 +420,8 @@ BASE_QUERY_SAMPLE_DB = text("""(
                     FROM powa_statements_history_db psh
                     WHERE coalesce_range && tstzrange(:from, :to,'[]')
                     AND psh.dbid = powa_databases.oid
+                    AND psh.srvid = powa_databases.srvid
+                    AND psh.srvid = :server
                 ) AS unnested
                 WHERE tstzrange(:from, :to, '[]') @> (records).ts
                 UNION ALL
@@ -395,16 +429,19 @@ BASE_QUERY_SAMPLE_DB = text("""(
                 FROM powa_statements_history_current_db
                 WHERE tstzrange(:from, :to, '[]') @> (record).ts
                 AND dbid = powa_databases.oid
+                AND srvid = :server
             ) AS statements_history
         ) AS sh
         WHERE number % ( int8larger((total)/(:samples+1),1) ) = 0
     ) AS base
-) AS by_db
-""")
+    WHERE srvid = :server
+) AS by_db""")
+
 
 BASE_QUERY_SAMPLE = text("""(
-    SELECT datname, dbid, queryid, base.*
-    FROM powa_statements JOIN powa_databases ON powa_databases.oid = powa_statements.dbid,
+    SELECT powa_statements.srvid, datname, dbid, queryid, base.*
+    FROM powa_statements JOIN powa_databases ON powa_databases.oid = powa_statements.dbid
+        AND powa_databases.srvid = powa_statements.srvid,
     LATERAL (
         SELECT *
         FROM (SELECT
@@ -418,6 +455,7 @@ BASE_QUERY_SAMPLE = text("""(
                     FROM powa_statements_history psh
                     WHERE coalesce_range && tstzrange(:from, :to, '[]')
                     AND psh.queryid = powa_statements.queryid
+                    AND psh.srvid = :server
                 ) AS unnested
                 WHERE tstzrange(:from, :to, '[]') @> (records).ts
                 UNION ALL
@@ -425,22 +463,25 @@ BASE_QUERY_SAMPLE = text("""(
                 FROM powa_statements_history_current phc
                 WHERE tstzrange(:from, :to, '[]') @> (record).ts
                 AND phc.queryid = powa_statements.queryid
+                AND phc.srvid = :server
             ) AS statements_history
         ) AS sh
         WHERE number % ( int8larger((total)/(:samples+1),1) ) = 0
     ) AS base
+    WHERE powa_statements.srvid = :server
 ) AS by_query
+
 """)
 
 
-def powa_getstatdata_sample(mode):
+def powa_getstatdata_sample(mode, srvid):
     if mode == "db":
         base_query = BASE_QUERY_SAMPLE_DB
-        base_columns = [column("dbid")]
+        base_columns = [column("srvid"), column("dbid")]
 
     elif mode == "query":
         base_query = BASE_QUERY_SAMPLE
-        base_columns = [column("dbid"), column("queryid")]
+        base_columns = [column("srvid"), column("dbid"), column("queryid")]
 
     ts = column('ts')
     biggest = Biggest(base_columns, ts)
@@ -473,28 +514,31 @@ def powa_getstatdata_sample(mode):
 def qualstat_base_statdata():
     base_query = text("""
     (
-    SELECT queryid, qualid, (unnested.records).*
+    SELECT srvid, queryid, qualid, (unnested.records).*
     FROM (
-        SELECT pqnh.qualid, pqnh.queryid, pqnh.dbid, pqnh.userid, pqnh.coalesce_range, unnest(records) as records
+        SELECT pqnh.srvid, pqnh.qualid, pqnh.queryid, pqnh.dbid, pqnh.userid, pqnh.coalesce_range, unnest(records) as records
         FROM powa_qualstats_quals_history pqnh
         WHERE coalesce_range  && tstzrange(:from, :to, '[]')
+        AND pqnh.srvid = :server
     ) AS unnested
     WHERE tstzrange(:from, :to, '[]') @> (records).ts
     UNION ALL
-    SELECT queryid, qualid, pqnc.ts, pqnc.occurences, pqnc.execution_count, pqnc.nbfiltered
+    SELECT pqnc.srvid, queryid, qualid, pqnc.ts, pqnc.occurences, pqnc.execution_count, pqnc.nbfiltered
     FROM powa_qualstats_quals_history_current pqnc
     WHERE tstzrange(:from, :to, '[]') @> pqnc.ts
+    AND pqnc.srvid = :server
     ) h
-    JOIN powa_qualstats_quals pqnh USING (queryid, qualid)
+    JOIN powa_qualstats_quals pqnh USING (srvid, queryid, qualid)
     """)
     return base_query
 
 
-def qualstat_getstatdata(condition=None):
+def qualstat_getstatdata(srvid, condition=None):
     base_query = qualstat_base_statdata()
     if condition:
         base_query = base_query.where(condition)
     return (select([
+        powa_statements.c.srvid,
         column("qualid"),
         powa_statements.c.queryid,
         column("query"),
@@ -510,10 +554,13 @@ def qualstat_getstatdata(condition=None):
         ).label("filter_ratio")])
             .select_from(
                 join(base_query, powa_statements,
-                     powa_statements.c.queryid ==
-                     literal_column("pqnh.queryid")))
-            .group_by(column("qualid"), powa_statements.c.queryid,
-                      powa_statements.c.dbid,
+                     and_(powa_statements.c.queryid ==
+                          literal_column("pqnh.queryid"),
+                          powa_statements.c.srvid ==
+                          literal_column("pqnh.srvid")),
+                     powa_statements.c.srvid == column("srvid")))
+            .group_by(powa_statements.c.srvid, column("qualid"),
+                      powa_statements.c.queryid, powa_statements.c.dbid,
                       powa_statements.c.query, column("quals")))
 
 
@@ -544,9 +591,10 @@ SELECT 'CREATE INDEX idx_' || q.relid || '_' || array_to_string(attnames, '_') |
 """
 
 
-
 BASE_QUERY_KCACHE_SAMPLE = text("""
-        powa_statements s JOIN powa_databases ON powa_databases.oid = s.dbid,
+        powa_statements s JOIN powa_databases
+            ON powa_databases.oid = s.dbid AND powa_databases.srvid = s.srvid
+            AND s.srvid = :server,
         LATERAL (
             SELECT *
             FROM (
@@ -561,14 +609,16 @@ BASE_QUERY_KCACHE_SAMPLE = text("""
                         SELECT * FROM (
                             SELECT (unnest(metrics)).*
                             FROM powa_kcache_metrics km
-                            WHERE km.queryid = s.queryid
+                            WHERE km.srvid = s.srvid
+                            AND km.queryid = s.queryid
                             AND km.coalesce_range && tstzrange(:from, :to, '[]')
                         ) his
                         WHERE tstzrange(:from, :to, '[]') @> his.ts
                         UNION ALL
                         SELECT (metrics).*
                         FROM powa_kcache_metrics_current kmc
-                        WHERE tstzrange(:from, :to, '[]') @> (metrics).ts
+                        WHERE kmc.srvid = s.srvid
+                        AND tstzrange(:from, :to, '[]') @> (metrics).ts
                         AND kmc.queryid = s.queryid
                     ) km
                     GROUP BY km.ts
@@ -578,11 +628,11 @@ BASE_QUERY_KCACHE_SAMPLE = text("""
         ) kcache
 """)
 
+
 def kcache_getstatdata_sample():
     base_query = BASE_QUERY_KCACHE_SAMPLE
     base_columns = [column("queryid"), column("datname")]
     ts = column('ts')
-    biggest = Biggest(base_columns, ts)
     biggestsum = Biggestsum(base_columns, ts)
 
     return (select(base_columns + [

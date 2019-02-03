@@ -20,7 +20,7 @@ from sqlalchemy.exc import DBAPIError
 
 class IndexSuggestionHandler(AuthHandler):
 
-    def post(self, database):
+    def post(self, srvid, database):
         payload = json.loads(self.request.body.decode("utf8"))
         from_date = payload['from_date']
         to_date = payload['to_date']
@@ -36,10 +36,11 @@ class IndexSuggestionHandler(AuthHandler):
         queries = list(powa_conn.execute(text("""
             SELECT DISTINCT query, ps.queryid
             FROM powa_statements ps
-            WHERE queryid IN :queryids
-        """), queryids=tuple(queryids)))
+            WHERE srvid = :srvid
+            AND queryid IN :queryids
+        """), srvid=srvid, queryids=tuple(queryids)))
         # Create all possible indexes for this qual
-        hypo_version = self.has_extension("hypopg", database=database)
+        hypo_version = self.has_extension(srvid, "hypopg", database=database)
         hypoplans = {}
         indbyname = {}
         inderrors = {}
@@ -51,7 +52,9 @@ class IndexSuggestionHandler(AuthHandler):
                     indname = self.execute(
                             select(["*"])
                             .select_from(func.hypopg_create_index(ind.ddl)),
-                            database=database).first()[1]
+                            database=database,
+                            srvid=srvid
+                    ).first()[1]
                     indbyname[indname] = ind
                 except DBAPIError as e:
                     inderrors[ind.ddl] = str(e.orig)
@@ -61,13 +64,14 @@ class IndexSuggestionHandler(AuthHandler):
                     continue
             # Build the query and fetch the plans
             for query in queries:
-                querystr = get_any_sample_query(self, database, query.queryid,
+                querystr = get_any_sample_query(self, srvid, database,
+                                                query.queryid,
                                                 from_date,
                                                 to_date)
                 if querystr:
                     try:
                         hypoplans[query.queryid] = get_hypoplans(
-                            self.connect(database=database), querystr,
+                            self.connect(srvid, database=database), querystr,
                             indbyname.values())
                     except Exception:
                         # TODO: stop ignoring the error
@@ -84,12 +88,13 @@ class WizardMetricGroup(MetricGroupDef):
     name = "wizard"
     xaxis = "quals"
     axis_type = "category"
-    data_url = r"/metrics/database/([^\/]+)/wizard/"
+    data_url = r"/server/(\d+)/metrics/database/([^\/]+)/wizard/"
     enabled = False
 
     @property
     def query(self):
-        pq = qualstat_getstatdata(column("eval_type") == "f")
+        pq = qualstat_getstatdata(bindparam("server"),
+                                  column("eval_type") == "f")
         base = alias(pq)
         query = (select([
             # queryid in pg11+ is int64, so the value can exceed javascript's
@@ -108,8 +113,11 @@ class WizardMetricGroup(MetricGroupDef):
         ]).select_from(
             join(base, powa_databases,
                  onclause=(
-                     powa_databases.c.oid == literal_column("dbid"))))
+                     powa_databases.c.oid == literal_column("dbid") and
+                     powa_databases.c.srvid == literal_column("srvid")
+                 )))
             .where(powa_databases.c.datname == bindparam("database"))
+            .where(powa_databases.c.srvid == bindparam("server"))
             .where(column("avg_filter") > 1000)
             .where(column("filter_ratio") > 0.3)
             .group_by(column("qualid"), column("execution_count"),
@@ -120,8 +128,8 @@ class WizardMetricGroup(MetricGroupDef):
             .limit(200))
         return query
 
-    def post_process(self, data, database, **kwargs):
-        conn = self.connect(database=database)
+    def post_process(self, data, server, database, **kwargs):
+        conn = self.connect(server, database=database)
         data["data"] = resolve_quals(conn, data["data"])
         return data
 
@@ -131,14 +139,15 @@ class Wizard(Widget):
     def __init__(self, title):
         self.title = title
 
-    def parameterized_json(self, handler, database):
+    def parameterized_json(self, handler, **parms):
         values = self.__dict__.copy()
         values['metrics'] = []
         values['type'] = 'wizard'
         values['datasource'] = 'wizard'
-        hypover = handler.has_extension("hypopg", database=database)
-        qsver = handler.has_extension("pg_qualstats")
-        values['has_hypopg'] = hypover and hypover  >= '0.0.3'
+        hypover = handler.has_extension(parms["server"], "hypopg", database=parms["database"])
+        qsver = handler.has_extension(parms["server"], "pg_qualstats")
+        values['has_hypopg'] = hypover and hypover >= '0.0.3'
         values['has_qualstats'] = qsver and qsver >= '0.0.7'
-        values['database'] = database
+        values['server'] = parms["server"]
+        values['database'] = parms["database"]
         return values

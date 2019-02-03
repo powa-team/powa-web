@@ -21,6 +21,7 @@ class BaseHandler(RequestHandler):
         super(BaseHandler, self).__init__(*args, **kwargs)
         self.flashed_messages = {}
         self._databases = None
+        self._servers = None
         self._connections = {}
         self.logger = logging.getLogger("tornado.application")
 
@@ -42,7 +43,7 @@ class BaseHandler(RequestHandler):
             try:
                 self.connect()
                 return raw or 'anonymous'
-            except:
+            except Exception:
                 return None
 
     @property
@@ -51,6 +52,34 @@ class BaseHandler(RequestHandler):
         Return the server connected to if any
         """
         return self.get_secure_cookie('server')
+
+    @property
+    def current_host(self):
+        """
+        Return the host connected to if any
+        """
+        server = self.current_server.decode('utf8')
+        if server is None:
+            return None
+        connoptions = options.servers[server].copy()
+        host = "localhost"
+        if 'host' in connoptions:
+            host = connoptions['host']
+        return "%s" % (host)
+
+    @property
+    def current_port(self):
+        """
+        Return the port connected to if any
+        """
+        server = self.current_server.decode('utf8')
+        if server is None:
+            return None
+        connoptions = options.servers[server].copy()
+        port = "5432"
+        if 'port' in connoptions:
+            port = connoptions['port']
+        return "%s" % (port)
 
     @property
     def current_connection(self):
@@ -89,8 +118,7 @@ class BaseHandler(RequestHandler):
             SELECT setting FROM pg_settings WHERE name = 'server_version_num'
             """), **kwargs).scalar())
 
-    @property
-    def databases(self, **kwargs):
+    def get_databases(self, srvid):
         """
         Return the list of databases in this instance.
         """
@@ -102,16 +130,46 @@ class BaseHandler(RequestHandler):
                     FROM powa_databases p
                     LEFT JOIN pg_database d ON p.oid = d.oid
                     WHERE COALESCE(datallowconn, true)
+                    AND srvid = %(srvid)s
                     ORDER BY DATNAME
-                    """,
-                    **kwargs)]
+                    """, params={'srvid': srvid})]
             return self._databases
+
+    def deparse_srvid(self, srvid):
+        if (srvid == '0'):
+            return self.current_connection
+        else:
+            return self.execute("""
+                                   SELECT hostname || ':' || port
+                                   FROM powa_servers
+                                   WHERE id = %(srvid)s
+                                   """, params={'srvid': int(srvid)}
+                                ).scalar()
+
+    @property
+    def servers(self, **kwargs):
+        """
+        Return the list of servers.
+        """
+        if self.current_user:
+            if self._servers is None:
+                self._servers = [[s[0], s[1]] for s in self.execute(
+                    """
+                    SELECT s.id, CASE WHEN s.id = 0 THEN
+                        %(default)s
+                    ELSE
+                        s.hostname || ':' || s.port
+                    END
+                    FROM powa_servers s
+                    ORDER BY hostname
+                    """, params={'default': self.current_connection})]
+            return self._servers
 
     def on_finish(self):
         for engine in self._connections.values():
             engine.dispose()
 
-    def connect(self, server=None, username=None, password=None,
+    def connect(self, srvid=None, server=None, username=None, password=None,
                 database=None, **kwargs):
         """
         Connect to a specific database.
@@ -124,14 +182,32 @@ class BaseHandler(RequestHandler):
                     self.get_str_cookie('password'))
         if server not in options.servers:
             raise HTTPError(404)
+
         connoptions = options.servers[server].copy()
-        if 'username' not in connoptions:
-            connoptions['username'] = username
-        if 'password' not in connoptions:
-            connoptions['password'] = password
+
+        if (srvid is not None and srvid != "0"):
+            tmp = self.connect()
+            rows = tmp.execute("""
+            SELECT hostname, port, username, password, dbname
+            FROM powa_servers WHERE id = %(srvid)s
+            """, {'srvid': srvid})
+            row = rows.fetchone()
+            rows.close()
+
+            connoptions['host'] = row[0]
+            connoptions['port'] = row[1]
+            connoptions['username'] = row[2]
+            connoptions['password'] = row[3]
+            connoptions['database'] = row[4]
+        else:
+            if 'username' not in connoptions:
+                connoptions['username'] = username
+            if 'password' not in connoptions:
+                connoptions['password'] = password
+
         if database is not None:
             connoptions['database'] = database
-        #engineoptions = {'_initialize': False}
+        # engineoptions = {'_initialize': False}
         engineoptions = {}
         engineoptions.update(**kwargs)
         if self.application.settings['debug']:
@@ -144,16 +220,20 @@ class BaseHandler(RequestHandler):
         self._connections[url] = engine
         return engine
 
-    def has_extension(self, extname, database=None):
+    def has_extension(self, srvid, extname, database=None):
         """
-        Returns the version of the specific extension on the specific database,
-        or None if the extension is not installed.
+        Returns the version of the specific extension on the specific server
+        and database, or None if the extension is not installed.
         """
         try:
             extversion = self.execute(text(
                 """
-                SELECT extversion FROM pg_extension WHERE extname = :extname LIMIT 1
-                """), database=database, params={"extname": extname}).scalar()
+                SELECT extversion
+                FROM pg_extension
+                WHERE extname = :extname
+                LIMIT 1
+                """), srvid=srvid, database=database,
+                params={"extname": extname}).scalar()
         except Exception:
             return None
 
@@ -172,7 +252,8 @@ class BaseHandler(RequestHandler):
             return
         super(BaseHandler, self).write_error(status_code, **kwargs)
 
-    def execute(self, query, params=None, server=None, username=None,
+    def execute(self, query, srvid=None, params=None, server=None,
+                username=None,
                 database=None,
                 password=None):
         """
@@ -180,7 +261,8 @@ class BaseHandler(RequestHandler):
         """
         if params is None:
             params = {}
-        engine = self.connect(server, username, password, database)
+
+        engine = self.connect(srvid, server, username, password, database)
         return engine.execute(query, **params)
 
     def get_pickle_cookie(self, name):
@@ -191,7 +273,7 @@ class BaseHandler(RequestHandler):
         if value:
             try:
                 return pickle.loads(value)
-            except:
+            except Exception:
                 self.clear_all_cookies()
 
     def get_str_cookie(self, name, default=None):
