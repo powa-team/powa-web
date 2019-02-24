@@ -127,7 +127,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                         .label("kcache_hitblocks"))
             sys_hitratio = (cast(sys_hits, Numeric) * 100 /
                             mulblock(total_blocks))
-            disk_hit_ratio = (kc.reads /
+            disk_hit_ratio = (kc.reads * 100 /
                               mulblock(total_blocks))
             total_time = greatest(c.runtime, 1);
             # Rusage can return values > real time due to sampling bias
