@@ -14,7 +14,7 @@ from powa.sql.views import qualstat_getstatdata
 from powa.sql.tables import powa_databases
 from sqlalchemy.sql import (bindparam, literal_column, join, select,
                             alias, text, func, column, cast)
-
+from sqlalchemy.types import TEXT
 
 
 class IndexSuggestionHandler(AuthHandler):
@@ -32,7 +32,6 @@ class IndexSuggestionHandler(AuthHandler):
             indexes.append(hypoind)
         queryids = payload['queryids']
         powa_conn = self.connect(database="powa")
-        conn = self.connect(database=database)
         queries = list(powa_conn.execute(text("""
             SELECT DISTINCT query, ps.queryid
             FROM powa_statements ps
@@ -82,7 +81,12 @@ class WizardMetricGroup(MetricGroupDef):
         pq = qualstat_getstatdata(column("eval_type") == "f")
         base = alias(pq)
         query = (select([
-            func.array_agg(column("queryid")).label("queryids"),
+            # queryid in pg11+ is int64, so the value can exceed javascript's
+            # Number.MAX_SAFE_INTEGER, which mean that the value can get
+            # truncated by the browser, leading to looking for unexisting
+            # queryid when processing this data.  To avoid that, simply cast
+            # the value to text.
+            func.array_agg(cast(column("queryid"), TEXT)).label("queryids"),
             "qualid",
             cast(column("quals"), JSONB).label('quals'),
             "occurences",
