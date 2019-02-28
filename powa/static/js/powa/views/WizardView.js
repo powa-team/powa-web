@@ -48,6 +48,21 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
                 emptyText: "No qual to optimize !",
                 collection: this.model.get("indexes")
             });
+            this.indexcheckerrorgrid = new Backgrid.Grid({
+                columns: [{
+                    editable: false,
+                    name: "ddl",
+                    label: "Hypothetical index creation error",
+                    cell: "query"
+                },{
+                    editable: false,
+                    name: "error",
+                    label: "Reason",
+                    cell: "string",
+                }],
+              emptyText: "No hypothetical index creation error.",
+              collection: this.model.get("indexescheckserror")
+            });
             this.indexcheckgrid = new Backgrid.Grid({
                 columns: [{
                     editable: false,
@@ -93,6 +108,7 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
             this.$el.find(".launcher").prop("disabled", true);
             this.$gridel.show();
             this.$gridel2.show();
+            this.$gridel3.show();
             this.$unoptimizedGrid.show();
         },
 
@@ -118,9 +134,9 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
             this.$el.html(this.template(this.model.toJSON()));
             this.$el.find(".unoptimizablegrid").hide();
             this.$el.find(".indexesgrid").hide();
+            this.$el.find(".indexescheckserrorgrid").hide();
             this.$el.find(".indexeschecksgrid").hide();
             this.$el.find(".summary").hide();
-            this.$el.find(".results").hide();
             this.$el.find(".results").hide();
             this.$progress_elem = this.$el.find(".progress");
             this.$progress_label = this.$el.find(".progress_label");
@@ -128,8 +144,10 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
             this.$unoptimizedGrid.append(this.unoptimizablegrid.render().el);
             this.$gridel = this.$el.find(".indexesgrid");
             this.$gridel.append(this.indexgrid.render().el);
-            this.$gridel2 = this.$el.find(".indexeschecksgrid");
-            this.$gridel2.append(this.indexcheckgrid.render().el);
+            this.$gridel2 = this.$el.find(".indexescheckserrorgrid");
+            this.$gridel2.append(this.indexcheckerrorgrid.render().el);
+            this.$gridel3 = this.$el.find(".indexeschecksgrid");
+            this.$gridel3.append(this.indexcheckgrid.render().el);
             return this;
         },
 

@@ -15,6 +15,7 @@ from powa.sql.tables import powa_databases
 from sqlalchemy.sql import (bindparam, literal_column, join, select,
                             alias, text, func, column, cast)
 from sqlalchemy.types import TEXT
+from sqlalchemy.exc import DBAPIError
 
 
 class IndexSuggestionHandler(AuthHandler):
@@ -41,15 +42,23 @@ class IndexSuggestionHandler(AuthHandler):
         hypo_version = self.has_extension("hypopg", database=database)
         hypoplans = {}
         indbyname = {}
+        inderrors = {}
         if hypo_version and hypo_version >= "0.0.3":
             # identify indexes
             # create them
             for ind in indexes:
-                indname = self.execute(
-                    select(["*"])
-                    .select_from(func.hypopg_create_index(ind.ddl)),
-                    database=database).first()[1]
-                indbyname[indname] = ind
+                try:
+                    indname = self.execute(
+                            select(["*"])
+                            .select_from(func.hypopg_create_index(ind.ddl)),
+                            database=database).first()[1]
+                    indbyname[indname] = ind
+                except DBAPIError as e:
+                    inderrors[ind.ddl] = str(e.orig)
+                    continue
+                except Exception:
+                    # TODO handle other errors?
+                    continue
             # Build the query and fetch the plans
             for query in queries:
                 querystr = get_any_sample_query(self, database, query.queryid,
@@ -60,12 +69,14 @@ class IndexSuggestionHandler(AuthHandler):
                         hypoplans[query.queryid] = get_hypoplans(
                             self.connect(database=database), querystr,
                             indbyname.values())
-                    except:
+                    except Exception:
                         # TODO: stop ignoring the error
                         continue
             # To value of a link is the the reduction in cost
-        self.render_json(hypoplans)
-
+        result = {}
+        result["plans"] = hypoplans
+        result["inderrors"] = inderrors
+        self.render_json(result)
 
 
 class WizardMetricGroup(MetricGroupDef):
