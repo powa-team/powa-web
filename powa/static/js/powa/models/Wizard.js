@@ -375,7 +375,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             this.set("from_date", from_date);
             this.set("to_date", to_date);
             if (total_quals == 0){
-                this.trigger("widget:update_progress", "No qual found!", 100);
+                this.trigger("widget:update_progress", "No quals require optimization!", 100);
                 this.trigger("wizard:end");
                 return;
             } else {

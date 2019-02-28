@@ -4,6 +4,9 @@
   - Don't try to detect if a hypotetical index would be used if no suitable
     index is detected (Julien Rouhaud, thanks to Guillaume Lelarge for the
     repot)
+  - Fix database wizard query validation for pg11+ (Julien Rouhaud)
+  - Handle hypopg unsupported access methods in dataabase wizard (Julien
+    Rouhaud, thanks to Adrien Di Mascio for the report)
 3.2.0:
   - Add support for pg_wait_sampling to display wait events statistics and
     graphs, require pg9.6+ (Julien Rouhaud)
