@@ -325,11 +325,11 @@ BASE_QUERY_WAIT_SAMPLE = text("""(
 def powa_getwaitdata_sample(mode):
     if mode == "db":
         base_query = BASE_QUERY_WAIT_SAMPLE_DB
-        base_columns = ["dbid"]
+        base_columns = [column("dbid")]
 
     elif mode == "query":
         base_query = BASE_QUERY_WAIT_SAMPLE
-        base_columns = ["dbid", "queryid"]
+        base_columns = [column("dbid"), column("queryid")]
 
     ts = column('ts')
     biggest = Biggest(base_columns, ts)
@@ -417,11 +417,11 @@ BASE_QUERY_SAMPLE = text("""(
 def powa_getstatdata_sample(mode):
     if mode == "db":
         base_query = BASE_QUERY_SAMPLE_DB
-        base_columns = ["dbid"]
+        base_columns = [column("dbid")]
 
     elif mode == "query":
         base_query = BASE_QUERY_SAMPLE
-        base_columns = ["dbid", "queryid"]
+        base_columns = [column("dbid"), column("queryid")]
 
     ts = column('ts')
     biggest = Biggest(base_columns, ts)
@@ -557,7 +557,7 @@ BASE_QUERY_KCACHE_SAMPLE = text("""
 
 def kcache_getstatdata_sample():
     base_query = BASE_QUERY_KCACHE_SAMPLE
-    base_columns = ["queryid", "datname"]
+    base_columns = [column("queryid"), column("datname")]
     ts = column('ts')
     biggest = Biggest(base_columns, ts)
 
