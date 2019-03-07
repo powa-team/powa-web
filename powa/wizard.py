@@ -98,13 +98,13 @@ class WizardMetricGroup(MetricGroupDef):
             # queryid when processing this data.  To avoid that, simply cast
             # the value to text.
             func.array_agg(cast(column("queryid"), TEXT)).label("queryids"),
-            "qualid",
+            column("qualid"),
             cast(column("quals"), JSONB).label('quals'),
-            "occurences",
-            "execution_count",
+            column("occurences"),
+            column("execution_count"),
             func.array_agg(column("query")).label("queries"),
-            "avg_filter",
-            "filter_ratio"
+            column("avg_filter"),
+            column("filter_ratio")
         ]).select_from(
             join(base, powa_databases,
                  onclause=(
