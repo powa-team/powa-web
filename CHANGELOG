@@ -11,6 +11,8 @@
     user mchubby and irc user ChOcO-Bn for the report)
   - Fix query detail if no data is found on the selected range (Julien Rouhaud,
     thanks to irc user ChOcO-Bn for the report)
+  - Fix some metrics in wait events and general query datasources (Julien
+    Rouhaud, thanks to Adrien Nayrat for the report)
 3.2.0:
   - Add support for pg_wait_sampling to display wait events statistics and
     graphs, require pg9.6+ (Julien Rouhaud)
