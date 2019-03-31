@@ -104,7 +104,7 @@ define([
           this.$el.empty();
 
           raw = this.model.get(this.column.get('name'));
-          if (raw === undefined)
+          if (raw === undefined || raw === null)
             this.$el.html('<i class="fi-prohibited"></i>');
           else if (raw)
             this.$el.html('<i class="fi-check ok"></i>');

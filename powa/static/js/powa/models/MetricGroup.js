@@ -1,4 +1,10 @@
-define(['backbone', 'powa/models/DataSource', 'powa/models/Metric', 'powa/models/MetricCollection'], function(Backbone, DataSource, Metric, MetricCollection){
+define([
+        'backbone',
+        'powa/models/DataSource',
+        'powa/models/Metric',
+        'powa/models/MetricCollection',
+        'powa/utils/message'],
+        function(Backbone, DataSource, Metric, MetricCollection, Message){
     return DataSource.extend({
 
         initialize: function(){
@@ -26,12 +32,12 @@ define(['backbone', 'powa/models/DataSource', 'powa/models/Metric', 'powa/models
 
                 self.trigger("metricgroup:dataload", response.data, from_date, to_date);
 
-                if (response.alerts) {
-                  $.each(response.alerts, function(){
-                    var msg = '<div data-alert class="alert-box alert">'
-                      + '<ul><li>' + this + '</li></ul>'
-                      + '<a href="#" class="close">&times;</a></div>'
-                    $("#messages").append(msg);
+                if (response.messages !== undefined) {
+                  $.each(response.messages, function(level, arr){
+                      $.each(arr, function(i) {
+                        msg = Message.add_message(level, arr[i]);
+                        $("#messages").append(msg);
+                      })
                   })
                 }
 

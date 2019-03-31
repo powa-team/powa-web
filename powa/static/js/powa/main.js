@@ -10,6 +10,7 @@ require(['jquery',
         'powa/models/MetricGroup',
         'powa/models/ContentSource',
         'powa/utils/timeurls',
+        'powa/utils/message',
         'highlight',
         'powa/views/LineGraphView',
         'powa/views/BarGraphView',
@@ -35,6 +36,7 @@ require(['jquery',
             MetricGroup,
             ContentSource,
             timeurls,
+            Message,
             highlight) {
 
     $(function(){
@@ -73,6 +75,20 @@ require(['jquery',
                 picker.listenTo(dashboardview, "dashboard:updatePeriod", picker.updateUrls, picker);
             });
         });
+
+        $("#reload_collector").click(function() {
+          $.ajax({
+            url: '/reload_collector/',
+            type: 'GET',
+          }).done(function(response) {
+            if (response)
+              Message.add_message("success", "Collector successfully reloaded!");
+            else
+              Message.add_message("alert", "Could not reload collector.");
+          }).fail(function(response) {
+              Message.add_message("alert", "Error while trying to reload the collector.");
+          });
+        })
 
         // ensure that dropdown are taken into account
         $(document).foundation();

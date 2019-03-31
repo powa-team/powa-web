@@ -275,8 +275,9 @@ class PgExtensionsMetricGroup(MetricGroupDef):
                 alerts.append(ext["extname"])
 
         if (len(alerts) > 0):
-            data["alerts"] = [("%d extensions need to be installed:%s"
-                              % (len(alerts), ' '.join(alerts)))]
+            data["messages"] = {'alert':
+                                [("%d extensions need to be installed:%s"
+                                 % (len(alerts), ' '.join(alerts)))]}
 
         return data
 
