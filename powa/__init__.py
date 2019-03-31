@@ -24,6 +24,7 @@ from powa.database import DatabaseSelector, DatabaseOverview
 from powa.query import QueryOverview
 from powa.qual import QualOverview
 from powa.config import RepositoryConfigOverview, RemoteConfigOverview
+from powa.collector import CollectorReloadHandler
 from powa.wizard import IndexSuggestionHandler
 
 
@@ -39,6 +40,7 @@ class IndexHandler(AuthHandler):
 URLS = [
     U(r"/login/", LoginHandler, name="login"),
     U(r"/logout/", LogoutHandler, name="logout"),
+    U(r"/reload_collector/", CollectorReloadHandler, name="reload_collector"),
     U(r"/server/select", ServerSelector, name="server_selector"),
     U(r"/database/select", DatabaseSelector, name="database_selector"),
     U(r"/", IndexHandler, name="index"),

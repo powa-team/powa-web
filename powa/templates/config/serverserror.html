@@ -1,0 +1,24 @@
+{% extends "../xhr.html" %}
+{% block content %}
+
+<div class="row">
+  <div class="columns large-12">
+    <h4>Errors</h4>
+    {% if (errors) %}
+      <ul>
+      {% for e in errors %}
+        <li><b>{{e.server_alias}}:</b>
+          <ul>
+            {% for msg in e.errors %}
+            <li>{{msg}}</li>
+            {% end %}
+          </ul>
+        </li>
+      {% end %}
+    </ul>
+  {% else %}
+  No error!
+  {% end %}
+  </div>
+</div>
+{% end %}

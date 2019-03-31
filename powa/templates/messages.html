@@ -9,7 +9,8 @@
     </div>
 {% end %}
 
-{% for cat, messages in sanitycheck_messages().items() %}
+{% if current_user %}
+  {% for cat, messages in sanitycheck_messages().items() %}
     <div data-alert class="alert-box {{cat}}">
         <ul>
             {% for message in messages %}
@@ -18,4 +19,5 @@
         </ul>
         <a href="#" class="close">&times;</a>
     </div>
+  {% end %}
 {% end %}

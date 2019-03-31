@@ -9,6 +9,8 @@ from sqlalchemy.engine.url import URL
 from tornado.options import options
 import pickle
 import logging
+import select
+import random
 
 
 class BaseHandler(RequestHandler):
@@ -264,6 +266,56 @@ class BaseHandler(RequestHandler):
 
         engine = self.connect(srvid, server, username, password, database)
         return engine.execute(query, **params)
+
+    def notify_collector(self, command, args=[], timeout=3):
+        """
+        Notify powa-collector and get its answer.
+        """
+        engine = self.connect()
+
+        conn = engine.connect()
+        trans = conn.begin()
+
+        # we shouldn't listen on anything else than our own channel, but just
+        # in case discard everything
+        conn.execute("UNLISTEN *")
+
+        random.seed()
+        channel = "r%d" % random.randint(1, 99999)
+        conn.execute("LISTEN %s" % channel)
+        conn.execute("NOTIFY powa_collector, '%s %s %s'" %
+                     (command, channel, ' '.join(args)))
+        trans.commit()
+
+        # wait for activity on the connection up to given timeout
+        select.select([conn.connection], [], [], timeout)
+
+        trans = conn.begin()
+        # we shouldn't listen on anything else than our own channel, but just
+        # in case discard everything
+        conn.execute("UNLISTEN *")
+        trans.commit()
+
+        conn.connection.poll()
+        res = []
+        while (conn.connection.notifies):
+            notif = conn.connection.notifies.pop(0)
+
+            payload = notif.payload.split(' ')
+
+            received_command = payload.pop(0)
+            # we shouldn't received unexpected messages, but ignore them if any
+            if (received_command != command):
+                continue
+
+            status = payload.pop(0)
+            payload = ' '.join(payload)
+
+            # we should get a single answer, but if multiple are received
+            # append them and let the caller handle it.
+            res.append({status: payload})
+
+        return res
 
     def get_pickle_cookie(self, name):
         """

@@ -6,6 +6,8 @@ from powa.dashboards import (
     Dashboard, Grid,
     MetricGroupDef, MetricDef,
     DashboardPage, ContentWidget)
+from powa.collector import CollectorServerDetail
+import json
 
 
 class ServersErrors(ContentWidget):
@@ -31,16 +33,16 @@ class ServersErrors(ContentWidget):
 
         rows = self.execute(sql).fetchall()
 
-        self.render("config/error.html", errors=rows)
+        self.render("config/serverserror.html", errors=rows)
 
 
-class CollectorDetail(ContentWidget):
+class AllCollectorsDetail(ContentWidget):
     """
-    Detail widget showing summarized information for the remote collector
-    daemon.
+    Detail widget showing summarized information for the background worker and
+    the remote collector daemon.
     """
     title = "Collector Detail"
-    data_url = r"/config/collector"
+    data_url = r"/config/allcollectors"
 
     def get(self):
         sql = """SELECT id,
@@ -67,9 +69,9 @@ class CollectorDetail(ContentWidget):
         rows = self.execute(sql).fetchall()
 
         if (rows[0]["nb_found"] == 0):
-            self.render("config/collector.html", collector=None)
+            self.render("config/allcollectors.html", collector=None)
         else:
-            self.render("config/collector.html", collector=rows)
+            self.render("config/allcollectors.html", collector=rows)
 
 
 class PowaServersMetricGroup(MetricGroupDef):
@@ -89,7 +91,8 @@ class PowaServersMetricGroup(MetricGroupDef):
     frequency = MetricDef(label="Frequency", type="string")
     retention = MetricDef(label="Retention", type="string")
     snapts = MetricDef(label="Last snapshot", type="string")
-    no_err = MetricDef(label="Status", type="bool")
+    no_err = MetricDef(label="Error", type="bool")
+    collector_status = MetricDef(label="Collector Status", type="string")
 
     query = """SELECT id,
      CASE WHEN s.id = 0 THEN
@@ -111,15 +114,53 @@ class PowaServersMetricGroup(MetricGroupDef):
      ELSE
         m.snapts
      END AS snapts,
-     errors IS NULL AS no_err
+     errors IS NULL AS no_err,
+     CASE WHEN s.id = 0 THEN
+       coalesce(a.val, 'stopped')
+     ELSE
+       'unknown'
+     END AS collector_status
      FROM powa_servers s
      LEFT JOIN powa_snapshot_metas m ON s.id = m.srvid
+     LEFT JOIN (SELECT
+        CASE WHEN current_setting('powa.frequency') = '-1' THEN 'disabled'
+            ELSE 'running'
+        END AS val, application_name
+       FROM pg_stat_activity
+     ) a ON a.application_name LIKE 'PoWA - %%'
      ORDER BY 2"""
 
     def process(self, val, **kwargs):
         val = dict(val)
         val["url"] = self.reverse_url("RemoteConfigOverview", val["id"])
         return val
+
+    def post_process(self, data, **kwargs):
+        if (len(data["data"])):
+            raw = self.notify_collector('WORKERS_STATUS', timeout=1)
+            if (not raw):
+                return data
+
+            line = None
+            # get the first correct response only, if multiple answers were
+            # returned
+            while (line is None and len(raw) > 0):
+                tmp = raw.pop(0)
+                if ("OK" in tmp):
+                    line = tmp["OK"]
+
+            # nothing correct, give up
+            if (line is None or line == {}):
+                return data
+
+            stats = json.loads(line)
+
+            for row in data["data"]:
+                srvid = str(row["id"])
+                if srvid in stats:
+                    row["collector_status"] = stats[srvid]
+
+        return data
 
 
 class PgSettingsMetricGroup(MetricGroupDef):
@@ -163,8 +204,9 @@ class PgSettingsMetricGroup(MetricGroupDef):
                 data = {"data": [self.process(val) for val in values]}
             else:
                 data = {"data": [],
-                        "alerts": ["Could not retrieve PostgreSQL settings "
-                                   + "on remote server"]}
+                        "messages": {'alert': ["Could not retrieve PostgreSQL"
+                                               + " settings "
+                                               + "on remote server"]}}
 
         return data
 
@@ -257,7 +299,8 @@ class PgExtensionsMetricGroup(MetricGroupDef):
 
         # if we couldn't connect to the remote server, send what we have
         if (res is None):
-            data["alerts"] = ["Could not retrieve extensions on remote server"]
+            data["messages"] = {'alert': ["Could not retrieve extensions"
+                                          + " on remote server"]}
             return data
 
         remote_exts = res.fetchall()
@@ -288,7 +331,7 @@ class RepositoryConfigOverview(DashboardPage):
     """
 
     base_url = r"/config/"
-    datasources = [PowaServersMetricGroup, CollectorDetail, ServersErrors]
+    datasources = [PowaServersMetricGroup, AllCollectorsDetail, ServersErrors]
     title = 'Configuration'
 
     def dashboard(self):
@@ -299,7 +342,7 @@ class RepositoryConfigOverview(DashboardPage):
 
         self._dashboard = Dashboard(
             "Server list",
-            [[CollectorDetail],
+            [[AllCollectorsDetail],
              [Grid("Servers",
                    columns=[{
                     "name": "server_alias",
@@ -319,7 +362,8 @@ class RemoteConfigOverview(DashboardPage):
     """
 
     base_url = r"/config/(\d+)"
-    datasources = [PgSettingsMetricGroup, PgExtensionsMetricGroup]
+    datasources = [PgSettingsMetricGroup, PgExtensionsMetricGroup,
+                   CollectorServerDetail]
     params = ["server"]
     parent = RepositoryConfigOverview
     # title = 'Remote server configuration'
@@ -336,7 +380,9 @@ class RemoteConfigOverview(DashboardPage):
 
         self._dashboard = Dashboard(
             "Configuration overview",
-            [[Grid("Extensions",
+            # [[ServerDetails],
+            #  [Grid("Extensions",
+              [[Grid("Extensions",
                    columns=[{
                     "name": "extname",
                     "label": "Extension",
