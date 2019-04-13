@@ -2,6 +2,10 @@
 Index page presenting an overview of the cluster stats.
 """
 
+from sqlalchemy import and_
+from sqlalchemy.sql.functions import sum
+from sqlalchemy.sql import select, cast, extract, bindparam
+from sqlalchemy.types import Numeric
 from powa.framework import AuthHandler
 from powa.dashboards import (
     Dashboard, Graph, Grid,
@@ -11,13 +15,10 @@ from powa.dashboards import (
 from powa.sql.views import (
     powa_getstatdata_db,
     powa_getwaitdata_db,
-    powa_getstatdata_sample)
-from sqlalchemy import and_
-from sqlalchemy.sql.functions import sum
-from sqlalchemy.sql import select, cast, extract, bindparam
-from sqlalchemy.types import Numeric
+    powa_getstatdata_sample,
+    kcache_getstatdata_sample)
 from powa.sql.utils import (total_read, total_hit, mulblock, round, greatest,
-                            block_size)
+                            block_size, inner_cc)
 from powa.sql.tables import powa_databases
 
 
@@ -55,26 +56,29 @@ class ByDatabaseMetricGroup(MetricGroupDef):
         inner_query = powa_getstatdata_db(bindparam("server")).alias()
         c = inner_query.c
         from_clause = inner_query.join(
-                powa_databases,
-                and_(c.dbid == powa_databases.c.oid,
-                     c.srvid == powa_databases.c.srvid))
+            powa_databases,
+            and_(c.dbid == powa_databases.c.oid,
+                 c.srvid == powa_databases.c.srvid))
 
         return (select([
             powa_databases.c.srvid,
             powa_databases.c.datname,
             sum(c.calls).label("calls"),
             sum(c.runtime).label("runtime"),
-            round(cast(sum(c.runtime), Numeric) / greatest(sum(c.calls), 1), 2).label("avg_runtime"),
+            round(cast(sum(c.runtime), Numeric) /
+                  greatest(sum(c.calls), 1), 2).label("avg_runtime"),
             mulblock(sum(c.shared_blks_read).label("shared_blks_read")),
             mulblock(sum(c.shared_blks_hit).label("shared_blks_hit")),
             mulblock(sum(c.shared_blks_dirtied).label("shared_blks_dirtied")),
             mulblock(sum(c.shared_blks_written).label("shared_blks_written")),
             mulblock(sum(c.temp_blks_written).label("temp_blks_written")),
-            round(cast(sum(c.blk_read_time + c.blk_write_time), Numeric), 2).label("io_time")
+            round(cast(sum(c.blk_read_time + c.blk_write_time),
+                       Numeric), 2).label("io_time")
         ])
-            .select_from(from_clause)
-            .order_by(sum(c.calls).desc())
-            .group_by(powa_databases.c.srvid, powa_databases.c.datname, bs))
+                .select_from(from_clause)
+                .order_by(sum(c.calls).desc())
+                .group_by(powa_databases.c.srvid,
+                          powa_databases.c.datname, bs))
 
     def process(self, val, **kwargs):
         val = dict(val)
@@ -91,7 +95,8 @@ class ByDatabaseWaitSamplingMetricGroup(MetricGroupDef):
     xaxis = "datname"
     data_url = r"/server/(\d+)/metrics/wait_event_by_databases/"
     axis_type = "category"
-    counts = MetricDef(label="# of events", type="integer", direction="descending")
+    counts = MetricDef(label="# of events",
+                       type="integer", direction="descending")
 
     @property
     def query(self):
@@ -115,7 +120,8 @@ class ByDatabaseWaitSamplingMetricGroup(MetricGroupDef):
 
     def process(self, val, **kwargs):
         val = dict(val)
-        val["url"] = self.reverse_url("DatabaseOverview", val["srvid"], val["datname"])
+        val["url"] = self.reverse_url("DatabaseOverview",
+                                      val["srvid"], val["datname"])
         return val
 
 
@@ -193,7 +199,8 @@ class ServerOverview(DashboardPage):
                                     "name": "event",
                                     "label": "Event",
                                 }],
-                                metrics=ByDatabaseWaitSamplingMetricGroup.all())])
+                                metrics=ByDatabaseWaitSamplingMetricGroup.
+                                all())])
 
         self._dashboard = Dashboard("All databases", dashes)
         return self._dashboard
