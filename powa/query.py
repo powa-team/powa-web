@@ -115,11 +115,12 @@ class QueryOverviewMetricGroup(MetricGroupDef):
         if self.has_extension(self.path_args[0], "pg_stat_kcache"):
             # Add system metrics from pg_stat_kcache,
             # and detailed hit ratio.
-            kcache_query = kcache_getstatdata_sample()
+            kcache_query = kcache_getstatdata_sample("query")
             kc = inner_cc(kcache_query)
             kcache_query = (
                 kcache_query
                 .where(
+                    (kc.srvid == bindparam("server")) &
                     (kc.datname == bindparam("database")) &
                     (kc.queryid == bindparam("query"))
                     )

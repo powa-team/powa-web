@@ -136,23 +136,64 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
     total_blks_hit = MetricDef(label="Total hit", type="sizerate")
     total_blks_read = MetricDef(label="Total read", type="sizerate")
 
+    total_sys_hit = MetricDef(label="Total system cache hit", type="sizerate")
+    total_disk_read = MetricDef(label="Total disk read", type="sizerate")
+
+    @classmethod
+    def _get_metrics(cls, handler, **params):
+        base = cls.metrics.copy()
+        if not handler.has_extension(params["server"], "pg_stat_kcache"):
+            base.pop("total_sys_hit")
+            base.pop("total_disk_read")
+        else:
+            base.pop("total_blks_read")
+
+        return base
+
     @property
     def query(self):
         bs = block_size.c.block_size
         query = powa_getstatdata_sample("db", bindparam("server"))
         query = query.alias()
         c = query.c
-        return (select([c.srvid,
-                extract("epoch", c.ts).label("ts"),
-                (sum(c.runtime) / greatest(sum(c.calls), 1)).label("avg_runtime"),
-                (sum(c.runtime) / greatest(extract("epoch", c.mesure_interval),1)).label("load"),
-                total_read(c),
-                total_hit(c)])
-            .where(c.calls is not None)
-            .group_by(c.srvid, c.ts, bs, c.mesure_interval)
-            .order_by(c.ts)
-            .params(samples=100))
 
+        cols = [c.srvid,
+                extract("epoch", c.ts).label("ts"),
+                (sum(c.runtime) / greatest(sum(c.calls),
+                                           1)).label("avg_runtime"),
+                (sum(c.runtime) / greatest(extract("epoch", c.mesure_interval),
+                                           1)).label("load"),
+                total_read(c),
+                total_hit(c)]
+
+        from_clause = query
+        if self.has_extension(self.path_args[0], "pg_stat_kcache"):
+            # Add system metrics from pg_stat_kcache,
+            kcache_query = kcache_getstatdata_sample("db")
+            kc = inner_cc(kcache_query)
+            kcache_query = (
+                kcache_query
+                .where(
+                    (kc.srvid == bindparam("server"))
+                    )
+                .alias())
+            kc = kcache_query.c
+            total_sys_hit = (total_read(c) - sum(kc.reads) /
+                             greatest(sum(c.calls), 1.)).label("total_sys_hit")
+            total_disk_read = (sum(kc.reads) / greatest(sum(c.calls), 1.)
+                               ).label("total_disk_read")
+
+            cols.extend([total_sys_hit, total_disk_read])
+            from_clause = from_clause.join(
+                kcache_query,
+                kcache_query.c.ts == c.ts)
+
+        return (select(cols)
+                .select_from(from_clause)
+                .where(c.calls is not None)
+                .group_by(c.srvid, c.ts, bs, c.mesure_interval)
+                .order_by(c.ts)
+                .params(samples=100))
 
 
 class ServerOverview(DashboardPage):
@@ -171,13 +212,26 @@ class ServerOverview(DashboardPage):
         if getattr(self, '_dashboard', None) is not None:
             return self._dashboard
 
+        block_graph = Graph("Block access in Bps",
+                            metrics=[GlobalDatabasesMetricGroup.
+                                     total_blks_hit],
+                            color_scheme=None)
+
+        if self.has_extension(self.path_args[0], "pg_stat_kcache"):
+            block_graph.metrics.insert(0, GlobalDatabasesMetricGroup.
+                                       total_sys_hit)
+            block_graph.metrics.insert(0, GlobalDatabasesMetricGroup.
+                                       total_disk_read)
+            block_graph.color_scheme = ['#cb513a', '#65b9ac', '#73c03a']
+        else:
+            block_graph.metrics.insert(0, GlobalDatabasesMetricGroup.
+                                       total_blks_read)
+            block_graph.color_scheme = ['#cb513a', '#73c03a']
+
         dashes = [[Graph("Query runtime per second (all databases)",
                          metrics=[GlobalDatabasesMetricGroup.avg_runtime,
                                   GlobalDatabasesMetricGroup.load]),
-                   Graph("Block access in Bps",
-                         metrics=[GlobalDatabasesMetricGroup.total_blks_hit,
-                                  GlobalDatabasesMetricGroup.total_blks_read],
-                         color_scheme=['#73c03a','#cb513a'])],
+                   block_graph],
                   [Grid("Details for all databases",
                         columns=[{
                             "name": "datname",

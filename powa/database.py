@@ -9,13 +9,15 @@ from powa.dashboards import (
 
 from powa.sql.views import (powa_getstatdata_detailed_db,
                             powa_getwaitdata_detailed_db,
-                            powa_getstatdata_sample)
+                            powa_getstatdata_sample,
+                            kcache_getstatdata_sample)
 from powa.wizard import WizardMetricGroup, Wizard
 from powa.server import ServerOverview
 from sqlalchemy.sql import bindparam, column, select, extract
 from sqlalchemy.sql.functions import sum
 from powa.sql.utils import (greatest, block_size, mulblock,
-                            total_read, total_hit, to_epoch)
+                            total_read, total_hit, to_epoch,
+                            inner_cc)
 from powa.sql.tables import powa_statements
 
 
@@ -36,8 +38,22 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     data_url = r"/server/(\d+)/metrics/database_overview/([^\/]+)/"
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
     load = MetricDef(label="Runtime per sec", type="duration")
-    total_blks_hit = MetricDef(label="Total hit", type="sizerate")
-    total_blks_read = MetricDef(label="Total read", type="sizerate")
+    total_blks_hit = MetricDef(label="Total shared buffers hit", type="sizerate")
+    total_blks_read = MetricDef(label="Total shared buffers miss", type="sizerate")
+
+    total_sys_hit = MetricDef(label="Total system cache hit", type="sizerate")
+    total_disk_read = MetricDef(label="Total disk read", type="sizerate")
+
+    @classmethod
+    def _get_metrics(cls, handler, **params):
+        base = cls.metrics.copy()
+        if not handler.has_extension(params["server"], "pg_stat_kcache"):
+            base.pop("total_sys_hit")
+            base.pop("total_disk_read")
+        else:
+            base.pop("total_blks_read")
+
+        return base
 
     @property
     def query(self):
@@ -48,19 +64,45 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
         subquery = subquery.where(column("datname") == bindparam("database"))
         query = subquery.alias()
         c = query.c
-        return (select([
-            c.srvid,
-            to_epoch(c.ts),
-            (sum(c.runtime) / greatest(sum(c.calls), 1.)).label("avg_runtime"),
-            (sum(c.runtime) / greatest(extract("epoch", c.mesure_interval),
-                                       1)).label("load"),
-            total_read(c),
-            total_hit(c)])
-                .where(c.calls != None)
+
+        cols = [c.srvid,
+                to_epoch(c.ts),
+                (sum(c.runtime) / greatest(sum(c.calls),
+                                           1.)).label("avg_runtime"),
+                (sum(c.runtime) / greatest(extract("epoch", c.mesure_interval),
+                                           1)).label("load"),
+                total_read(c),
+                total_hit(c)]
+
+        from_clause = query
+        if self.has_extension(self.path_args[0], "pg_stat_kcache"):
+            # Add system metrics from pg_stat_kcache,
+            kcache_query = kcache_getstatdata_sample("db")
+            kc = inner_cc(kcache_query)
+            kcache_query = (
+                kcache_query
+                .where(
+                    (kc.srvid == bindparam("server")) &
+                    (kc.datname == bindparam("database"))
+                    )
+                .alias())
+            kc = kcache_query.c
+            total_sys_hit = (total_read(c) - sum(kc.reads) /
+                             greatest(sum(c.calls), 1.)).label("total_sys_hit")
+            total_disk_read = (sum(kc.reads) / greatest(sum(c.calls), 1.)
+                               ).label("total_disk_read")
+
+            cols.extend([total_sys_hit, total_disk_read])
+            from_clause = from_clause.join(
+                kcache_query,
+                kcache_query.c.ts == c.ts)
+
+        return (select(cols)
+                .select_from(from_clause)
+                .where(c.calls is not None)
                 .group_by(c.srvid, c.ts, bs, c.mesure_interval)
                 .order_by(c.ts)
                 .params(samples=100))
-
 
 
 class ByQueryMetricGroup(MetricGroupDef):
@@ -189,13 +231,27 @@ class DatabaseOverview(DashboardPage):
 
         self._dashboard = Dashboard("Database overview for %(database)s")
 
+        block_graph = Graph("Blocks (On database %(database)s)",
+                            metrics=[DatabaseOverviewMetricGroup.
+                                     total_blks_hit],
+                            color_scheme=None)
+
+        if self.has_extension(self.path_args[0], "pg_stat_kcache"):
+            block_graph.metrics.insert(0, DatabaseOverviewMetricGroup.
+                                       total_sys_hit)
+            block_graph.metrics.insert(0, DatabaseOverviewMetricGroup.
+                                       total_disk_read)
+            block_graph.color_scheme = ['#cb513a', '#65b9ac', '#73c03a']
+        else:
+            block_graph.metrics.insert(0, DatabaseOverviewMetricGroup.
+                                       total_blks_read)
+            block_graph.color_scheme = ['#cb513a', '#73c03a']
+
         self._dashboard.widgets.extend(
             [[Graph("Calls (On database %(database)s)",
                     metrics=[DatabaseOverviewMetricGroup.avg_runtime,
                              DatabaseOverviewMetricGroup.load]),
-              Graph("Blocks (On database %(database)s)",
-                    metrics=[DatabaseOverviewMetricGroup.total_blks_read,
-                             DatabaseOverviewMetricGroup.total_blks_hit])],
+              block_graph],
              [Grid("Details for all queries",
                    toprow=[{
                        'merge': True
