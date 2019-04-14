@@ -74,44 +74,6 @@ def powa_base_statdata_detailed_db():
     return base_query
 
 
-def powa_base_waitdata_detailed_db():
-    base_query = text("""
-  powa_databases,
-  LATERAL
-  (
-    SELECT unnested.dbid, unnested.queryid,
-      unnested.event_type, unnested.event, (unnested.records).*
-    FROM (
-      SELECT wsh.dbid, wsh.queryid, wsh.event_type, wsh.event,
-        wsh.coalesce_range, unnest(records) AS records
-      FROM powa_wait_sampling_history wsh
-      WHERE coalesce_range && tstzrange(:from, :to, '[]')
-      AND wsh.dbid = powa_databases.oid
-      AND wsh.queryid IN (
-        SELECT ps.queryid
-        FROM powa_statements ps
-        WHERE ps.dbid = powa_databases.oid
-      )
-      AND wsh.srvid = :server
-    ) AS unnested
-    WHERE tstzrange(:from, :to, '[]') @> (records).ts
-    UNION ALL
-    SELECT wsc.dbid, wsc.queryid, wsc.event_type, wsc.event, (wsc.record).*
-    FROM powa_wait_sampling_history_current wsc
-    WHERE tstzrange(:from,:to,'[]') @> (record).ts
-    AND wsc.dbid = powa_databases.oid
-    AND wsc.queryid IN (
-      SELECT ps.queryid
-      FROM powa_statements ps
-      WHERE ps.dbid = powa_databases.oid
-    )
-    AND wsc.srvid = :server
-  ) h
-  WHERE powa_databases.srvid = :server
-""")
-    return base_query
-
-
 def powa_base_statdata_db():
     base_query = text("""(
  SELECT d.srvid, d.oid as dbid, h.*
@@ -159,53 +121,6 @@ def powa_base_statdata_db():
     return base_query
 
 
-def powa_base_waitdata_db():
-    base_query = text("""(
-  SELECT powa_databases.srvid, powa_databases.oid as dbid, h.*
-  FROM
-  powa_databases LEFT JOIN
-  (
-    SELECT dbid,
-      min(lower(coalesce_range)) AS min_ts,
-      max(upper(coalesce_range)) AS max_ts
-    FROM powa_wait_sampling_history_db wsh
-    WHERE coalesce_range && tstzrange(:from, :to, '[]')
-    AND wsh.srvid = :server
-    GROUP BY dbid
-  ) ranges ON powa_databases.oid = ranges.dbid,
-  LATERAL (
-    SELECT event_type, event, (unnested1.records).*
-    FROM (
-      SELECT wsh.event_type, wsh.event, unnest(records) AS records
-      FROM powa_wait_sampling_history_db wsh
-      WHERE coalesce_range @> min_ts
-      AND wsh.dbid = ranges.dbid
-      AND wsh.srvid = :server
-    ) AS unnested1
-    WHERE tstzrange(:from, :to, '[]') @> (unnested1.records).ts
-    UNION ALL
-    SELECT event_type, event, (unnested2.records).*
-    FROM (
-      SELECT wsh.event_type, wsh.event, unnest(records) AS records
-      FROM powa_wait_sampling_history_db wsh
-      WHERE coalesce_range @> max_ts
-      AND wsh.dbid = ranges.dbid
-      AND wsh.srvid = :server
-    ) AS unnested2
-    WHERE tstzrange(:from, :to, '[]') @> (unnested2.records).ts
-    UNION ALL
-    SELECT event_type, event, (wsc.record).*
-    FROM powa_wait_sampling_history_current_db wsc
-    WHERE tstzrange(:from, :to, '[]') @> (wsc.record).ts
-    AND wsc.dbid = powa_databases.oid
-    AND wsc.srvid = :server
-  ) AS h
-  WHERE powa_databases.srvid = :server
-) AS ws_history
-    """)
-    return base_query
-
-
 def get_diffs_forstatdata():
     return [
         diff("calls"),
@@ -238,23 +153,6 @@ def powa_getstatdata_detailed_db(srvid):
             .having(max(column("calls")) - min(column("calls")) > 0))
 
 
-def powa_getwaitdata_detailed_db(srvid):
-    base_query = powa_base_waitdata_detailed_db()
-    return (select([
-        column("srvid"),
-        column("queryid"),
-        column("dbid"),
-        column("datname"),
-        column("event_type"),
-        column("event"),
-        diff("count")
-    ])
-        .select_from(base_query)
-        .group_by(column("srvid"), column("queryid"), column("dbid"),
-                  column("datname"), column("event_type"), column("event"))
-        .having(max(column("count")) - min(column("count")) > 0))
-
-
 def powa_getstatdata_db(srvid):
     base_query = powa_base_statdata_db()
     diffs = get_diffs_forstatdata()
@@ -263,171 +161,6 @@ def powa_getstatdata_db(srvid):
             .where(column("srvid") == srvid)
             .group_by(column("srvid"), column("dbid"))
             .having(max(column("calls")) - min(column("calls")) > 0))
-
-
-def powa_getwaitdata_db(srvid):
-    base_query = powa_base_waitdata_db()
-
-    return (select([
-        column("srvid"),
-        column("dbid"),
-        column("event_type"),
-        column("event"),
-        diff("count")
-    ])
-        .select_from(base_query)
-        .group_by(column("srvid"), column("dbid"), column("event_type"),
-                  column("event"))
-        .having(max(column("count")) - min(column("count")) > 0))
-
-
-BASE_QUERY_WAIT_SAMPLE_DB = text("""(
-  SELECT datname, base.*
-  FROM powa_databases,
-  LATERAL (
-    SELECT *
-    FROM (SELECT
-      row_number() OVER (
-        PARTITION BY dbid ORDER BY waits_history.ts
-      ) AS number,
-      count(*) OVER (PARTITION BY dbid) AS total,
-      ts,
-      -- pg 96 columns (bufferpin and lock are included in pg 10+)
-      sum(count) FILTER
-        (WHERE event_type = 'LWLockNamed') as count_lwlocknamed,
-      sum(count) FILTER
-        (WHERE event_type = 'LWLockTranche') as count_lwlocktranche,
-      -- pg 10+ columns
-      sum(count) FILTER (WHERE event_type = 'LWLock') as count_lwlock,
-      sum(count) FILTER (WHERE event_type = 'Lock') as count_lock,
-      sum(count) FILTER (WHERE event_type = 'BufferPin') as count_bufferpin,
-      sum(count) FILTER (WHERE event_type = 'Activity') as count_activity,
-      sum(count) FILTER (WHERE event_type = 'Client') as count_client,
-      sum(count) FILTER (WHERE event_type = 'Extension') as count_extension,
-      sum(count) FILTER (WHERE event_type = 'IPC') as count_ipc,
-      sum(count) FILTER (WHERE event_type = 'Timeout') as count_timeout,
-      sum(count) FILTER (WHERE event_type = 'IO') as count_io
-      FROM (
-        SELECT dbid, event_type, (unnested.records).ts,
-          sum((unnested.records).count) AS count
-        FROM (
-          SELECT wsh.dbid, wsh.coalesce_range, event_type,
-              unnest(records) AS records
-          FROM powa_wait_sampling_history_db wsh
-          WHERE coalesce_range && tstzrange(:from, :to,'[]')
-          AND wsh.dbid = powa_databases.oid
-          AND wsh.srvid = :server
-        ) AS unnested
-        WHERE tstzrange(:from, :to, '[]') @> (records).ts
-        GROUP BY wshc.dbid, unnested.event_type, (unnested.records).ts
-        UNION ALL
-        SELECT wshc.dbid, event_type, event, (wshc.record).ts,
-            sum((wshc.record).count) AS count
-        FROM powa_wait_sampling_history_current_db wshc
-        WHERE tstzrange(:from, :to, '[]') @> (wsh.record).ts
-        AND wshc.dbid = powa_databases.oid
-        AND wshc.srvid = :server
-        GROUP BY wshc.srvid, wshc.dbid, wshc.event_type, (wshc.record).ts
-      ) AS waits_history
-    ) AS wh
-    WHERE number % ( int8larger((total)/(:samples+1),1) ) = 0
-  ) AS base
-  WHERE srvid = :server
-) AS by_db
-""")
-
-
-BASE_QUERY_WAIT_SAMPLE = text("""(
-  SELECT d.srvid, datname, dbid, queryid, base.*
-  FROM powa_statements s
-  JOIN powa_databases d ON d.oid = s.dbid
-      AND d.srvid = s.srvid,
-  LATERAL (
-    SELECT *
-    FROM (SELECT
-      row_number() OVER (
-        PARTITION BY queryid ORDER BY waits_history.ts
-      ) AS number,
-      count(*) OVER (PARTITION BY queryid) AS total,
-      ts,
-      -- pg 96 columns (bufferpin and lock are included in pg 10+)
-      sum(count) FILTER
-        (WHERE event_type = 'LWLockNamed') AS count_lwlocknamed,
-      sum(count) FILTER
-        (WHERE event_type = 'LWLockTranche') AS count_lwlocktranche,
-      -- pg 10+ columns
-      sum(count) FILTER (WHERE event_type = 'LWLock') AS count_lwlock,
-      sum(count) FILTER (WHERE event_type = 'Lock') AS count_lock,
-      sum(count) FILTER (WHERE event_type = 'BufferPin') AS count_bufferpin,
-      sum(count) FILTER (WHERE event_type = 'Activity') AS count_activity,
-      sum(count) FILTER (WHERE event_type = 'Client') AS count_client,
-      sum(count) FILTER (WHERE event_type = 'Extension') AS count_extension,
-      sum(count) FILTER (WHERE event_type = 'IPC') AS count_ipc,
-      sum(count) FILTER (WHERE event_type = 'Timeout') AS count_timeout,
-      sum(count) FILTER (WHERE event_type = 'IO') AS count_io
-      FROM (
-        SELECT unnested.event_type, (unnested.records).ts,
-          sum((unnested.records).count) AS count
-        FROM (
-          SELECT coalesce_range, event_type,
-              unnest(records) AS records
-          FROM powa_wait_sampling_history wsh
-          WHERE coalesce_range && tstzrange(:from, :to, '[]')
-          AND wsh.queryid = s.queryid
-          AND wsh.srvid = :server
-        ) AS unnested
-        WHERE tstzrange(:from, :to, '[]') @> (records).ts
-        GROUP BY unnested.event_type, (unnested.records).ts
-        UNION ALL
-        SELECT wshc.event_type, (wshc.record).ts,
-          sum((wshc.record).count) AS count
-        FROM powa_wait_sampling_history_current wshc
-        WHERE tstzrange(:from, :to, '[]') @> (wshc.record).ts
-        AND wshc.queryid = s.queryid
-        AND wshc.srvid = :server
-        GROUP BY wshc.srvid, wshc.event_type, (wshc.record).ts
-      ) AS waits_history
-      GROUP BY waits_history.ts
-    ) AS sh
-    WHERE number % ( int8larger((total)/(:samples+1),1) ) = 0
-  ) AS base
-  WHERE d.srvid = :server
-) AS by_query
-""")
-
-
-def powa_getwaitdata_sample(srvid, mode):
-    if mode == "db":
-        base_query = BASE_QUERY_WAIT_SAMPLE_DB
-        base_columns = [column("srvid"), column("dbid")]
-
-    elif mode == "query":
-        base_query = BASE_QUERY_WAIT_SAMPLE
-        base_columns = [column("srvid"), column("dbid"), column("queryid")]
-
-    ts = column('ts')
-    biggest = Biggest(base_columns, ts)
-    biggestsum = Biggestsum(base_columns, ts)
-
-    return (select(base_columns + [
-        ts,
-        biggest("ts", '0 s', "mesure_interval"),
-        # pg 96 only columns
-        biggestsum("count_lwlocknamed"),
-        biggestsum("count_lwlocktranche"),
-        # pg 10+ columns
-        biggestsum("count_lwlock"),
-        biggestsum("count_lock"),
-        biggestsum("count_bufferpin"),
-        biggestsum("count_activity"),
-        biggestsum("count_client"),
-        biggestsum("count_extension"),
-        biggestsum("count_ipc"),
-        biggestsum("count_timeout"),
-        biggestsum("count_io")])
-        .select_from(base_query)
-        .apply_labels()
-        .group_by(*(base_columns + [ts])))
 
 
 BASE_QUERY_SAMPLE_DB = text("""(
@@ -772,3 +505,274 @@ def kcache_getstatdata_sample(mode):
             .select_from(base_query)
             .apply_labels()
             .group_by(*(base_columns + [ts])))
+
+
+BASE_QUERY_WAIT_SAMPLE_DB = text("""(
+  SELECT d.oid AS dbid, datname, base.*
+  FROM powa_databases d,
+  LATERAL (
+    SELECT *
+    FROM (SELECT
+      row_number() OVER (
+        PARTITION BY dbid ORDER BY waits_history.ts
+      ) AS number,
+      count(*) OVER (PARTITION BY dbid) AS total,
+      srvid,
+      ts,
+      -- pg 96 columns (bufferpin and lock are included in pg 10+)
+      sum(count) FILTER
+        (WHERE event_type = 'LWLockNamed') as count_lwlocknamed,
+      sum(count) FILTER
+        (WHERE event_type = 'LWLockTranche') as count_lwlocktranche,
+      -- pg 10+ columns
+      sum(count) FILTER (WHERE event_type = 'LWLock') as count_lwlock,
+      sum(count) FILTER (WHERE event_type = 'Lock') as count_lock,
+      sum(count) FILTER (WHERE event_type = 'BufferPin') as count_bufferpin,
+      sum(count) FILTER (WHERE event_type = 'Activity') as count_activity,
+      sum(count) FILTER (WHERE event_type = 'Client') as count_client,
+      sum(count) FILTER (WHERE event_type = 'Extension') as count_extension,
+      sum(count) FILTER (WHERE event_type = 'IPC') as count_ipc,
+      sum(count) FILTER (WHERE event_type = 'Timeout') as count_timeout,
+      sum(count) FILTER (WHERE event_type = 'IO') as count_io
+      FROM (
+        SELECT srvid, dbid, event_type, (unnested.records).ts,
+          sum((unnested.records).count) AS count
+        FROM (
+          SELECT wsh.srvid, wsh.dbid, wsh.coalesce_range, event_type,
+              unnest(records) AS records
+          FROM powa_wait_sampling_history_db wsh
+          WHERE coalesce_range && tstzrange(:from, :to,'[]')
+          AND wsh.dbid = d.oid
+          AND wsh.srvid = :server
+        ) AS unnested
+        WHERE tstzrange(:from, :to, '[]') @> (records).ts
+        GROUP BY unnested.srvid, unnested.dbid, unnested.event_type,
+          (unnested.records).ts
+        UNION ALL
+        SELECT wshc.srvid, wshc.dbid, event_type, (wshc.record).ts,
+            sum((wshc.record).count) AS count
+        FROM powa_wait_sampling_history_current_db wshc
+        WHERE tstzrange(:from, :to, '[]') @> (wshc.record).ts
+        AND wshc.dbid = d.oid
+        AND wshc.srvid = :server
+        GROUP BY wshc.srvid, wshc.dbid, wshc.event_type, (wshc.record).ts
+      ) AS waits_history
+      GROUP BY ts, srvid, dbid
+    ) AS wh
+    WHERE number % ( int8larger((total)/(:samples+1),1) ) = 0
+    AND wh.srvid = d.srvid
+  ) AS base
+  WHERE d.srvid = :server
+) AS by_db
+""")
+
+
+BASE_QUERY_WAIT_SAMPLE = text("""(
+  SELECT d.srvid, datname, dbid, queryid, base.*
+  FROM powa_statements s
+  JOIN powa_databases d ON d.oid = s.dbid
+      AND d.srvid = s.srvid,
+  LATERAL (
+    SELECT *
+    FROM (SELECT
+      row_number() OVER (
+        PARTITION BY queryid ORDER BY waits_history.ts
+      ) AS number,
+      count(*) OVER (PARTITION BY queryid) AS total,
+      ts,
+      -- pg 96 columns (bufferpin and lock are included in pg 10+)
+      sum(count) FILTER
+        (WHERE event_type = 'LWLockNamed') AS count_lwlocknamed,
+      sum(count) FILTER
+        (WHERE event_type = 'LWLockTranche') AS count_lwlocktranche,
+      -- pg 10+ columns
+      sum(count) FILTER (WHERE event_type = 'LWLock') AS count_lwlock,
+      sum(count) FILTER (WHERE event_type = 'Lock') AS count_lock,
+      sum(count) FILTER (WHERE event_type = 'BufferPin') AS count_bufferpin,
+      sum(count) FILTER (WHERE event_type = 'Activity') AS count_activity,
+      sum(count) FILTER (WHERE event_type = 'Client') AS count_client,
+      sum(count) FILTER (WHERE event_type = 'Extension') AS count_extension,
+      sum(count) FILTER (WHERE event_type = 'IPC') AS count_ipc,
+      sum(count) FILTER (WHERE event_type = 'Timeout') AS count_timeout,
+      sum(count) FILTER (WHERE event_type = 'IO') AS count_io
+      FROM (
+        SELECT unnested.event_type, (unnested.records).ts,
+          sum((unnested.records).count) AS count
+        FROM (
+          SELECT coalesce_range, event_type,
+              unnest(records) AS records
+          FROM powa_wait_sampling_history wsh
+          WHERE coalesce_range && tstzrange(:from, :to, '[]')
+          AND wsh.queryid = s.queryid
+          AND wsh.srvid = :server
+        ) AS unnested
+        WHERE tstzrange(:from, :to, '[]') @> (records).ts
+        GROUP BY unnested.event_type, (unnested.records).ts
+        UNION ALL
+        SELECT wshc.event_type, (wshc.record).ts,
+          sum((wshc.record).count) AS count
+        FROM powa_wait_sampling_history_current wshc
+        WHERE tstzrange(:from, :to, '[]') @> (wshc.record).ts
+        AND wshc.queryid = s.queryid
+        AND wshc.srvid = :server
+        GROUP BY wshc.srvid, wshc.event_type, (wshc.record).ts
+      ) AS waits_history
+      GROUP BY waits_history.ts
+    ) AS sh
+    WHERE number % ( int8larger((total)/(:samples+1),1) ) = 0
+  ) AS base
+  WHERE d.srvid = :server
+) AS by_query
+""")
+
+
+def powa_base_waitdata_detailed_db():
+    base_query = text("""
+  powa_databases,
+  LATERAL
+  (
+    SELECT unnested.dbid, unnested.queryid,
+      unnested.event_type, unnested.event, (unnested.records).*
+    FROM (
+      SELECT wsh.dbid, wsh.queryid, wsh.event_type, wsh.event,
+        wsh.coalesce_range, unnest(records) AS records
+      FROM powa_wait_sampling_history wsh
+      WHERE coalesce_range && tstzrange(:from, :to, '[]')
+      AND wsh.dbid = powa_databases.oid
+      AND wsh.queryid IN (
+        SELECT ps.queryid
+        FROM powa_statements ps
+        WHERE ps.dbid = powa_databases.oid
+      )
+      AND wsh.srvid = :server
+    ) AS unnested
+    WHERE tstzrange(:from, :to, '[]') @> (records).ts
+    UNION ALL
+    SELECT wsc.dbid, wsc.queryid, wsc.event_type, wsc.event, (wsc.record).*
+    FROM powa_wait_sampling_history_current wsc
+    WHERE tstzrange(:from,:to,'[]') @> (record).ts
+    AND wsc.dbid = powa_databases.oid
+    AND wsc.queryid IN (
+      SELECT ps.queryid
+      FROM powa_statements ps
+      WHERE ps.dbid = powa_databases.oid
+    )
+    AND wsc.srvid = :server
+  ) h
+  WHERE powa_databases.srvid = :server
+""")
+    return base_query
+
+
+def powa_base_waitdata_db():
+    base_query = text("""(
+  SELECT powa_databases.srvid, powa_databases.oid as dbid, h.*
+  FROM
+  powa_databases LEFT JOIN
+  (
+    SELECT dbid,
+      min(lower(coalesce_range)) AS min_ts,
+      max(upper(coalesce_range)) AS max_ts
+    FROM powa_wait_sampling_history_db wsh
+    WHERE coalesce_range && tstzrange(:from, :to, '[]')
+    AND wsh.srvid = :server
+    GROUP BY dbid
+  ) ranges ON powa_databases.oid = ranges.dbid,
+  LATERAL (
+    SELECT event_type, event, (unnested1.records).*
+    FROM (
+      SELECT wsh.event_type, wsh.event, unnest(records) AS records
+      FROM powa_wait_sampling_history_db wsh
+      WHERE coalesce_range @> min_ts
+      AND wsh.dbid = ranges.dbid
+      AND wsh.srvid = :server
+    ) AS unnested1
+    WHERE tstzrange(:from, :to, '[]') @> (unnested1.records).ts
+    UNION ALL
+    SELECT event_type, event, (unnested2.records).*
+    FROM (
+      SELECT wsh.event_type, wsh.event, unnest(records) AS records
+      FROM powa_wait_sampling_history_db wsh
+      WHERE coalesce_range @> max_ts
+      AND wsh.dbid = ranges.dbid
+      AND wsh.srvid = :server
+    ) AS unnested2
+    WHERE tstzrange(:from, :to, '[]') @> (unnested2.records).ts
+    UNION ALL
+    SELECT event_type, event, (wsc.record).*
+    FROM powa_wait_sampling_history_current_db wsc
+    WHERE tstzrange(:from, :to, '[]') @> (wsc.record).ts
+    AND wsc.dbid = powa_databases.oid
+    AND wsc.srvid = :server
+  ) AS h
+  WHERE powa_databases.srvid = :server
+) AS ws_history
+    """)
+    return base_query
+
+
+def powa_getwaitdata_detailed_db(srvid):
+    base_query = powa_base_waitdata_detailed_db()
+    return (select([
+        column("srvid"),
+        column("queryid"),
+        column("dbid"),
+        column("datname"),
+        column("event_type"),
+        column("event"),
+        diff("count")
+    ])
+        .select_from(base_query)
+        .group_by(column("srvid"), column("queryid"), column("dbid"),
+                  column("datname"), column("event_type"), column("event"))
+        .having(max(column("count")) - min(column("count")) > 0))
+
+
+def powa_getwaitdata_db(srvid):
+    base_query = powa_base_waitdata_db()
+
+    return (select([
+        column("srvid"),
+        column("dbid"),
+        column("event_type"),
+        column("event"),
+        diff("count")
+    ])
+        .select_from(base_query)
+        .group_by(column("srvid"), column("dbid"), column("event_type"),
+                  column("event"))
+        .having(max(column("count")) - min(column("count")) > 0))
+
+
+def powa_getwaitdata_sample(srvid, mode):
+    if mode == "db":
+        base_query = BASE_QUERY_WAIT_SAMPLE_DB
+        base_columns = [column("srvid"), column("dbid")]
+
+    elif mode == "query":
+        base_query = BASE_QUERY_WAIT_SAMPLE
+        base_columns = [column("srvid"), column("dbid"), column("queryid")]
+
+    ts = column('ts')
+    biggest = Biggest(base_columns, ts)
+    biggestsum = Biggestsum(base_columns, ts)
+
+    return (select(base_columns + [
+        ts,
+        biggest("ts", '0 s', "mesure_interval"),
+        # pg 96 only columns
+        biggestsum("count_lwlocknamed"),
+        biggestsum("count_lwlocktranche"),
+        # pg 10+ columns
+        biggestsum("count_lwlock"),
+        biggestsum("count_lock"),
+        biggestsum("count_bufferpin"),
+        biggestsum("count_activity"),
+        biggestsum("count_client"),
+        biggestsum("count_extension"),
+        biggestsum("count_ipc"),
+        biggestsum("count_timeout"),
+        biggestsum("count_io")])
+        .select_from(base_query)
+        .apply_labels()
+        .group_by(*(base_columns + [ts])))
