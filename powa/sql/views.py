@@ -658,7 +658,15 @@ BASE_QUERY_KCACHE_SAMPLE_DB = text("""
                     SELECT km.ts,
                     sum(km.reads) AS reads, sum(km.writes) AS writes,
                     sum(km.user_time) AS user_time,
-                    sum(km.system_time) AS system_time
+                    sum(km.system_time) AS system_time,
+                    sum(km.minflts) AS minflts,
+                    sum(km.majflts) AS majflts,
+                    sum(km.nswaps) AS nswaps,
+                    sum(km.msgsnds) AS msgsnds,
+                    sum(km.msgrcvs) AS msgrcvs,
+                    sum(km.nsignals) AS nsignals,
+                    sum(km.nvcsws) AS nvcsws,
+                    sum(km.nivcsws) AS nivcsws
                     FROM (
                         SELECT * FROM (
                             SELECT (unnest(metrics)).*
@@ -698,7 +706,15 @@ BASE_QUERY_KCACHE_SAMPLE = text("""
                     SELECT km.ts,
                     sum(km.reads) AS reads, sum(km.writes) AS writes,
                     sum(km.user_time) AS user_time,
-                    sum(km.system_time) AS system_time
+                    sum(km.system_time) AS system_time,
+                    sum(km.minflts) AS minflts,
+                    sum(km.majflts) AS majflts,
+                    sum(km.nswaps) AS nswaps,
+                    sum(km.msgsnds) AS msgsnds,
+                    sum(km.msgrcvs) AS msgrcvs,
+                    sum(km.nsignals) AS nsignals,
+                    sum(km.nvcsws) AS nvcsws,
+                    sum(km.nivcsws) AS nivcsws
                     FROM (
                         SELECT * FROM (
                             SELECT (unnest(metrics)).*
@@ -743,7 +759,16 @@ def kcache_getstatdata_sample(mode):
         biggestsum("reads"),
         biggestsum("writes"),
         biggestsum("user_time"),
-        biggestsum("system_time")])
+        biggestsum("system_time"),
+        biggestsum("minflts"),
+        biggestsum("majflts"),
+        biggestsum("nswaps"),
+        biggestsum("msgsnds"),
+        biggestsum("msgrcvs"),
+        biggestsum("nsignals"),
+        biggestsum("nvcsws"),
+        biggestsum("nivcsws")
+        ])
             .select_from(base_query)
             .apply_labels()
             .group_by(*(base_columns + [ts])))

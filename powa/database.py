@@ -5,7 +5,7 @@ from powa.framework import AuthHandler
 from powa.dashboards import (
     Dashboard, Graph, Grid, ContentWidget,
     MetricGroupDef, MetricDef,
-    DashboardPage)
+    DashboardPage, TabContainer)
 
 from powa.sql.views import (powa_getstatdata_detailed_db,
                             powa_getwaitdata_detailed_db,
@@ -43,13 +43,23 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
 
     total_sys_hit = MetricDef(label="Total system cache hit", type="sizerate")
     total_disk_read = MetricDef(label="Total disk read", type="sizerate")
+    minflts = MetricDef(label="Soft page faults", type="integer")
+    majflts = MetricDef(label="Hard page faults", type="integer")
+    nswaps = MetricDef(label="Swaps", type="integer")
+    msgsnds = MetricDef(label="IPC messages sent", type="integer")
+    msgrcvs = MetricDef(label="IPC messages received", type="integer")
+    nsignals = MetricDef(label="Signals received", type="integer")
+    nvcsws = MetricDef(label="Voluntary context switches", type="integer")
+    nivcsws = MetricDef(label="Involuntary context switches", type="integer")
 
     @classmethod
     def _get_metrics(cls, handler, **params):
         base = cls.metrics.copy()
         if not handler.has_extension(params["server"], "pg_stat_kcache"):
-            base.pop("total_sys_hit")
-            base.pop("total_disk_read")
+            for key in ("total_sys_hit", "total_disk_read", "minflts",
+                        "majflts", "nswaps", "msgsnds", "msgrcvs", "nsignals",
+                        "nvcsws", "nivcsws"):
+                base.pop(key)
         else:
             base.pop("total_blks_read")
 
@@ -91,8 +101,25 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
                              greatest(sum(c.calls), 1.)).label("total_sys_hit")
             total_disk_read = (sum(kc.reads) / greatest(sum(c.calls), 1.)
                                ).label("total_disk_read")
+            minflts = (sum(kc.minflts) / greatest(sum(c.calls), 1.)
+                       ).label("minflts")
+            majflts = (sum(kc.majflts) / greatest(sum(c.calls), 1.)
+                       ).label("majflts")
+            nswaps = (sum(kc.nswaps) / greatest(sum(c.calls), 1.)
+                      ).label("nswaps")
+            msgsnds = (sum(kc.msgsnds) / greatest(sum(c.calls), 1.)
+                       ).label("msgsnds")
+            msgrcvs = (sum(kc.msgrcvs) / greatest(sum(c.calls), 1.)
+                       ).label("msgrcvs")
+            nsignals = (sum(kc.nsignals) / greatest(sum(c.calls), 1.)
+                        ).label("nsignals")
+            nvcsws = (sum(kc.nvcsws) / greatest(sum(c.calls), 1.)
+                      ).label("nvcsws")
+            nivcsws = (sum(kc.nivcsws) / greatest(sum(c.calls), 1.)
+                       ).label("nivcsws")
 
-            cols.extend([total_sys_hit, total_disk_read])
+            cols.extend([total_sys_hit, total_disk_read, minflts, majflts,
+                         nswaps, msgsnds, msgrcvs, nsignals, nvcsws, nivcsws])
             from_clause = from_clause.join(
                 kcache_query,
                 kcache_query.c.ts == c.ts)
@@ -236,22 +263,39 @@ class DatabaseOverview(DashboardPage):
                                      total_blks_hit],
                             color_scheme=None)
 
+        graphs = [Graph("Calls (On database %(database)s)",
+                    metrics=[DatabaseOverviewMetricGroup.avg_runtime,
+                             DatabaseOverviewMetricGroup.load]),
+              block_graph]
+
         if self.has_extension(self.path_args[0], "pg_stat_kcache"):
             block_graph.metrics.insert(0, DatabaseOverviewMetricGroup.
                                        total_sys_hit)
             block_graph.metrics.insert(0, DatabaseOverviewMetricGroup.
                                        total_disk_read)
             block_graph.color_scheme = ['#cb513a', '#65b9ac', '#73c03a']
+
+            sys_graphs = [Graph("System resources",
+                                metrics=[DatabaseOverviewMetricGroup.majflts,
+                                         DatabaseOverviewMetricGroup.minflts,
+                                         DatabaseOverviewMetricGroup.nswaps,
+                                         DatabaseOverviewMetricGroup.msgsnds,
+                                         DatabaseOverviewMetricGroup.msgrcvs,
+                                         DatabaseOverviewMetricGroup.nsignals,
+                                         DatabaseOverviewMetricGroup.nvcsws,
+                                         DatabaseOverviewMetricGroup.nivcsws])]
+
+            graphs_dash = []
+            graphs_dash.append(Dashboard("General Overview", [graphs]))
+            graphs_dash.append(Dashboard("System resources", [sys_graphs]))
+            graphs = [TabContainer("All databases", graphs_dash)]
         else:
             block_graph.metrics.insert(0, DatabaseOverviewMetricGroup.
                                        total_blks_read)
             block_graph.color_scheme = ['#cb513a', '#73c03a']
 
         self._dashboard.widgets.extend(
-            [[Graph("Calls (On database %(database)s)",
-                    metrics=[DatabaseOverviewMetricGroup.avg_runtime,
-                             DatabaseOverviewMetricGroup.load]),
-              block_graph],
+            [graphs,
              [Grid("Details for all queries",
                    toprow=[{
                        'merge': True
