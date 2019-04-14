@@ -39,6 +39,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     xaxis = "ts"
     data_url = r"/server/(\d+)/metrics/database_overview/([^\/]+)/"
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
+    calls = MetricDef(label="Queries per sec")
     load = MetricDef(label="Runtime per sec", type="duration")
     total_blks_hit = MetricDef(label="Total shared buffers hit", type="sizerate")
     total_blks_read = MetricDef(label="Total shared buffers miss", type="sizerate")
@@ -79,6 +80,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
 
         cols = [c.srvid,
                 to_epoch(c.ts),
+                greatest(sum(c.calls), 0).label("calls"),
                 (sum(c.runtime) / greatest(sum(c.calls),
                                            1.)).label("avg_runtime"),
                 (sum(c.runtime) / greatest(extract("epoch", c.mesure_interval),
@@ -323,7 +325,8 @@ class DatabaseOverview(DashboardPage):
 
         graphs = [Graph("Calls (On database %(database)s)",
                   metrics=[DatabaseOverviewMetricGroup.avg_runtime,
-                           DatabaseOverviewMetricGroup.load]),
+                           DatabaseOverviewMetricGroup.load,
+                           DatabaseOverviewMetricGroup.calls]),
                   block_graph]
 
         graphs_dash = []

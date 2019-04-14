@@ -132,8 +132,10 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
     Metric group used by summarized graphs.
     """
     name = "all_databases"
+    xaxis = "ts"
     data_url = r"/server/(\d+)/metrics/databases_globals/"
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
+    calls = MetricDef(label="Queries per sec", type="integer")
     load = MetricDef(label="Runtime per sec", type="duration")
     total_blks_hit = MetricDef(label="Total hit", type="sizerate")
     total_blks_read = MetricDef(label="Total read", type="sizerate")
@@ -171,6 +173,7 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
 
         cols = [c.srvid,
                 extract("epoch", c.ts).label("ts"),
+                greatest(sum(c.calls), 0).label("calls"),
                 (sum(c.runtime) / greatest(sum(c.calls),
                                            1)).label("avg_runtime"),
                 (sum(c.runtime) / greatest(extract("epoch", c.mesure_interval),
@@ -302,7 +305,8 @@ class ServerOverview(DashboardPage):
                             color_scheme=None)
         graphs = [Graph("Query runtime per second (all databases)",
                         metrics=[GlobalDatabasesMetricGroup.avg_runtime,
-                                 GlobalDatabasesMetricGroup.load]),
+                                 GlobalDatabasesMetricGroup.load,
+                                 GlobalDatabasesMetricGroup.calls]),
                   block_graph]
 
         graphs_dash = []
