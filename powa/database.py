@@ -1,6 +1,9 @@
 """
 Module containing the by-database dashboard.
 """
+from sqlalchemy.sql import bindparam, column, select, extract
+from sqlalchemy.sql.functions import sum
+from tornado.web import HTTPError
 from powa.framework import AuthHandler
 from powa.dashboards import (
     Dashboard, Graph, Grid, ContentWidget,
@@ -10,11 +13,10 @@ from powa.dashboards import (
 from powa.sql.views import (powa_getstatdata_detailed_db,
                             powa_getwaitdata_detailed_db,
                             powa_getstatdata_sample,
-                            kcache_getstatdata_sample)
+                            kcache_getstatdata_sample,
+                            powa_getwaitdata_sample)
 from powa.wizard import WizardMetricGroup, Wizard
 from powa.server import ServerOverview
-from sqlalchemy.sql import bindparam, column, select, extract
-from sqlalchemy.sql.functions import sum
 from powa.sql.utils import (greatest, block_size, mulblock,
                             total_read, total_hit, to_epoch,
                             inner_cc)
@@ -132,6 +134,61 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
                 .params(samples=100))
 
 
+class DatabaseWaitOverviewMetricGroup(MetricGroupDef):
+    """Metric group for the database global wait events graphs."""
+    name = "database_waits_overview"
+    xaxis = "ts"
+    data_url = r"/server/(\d+)/metrics/database_waits_overview/([^\/]+)/"
+    # pg 9.6 only metrics
+    count_lwlocknamed = MetricDef(label="Lightweight Named")
+    count_lwlocktranche = MetricDef(label="Lightweight Tranche")
+    # pg 10+ metrics
+    count_lwlock = MetricDef(label="Lightweight Lock")
+    count_lock = MetricDef(label="Lock")
+    count_bufferpin = MetricDef(label="Buffer pin")
+    count_activity = MetricDef(label="Activity")
+    count_client = MetricDef(label="Client")
+    count_extension = MetricDef(label="Extension")
+    count_ipc = MetricDef(label="IPC")
+    count_timeout = MetricDef(label="Timeout")
+    count_io = MetricDef(label="IO")
+
+    def prepare(self):
+        if not self.has_extension(self.path_args[0], "pg_wait_sampling"):
+            raise HTTPError(501, "pg_wait_sampling is not installed")
+
+    @property
+    def query(self):
+        query = powa_getwaitdata_sample(bindparam("server"), "db")
+        query = query.where(column("datname") == bindparam("database"))
+        query = query.alias()
+        c = query.c
+
+        def wps(col):
+            ts = extract("epoch", greatest(c.mesure_interval, '1 second'))
+            return (col / ts).label(col.name)
+
+        cols = [to_epoch(c.ts)]
+
+        pg_version_num = self.get_pg_version_num()
+        if pg_version_num < 100000:
+            cols += [wps(c.count_lwlocknamed), wps(c.count_lwlocktranche),
+                     wps(c.count_lock), wps(c.count_bufferpin)]
+        else:
+            cols += [wps(c.count_lwlock), wps(c.count_lock),
+                     wps(c.count_bufferpin), wps(c.count_activity),
+                     wps(c.count_client), wps(c.count_extension),
+                     wps(c.count_ipc), wps(c.count_timeout), wps(c.count_io)]
+
+        from_clause = query
+
+        return (select(cols)
+                .select_from(from_clause)
+                #.where(c.count != None)
+                .order_by(c.ts)
+                .params(samples=100))
+
+
 class ByQueryMetricGroup(MetricGroupDef):
     """Metric group for indivual query stats (displayed on the grid)."""
     name = "all_queries"
@@ -245,7 +302,8 @@ class DatabaseOverview(DashboardPage):
     """DatabaseOverview Dashboard."""
     base_url = r"/server/(\d+)/database/([^\/]+)/overview"
     datasources = [DatabaseOverviewMetricGroup, ByQueryMetricGroup,
-                   ByQueryWaitSamplingMetricGroup, WizardMetricGroup]
+                   ByQueryWaitSamplingMetricGroup, WizardMetricGroup,
+                   DatabaseWaitOverviewMetricGroup]
     params = ["server", "database"]
     parent = ServerOverview
     title = '%(database)s'
@@ -264,9 +322,18 @@ class DatabaseOverview(DashboardPage):
                             color_scheme=None)
 
         graphs = [Graph("Calls (On database %(database)s)",
-                    metrics=[DatabaseOverviewMetricGroup.avg_runtime,
-                             DatabaseOverviewMetricGroup.load]),
-              block_graph]
+                  metrics=[DatabaseOverviewMetricGroup.avg_runtime,
+                           DatabaseOverviewMetricGroup.load]),
+                  block_graph]
+
+        graphs_dash = []
+
+        # switch to tab container for the main graphs if any of the optional
+        # extensions is present
+        if ((self.has_extension(self.path_args[0], "pg_stat_kcache")) or
+           (self.has_extension(self.path_args[0], "pg_wait_sampling"))):
+            graphs_dash.append(Dashboard("General Overview", [graphs]))
+            graphs = [TabContainer("All databases", graphs_dash)]
 
         if self.has_extension(self.path_args[0], "pg_stat_kcache"):
             block_graph.metrics.insert(0, DatabaseOverviewMetricGroup.
@@ -285,14 +352,33 @@ class DatabaseOverview(DashboardPage):
                                          DatabaseOverviewMetricGroup.nvcsws,
                                          DatabaseOverviewMetricGroup.nivcsws])]
 
-            graphs_dash = []
-            graphs_dash.append(Dashboard("General Overview", [graphs]))
             graphs_dash.append(Dashboard("System resources", [sys_graphs]))
-            graphs = [TabContainer("All databases", graphs_dash)]
         else:
             block_graph.metrics.insert(0, DatabaseOverviewMetricGroup.
                                        total_blks_read)
             block_graph.color_scheme = ['#cb513a', '#73c03a']
+
+        if (self.has_extension(self.path_args[0], "pg_wait_sampling")):
+            metrics=None
+            if self.get_pg_version_num() < 100000:
+                metrics = [DatabaseWaitOverviewMetricGroup.count_lwlocknamed,
+                           DatabaseWaitOverviewMetricGroup.count_lwlocktranche,
+                           DatabaseWaitOverviewMetricGroup.count_lock,
+                           DatabaseWaitOverviewMetricGroup.count_bufferpin]
+            else:
+                metrics = [DatabaseWaitOverviewMetricGroup.count_lwlock,
+                           DatabaseWaitOverviewMetricGroup.count_lock,
+                           DatabaseWaitOverviewMetricGroup.count_bufferpin,
+                           DatabaseWaitOverviewMetricGroup.count_activity,
+                           DatabaseWaitOverviewMetricGroup.count_client,
+                           DatabaseWaitOverviewMetricGroup.count_extension,
+                           DatabaseWaitOverviewMetricGroup.count_ipc,
+                           DatabaseWaitOverviewMetricGroup.count_timeout,
+                           DatabaseWaitOverviewMetricGroup.count_io]
+
+            graphs_dash.append(Dashboard("Wait Events",
+                [[Graph("Wait Events (per second)",
+                        metrics=metrics)]]))
 
         self._dashboard.widgets.extend(
             [graphs,

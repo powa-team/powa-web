@@ -6,6 +6,7 @@ from sqlalchemy import and_
 from sqlalchemy.sql.functions import sum
 from sqlalchemy.sql import select, cast, extract, bindparam
 from sqlalchemy.types import Numeric
+from tornado.web import HTTPError
 from powa.framework import AuthHandler
 from powa.dashboards import (
     Dashboard, Graph, Grid,
@@ -16,9 +17,10 @@ from powa.sql.views import (
     powa_getstatdata_db,
     powa_getwaitdata_db,
     powa_getstatdata_sample,
-    kcache_getstatdata_sample)
+    kcache_getstatdata_sample,
+    powa_getwaitdata_sample)
 from powa.sql.utils import (total_read, total_hit, mulblock, round, greatest,
-                            block_size, inner_cc)
+                            block_size, inner_cc, to_epoch)
 from powa.sql.tables import powa_databases
 
 
@@ -223,13 +225,68 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
                 .params(samples=100))
 
 
+class GlobalWaitsMetricGroup(MetricGroupDef):
+    """Metric group for global wait events graphs."""
+    name = "all_databases_waits"
+    xaxis = "ts"
+    data_url = r"/server/(\d+)/metrics/databases_waits/"
+    # pg 9.6 only metrics
+    count_lwlocknamed = MetricDef(label="Lightweight Named")
+    count_lwlocktranche = MetricDef(label="Lightweight Tranche")
+    # pg 10+ metrics
+    count_lwlock = MetricDef(label="Lightweight Lock")
+    count_lock = MetricDef(label="Lock")
+    count_bufferpin = MetricDef(label="Buffer pin")
+    count_activity = MetricDef(label="Activity")
+    count_client = MetricDef(label="Client")
+    count_extension = MetricDef(label="Extension")
+    count_ipc = MetricDef(label="IPC")
+    count_timeout = MetricDef(label="Timeout")
+    count_io = MetricDef(label="IO")
+
+    def prepare(self):
+        if not self.has_extension(self.path_args[0], "pg_wait_sampling"):
+            raise HTTPError(501, "pg_wait_sampling is not installed")
+
+    @property
+    def query(self):
+        query = powa_getwaitdata_sample(bindparam("server"), "db")
+        query = query.alias()
+        c = query.c
+
+        def wps(col):
+            ts = extract("epoch", greatest(c.mesure_interval, '1 second'))
+            return (sum(col) / ts).label(col.name)
+
+        cols = [to_epoch(c.ts)]
+
+        pg_version_num = self.get_pg_version_num()
+        if pg_version_num < 100000:
+            cols += [wps(c.count_lwlocknamed), wps(c.count_lwlocktranche),
+                     wps(c.count_lock), wps(c.count_bufferpin)]
+        else:
+            cols += [wps(c.count_lwlock), wps(c.count_lock),
+                     wps(c.count_bufferpin), wps(c.count_activity),
+                     wps(c.count_client), wps(c.count_extension),
+                     wps(c.count_ipc), wps(c.count_timeout), wps(c.count_io)]
+
+        from_clause = query
+
+        return (select(cols)
+                .select_from(from_clause)
+                #.where(c.count != None)
+                .group_by(c.ts, c.mesure_interval)
+                .order_by(c.ts)
+                .params(samples=100))
+
+
 class ServerOverview(DashboardPage):
     """
     ServerOverview dashboard page.
     """
     base_url = r"/server/(\d+)/overview/"
     datasources = [GlobalDatabasesMetricGroup, ByDatabaseMetricGroup,
-                   ByDatabaseWaitSamplingMetricGroup]
+                   ByDatabaseWaitSamplingMetricGroup, GlobalWaitsMetricGroup]
     params = ["server"]
     title = "All databases"
 
@@ -248,6 +305,15 @@ class ServerOverview(DashboardPage):
                                  GlobalDatabasesMetricGroup.load]),
                   block_graph]
 
+        graphs_dash = []
+
+        # switch to tab container for the main graphs if any of the optional
+        # extensions is present
+        if ((self.has_extension(self.path_args[0], "pg_stat_kcache")) or
+           (self.has_extension(self.path_args[0], "pg_wait_sampling"))):
+            graphs_dash.append(Dashboard("General Overview", [graphs]))
+            graphs = [TabContainer("All databases", graphs_dash)]
+
         if self.has_extension(self.path_args[0], "pg_stat_kcache"):
             block_graph.metrics.insert(0, GlobalDatabasesMetricGroup.
                                        total_sys_hit)
@@ -265,14 +331,33 @@ class ServerOverview(DashboardPage):
                                          GlobalDatabasesMetricGroup.nvcsws,
                                          GlobalDatabasesMetricGroup.nivcsws])]
 
-            graphs_dash = []
-            graphs_dash.append(Dashboard("General Overview", [graphs]))
             graphs_dash.append(Dashboard("System resources", [sys_graphs]))
-            graphs = [TabContainer("All databases", graphs_dash)]
         else:
             block_graph.metrics.insert(0, GlobalDatabasesMetricGroup.
                                        total_blks_read)
             block_graph.color_scheme = ['#cb513a', '#73c03a']
+
+        if (self.has_extension(self.path_args[0], "pg_wait_sampling")):
+            metrics=None
+            if self.get_pg_version_num() < 100000:
+                metrics = [GlobalWaitsMetricGroup.count_lwlocknamed,
+                           GlobalWaitsMetricGroup.count_lwlocktranche,
+                           GlobalWaitsMetricGroup.count_lock,
+                           GlobalWaitsMetricGroup.count_bufferpin]
+            else:
+                metrics = [GlobalWaitsMetricGroup.count_lwlock,
+                           GlobalWaitsMetricGroup.count_lock,
+                           GlobalWaitsMetricGroup.count_bufferpin,
+                           GlobalWaitsMetricGroup.count_activity,
+                           GlobalWaitsMetricGroup.count_client,
+                           GlobalWaitsMetricGroup.count_extension,
+                           GlobalWaitsMetricGroup.count_ipc,
+                           GlobalWaitsMetricGroup.count_timeout,
+                           GlobalWaitsMetricGroup.count_io]
+
+            graphs_dash.append(Dashboard("Wait Events",
+                [[Graph("Wait Events (per second)",
+                        metrics=metrics)]]))
 
         dashes = [graphs,
                   [Grid("Details for all databases",
