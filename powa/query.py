@@ -286,7 +286,7 @@ class QueryExplains(ContentWidget):
                                   vals['occurences']))
         if len(plans) == 0:
             self.flash("No quals found for this query", "warning")
-            self.render("xhr.html", content="")
+            self.render("xhrm.html", content="")
             return
 
         self.render("database/query/explains.html", plans=plans)
