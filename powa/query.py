@@ -334,7 +334,8 @@ class WaitSamplingList(MetricGroupDef):
     xaxis = "event"
     axis_type = "category"
     data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)/wait_events"
-    counts = MetricDef(label="# of events", type="integer", direction="descending")
+    counts = MetricDef(label="# of events", type="number",
+                       direction="descending")
 
     def prepare(self):
         if not self.has_extension(self.path_args[0], "pg_wait_sampling"):

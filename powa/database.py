@@ -46,14 +46,14 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
 
     total_sys_hit = MetricDef(label="Total system cache hit", type="sizerate")
     total_disk_read = MetricDef(label="Total disk read", type="sizerate")
-    minflts = MetricDef(label="Soft page faults", type="integer")
-    majflts = MetricDef(label="Hard page faults", type="integer")
-    nswaps = MetricDef(label="Swaps", type="integer")
-    msgsnds = MetricDef(label="IPC messages sent", type="integer")
-    msgrcvs = MetricDef(label="IPC messages received", type="integer")
-    nsignals = MetricDef(label="Signals received", type="integer")
-    nvcsws = MetricDef(label="Voluntary context switches", type="integer")
-    nivcsws = MetricDef(label="Involuntary context switches", type="integer")
+    minflts = MetricDef(label="Soft page faults", type="number")
+    majflts = MetricDef(label="Hard page faults", type="number")
+    nswaps = MetricDef(label="Swaps", type="number")
+    msgsnds = MetricDef(label="IPC messages sent", type="number")
+    msgrcvs = MetricDef(label="IPC messages received", type="number")
+    nsignals = MetricDef(label="Signals received", type="number")
+    nvcsws = MetricDef(label="Voluntary context switches", type="number")
+    nivcsws = MetricDef(label="Involuntary context switches", type="number")
 
     @classmethod
     def _get_metrics(cls, handler, **params):
@@ -197,7 +197,7 @@ class ByQueryMetricGroup(MetricGroupDef):
     xaxis = "queryid"
     axis_type = "category"
     data_url = r"/server/(\d+)/metrics/database_all_queries/([^\/]+)/"
-    calls = MetricDef(label="#", type="integer")
+    calls = MetricDef(label="#", type="number")
     runtime = MetricDef(label="Time", type="duration", direction="descending")
     avg_runtime = MetricDef(label="Avg time", type="duration")
     blks_read_time = MetricDef(label="Read", type="duration")
@@ -257,7 +257,8 @@ class ByQueryWaitSamplingMetricGroup(MetricGroupDef):
     xaxis = "query"
     axis_type = "category"
     data_url = r"/server/(\d+)/metrics/database_all_queries_waits/([^\/]+)/"
-    counts = MetricDef(label="# of events", type="integer", direction="descending")
+    counts = MetricDef(label="# of events", type="number",
+                       direction="descending")
 
     @property
     def query(self):

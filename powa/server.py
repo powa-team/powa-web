@@ -41,7 +41,7 @@ class ByDatabaseMetricGroup(MetricGroupDef):
     xaxis = "datname"
     data_url = r"/server/(\d+)/metrics/by_databases/"
     axis_type = "category"
-    calls = MetricDef(label="#Calls", type="integer", direction="descending")
+    calls = MetricDef(label="#Calls", type="number", direction="descending")
     runtime = MetricDef(label="Runtime", type="duration")
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
     shared_blks_read = MetricDef(label="Blocks read", type="size")
@@ -98,7 +98,7 @@ class ByDatabaseWaitSamplingMetricGroup(MetricGroupDef):
     data_url = r"/server/(\d+)/metrics/wait_event_by_databases/"
     axis_type = "category"
     counts = MetricDef(label="# of events",
-                       type="integer", direction="descending")
+                       type="number", direction="descending")
 
     @property
     def query(self):
@@ -135,21 +135,21 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
     xaxis = "ts"
     data_url = r"/server/(\d+)/metrics/databases_globals/"
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
-    calls = MetricDef(label="Queries per sec", type="integer")
+    calls = MetricDef(label="Queries per sec", type="number")
     load = MetricDef(label="Runtime per sec", type="duration")
     total_blks_hit = MetricDef(label="Total hit", type="sizerate")
     total_blks_read = MetricDef(label="Total read", type="sizerate")
 
     total_sys_hit = MetricDef(label="Total system cache hit", type="sizerate")
     total_disk_read = MetricDef(label="Total disk read", type="sizerate")
-    minflts = MetricDef(label="Soft page faults", type="integer")
-    majflts = MetricDef(label="Hard page faults", type="integer")
-    nswaps = MetricDef(label="Swaps", type="integer")
-    msgsnds = MetricDef(label="IPC messages sent", type="integer")
-    msgrcvs = MetricDef(label="IPC messages received", type="integer")
-    nsignals = MetricDef(label="Signals received", type="integer")
-    nvcsws = MetricDef(label="Voluntary context switches", type="integer")
-    nivcsws = MetricDef(label="Involuntary context switches", type="integer")
+    minflts = MetricDef(label="Soft page faults", type="number")
+    majflts = MetricDef(label="Hard page faults", type="number")
+    nswaps = MetricDef(label="Swaps", type="number")
+    msgsnds = MetricDef(label="IPC messages sent", type="number")
+    msgrcvs = MetricDef(label="IPC messages received", type="number")
+    nsignals = MetricDef(label="Signals received", type="number")
+    nvcsws = MetricDef(label="Voluntary context switches", type="number")
+    nivcsws = MetricDef(label="Involuntary context switches", type="number")
 
     @classmethod
     def _get_metrics(cls, handler, **params):
