@@ -1,4 +1,4 @@
-{% extends "../../xhr.html" %}
+{% extends "../../xhrm.html" %}
 {% block content %}
 <div class="indexes">
 
@@ -56,10 +56,15 @@
         None of the indexes would be used !
         {% end %}
       </div>
+      {% if hypoplan.indexes %}
       <div class="columns large-6">
+      {% else %}
+      <div class="columns large-12">
+      {% end %}
         <pre>EXPLAIN plan <b>without</b> suggested indexes:</pre>
         <pre><code data-equalizer-watch="">{{ hypoplan.baseplan }}</code></pre>
       </div>
+      {% if hypoplan.indexes %}
       <div class="columns large-6">
         <pre>EXPLAIN plan <b>with</b> suggested index</pre>
         <pre><code data-equalizer-watch="">{{ hypoplan.hypoplan }}</code></pre>
@@ -68,6 +73,7 @@
         <pre>Query cost gain factor with hypothetical index: <b>{{
           hypoplan.gain_percent }} %</b></pre>
       </div>
+      {% end %}
     </div>
 {% end %}
   </div>

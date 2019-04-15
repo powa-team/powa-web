@@ -10,6 +10,7 @@ from sqlalchemy.sql import (
 from sqlalchemy.sql.functions import sum
 from sqlalchemy.types import Numeric
 from sqlalchemy.orm import outerjoin
+from sqlalchemy.exc import DBAPIError
 
 from powa.dashboards import (
     Dashboard, TabContainer, Graph, Grid,
@@ -232,8 +233,12 @@ class QueryIndexes(ContentWidget):
             for ind in allindexes:
                 ddl = ind.hypo_ddl
                 if ddl is not None:
-                    ind.name = self.execute(ddl, srvid=srvid,
-                                            database=database).scalar()
+                    try:
+                        ind.name = self.execute(ddl, srvid=srvid,
+                                                database=database).scalar()
+                    except DBAPIError as e:
+                        self.flash("Could not create hypothetical index: %s" %
+                                   str(e.orig.diag.message_primary))
             # Build the query and fetch the plans
             querystr = get_any_sample_query(self, srvid, database, query,
                                             self.get_argument("from"),
@@ -242,10 +247,11 @@ class QueryIndexes(ContentWidget):
                 hypoplan = get_hypoplans(self.connect(srvid,
                                                       database=database),
                                          querystr, allindexes)
-            except Exception:
+            except DBAPIError as e:
                 # TODO: offer the possibility to fill in parameters from the UI
                 self.flash("We couldn't get plans for this query, presumably "
-                           "because some parameters are missing ")
+                           "because some parameters are missing: %s" %
+                           str(e.orig.diag.message_primary))
 
         self.render("database/query/indexes.html", indexes=indexes,
                     hypoplan=hypoplan)
