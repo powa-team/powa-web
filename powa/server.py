@@ -173,7 +173,8 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
 
         cols = [c.srvid,
                 extract("epoch", c.ts).label("ts"),
-                greatest(sum(c.calls), 0).label("calls"),
+                (sum(c.calls) / greatest(extract("epoch", c.mesure_interval),
+                                         1)).label("calls"),
                 (sum(c.runtime) / greatest(sum(c.calls),
                                            1)).label("avg_runtime"),
                 (sum(c.runtime) / greatest(extract("epoch", c.mesure_interval),
@@ -194,24 +195,34 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
                 .alias())
             kc = kcache_query.c
             total_sys_hit = (total_read(c) - sum(kc.reads) /
-                             greatest(sum(c.calls), 1.)).label("total_sys_hit")
-            total_disk_read = (sum(kc.reads) / greatest(sum(c.calls), 1.)
+                             greatest(extract("epoch", c.mesure_interval), 1.)
+                             ).label("total_sys_hit")
+            total_disk_read = (sum(kc.reads) /
+                               greatest(extract("epoch", c.mesure_interval), 1.)
                                ).label("total_disk_read")
-            minflts = (sum(kc.minflts) / greatest(sum(c.calls), 1.)
+            minflts = (sum(kc.minflts) /
+                       greatest(extract("epoch", c.mesure_interval), 1.)
                        ).label("minflts")
-            majflts = (sum(kc.majflts) / greatest(sum(c.calls), 1.)
+            majflts = (sum(kc.majflts) /
+                       greatest(extract("epoch", c.mesure_interval), 1.)
                        ).label("majflts")
-            nswaps = (sum(kc.nswaps) / greatest(sum(c.calls), 1.)
+            nswaps = (sum(kc.nswaps) /
+                      greatest(extract("epoch", c.mesure_interval), 1.)
                       ).label("nswaps")
-            msgsnds = (sum(kc.msgsnds) / greatest(sum(c.calls), 1.)
+            msgsnds = (sum(kc.msgsnds) /
+                       greatest(extract("epoch", c.mesure_interval), 1.)
                        ).label("msgsnds")
-            msgrcvs = (sum(kc.msgrcvs) / greatest(sum(c.calls), 1.)
+            msgrcvs = (sum(kc.msgrcvs) /
+                       greatest(extract("epoch", c.mesure_interval), 1.)
                        ).label("msgrcvs")
-            nsignals = (sum(kc.nsignals) / greatest(sum(c.calls), 1.)
+            nsignals = (sum(kc.nsignals) /
+                        greatest(extract("epoch", c.mesure_interval), 1.)
                         ).label("nsignals")
-            nvcsws = (sum(kc.nvcsws) / greatest(sum(c.calls), 1.)
+            nvcsws = (sum(kc.nvcsws) /
+                      greatest(extract("epoch", c.mesure_interval), 1.)
                       ).label("nvcsws")
-            nivcsws = (sum(kc.nivcsws) / greatest(sum(c.calls), 1.)
+            nivcsws = (sum(kc.nivcsws) /
+                       greatest(extract("epoch", c.mesure_interval), 1.)
                        ).label("nivcsws")
 
             cols.extend([total_sys_hit, total_disk_read, minflts, majflts,
