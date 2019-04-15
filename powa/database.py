@@ -357,7 +357,7 @@ class DatabaseOverview(DashboardPage):
                                        total_disk_read)
             block_graph.color_scheme = ['#cb513a', '#65b9ac', '#73c03a']
 
-            sys_graphs = [Graph("System resources",
+            sys_graphs = [Graph("System resources (events per sec)",
                                 metrics=[DatabaseOverviewMetricGroup.majflts,
                                          DatabaseOverviewMetricGroup.minflts,
                                          DatabaseOverviewMetricGroup.nswaps,
