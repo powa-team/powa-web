@@ -53,24 +53,33 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     blk_read_time = MetricDef(label="Read time", type="duration")
     blk_write_time = MetricDef(label="Write time", type="duration")
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
+    hit_ratio = MetricDef(label="Shared buffers hit ratio", type="percent")
+    miss_ratio = MetricDef(label="Shared buffers miss ratio", type="percent")
+
     reads = MetricDef(label="Physical read", type="sizerate")
     writes = MetricDef(label="Physical writes", type="sizerate")
     user_time = MetricDef(label="CPU user time / Query time", type="percent")
-    system_time = MetricDef(label="CPU system time / Query time", type="percent",
-                            )
+    system_time = MetricDef(label="CPU system time / Query time", type="percent")
     other_time = MetricDef(label="CPU other time / Query time", type="percent")
-    hit_ratio = MetricDef(label="Shared buffers hit ratio", type="percent")
-    miss_ratio = MetricDef(label="Shared buffers miss ratio", type="percent")
     sys_hit_ratio = MetricDef(label="System cache hit ratio", type="percent")
     disk_hit_ratio = MetricDef(label="Disk hit ratio", type="percent")
+    minflts = MetricDef(label="Soft page faults", type="number")
+    majflts = MetricDef(label="Hard page faults", type="number")
+    nswaps = MetricDef(label="Swaps", type="number")
+    msgsnds = MetricDef(label="IPC messages sent", type="number")
+    msgrcvs = MetricDef(label="IPC messages received", type="number")
+    nsignals = MetricDef(label="Signals received", type="number")
+    nvcsws = MetricDef(label="Voluntary context switches", type="number")
+    nivcsws = MetricDef(label="Involuntary context switches", type="number")
 
     @classmethod
     def _get_metrics(cls, handler, **params):
         base = cls.metrics.copy()
         if not handler.has_extension(params["server"], "pg_stat_kcache"):
             for key in ("reads", "writes", "user_time", "system_time",
-                        "other_time",
-                        "sys_hit_ratio", "disk_hit_ratio"):
+                        "other_time", "sys_hit_ratio", "disk_hit_ratio",
+                        "minflts", "majflts", "nswaps", "msgsnds", "msgrcvs",
+                        "nsignals", "nvcsws", "nivcsws"):
                 base.pop(key)
         else:
             base.pop("miss_ratio")
@@ -107,8 +116,12 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                 bps(c.local_blks_written),
                 bps(c.temp_blks_read),
                 bps(c.temp_blks_written),
-                c.blk_read_time,
-                c.blk_write_time,
+                (c.blk_read_time /
+                 extract("epoch", greatest(c.mesure_interval, '1 second'))
+                 ).label("blk_read_time"),
+                (c.blk_write_time /
+                 extract("epoch", greatest(c.mesure_interval, '1 second'))
+                 ).label("blk_write_time"),
                 (c.runtime / greatest(c.calls, 1)).label("avg_runtime")]
 
         from_clause = query
@@ -138,9 +151,21 @@ class QueryOverviewMetricGroup(MetricGroupDef):
             # aligned to kernel ticks. As such, we have to clamp values to 100%
             total_time_percent = lambda x: least(100, (x * 100) /
                                                  total_time)
+
+            def per_sec(col):
+                ts = extract("epoch", greatest(c.mesure_interval, '1 second'))
+                return (col / ts).label(col.name)
             cols.extend([
-                kc.reads,
-                kc.writes,
+                per_sec(kc.reads),
+                per_sec(kc.writes),
+                per_sec(kc.minflts),
+                per_sec(kc.majflts),
+                per_sec(kc.nswaps),
+                per_sec(kc.msgsnds),
+                per_sec(kc.msgrcvs),
+                per_sec(kc.nsignals),
+                per_sec(kc.nvcsws),
+                per_sec(kc.nivcsws),
                 total_time_percent(kc.user_time * 1000).label("user_time"),
                 total_time_percent(kc.system_time * 1000).label("system_time"),
                 greatest(total_time_percent(
@@ -510,6 +535,18 @@ class QueryOverview(DashboardPage):
                 QueryOverviewMetricGroup.sys_hit_ratio)
             hit_ratio_graph.metrics.append(
                 QueryOverviewMetricGroup.disk_hit_ratio)
+
+            sys_graphs = [Graph("System resources (events per sec)",
+                                url="https://powa.readthedocs.io/en/latest/stats_extensions/pg_stat_kcache.html",
+                                metrics=[QueryOverviewMetricGroup.majflts,
+                                         QueryOverviewMetricGroup.minflts,
+                                         QueryOverviewMetricGroup.nswaps,
+                                         QueryOverviewMetricGroup.msgsnds,
+                                         QueryOverviewMetricGroup.msgrcvs,
+                                         QueryOverviewMetricGroup.nsignals,
+                                         QueryOverviewMetricGroup.nvcsws,
+                                         QueryOverviewMetricGroup.nivcsws])]
+            dashes.append(Dashboard("System resources", [sys_graphs]))
         else:
             hit_ratio_graph.metrics.append(
                 QueryOverviewMetricGroup.miss_ratio)

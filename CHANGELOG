@@ -4,7 +4,7 @@
   - Expose system cache hit / disk read metrics on global and per-database
     pages (Julien Rouhaud)
   - Expose new metrics added in pg_stat_kcache 2.1 (page faults, context
-    switches...) on global and per-database pages (Julien Rouhaud)
+    switches...) on global, per-database and per-query pages (Julien Rouhaud)
   - Add wait events graphs on global and per-database pages (Julien Rouhaud)
   - Add queries per second counter on global and per-database pages (Julien
     Rouhaud)
