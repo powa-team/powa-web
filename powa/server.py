@@ -194,36 +194,25 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
                     )
                 .alias())
             kc = kcache_query.c
+
+            def sum_per_sec(col):
+                ts = extract("epoch", greatest(c.mesure_interval, '1 second'))
+                return (sum(col) / ts).label(col.name)
+
             total_sys_hit = (total_read(c) - sum(kc.reads) /
                              greatest(extract("epoch", c.mesure_interval), 1.)
                              ).label("total_sys_hit")
             total_disk_read = (sum(kc.reads) /
                                greatest(extract("epoch", c.mesure_interval), 1.)
                                ).label("total_disk_read")
-            minflts = (sum(kc.minflts) /
-                       greatest(extract("epoch", c.mesure_interval), 1.)
-                       ).label("minflts")
-            majflts = (sum(kc.majflts) /
-                       greatest(extract("epoch", c.mesure_interval), 1.)
-                       ).label("majflts")
-            nswaps = (sum(kc.nswaps) /
-                      greatest(extract("epoch", c.mesure_interval), 1.)
-                      ).label("nswaps")
-            msgsnds = (sum(kc.msgsnds) /
-                       greatest(extract("epoch", c.mesure_interval), 1.)
-                       ).label("msgsnds")
-            msgrcvs = (sum(kc.msgrcvs) /
-                       greatest(extract("epoch", c.mesure_interval), 1.)
-                       ).label("msgrcvs")
-            nsignals = (sum(kc.nsignals) /
-                        greatest(extract("epoch", c.mesure_interval), 1.)
-                        ).label("nsignals")
-            nvcsws = (sum(kc.nvcsws) /
-                      greatest(extract("epoch", c.mesure_interval), 1.)
-                      ).label("nvcsws")
-            nivcsws = (sum(kc.nivcsws) /
-                       greatest(extract("epoch", c.mesure_interval), 1.)
-                       ).label("nivcsws")
+            minflts = sum_per_sec(kc.minflts)
+            majflts = sum_per_sec(kc.majflts)
+            nswaps = sum_per_sec(kc.nswaps)
+            msgsnds = sum_per_sec(kc.msgsnds)
+            msgrcvs = sum_per_sec(kc.msgrcvs)
+            nsignals = sum_per_sec(kc.nsignals)
+            nvcsws = sum_per_sec(kc.nvcsws)
+            nivcsws = sum_per_sec(kc.nivcsws)
 
             cols.extend([total_sys_hit, total_disk_read, minflts, majflts,
                          nswaps, msgsnds, msgrcvs, nsignals, nvcsws, nivcsws])
