@@ -269,6 +269,14 @@ define([
 
             render: function(){
                 this.$el.html(this.template(this.model.toJSON()));
+                var url = this.model.get("url");
+                if (url != undefined) {
+                  var title = this.model.get("title");
+                  this.$el.find(".title").append('<a href="' + url + '"'
+                    + 'target="_blank">'
+                    + '<i class="fi-link" title="See the documentation"></i>'
+                    + '</a>');
+                }
                 this.$el.find(".backgrid-container").append(this.grid.render().el);
                 this.$el.find(".grid_filter").append(this.filter.render().el);
                 this.$el.find(".grid_paginator").append(this.paginator.render().el);

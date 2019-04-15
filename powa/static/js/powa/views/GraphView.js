@@ -107,6 +107,14 @@ define([
                 // of graph
                 var renderer = this.model.get("renderer") || "line";
                 this.$el.html(this.template(this.model.toJSON()));
+                var url = this.model.get("url");
+                if (url != undefined) {
+                  var title = this.model.get("title");
+                  this.$el.find(".title").append('<a href="' + url + '"'
+                    + 'target="_blank">'
+                    + '<i class="fi-link" title="See the documentation"></i>'
+                    + '</a>');
+                }
                 this.$graph_elem = this.$el.find(".graph_container");
                 this.graph_elem = this.$graph_elem.get(0);
                 this.y_axes = {};

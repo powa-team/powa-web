@@ -384,11 +384,12 @@ class Graph(Widget):
     A widget backed by a Rickshaw graph.
     """
 
-    def __init__(self, title, grouper=None,
+    def __init__(self, title, grouper=None, url=None,
                  axistype="time",
                  metrics=None,
                  **kwargs):
         self.title = title
+        self.url = url
         self.grouper = grouper
         self.metrics = metrics or []
         self.axistype = "time"
