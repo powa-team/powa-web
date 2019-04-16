@@ -154,6 +154,17 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
         }
     });
 
+    var IndexCheckErrorModel = GetterModel.extend({
+
+        ddl: function(){
+            return this.get("_ddl");
+        },
+
+        error: function(){
+            return this.get("_error");
+        }
+    });
+
     var IndexCheckModel = GetterModel.extend({
 
         query: function(){
@@ -176,6 +187,10 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
 
     var IndexCollection = Backbone.Collection.extend({
         model: IndexModel
+    });
+
+    var IndexCheckErrorCollection = Backbone.Collection.extend({
+        model: IndexCheckErrorModel
     });
 
     var IndexCheckCollection = Backbone.Collection.extend({
@@ -206,6 +221,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             this.set("stage", "Starting wizard...");
             this.set("progress", 0);
             this.set("indexes", new IndexCollection());
+            this.set("indexescheckserror", new IndexCheckErrorCollection());
             this.set("indexeschecks", new IndexCheckCollection());
             this.set("unoptimizable", new QualCollection());
             this.listenTo(this.get("datasource"), "metricgroup:dataload", this.update, this);
@@ -222,6 +238,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             this.get("datasource").set("enabled", true);
             this.get("datasource").update(options.from_date, options.to_date);
             this.get("indexes").set([]);
+            this.get("indexescheckserror").set([]);
             this.get("indexeschecks").set([]);
             this.get("unoptimizable").set([]);
         },
@@ -358,7 +375,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             this.set("from_date", from_date);
             this.set("to_date", to_date);
             if (total_quals == 0){
-                this.trigger("widget:update_progress", "No qual found!", 100);
+                this.trigger("widget:update_progress", "No quals require optimization!", 100);
                 this.trigger("wizard:end");
                 return;
             } else {
@@ -428,7 +445,13 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 type: 'POST',
                 contentType: 'application/json'
             }).success(function(data){
-                _.each(data, function(stat, id){
+                _.each(data["inderrors"], function(err, ddl){
+                    self.get("indexescheckserror").add({
+                        _ddl: ddl,
+                        _error: err
+                    });
+                });
+                _.each(data["plans"], function(stat, id){
                     self.get("indexeschecks").add({
                         _query: stat.query,
                         _gain: stat.gain_percent

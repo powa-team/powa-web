@@ -23,6 +23,21 @@ class Biggest(object):
             - column(var),
             minval).label(label)
 
+class Biggestsum(object):
+
+    def __init__(self, base_columns, order_by):
+        self.base_columns = base_columns
+        self.order_by = order_by
+
+    def __call__(self, var, minval=0, label=None):
+        label = label or var
+        return func.greatest(
+            func.lead(sum(column(var)))
+            .over(order_by=self.order_by,
+                  partition_by=self.base_columns)
+            - sum(column(var)),
+            minval).label(label)
+
 
 def powa_base_statdata_detailed_db():
     base_query = text("""
@@ -325,32 +340,36 @@ BASE_QUERY_WAIT_SAMPLE = text("""(
 def powa_getwaitdata_sample(mode):
     if mode == "db":
         base_query = BASE_QUERY_WAIT_SAMPLE_DB
-        base_columns = ["dbid"]
+        base_columns = [column("dbid")]
 
     elif mode == "query":
         base_query = BASE_QUERY_WAIT_SAMPLE
-        base_columns = ["dbid", "queryid"]
+        base_columns = [column("dbid"), column("queryid")]
 
     ts = column('ts')
     biggest = Biggest(base_columns, ts)
+    biggestsum = Biggestsum(base_columns, ts)
 
 
-    return select(base_columns + [
+    return (select(base_columns + [
         ts,
         biggest("ts", '0 s', "mesure_interval"),
         # pg 96 only columns
-        biggest("count_lwlocknamed"),
-        biggest("count_lwlocktranche"),
+        biggestsum("count_lwlocknamed"),
+        biggestsum("count_lwlocktranche"),
         # pg 10+ columns
-        biggest("count_lwlock"),
-        biggest("count_lock"),
-        biggest("count_bufferpin"),
-        biggest("count_activity"),
-        biggest("count_client"),
-        biggest("count_extension"),
-        biggest("count_ipc"),
-        biggest("count_timeout"),
-        biggest("count_io")]).select_from(base_query).apply_labels()
+        biggestsum("count_lwlock"),
+        biggestsum("count_lock"),
+        biggestsum("count_bufferpin"),
+        biggestsum("count_activity"),
+        biggestsum("count_client"),
+        biggestsum("count_extension"),
+        biggestsum("count_ipc"),
+        biggestsum("count_timeout"),
+        biggestsum("count_io")])
+        .select_from(base_query)
+        .apply_labels()
+        .group_by(*(base_columns + [ts])))
 
 
 BASE_QUERY_SAMPLE_DB = text("""(
@@ -417,34 +436,38 @@ BASE_QUERY_SAMPLE = text("""(
 def powa_getstatdata_sample(mode):
     if mode == "db":
         base_query = BASE_QUERY_SAMPLE_DB
-        base_columns = ["dbid"]
+        base_columns = [column("dbid")]
 
     elif mode == "query":
         base_query = BASE_QUERY_SAMPLE
-        base_columns = ["dbid", "queryid"]
+        base_columns = [column("dbid"), column("queryid")]
 
     ts = column('ts')
     biggest = Biggest(base_columns, ts)
+    biggestsum = Biggestsum(base_columns, ts)
 
 
-    return select(base_columns + [
+    return (select(base_columns + [
         ts,
         biggest("ts", '0 s', "mesure_interval"),
-        biggest("calls"),
-        biggest("total_time", label="runtime"),
-        biggest("rows"),
-        biggest("shared_blks_read"),
-        biggest("shared_blks_hit"),
-        biggest("shared_blks_dirtied"),
-        biggest("shared_blks_written"),
-        biggest("local_blks_read"),
-        biggest("local_blks_hit"),
-        biggest("local_blks_dirtied"),
-        biggest("local_blks_written"),
-        biggest("temp_blks_read"),
-        biggest("temp_blks_written"),
-        biggest("blk_read_time"),
-        biggest("blk_write_time")]).select_from(base_query).apply_labels()
+        biggestsum("calls"),
+        biggestsum("total_time", label="runtime"),
+        biggestsum("rows"),
+        biggestsum("shared_blks_read"),
+        biggestsum("shared_blks_hit"),
+        biggestsum("shared_blks_dirtied"),
+        biggestsum("shared_blks_written"),
+        biggestsum("local_blks_read"),
+        biggestsum("local_blks_hit"),
+        biggestsum("local_blks_dirtied"),
+        biggestsum("local_blks_written"),
+        biggestsum("temp_blks_read"),
+        biggestsum("temp_blks_written"),
+        biggestsum("blk_read_time"),
+        biggestsum("blk_write_time")])
+        .select_from(base_query)
+        .apply_labels()
+        .group_by(*(base_columns + [ts])))
 
 
 def qualstat_base_statdata():
@@ -557,15 +580,17 @@ BASE_QUERY_KCACHE_SAMPLE = text("""
 
 def kcache_getstatdata_sample():
     base_query = BASE_QUERY_KCACHE_SAMPLE
-    base_columns = ["queryid", "datname"]
+    base_columns = [column("queryid"), column("datname")]
     ts = column('ts')
     biggest = Biggest(base_columns, ts)
+    biggestsum = Biggestsum(base_columns, ts)
 
     return (select(base_columns + [
         ts,
-        biggest("reads"),
-        biggest("writes"),
-        biggest("user_time"),
-        biggest("system_time")])
+        biggestsum("reads"),
+        biggestsum("writes"),
+        biggestsum("user_time"),
+        biggestsum("system_time")])
             .select_from(base_query)
-            .apply_labels())
+            .apply_labels()
+            .group_by(*(base_columns + [ts])))

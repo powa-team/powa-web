@@ -90,7 +90,7 @@ class QualDetail(ContentWidget):
             else:
                 other_queries[qual['queryid']] = qual['query']
         if my_qual is None:
-            self.render("xhr.html", content="nodata")
+            self.render("xhr.html", content="No data")
             return
         self.render("database/query/qualdetail.html",
                     qual=my_qual,
