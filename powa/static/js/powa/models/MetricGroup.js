@@ -71,6 +71,17 @@ define([
                 var value = response.status != 500 ? response.responseText: ""
                 self.trigger("metricgroup:dataload-failed", value);
             });
+        },
+
+        update_timeline: function(changes) {
+          var self = this;
+          // FIXME this will update each timeline as many time as there are
+          // metric displayed in the owning graph, we should find a way to do
+          // it only once.  There shouldn't be many configuration changes, so
+          // hopefully this isn't a big problem.
+          self.get("metrics").each(function(metric){
+              metric.trigger("metric:configchanges", changes);
+          });
         }
 
     }, {

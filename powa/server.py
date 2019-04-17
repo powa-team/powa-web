@@ -12,6 +12,7 @@ from powa.dashboards import (
     Dashboard, Graph, Grid,
     MetricGroupDef, MetricDef,
     DashboardPage, TabContainer)
+from powa.config import ConfigChangesGlobal
 
 from powa.sql.views import (
     powa_getstatdata_db,
@@ -289,9 +290,11 @@ class ServerOverview(DashboardPage):
     """
     base_url = r"/server/(\d+)/overview/"
     datasources = [GlobalDatabasesMetricGroup, ByDatabaseMetricGroup,
-                   ByDatabaseWaitSamplingMetricGroup, GlobalWaitsMetricGroup]
+                   ByDatabaseWaitSamplingMetricGroup, GlobalWaitsMetricGroup,
+                   ConfigChangesGlobal]
     params = ["server"]
     title = "All databases"
+    timeline = ConfigChangesGlobal
 
     def dashboard(self):
         # This COULD be initialized in the constructor, but tornado < 3 doesn't

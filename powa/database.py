@@ -21,6 +21,7 @@ from powa.sql.utils import (greatest, block_size, mulblock,
                             total_read, total_hit, to_epoch,
                             inner_cc)
 from powa.sql.tables import powa_statements
+from powa.config import ConfigChangesDatabase
 
 
 class DatabaseSelector(AuthHandler):
@@ -306,10 +307,11 @@ class DatabaseOverview(DashboardPage):
     base_url = r"/server/(\d+)/database/([^\/]+)/overview"
     datasources = [DatabaseOverviewMetricGroup, ByQueryMetricGroup,
                    ByQueryWaitSamplingMetricGroup, WizardMetricGroup,
-                   DatabaseWaitOverviewMetricGroup]
+                   DatabaseWaitOverviewMetricGroup, ConfigChangesDatabase]
     params = ["server", "database"]
     parent = ServerOverview
     title = '%(database)s'
+    timeline = ConfigChangesDatabase
 
     def dashboard(self):
         # This COULD be initialized in the constructor, but tornado < 3 doesn't

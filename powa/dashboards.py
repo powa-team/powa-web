@@ -37,13 +37,28 @@ class DashboardHandler(AuthHandler):
         param_dashboard = self.dashboard().parameterized_json(self, **params)
         param_datasource = []
         for datasource in self.datasources:
+            # ugly hack to avoid calling the datasource twice per
+            # DashboardPage (once because it's declared in the datasources,
+            # used to automatically register the URLSpecs, and once by the
+            # javascript facility that will look for configuration changes)
+            if datasource.url_name.startswith("datasource_ConfigChanges"):
+                continue
+
             value = datasource.parameterized_json(self, **params)
             value['data_url'] = self.reverse_url(datasource.url_name,
                                                  *args)
             param_datasource.append(value)
+
+        # tell the frontend how to get the configuration changes, if the
+        # DashboardPage provided it
+        param_timeline = None
+        if (self.timeline):
+            param_timeline = self.reverse_url(self.timeline.url_name, *args)
+
         return self.render(self.template,
                            dashboard=param_dashboard,
                            datasources=param_datasource,
+                           timeline=param_timeline,
                            title=self.dashboard().title % params)
 
     @property
@@ -543,6 +558,7 @@ class DashboardPage(object):
     base_url = None
     datasources = []
     parent = None
+    timeline = None
 
     @classmethod
     def url_specs(cls):

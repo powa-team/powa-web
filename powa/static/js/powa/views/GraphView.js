@@ -7,9 +7,10 @@ define([
         'tpl!powa/templates/graph.html',
         'powa/utils/duration',
         'powa/utils/size',
-        'powa/rickshaw/Rickshaw.Graph.DragZoom'
+        'powa/rickshaw/Rickshaw.Graph.DragZoom',
+        'powa/utils/message'
 ],
-        function(Backbone, d3, Rickshaw, WidgetView, Graph, template, duration, size, DragZoom){
+        function(Backbone, d3, Rickshaw, WidgetView, Graph, template, duration, size, DragZoom, Message){
     var registry = {};
     var makeInstance = function(options){
         return new registry[options.model.get("renderer") || "line"](options);
@@ -33,6 +34,7 @@ define([
             initialize: function(){
                 var self = this;
                 this.listenTo(this.model, "widget:needrefresh", this.update);
+                this.listenTo(this.model, "widget:configchanges", this.configchanges);
                 this.listenTo(this.model, "widget:dataload-failed", this.fail);
                 this.listenTo(this, "graph:resize", this.onResize);
                 this.render();
@@ -145,7 +147,15 @@ define([
                 }, this);
             },
 
+            initAnnotator: function() {
+                this.annotator = new Rickshaw.Graph.Annotate( {
+                    graph: this.graph,
+                    element: this.$el.find('.graph_timeline').get(0)
+                });
+            },
+
             initGoodies: function(){
+                this.initAnnotator();
                 this.legend = new Rickshaw.Graph.Legend( {
                     graph: this.graph,
                     element: this.$el.find('.graph_legend').get(0)
@@ -201,6 +211,30 @@ define([
                    }
                 }
                 this.trigger("widget:update");
+            },
+
+            configchanges: function(changes) {
+              if (this.annotator) {
+                var self = this;
+
+                // bail out if nothing was received
+                if (changes === undefined || changes.length == 0)
+                  return;
+
+                // show the timeline as soon as we received events
+                $('.graph_timeline').show();
+
+                // clean previously received events
+                self.initAnnotator()
+
+                // display each new event
+                $.each(changes, function(i) {
+                  change = changes[i];
+                  txt = Message.format_change(change);
+                  self.annotator.add(change["ts"], txt);
+                })
+                this.annotator.update();
+              }
             },
 
             show: function(){

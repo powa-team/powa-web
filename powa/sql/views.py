@@ -776,3 +776,77 @@ def powa_getwaitdata_sample(srvid, mode):
         .select_from(base_query)
         .apply_labels()
         .group_by(*(base_columns + [ts])))
+
+
+def get_config_changes(restrict_database=False):
+    restrict_db = ""
+    if (restrict_database):
+        restrict_db = "AND (d.datname = :database OR h.setdatabase = 0)"
+
+    return text("""SELECT * FROM
+(
+  WITH src AS (
+    select ts, name,
+    lag(setting_pretty) OVER (PARTITION BY name ORDER BY ts) AS prev_val,
+    setting_pretty AS new_val,
+    lag(is_dropped) OVER (PARTITION BY name ORDER BY ts) AS prev_is_dropped,
+    is_dropped as is_dropped
+    FROM public.pg_track_settings_history h
+    WHERE srvid = :server
+    AND ts <= :to
+  )
+  SELECT extract("epoch" FROM ts) AS ts, 'global' AS kind,
+  json_build_object(
+    'name', name,
+    'prev_val', prev_val,
+    'new_val', new_val,
+    'prev_is_dropped', coalesce(prev_is_dropped, true),
+    'is_dropped', is_dropped
+  ) AS data
+  FROM src
+  WHERE ts >= :from AND ts <= :to
+) AS global
+
+UNION ALL
+
+SELECT * FROM
+(
+  WITH src AS (
+    select ts, name,
+    lag(setting) OVER (PARTITION BY name, setdatabase, setrole ORDER BY ts) AS prev_val,
+    setting AS new_val,
+    lag(is_dropped) OVER (PARTITION BY name, setdatabase, setrole ORDER BY ts) AS prev_is_dropped,
+    is_dropped as is_dropped,
+    d.datname,
+    h.setrole
+    FROM public.pg_track_db_role_settings_history h
+    LEFT JOIN public.powa_databases d
+      ON d.srvid = h.srvid
+      AND d.oid = h.setdatabase
+    WHERE h.srvid = :server
+    %(restrict_db)s
+    AND ts <= :to
+  )
+  SELECT extract("epoch" FROM ts) AS ts, 'rds' AS kind,
+  json_build_object(
+    'name', name,
+    'prev_val', prev_val,
+    'new_val', new_val,
+    'prev_is_dropped', coalesce(prev_is_dropped, true),
+    'is_dropped', is_dropped,
+    'datname', datname,
+    'setrole', setrole
+  ) AS data
+  FROM src
+  WHERE ts >= :from AND ts <= :to
+) AS rds
+
+UNION ALL
+
+SELECT extract("epoch" FROM ts) AS ts, 'reboot' AS kind,
+NULL AS data
+FROM public.pg_reboot AS r
+WHERE r.srvid = :server
+AND r.ts>= :from
+AND r.ts <= :to
+ORDER BY ts""" % {'restrict_db': restrict_db})

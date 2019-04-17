@@ -8735,6 +8735,10 @@ table {
 .graph_visualisation {
   display: none; }
 
+.graph_timeline {
+  display: none;
+  height: 15px; }
+
 .breadcrumbs > * {
   font-size: 1rem;
   line-height: 1rem;

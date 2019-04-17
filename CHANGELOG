@@ -8,6 +8,8 @@
   - Add wait events graphs on global and per-database pages (Julien Rouhaud)
   - Add queries per second counter on global and per-database pages (Julien
     Rouhaud)
+  - Display configuration changes and PostgreSQL restart on graphs when
+    pg_track_settings is configured (Julien Rouhaud)
 
 3.2.1(WIP):
   - Add pg_wait_sampling in the config extension list (Julien Rouhaud, thanks

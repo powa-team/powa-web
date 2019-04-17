@@ -30,6 +30,7 @@ from powa.sql.views import (powa_getstatdata_sample,
 from powa.sql.utils import (block_size, mulblock, greatest, least,
                             to_epoch, inner_cc)
 from powa.sql.tables import powa_statements
+from powa.config import ConfigChangesQuery
 
 
 class QueryOverviewMetricGroup(MetricGroupDef):
@@ -479,9 +480,10 @@ class QueryOverview(DashboardPage):
     params = ["server", "database", "query"]
     datasources = [QueryOverviewMetricGroup, WaitsQueryOverviewMetricGroup,
                    QueryDetail, QueryExplains, QueryIndexes, WaitSamplingList,
-                   QualList]
+                   QualList, ConfigChangesQuery]
     parent = DatabaseOverview
     title = 'Query Overview'
+    timeline = ConfigChangesQuery
 
     def dashboard(self):
         # This COULD be initialized in the constructor, but tornado < 3 doesn't

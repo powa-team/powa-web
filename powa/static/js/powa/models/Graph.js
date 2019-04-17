@@ -7,6 +7,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'powa/models/MetricColle
             var self = this;
             this.hasloading = 0;
             this.listenTo(this.get("metrics"), "change:series", self.update);
+            this.listenTo(this.get("metrics"), "metric:configchanges", self.configchanges);
             this.listenTo(this.get("metrics"), "metric:startload", function(){self.hasloading +=1});
         },
 
@@ -27,6 +28,10 @@ define(['backbone', 'powa/models/DataSourceCollection', 'powa/models/MetricColle
                 }
             });
             this.trigger("widget:needrefresh", new_series);
+        },
+
+        configchanges: function(changes) {
+          this.trigger("widget:configchanges", changes);
         }
     }, {
         fromJSON: function(jsonobj){

@@ -83,11 +83,31 @@ define([
         },
 
         refreshSources: function(startDate, endDate){
+          var self = this;
             this.dashboard.data_sources.each(function(data_source){
                 if(data_source.get("enabled") != false){
                     data_source.update(startDate, endDate);
                 }
             });
+
+            // display config changes if URL was provided
+            raw = $('script[type="text/datasource_timeline"]').first();
+            url = JSON.parse($(raw).text());
+            if (url !== undefined && url !== null) {
+              var params = {from: startDate.format("YYYY-MM-DD HH:mm:ssZZ"),
+                            to: endDate.format("YYYY-MM-DD HH:mm:ssZZ")};
+              url += "?" + jQuery.param(params);
+              $.ajax({
+                  url: url,
+                  type: 'GET'
+              }).done(function(changes) {
+                self.dashboard.data_sources.each(function(data_source){
+                    if(data_source.get("enabled") != false){
+                      data_source.update_timeline(changes["data"]);
+                    }
+                });
+              });
+            }
             this.updatePeriod(startDate, endDate);
         },
 

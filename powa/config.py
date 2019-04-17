@@ -6,8 +6,72 @@ from powa.dashboards import (
     Dashboard, Grid,
     MetricGroupDef, MetricDef,
     DashboardPage, ContentWidget)
+from powa.sql.views import get_config_changes
 from powa.collector import CollectorServerDetail
 import json
+
+
+class ConfigChangesGlobal(MetricGroupDef):
+    name = "Config Changes"
+    data_url = r"/server/(\d+)/config_changes"
+    xaxis = "ts"
+    axis_type = "category"
+    setting = MetricDef(label="Name", type="string")
+    previous = MetricDef(label="Previous", type="string")
+    new = MetricDef(label="New", type="string")
+    params = ["server"]
+
+    @property
+    def query(self):
+        # avoid pg errors if the extension hasn't been installed.  We check for
+        # local installation only, as query will look in local table.  If the
+        # extension isn't setup remotely, the check will be pretty quick.
+        if (not self.has_extension('0', "pg_track_settings")):
+            return None
+
+        return get_config_changes()
+
+
+class ConfigChangesDatabase(MetricGroupDef):
+    name = "Config Changes"
+    data_url = r"/server/(\d+)/database/([^\/]+)/config_changes"
+    xaxis = "ts"
+    axis_type = "category"
+    setting = MetricDef(label="Name", type="string")
+    previous = MetricDef(label="Previous", type="string")
+    new = MetricDef(label="New", type="string")
+    params = ["server", "database"]
+
+    @property
+    def query(self):
+        # avoid pg errors if the extension hasn't been installed.  We check for
+        # local installation only, as query will look in local table.  If the
+        # extension isn't setup remotely, the check will be pretty quick.
+        if (not self.has_extension('0', "pg_track_settings")):
+            return None
+
+        return get_config_changes(True)
+
+
+class ConfigChangesQuery(MetricGroupDef):
+    name = "Config Changes"
+    data_url = r"/server/(\d+)/database/([^\/]+)/query/(-?\d+)/config_changes"
+    xaxis = "ts"
+    axis_type = "category"
+    setting = MetricDef(label="Name", type="string")
+    previous = MetricDef(label="Previous", type="string")
+    new = MetricDef(label="New", type="string")
+    params = ["server", "database", "query"]
+
+    @property
+    def query(self):
+        # avoid pg errors if the extension hasn't been installed.  We check for
+        # local installation only, as query will look in local table.  If the
+        # extension isn't setup remotely, the check will be pretty quick.
+        if (not self.has_extension('0', "pg_track_settings")):
+            return None
+
+        return get_config_changes(True)
 
 
 class ServersErrors(ContentWidget):
