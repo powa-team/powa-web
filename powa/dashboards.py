@@ -408,6 +408,10 @@ class Graph(Widget):
         self.grouper = grouper
         self.metrics = metrics or []
         self.axistype = "time"
+        # rickshaw default behavior is to stack metrics, but most of our graphs
+        # use line renderer with unstacked metrics, so by default unstack
+        # metrics, callers will override it if they want
+        self.stack = False
         for key, value in kwargs.items():
             setattr(self, key, value)
 
