@@ -495,10 +495,10 @@ def kcache_getstatdata_sample(mode):
         biggestsum("system_time"),
         biggestsum("minflts"),
         biggestsum("majflts"),
-        biggestsum("nswaps"),
-        biggestsum("msgsnds"),
-        biggestsum("msgrcvs"),
-        biggestsum("nsignals"),
+        biggestsum("nswaps"),    # not maintained on GNU/Linux
+        biggestsum("msgsnds"),   # not maintained on GNU/Linux
+        biggestsum("msgrcvs"),   # not maintained on GNU/Linux
+        biggestsum("nsignals"),  # not maintained on GNU/Linux
         biggestsum("nvcsws"),
         biggestsum("nivcsws")
         ])
