@@ -40,7 +40,8 @@ class IndexSuggestionHandler(AuthHandler):
             AND queryid IN :queryids
         """), srvid=srvid, queryids=tuple(queryids)))
         # Create all possible indexes for this qual
-        hypo_version = self.has_extension(srvid, "hypopg", database=database)
+        hypo_version = self.has_extension_version(srvid, "hypopg",
+                                                  database=database)
         hypoplans = {}
         indbyname = {}
         inderrors = {}
@@ -144,8 +145,10 @@ class Wizard(Widget):
         values['metrics'] = []
         values['type'] = 'wizard'
         values['datasource'] = 'wizard'
-        hypover = handler.has_extension(parms["server"], "hypopg", database=parms["database"])
-        qsver = handler.has_extension(parms["server"], "pg_qualstats")
+        hypover = handler.has_extension_version(parms["server"],
+                                                "hypopg",
+                                                database=parms["database"])
+        qsver = handler.has_extension_version(parms["server"], "pg_qualstats")
         values['has_hypopg'] = hypover and hypover >= '0.0.3'
         values['has_qualstats'] = qsver and qsver >= '0.0.7'
         values['server'] = parms["server"]

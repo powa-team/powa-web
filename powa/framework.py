@@ -222,7 +222,39 @@ class BaseHandler(RequestHandler):
         self._connections[url] = engine
         return engine
 
-    def has_extension(self, srvid, extname, database=None):
+    def has_extension(self, srvid, extname):
+        """
+        Returns whether the specific extensions is supposed to be installed, in
+        any version, on the specific server for the default database.  This
+        function is less expensive than has_extension_version for remote
+        servers, as we're only checking for the metadata stored in the
+        powa_functions table of the dedicated repository server instead of
+        connecting to the remote server.  It also makes it possible to handle
+        more widgets in the UI if the remotes servers are not accessible from
+        the powa-web server.  This assumes that "module" is the name of the
+        underlying extension.
+        """
+        if (srvid == '0' or srvid == 0):
+            # if local server, fallback to the full test, as it won't be more
+            # expensive
+            return (self.has_extension_version(srvid, extname) is not None)
+        else:
+            try:
+                # Look for at least an enabled snapshot function.  If a module
+                # provides multiple snapshot functions and only a subset is
+                # activated, let's assume that the extension is available.
+                return self.execute(text("""
+                SELECT COUNT(*) != 0
+                FROM public.powa_functions
+                WHERE srvid = :srvid
+                AND module = :extname
+                AND operation = 'snapshot'
+                AND enabled
+                """), params={"srvid": srvid, "extname": extname}).scalar()
+            except Exception:
+                return False
+
+    def has_extension_version(self, srvid, extname, database=None):
         """
         Returns the version of the specific extension on the specific server
         and database, or None if the extension is not installed.
@@ -231,7 +263,7 @@ class BaseHandler(RequestHandler):
             extversion = self.execute(text(
                 """
                 SELECT extversion
-                FROM pg_extension
+                FROM pg_catalog.pg_extension
                 WHERE extname = :extname
                 LIMIT 1
                 """), srvid=srvid, database=database,

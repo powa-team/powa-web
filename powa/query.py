@@ -225,7 +225,8 @@ class QueryIndexes(ContentWidget):
         indexes = {}
         for qual in optimizable:
             indexes[qual.where_clause] = possible_indexes(qual)
-        hypo_version = self.has_extension(srvid, "hypopg", database=database)
+        hypo_version = self.has_extension_version(srvid, "hypopg",
+                                                  database=database)
         if indexes and hypo_version and hypo_version >= "0.0.3":
             # identify indexes
             # create them
