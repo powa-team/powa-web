@@ -11,6 +11,18 @@ from powa.collector import CollectorServerDetail
 import json
 
 
+def get_pgts_query(handler, restrict_database=False):
+    # avoid pg errors if the extension hasn't been installed, or is not
+    # installed in version 2.0.0 or more.  We check for local installation
+    # only, as query will look in local table.  If the extension isn't setup
+    # remotely, the check will be pretty quick.
+    pgts = handler.has_extension_version('0', "pg_track_settings")
+    if ((pgts is None) or (pgts.split('.')[0] < '2')):
+        return None
+
+    return get_config_changes(restrict_database)
+
+
 class ConfigChangesGlobal(MetricGroupDef):
     name = "Config Changes"
     data_url = r"/server/(\d+)/config_changes"
@@ -23,13 +35,7 @@ class ConfigChangesGlobal(MetricGroupDef):
 
     @property
     def query(self):
-        # avoid pg errors if the extension hasn't been installed.  We check for
-        # local installation only, as query will look in local table.  If the
-        # extension isn't setup remotely, the check will be pretty quick.
-        if (not self.has_extension('0', "pg_track_settings")):
-            return None
-
-        return get_config_changes()
+        return get_pgts_query(self)
 
 
 class ConfigChangesDatabase(MetricGroupDef):
@@ -44,13 +50,7 @@ class ConfigChangesDatabase(MetricGroupDef):
 
     @property
     def query(self):
-        # avoid pg errors if the extension hasn't been installed.  We check for
-        # local installation only, as query will look in local table.  If the
-        # extension isn't setup remotely, the check will be pretty quick.
-        if (not self.has_extension('0', "pg_track_settings")):
-            return None
-
-        return get_config_changes(True)
+        return get_pgts_query(self, True)
 
 
 class ConfigChangesQuery(MetricGroupDef):
@@ -65,13 +65,7 @@ class ConfigChangesQuery(MetricGroupDef):
 
     @property
     def query(self):
-        # avoid pg errors if the extension hasn't been installed.  We check for
-        # local installation only, as query will look in local table.  If the
-        # extension isn't setup remotely, the check will be pretty quick.
-        if (not self.has_extension('0', "pg_track_settings")):
-            return None
-
-        return get_config_changes(True)
+        return get_pgts_query(self, True)
 
 
 class ServersErrors(ContentWidget):
