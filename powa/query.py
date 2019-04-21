@@ -40,39 +40,79 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     name = "query_overview"
     xaxis = "ts"
     data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)"
-    rows = MetricDef(label="#Rows")
-    calls = MetricDef(label="#Calls")
-    shared_blks_read = MetricDef(label="Shared read", type="sizerate")
-    shared_blks_hit = MetricDef(label="Shared hit", type="sizerate")
-    shared_blks_dirtied = MetricDef(label="Shared dirtied", type="sizerate")
-    shared_blks_written = MetricDef(label="Shared written", type="sizerate")
-    local_blks_read = MetricDef(label="Local read", type="sizerate")
-    local_blks_hit = MetricDef(label="Local hit", type="sizerate")
-    local_blks_dirtied = MetricDef(label="Local dirtied", type="sizerate")
-    local_blks_written = MetricDef(label="Local written", type="sizerate")
-    temp_blks_read = MetricDef(label="Temp read", type="sizerate")
-    temp_blks_written = MetricDef(label="Temp written", type="sizerate")
-    blk_read_time = MetricDef(label="Read time", type="duration")
-    blk_write_time = MetricDef(label="Write time", type="duration")
-    avg_runtime = MetricDef(label="Avg runtime", type="duration")
-    hit_ratio = MetricDef(label="Shared buffers hit ratio", type="percent")
-    miss_ratio = MetricDef(label="Shared buffers miss ratio", type="percent")
+    rows = MetricDef(label="#Rows",
+                     desc="Sum of the number of rows returned by the query")
+    calls = MetricDef(label="#Calls",
+                      desc="Number of time the query has been executed")
+    shared_blks_read = MetricDef(label="Shared read", type="sizerate",
+                                 desc="Amount of data found in OS cache or"
+                                      " read from disk")
+    shared_blks_hit = MetricDef(label="Shared hit", type="sizerate",
+                                desc="Amount of data found in shared buffers")
+    shared_blks_dirtied = MetricDef(label="Shared dirtied", type="sizerate",
+                                    desc="Amount of data modified in shared"
+                                         " buffers")
+    shared_blks_written = MetricDef(label="Shared written", type="sizerate",
+                                    desc="Amount of shared buffers written to"
+                                         " disk")
+    local_blks_read = MetricDef(label="Local read", type="sizerate",
+                                desc="Amount of local buffers found from OS"
+                                     " cache or read from disk")
+    local_blks_hit = MetricDef(label="Local hit", type="sizerate",
+                                desc="Amount of local buffers found in shared"
+                                     " buffers")
+    local_blks_dirtied = MetricDef(label="Local dirtied", type="sizerate",
+                                   desc="Amount of data modified in local"
+                                        " buffers")
+    local_blks_written = MetricDef(label="Local written", type="sizerate",
+                                   desc="Amount of local buffers written to"
+                                        " disk")
+    temp_blks_read = MetricDef(label="Temp read", type="sizerate",
+                               desc="Amount of data read from temporary file")
+    temp_blks_written = MetricDef(label="Temp written", type="sizerate",
+                                  desc="Amount of data written to temporary"
+                                       " file")
+    blk_read_time = MetricDef(label="Read time", type="duration",
+                              desc="Time spent reading data")
+    blk_write_time = MetricDef(label="Write time", type="duration",
+                               desc="Time spent writing data")
+    avg_runtime = MetricDef(label="Avg runtime", type="duration",
+                            desc="Average query duration")
+    hit_ratio = MetricDef(label="Shared buffers hit ratio", type="percent",
+                          desc="Percentage of data found in shared buffers")
+    miss_ratio = MetricDef(label="Shared buffers miss ratio", type="percent",
+                           desc="Percentage of data found in OS cache or read"
+                                " from disk")
 
-    reads = MetricDef(label="Physical read", type="sizerate")
-    writes = MetricDef(label="Physical writes", type="sizerate")
-    user_time = MetricDef(label="CPU user time / Query time", type="percent")
-    system_time = MetricDef(label="CPU system time / Query time", type="percent")
-    other_time = MetricDef(label="CPU other time / Query time", type="percent")
-    sys_hit_ratio = MetricDef(label="System cache hit ratio", type="percent")
-    disk_hit_ratio = MetricDef(label="Disk hit ratio", type="percent")
-    minflts = MetricDef(label="Soft page faults", type="number")
-    majflts = MetricDef(label="Hard page faults", type="number")
-    nswaps = MetricDef(label="Swaps", type="number")
-    msgsnds = MetricDef(label="IPC messages sent", type="number")
-    msgrcvs = MetricDef(label="IPC messages received", type="number")
-    nsignals = MetricDef(label="Signals received", type="number")
-    nvcsws = MetricDef(label="Voluntary context switches", type="number")
-    nivcsws = MetricDef(label="Involuntary context switches", type="number")
+    reads = MetricDef(label="Physical read", type="sizerate",
+                      desc="Amount of data read from disk")
+    writes = MetricDef(label="Physical writes", type="sizerate",
+                       desc="Amount of data written to disk")
+    user_time = MetricDef(label="CPU user time / Query time", type="percent",
+                          desc="CPU time spent executing the query")
+    system_time = MetricDef(label="CPU system time / Query time",
+                            type="percent",
+                            desc="CPU time used by the OS")
+    other_time = MetricDef(label="CPU other time / Query time", type="percent",
+                           desc="Time spent otherwise")
+    sys_hit_ratio = MetricDef(label="System cache hit ratio", type="percent",
+                              desc="Percentage of data found in OS cache")
+    disk_hit_ratio = MetricDef(label="Disk hit ratio", type="percent",
+                               desc="Percentage of data read from disk")
+    minflts = MetricDef(label="Soft page faults", type="number",
+                        desc="Memory pages not found in the processor's MMU")
+    majflts = MetricDef(label="Hard page faults", type="number",
+                        desc="Memory pages not found in memory and loaded"
+                             " from storage")
+    # not maintained on GNU/Linux, and not available on Windows
+    # nswaps = MetricDef(label="Swaps", type="number")
+    # msgsnds = MetricDef(label="IPC messages sent", type="number")
+    # msgrcvs = MetricDef(label="IPC messages received", type="number")
+    # nsignals = MetricDef(label="Signals received", type="number")
+    nvcsws = MetricDef(label="Voluntary context switches", type="number",
+                       desc="Number of voluntary context switches")
+    nivcsws = MetricDef(label="Involuntary context switches", type="number",
+                        desc="Number of involuntary context switches")
 
     @classmethod
     def _get_metrics(cls, handler, **params):
@@ -80,8 +120,9 @@ class QueryOverviewMetricGroup(MetricGroupDef):
         if not handler.has_extension(params["server"], "pg_stat_kcache"):
             for key in ("reads", "writes", "user_time", "system_time",
                         "other_time", "sys_hit_ratio", "disk_hit_ratio",
-                        "minflts", "majflts", "nswaps", "msgsnds", "msgrcvs",
-                        "nsignals", "nvcsws", "nivcsws"):
+                        "minflts", "majflts",
+                        # "nswaps", "msgsnds", "msgrcvs", "nsignals",
+                        "nvcsws", "nivcsws"):
                 base.pop(key)
         else:
             base.pop("miss_ratio")
@@ -162,10 +203,10 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                 per_sec(kc.writes),
                 per_sec(kc.minflts),
                 per_sec(kc.majflts),
-                per_sec(kc.nswaps),
-                per_sec(kc.msgsnds),
-                per_sec(kc.msgrcvs),
-                per_sec(kc.nsignals),
+                # per_sec(kc.nswaps),
+                # per_sec(kc.msgsnds),
+                # per_sec(kc.msgrcvs),
+                # per_sec(kc.nsignals),
                 per_sec(kc.nvcsws),
                 per_sec(kc.nivcsws),
                 total_time_percent(kc.user_time * 1000).label("user_time"),
@@ -308,18 +349,37 @@ class WaitsQueryOverviewMetricGroup(MetricGroupDef):
     xaxis = "ts"
     data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)/wait_events_sampled"
     # pg 9.6 only metrics
-    count_lwlocknamed = MetricDef(label="Lightweight Named")
-    count_lwlocktranche = MetricDef(label="Lightweight Tranche")
+    count_lwlocknamed = MetricDef(label="Lightweight Named",
+                                  desc="Number of named lightweight lock"
+                                       " wait events")
+    count_lwlocktranche = MetricDef(label="Lightweight Tranche",
+                                    desc="Number of lightweight lock tranche"
+                                         " wait events")
     # pg 10+ metrics
-    count_lwlock = MetricDef(label="Lightweight Lock")
-    count_lock = MetricDef(label="Lock")
-    count_bufferpin = MetricDef(label="Buffer pin")
-    count_activity = MetricDef(label="Activity")
-    count_client = MetricDef(label="Client")
-    count_extension = MetricDef(label="Extension")
-    count_ipc = MetricDef(label="IPC")
-    count_timeout = MetricDef(label="Timeout")
-    count_io = MetricDef(label="IO")
+    count_lwlock = MetricDef(label="Lightweight Lock",
+                             desc="Number of wait events due to lightweight"
+                                  " locks")
+    count_lock = MetricDef(label="Lock",
+                           desc="Number of wait events due to heavyweight"
+                                " locks")
+    count_bufferpin = MetricDef(label="Buffer pin",
+                                desc="Number of wait events due to buffer pin")
+    count_activity = MetricDef(label="Activity",
+                               desc="Number of wait events due to postgres"
+                                    " internal processes activity")
+    count_client = MetricDef(label="Client",
+                             desc="Number of wait events due to client"
+                                  " activity")
+    count_extension = MetricDef(label="Extension",
+                                desc="Number wait events due to third-party"
+                                " extensions")
+    count_ipc = MetricDef(label="IPC",
+                          desc="Number of wait events due to inter-process"
+                               "communication")
+    count_timeout = MetricDef(label="Timeout",
+                              desc="Number of wait events due to timeouts")
+    count_io = MetricDef(label="IO",
+                         desc="Number of wait events due to IO operations")
 
     def prepare(self):
         if not self.has_extension(self.path_args[0], "pg_wait_sampling"):
@@ -549,10 +609,10 @@ class QueryOverview(DashboardPage):
                                 url="https://powa.readthedocs.io/en/latest/stats_extensions/pg_stat_kcache.html",
                                 metrics=[QueryOverviewMetricGroup.majflts,
                                          QueryOverviewMetricGroup.minflts,
-                                         QueryOverviewMetricGroup.nswaps,
-                                         QueryOverviewMetricGroup.msgsnds,
-                                         QueryOverviewMetricGroup.msgrcvs,
-                                         QueryOverviewMetricGroup.nsignals,
+                                         # QueryOverviewMetricGroup.nswaps,
+                                         # QueryOverviewMetricGroup.msgsnds,
+                                         # QueryOverviewMetricGroup.msgrcvs,
+                                         # QueryOverviewMetricGroup.nsignals,
                                          QueryOverviewMetricGroup.nvcsws,
                                          QueryOverviewMetricGroup.nivcsws])]
             dashes.append(Dashboard("System resources", [sys_graphs]))

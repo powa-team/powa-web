@@ -8,9 +8,10 @@ define([
         'powa/utils/duration',
         'powa/utils/size',
         'powa/rickshaw/Rickshaw.Graph.DragZoom',
-        'powa/utils/message'
+        'powa/utils/message',
+        'tippy'
 ],
-        function(Backbone, d3, Rickshaw, WidgetView, Graph, template, duration, size, DragZoom, Message){
+        function(Backbone, d3, Rickshaw, WidgetView, Graph, template, duration, size, DragZoom, Message, tippy){
     var registry = {};
     var makeInstance = function(options){
         return new registry[options.model.get("renderer") || "line"](options);
@@ -108,11 +109,14 @@ define([
                 // TODO: split this in subclasses for each type
                 // of graph
                 var renderer = this.model.get("renderer") || "line";
-                this.$el.html(this.template(this.model.toJSON()));
+                data = this.model.toJSON()
+                data["cid"] = this.cid
+                this.$el.html(this.template(data));
                 var url = this.model.get("url");
                 if (url != undefined) {
                   var title = this.model.get("title");
-                  this.$el.find(".title").append('<a href="' + url + '"'
+                  this.title = title
+                  this.$el.find(".title").append(' <a href="' + url + '"'
                     + 'target="_blank">'
                     + '<i class="fi-link" title="See the documentation"></i>'
                     + '</a>');
@@ -154,14 +158,38 @@ define([
                 });
             },
 
+            initGraphHelp: function() {
+              labels = '';
+              // retrieve the description of each metrics
+              this.model.get("metrics").each(function(metric, index) {
+                labels ='<tr>'
+                  + '<td><b>' + metric.get("label") + '</b></td>'
+                  + '<td>'
+                  + metric.get("desc")
+                  + '</td></td>'
+                  + labels;
+              });
+              help = '<table>'
+                + labels
+                + '</table class="stack">'
+              // add the hover info
+              tippy('#' + this.cid, {
+                content: help,
+                arrow: true,
+                arrowType: 'round',
+                maxWidth: '100%',
+                theme: 'translucent',
+              });
+            },
+
             initGoodies: function(){
                 this.initAnnotator();
                 this.legend = new Rickshaw.Graph.Legend( {
                     graph: this.graph,
                     element: this.$el.find('.graph_legend').get(0)
                 });
+                this.initGraphHelp();
             },
-
 
             nodata: function(){
                 this.$nodata_el.width(this.$el.innerWidth());

@@ -14,6 +14,8 @@ require.config({
     tpl: "../bower_components/requirejs-tpl/tpl",
     rickshaw: "../bower_components/rickshaw/rickshaw",
     highlight: "../libs/highlight/highlight",
+    popper: "../libs/popper.js/popper",
+    tippy: "../libs/tippy.js/index.all",
     underscore: "../bower_components/underscore/underscore",
     backgrid: "../bower_components/backgrid/lib/backgrid",
     spin: "../bower_components/spin.js/spin",

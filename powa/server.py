@@ -135,29 +135,44 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
     name = "all_databases"
     xaxis = "ts"
     data_url = r"/server/(\d+)/metrics/databases_globals/"
-    avg_runtime = MetricDef(label="Avg runtime", type="duration")
-    calls = MetricDef(label="Queries per sec", type="number")
-    load = MetricDef(label="Runtime per sec", type="duration")
-    total_blks_hit = MetricDef(label="Total hit", type="sizerate")
-    total_blks_read = MetricDef(label="Total read", type="sizerate")
+    avg_runtime = MetricDef(label="Avg runtime", type="duration",
+                            desc="Average query duration")
+    calls = MetricDef(label="Queries per sec", type="number",
+                      desc="Number of time the query has been executed")
+    load = MetricDef(label="Runtime per sec", type="duration",
+                     desc="Total duration of queries executed")
+    total_blks_hit = MetricDef(label="Total hit", type="sizerate",
+                               desc="Amount of data found in shared buffers")
+    total_blks_read = MetricDef(label="Total read", type="sizerate",
+                                desc="Amount of data found in OS cache or"
+                                     " read from disk")
 
-    total_sys_hit = MetricDef(label="Total system cache hit", type="sizerate")
-    total_disk_read = MetricDef(label="Total disk read", type="sizerate")
-    minflts = MetricDef(label="Soft page faults", type="number")
-    majflts = MetricDef(label="Hard page faults", type="number")
-    nswaps = MetricDef(label="Swaps", type="number")
-    msgsnds = MetricDef(label="IPC messages sent", type="number")
-    msgrcvs = MetricDef(label="IPC messages received", type="number")
-    nsignals = MetricDef(label="Signals received", type="number")
-    nvcsws = MetricDef(label="Voluntary context switches", type="number")
-    nivcsws = MetricDef(label="Involuntary context switches", type="number")
+    total_sys_hit = MetricDef(label="Total system cache hit", type="sizerate",
+                              desc="Amount of data found in OS cache")
+    total_disk_read = MetricDef(label="Total disk read", type="sizerate",
+                                desc="Amount of data read from disk")
+    minflts = MetricDef(label="Soft page faults", type="number",
+                        desc="Memory pages not found in the processor's MMU")
+    majflts = MetricDef(label="Hard page faults", type="number",
+                        desc="Memory pages not found in memory and loaded"
+                             " from storage")
+    # not maintained on GNU/Linux, and not available on Windows
+    # nswaps = MetricDef(label="Swaps", type="number")
+    # msgsnds = MetricDef(label="IPC messages sent", type="number")
+    # msgrcvs = MetricDef(label="IPC messages received", type="number")
+    # nsignals = MetricDef(label="Signals received", type="number")
+    nvcsws = MetricDef(label="Voluntary context switches", type="number",
+                       desc="Number of voluntary context switches")
+    nivcsws = MetricDef(label="Involuntary context switches", type="number",
+                        desc="Number of involuntary context switches")
 
     @classmethod
     def _get_metrics(cls, handler, **params):
         base = cls.metrics.copy()
         if not handler.has_extension(params["server"], "pg_stat_kcache"):
             for key in ("total_sys_hit", "total_disk_read", "minflts",
-                        "majflts", "nswaps", "msgsnds", "msgrcvs", "nsignals",
+                        "majflts",
+                        # "nswaps", "msgsnds", "msgrcvs", "nsignals",
                         "nvcsws", "nivcsws"):
                 base.pop(key)
         else:
@@ -208,15 +223,16 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
                                ).label("total_disk_read")
             minflts = sum_per_sec(kc.minflts)
             majflts = sum_per_sec(kc.majflts)
-            nswaps = sum_per_sec(kc.nswaps)
-            msgsnds = sum_per_sec(kc.msgsnds)
-            msgrcvs = sum_per_sec(kc.msgrcvs)
-            nsignals = sum_per_sec(kc.nsignals)
+            # nswaps = sum_per_sec(kc.nswaps)
+            # msgsnds = sum_per_sec(kc.msgsnds)
+            # msgrcvs = sum_per_sec(kc.msgrcvs)
+            # nsignals = sum_per_sec(kc.nsignals)
             nvcsws = sum_per_sec(kc.nvcsws)
             nivcsws = sum_per_sec(kc.nivcsws)
 
             cols.extend([total_sys_hit, total_disk_read, minflts, majflts,
-                         nswaps, msgsnds, msgrcvs, nsignals, nvcsws, nivcsws])
+                         # nswaps, msgsnds, msgrcvs, nsignals,
+                         nvcsws, nivcsws])
             from_clause = from_clause.join(
                 kcache_query,
                 kcache_query.c.ts == c.ts)
@@ -235,18 +251,37 @@ class GlobalWaitsMetricGroup(MetricGroupDef):
     xaxis = "ts"
     data_url = r"/server/(\d+)/metrics/databases_waits/"
     # pg 9.6 only metrics
-    count_lwlocknamed = MetricDef(label="Lightweight Named")
-    count_lwlocktranche = MetricDef(label="Lightweight Tranche")
+    count_lwlocknamed = MetricDef(label="Lightweight Named",
+                                  desc="Number of named lightweight lock"
+                                       " wait events")
+    count_lwlocktranche = MetricDef(label="Lightweight Tranche",
+                                    desc="Number of lightweight lock tranche"
+                                         " wait events")
     # pg 10+ metrics
-    count_lwlock = MetricDef(label="Lightweight Lock")
-    count_lock = MetricDef(label="Lock")
-    count_bufferpin = MetricDef(label="Buffer pin")
-    count_activity = MetricDef(label="Activity")
-    count_client = MetricDef(label="Client")
-    count_extension = MetricDef(label="Extension")
-    count_ipc = MetricDef(label="IPC")
-    count_timeout = MetricDef(label="Timeout")
-    count_io = MetricDef(label="IO")
+    count_lwlock = MetricDef(label="Lightweight Lock",
+                             desc="Number of wait events due to lightweight"
+                                  " locks")
+    count_lock = MetricDef(label="Lock",
+                           desc="Number of wait events due to heavyweight"
+                                " locks")
+    count_bufferpin = MetricDef(label="Buffer pin",
+                                desc="Number of wait events due to buffer pin")
+    count_activity = MetricDef(label="Activity",
+                               desc="Number of wait events due to postgres"
+                                    " internal processes activity")
+    count_client = MetricDef(label="Client",
+                             desc="Number of wait events due to client"
+                                  " activity")
+    count_extension = MetricDef(label="Extension",
+                                desc="Number wait events due to third-party"
+                                " extensions")
+    count_ipc = MetricDef(label="IPC",
+                          desc="Number of wait events due to inter-process"
+                               "communication")
+    count_timeout = MetricDef(label="Timeout",
+                              desc="Number of wait events due to timeouts")
+    count_io = MetricDef(label="IO",
+                         desc="Number of wait events due to IO operations")
 
     def prepare(self):
         if not self.has_extension(self.path_args[0], "pg_wait_sampling"):
@@ -332,10 +367,10 @@ class ServerOverview(DashboardPage):
                                 url="https://powa.readthedocs.io/en/latest/stats_extensions/pg_stat_kcache.html",
                                 metrics=[GlobalDatabasesMetricGroup.majflts,
                                          GlobalDatabasesMetricGroup.minflts,
-                                         GlobalDatabasesMetricGroup.nswaps,
-                                         GlobalDatabasesMetricGroup.msgsnds,
-                                         GlobalDatabasesMetricGroup.msgrcvs,
-                                         GlobalDatabasesMetricGroup.nsignals,
+                                         # GlobalDatabasesMetricGroup.nswaps,
+                                         # GlobalDatabasesMetricGroup.msgsnds,
+                                         # GlobalDatabasesMetricGroup.msgrcvs,
+                                         # GlobalDatabasesMetricGroup.nsignals,
                                          GlobalDatabasesMetricGroup.nvcsws,
                                          GlobalDatabasesMetricGroup.nivcsws])]
 

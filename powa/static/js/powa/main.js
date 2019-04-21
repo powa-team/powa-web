@@ -12,6 +12,8 @@ require(['jquery',
         'powa/utils/timeurls',
         'powa/utils/message',
         'highlight',
+        'popper',
+        'tippy',
         'powa/views/LineGraphView',
         'powa/views/BarGraphView',
         'powa/views/PieGraphView',
@@ -37,7 +39,9 @@ require(['jquery',
             ContentSource,
             timeurls,
             Message,
-            highlight) {
+            highlight,
+            popper,
+            tippy) {
 
     $(function(){
 

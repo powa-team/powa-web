@@ -11,6 +11,8 @@
   - Display configuration changes and PostgreSQL restart on graphs when
     pg_track_settings is configured (Julien Rouhaud)
   - Fix longstanding bug in graph hover boxes position (Julien Rouhaud)
+  - Provide metric definitions and link to the documentation on the graph
+    (Julien Rouhaud)
 
 3.2.1(WIP):
   - Add pg_wait_sampling in the config extension list (Julien Rouhaud, thanks

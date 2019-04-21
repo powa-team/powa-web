@@ -394,10 +394,11 @@ BASE_QUERY_KCACHE_SAMPLE_DB = text("""
                     sum(km.system_time) AS system_time,
                     sum(km.minflts) AS minflts,
                     sum(km.majflts) AS majflts,
-                    sum(km.nswaps) AS nswaps,
-                    sum(km.msgsnds) AS msgsnds,
-                    sum(km.msgrcvs) AS msgrcvs,
-                    sum(km.nsignals) AS nsignals,
+                    -- not maintained on GNU/Linux, and not available on Windows
+                    -- sum(km.nswaps) AS nswaps,
+                    -- sum(km.msgsnds) AS msgsnds,
+                    -- sum(km.msgrcvs) AS msgrcvs,
+                    -- sum(km.nsignals) AS nsignals,
                     sum(km.nvcsws) AS nvcsws,
                     sum(km.nivcsws) AS nivcsws
                     FROM (
@@ -442,10 +443,11 @@ BASE_QUERY_KCACHE_SAMPLE = text("""
                     sum(km.system_time) AS system_time,
                     sum(km.minflts) AS minflts,
                     sum(km.majflts) AS majflts,
-                    sum(km.nswaps) AS nswaps,
-                    sum(km.msgsnds) AS msgsnds,
-                    sum(km.msgrcvs) AS msgrcvs,
-                    sum(km.nsignals) AS nsignals,
+                    -- not maintained on GNU/Linux, and not available on Windows
+                    -- sum(km.nswaps) AS nswaps,
+                    -- sum(km.msgsnds) AS msgsnds,
+                    -- sum(km.msgrcvs) AS msgrcvs,
+                    -- sum(km.nsignals) AS nsignals,
                     sum(km.nvcsws) AS nvcsws,
                     sum(km.nivcsws) AS nivcsws
                     FROM (
@@ -495,10 +497,11 @@ def kcache_getstatdata_sample(mode):
         biggestsum("system_time"),
         biggestsum("minflts"),
         biggestsum("majflts"),
-        biggestsum("nswaps"),    # not maintained on GNU/Linux
-        biggestsum("msgsnds"),   # not maintained on GNU/Linux
-        biggestsum("msgrcvs"),   # not maintained on GNU/Linux
-        biggestsum("nsignals"),  # not maintained on GNU/Linux
+        # not maintained on GNU/Linux, and not available on Windows
+        # biggestsum("nswaps"),
+        # biggestsum("msgsnds"),
+        # biggestsum("msgrcvs"),
+        # biggestsum("nsignals"),
         biggestsum("nvcsws"),
         biggestsum("nivcsws")
         ])

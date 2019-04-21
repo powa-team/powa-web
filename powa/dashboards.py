@@ -179,6 +179,7 @@ class Metric(JSONizable):
         self.label = label or name.title()
         self.yaxis = yaxis or name
         self._group = None
+        self.desc = "No description provided."
         for key, value in kwargs.items():
             setattr(self, key, value)
 
