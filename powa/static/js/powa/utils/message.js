@@ -9,7 +9,10 @@ define([], function(){
         $(document).foundation('alert', 'reflow');
       },
 
-      format_change: function(change) {
+      format_config_change: function(change) {
+        var when = '<br /> detect on '
+          + moment.unix(change["ts"]).format("lll");
+
         if (change["kind"] == "global") {
           data = change["data"];
           none = '<i class="fi-prohibited"></i>';
@@ -19,6 +22,7 @@ define([], function(){
             + '<b>' + ((data["prev_is_dropped"]) ? none : data["prev_val"]) + '</b>'
             + ' to '
             + '<b>' + ((data["is_dropped"]) ? none : data["new_val"]) + '</b>'
+            + when;
 
           return txt;
         } else if (change["kind"] == "rds") {
@@ -40,11 +44,13 @@ define([], function(){
             + '<b>' + ((data["is_dropped"]) ? none : data["new_val"]) + '</b>'
             + db
             + role
+            + when;
 
           return txt;
         } else if (change["kind"] == "reboot") {
           return '<i class="fi-alert"></i>'
-            + '<b>Instance restarted!</b>';
+            + '<b> Instance restarted!</b>'
+            + when;
         } else {
           return '<i class="fi-alert"></i> Unknown event "'
             + change["kind"]+ '":<br />'

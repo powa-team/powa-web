@@ -258,7 +258,7 @@ define([
                 // display each new event
                 $.each(changes, function(i) {
                   change = changes[i];
-                  txt = Message.format_change(change);
+                  txt = Message.format_config_change(change);
                   self.annotator.add(change["ts"], txt);
                 })
                 this.annotator.update();
