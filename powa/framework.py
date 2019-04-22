@@ -115,10 +115,15 @@ class BaseHandler(RequestHandler):
         return [int(part) for part in version.split('.')]
 
     def get_pg_version_num(self, srvid=None, **kwargs):
-        return int(self.execute(text(
-            """
-            SELECT setting FROM pg_settings WHERE name = 'server_version_num'
-            """), srvid=srvid, **kwargs).scalar())
+        try:
+            return int(self.execute(text(
+                """
+                SELECT setting
+                FROM pg_settings
+                WHERE name = 'server_version_num'
+                """), srvid=srvid, **kwargs).scalar())
+        except Exception:
+            return None
 
     def get_databases(self, srvid):
         """
