@@ -24,24 +24,39 @@ function(Backbone, WidgetView, TabContainer, template){
             this.$el.html(this.template(this.model.toJSON()));
             this.$tabtitles = this.$el.find(".tabs");
             this.$tabs = this.$el.find(".tabs-content");
+
             this.model.get("tabs").each(function(elem, index){
                 var tabtitle = $("<li>").addClass("tab-title").attr("data-tabid", index);
                 tabtitle.append($("<a>").attr("href", "#tab" + index).html(elem.get("title")));
                 this.$tabtitles.append(tabtitle);
                 var tabcontent = $("<div>").addClass("content").attr("id", "tab" + index);
+
                 if(index == 0){
                     tabtitle.addClass("active");
                     tabcontent.addClass("active");
                 }
 
                 tabcontent.append(this.tabs[index].render().el);
+
+                /* render the graphs on this tab right now.  This is not ideal
+                 * as it slow donws inital display, but it avoids to render
+                 * them at tab toggle time, which breaks the graph preview
+                 * when a selection is done.
+                 */
+                tabcontent.show();
+
+                /*
+                 * The show() method will force a "display: block" style on the
+                 * DOM element.  Override it with "inline-block" so elements
+                 * are accumulated horizontally rather vertically, so the div
+                 * keep its expected height.  The underlying CSS will take care
+                 * of correct placement.
+                 */
+                tabcontent.attr('style', 'display: inline-block');
+
                 this.$tabs.append(tabcontent);
             }, this);
             this.postRender();
-            this.$el.find(".tabs").on("toggled", function (event, tab){
-                var widget = self.tabs[parseInt(tab.attr("data-tabid"), 10)];
-                widget.show();
-            });
             return this;
         },
 

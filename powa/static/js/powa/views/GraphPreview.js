@@ -50,9 +50,17 @@ define(["rickshaw", "d3"], function(rickshaw, d3){
                         self.rendered = false;
                         self.range = graphRange;
                     }
-                    if(!self.rendered){
-                        graph.render();
-                    }
+
+                    /*
+                     * We don't render the graph here, as we want to preserve
+                     * the preview as it was before applying a zoom
+                     */
+                    //if(!self.rendered){
+                    //    graph.render();
+                    //}
+
+                    // but we render the widget itself, to show the selected
+                    // interval
                     self.render();
                 });
 

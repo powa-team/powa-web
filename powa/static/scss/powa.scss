@@ -207,3 +207,18 @@ pre.sql {
 .ko {
     color: #f01010;
 }
+
+/*
+ * ugly hack to make tab containing widget works, as the corresponding div get
+ * overloaded with incompatible style attributes.
+ */
+.tabs-content {
+    .content {
+        margin-left: -1000%;
+        display: none;
+    }
+    .active {
+        margin-left: 0;
+        display: block
+    }
+}

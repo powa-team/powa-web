@@ -13,6 +13,7 @@
   - Fix longstanding bug in graph hover boxes position (Julien Rouhaud)
   - Provide metric definitions and link to the documentation on the graph
     (Julien Rouhaud)
+  - Fix the graph preview selection (Julien Rouhaud)
 
 3.2.1(WIP):
   - Add pg_wait_sampling in the config extension list (Julien Rouhaud, thanks
