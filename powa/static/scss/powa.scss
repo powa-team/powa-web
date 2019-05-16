@@ -214,11 +214,24 @@ pre.sql {
  */
 .tabs-content {
     .content {
-        margin-left: -1000%;
+        margin-top: -10000%;
         display: none;
+        height: 1px;
     }
-    .active {
-        margin-left: 0;
-        display: block
+    .content.active {
+        //margin-left: inherit;
+        margin-top: 0;
+        display: block;
+        height: auto;
     }
+}
+
+/* ugly hack also needed for the annotations to display properly */
+.annotation .content {
+    height: auto;
+    margin-top: 0;
+}
+.annotation.active {
+    height: 6px;
+    margin-top: 0;
 }

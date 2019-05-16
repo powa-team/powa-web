@@ -8793,9 +8793,20 @@ pre.sql {
  * overloaded with incompatible style attributes.
  */
 .tabs-content .content {
-  margin-left: -1000%;
-  display: none; }
+  margin-top: -10000%;
+  display: none;
+  height: 1px; }
 
-.tabs-content .active {
-  margin-left: 0;
-  display: block; }
+.tabs-content .content.active {
+  margin-top: 0;
+  display: block;
+  height: auto; }
+
+/* ugly hack also needed for the annotations to display properly */
+.annotation .content {
+  height: auto;
+  margin-top: 0; }
+
+.annotation.active {
+  height: 6px;
+  margin-top: 0; }
