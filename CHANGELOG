@@ -1,4 +1,4 @@
-4.0.0(WIP):
+4.0.0(Beta1):
   - Make the UI compatible with remote-mode setup (Julien Rouhaud)
   - Query and display powa-collector information (Julien Rouhaud)
   - Expose system cache hit / disk read metrics on global and per-database
@@ -14,8 +14,6 @@
   - Provide metric definitions and link to the documentation on the graph
     (Julien Rouhaud)
   - Fix the graph preview selection (Julien Rouhaud)
-
-3.2.1(WIP):
   - Add pg_wait_sampling in the config extension list (Julien Rouhaud, thanks
     to Adrien Nayrat for the report)
   - Don't try to detect if a hypotetical index would be used if no suitable
