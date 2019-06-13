@@ -1,4 +1,4 @@
-3.2.1(WIP):
+3.2.1:
   - Add pg_wait_sampling in the config extension list (Julien Rouhaud, thanks
     to Adrien Nayrat for the report)
   - Don't try to detect if a hypotetical index would be used if no suitable
