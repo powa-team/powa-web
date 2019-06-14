@@ -13,23 +13,6 @@
     <dt>Filter ratio</dt><dd>{{"%.6g" % ( qual.filter_ratio ) }} % of tuples are
     removed by the filter.</dd>
     </li>
-    <li>
-    <dt>Other queries</dt><dd>
-        {% if other_queries %}
-        <ul class="unstyled">
-            {% for md5query, query in other_queries.items() %}
-            <li>
-                <a data-url-has-params
-                  href="{{reverse_url_with_params("QueryOverview", url_args=[server, database, md5query])}}">
-                <pre class="sql"><code>{{query}}</code></pre>
-                </a>
-            </li>
-            {% end %}
-        </ul>
-        {% else %}
-        (No other query used this qual )
-        {% end %}
-    </li>
     </ul>
 </dl>
 <ul class="large-block-grid-3">
