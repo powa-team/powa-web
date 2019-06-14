@@ -324,7 +324,7 @@ def powa_getstatdata_sample(mode, srvid):
 def qualstat_base_statdata():
     base_query = text("""
     (
-    SELECT srvid, userid, queryid, qualid, (unnested.records).*
+    SELECT srvid, qualid, queryid, dbid, userid, (unnested.records).*
     FROM (
         SELECT pqnh.srvid, pqnh.qualid, pqnh.queryid, pqnh.dbid, pqnh.userid,
           pqnh.coalesce_range, unnest(records) AS records
@@ -335,7 +335,7 @@ def qualstat_base_statdata():
     ) AS unnested
     WHERE tstzrange(:from, :to, '[]') @> (records).ts
     UNION ALL
-    SELECT pqnc.srvid, queryid, qualid, pqnc.ts, pqnc.occurences,
+    SELECT pqnc.srvid, qualid, queryid, dbid, userid, pqnc.ts, pqnc.occurences,
       pqnc.execution_count, pqnc.nbfiltered
     FROM powa_qualstats_quals_history_current pqnc
     WHERE tstzrange(:from, :to, '[]') @> pqnc.ts
