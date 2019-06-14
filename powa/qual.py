@@ -104,7 +104,8 @@ class QualDetail(ContentWidget):
             FROM powa_qualstats_quals
             JOIN powa_statements USING (queryid)
             WHERE qualid = :qual
-            LIMIT 5"""), {"qual": qual})}
+            LIMIT 5"""),
+            params={"qual": qual})}
         for qual in quals:
             if qual['is_my_query']:
                 my_qual = resolve_quals(remote_conn, [qual])[0]
