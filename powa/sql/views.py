@@ -793,6 +793,73 @@ def powa_base_waitdata_db():
     return base_query
 
 
+def base_query_all_rels_sample():
+    base_query = text("""(
+  SELECT powa_databases.srvid, powa_databases.oid as dbid,
+  powa_databases.datname,
+  CASE WHEN
+    (n_tup_ins + n_tup_upd + n_tup_del + n_tup_hot_upd +
+     n_liv_tup + n_dead_tup + n_mod_since_analyze) = 0
+  THEN 'i'
+  ELSE 'r'
+  END AS relkind,
+  CASE WHEN
+    (n_tup_ins + n_tup_upd + n_tup_del + n_tup_hot_upd +
+     n_liv_tup + n_dead_tup + n_mod_since_analyze) = 0
+  THEN numscan
+  ELSE 0
+  END AS idx_scan,
+  CASE WHEN
+    (n_tup_ins + n_tup_upd + n_tup_del + n_tup_hot_upd +
+     n_liv_tup + n_dead_tup + n_mod_since_analyze) = 0
+  THEN 0
+  ELSE numscan
+  END AS seq_scan,
+  h.*
+  FROM
+  powa_databases LEFT JOIN
+  (
+    SELECT dbid,
+      min(lower(coalesce_range)) AS min_ts,
+      max(upper(coalesce_range)) AS max_ts
+    FROM powa_all_relations_history arh
+    WHERE coalesce_range && tstzrange(:from, :to, '[]')
+    AND arh.srvid = :server
+    GROUP BY dbid
+  ) ranges ON powa_databases.oid = ranges.dbid,
+  LATERAL (
+    SELECT relid, (unnested1.records).*
+    FROM (
+      SELECT arh.relid, unnest(records) AS records
+      FROM powa_all_relations_history arh
+      WHERE coalesce_range @> min_ts
+      AND arh.dbid = ranges.dbid
+      AND arh.srvid = :server
+    ) AS unnested1
+    WHERE tstzrange(:from, :to, '[]') @> (unnested1.records).ts
+    UNION ALL
+    SELECT relid, (unnested2.records).*
+    FROM (
+      SELECT arh.relid, unnest(records) AS records
+      FROM powa_all_relations_history arh
+      WHERE coalesce_range @> max_ts
+      AND arh.dbid = ranges.dbid
+      AND arh.srvid = :server
+    ) AS unnested2
+    WHERE tstzrange(:from, :to, '[]') @> (unnested2.records).ts
+    UNION ALL
+    SELECT relid, (arhc.record).*
+    FROM powa_all_relations_history_current arhc
+    WHERE tstzrange(:from, :to, '[]') @> (arhc.record).ts
+    AND arhc.dbid = powa_databases.oid
+    AND arhc.srvid = :server
+  ) AS h
+  WHERE powa_databases.srvid = :server
+) AS ar_history
+    """)
+    return base_query
+
+
 def powa_getwaitdata_detailed_db(srvid):
     base_query = powa_base_waitdata_detailed_db()
     return (select([
@@ -881,6 +948,34 @@ def powa_get_bgwriter_sample(srvid):
             biggestsum("buffers_backend"),
             biggestsum("buffers_backend_fsync"),
             biggestsum("buffers_alloc")])
+            .select_from(base_query)
+            .apply_labels()
+            .group_by(*(base_columns + [ts])))
+
+
+def powa_get_all_tbl_sample(srvid):
+    base_query = base_query_all_rels_sample()
+    base_columns = [column("srvid"), column("dbid"), column("datname")]
+
+    ts = column('ts')
+    biggest = Biggest(base_columns, ts)
+    biggestsum = Biggestsum(base_columns, ts)
+
+    return (select(base_columns + [
+            ts,
+            biggest("ts", '0 s', "mesure_interval"),
+            biggestsum("seq_scan"),
+            biggestsum("idx_scan"),
+            biggestsum("tup_returned"),
+            biggestsum("tup_fetched"),
+            biggestsum("n_tup_ins"),
+            biggestsum("n_tup_upd"),
+            biggestsum("n_tup_del"),
+            biggestsum("n_tup_hot_upd"),
+            biggestsum("vacuum_count"),
+            biggestsum("autovacuum_count"),
+            biggestsum("analyze_count"),
+            biggestsum("autoanalyze_count")])
             .select_from(base_query)
             .apply_labels()
             .group_by(*(base_columns + [ts])))

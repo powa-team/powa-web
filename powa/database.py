@@ -1,8 +1,9 @@
 """
 Module containing the by-database dashboard.
 """
-from sqlalchemy.sql import bindparam, column, select, extract
+from sqlalchemy.sql import bindparam, column, select, extract, case, cast
 from sqlalchemy.sql.functions import sum
+from sqlalchemy.types import Numeric
 from tornado.web import HTTPError
 from powa.framework import AuthHandler
 from powa.dashboards import (
@@ -14,7 +15,8 @@ from powa.sql.views import (powa_getstatdata_detailed_db,
                             powa_getwaitdata_detailed_db,
                             powa_getstatdata_sample,
                             kcache_getstatdata_sample,
-                            powa_getwaitdata_sample)
+                            powa_getwaitdata_sample,
+                            powa_get_all_tbl_sample)
 from powa.wizard import WizardMetricGroup, Wizard
 from powa.server import ServerOverview
 from powa.sql.utils import (greatest, block_size, mulblock,
@@ -230,6 +232,72 @@ class DatabaseWaitOverviewMetricGroup(MetricGroupDef):
                 .params(samples=100))
 
 
+class DatabaseAllRelMetricGroup(MetricGroupDef):
+    """
+    Metric group used by "Database objects" graphs.
+    """
+    name = "all_relations"
+    xaxis = "ts"
+    data_url = r"/server/(\d+)/metrics/database_all_relations/([^\/]+)/"
+    idx_ratio = MetricDef(label="Index scans ratio", type="percent",
+                          desc="Ratio of index scan / seq scan")
+    idx_scan = MetricDef(label="Index scans", type="number",
+                         desc="Number of index scan per second")
+    seq_scan = MetricDef(label="Sequential scans", type="number",
+                         desc="Number of sequential scan per second")
+    n_tup_ins = MetricDef(label="Tuples inserted", type="number",
+                          desc="Number of tuples inserted per second")
+    n_tup_upd = MetricDef(label="Tuples updated", type="number",
+                          desc="Number of tuples updated per second")
+    n_tup_hot_upd = MetricDef(label="Tuples HOT updated", type="number",
+                              desc="Number of tuples HOT updated per second")
+    n_tup_del = MetricDef(label="Tuples deleted", type="number",
+                          desc="Number of tuples deleted per second")
+    vacuum_count = MetricDef(label="# Vacuum", type="number",
+                             desc="Number of vacuum per second")
+    autovacuum_count = MetricDef(label="# Autovacuum", type="number",
+                                 desc="Number of autovacuum per second")
+    analyze_count = MetricDef(label="# Analyze", type="number",
+                              desc="Number of analyze per second")
+    autoanalyze_count = MetricDef(label="# Autoanalyze", type="number",
+                                  desc="Number of autoanalyze per second")
+
+    @property
+    def query(self):
+        query = powa_get_all_tbl_sample(bindparam("server"))
+        query = query.alias()
+        c = query.c
+
+        def sum_per_sec(col):
+            ts = extract("epoch", greatest(c.mesure_interval, '1 second'))
+            return (sum(col) / ts).label(col.name)
+
+        from_clause = query
+
+        cols = [c.srvid,
+                extract("epoch", c.ts).label("ts"),
+                case([(sum(c.idx_scan + c.seq_scan) == 0, 0)],
+                     else_=cast(sum(c.idx_scan), Numeric) * 100 /
+                     sum(c.idx_scan + c.seq_scan)).label("idx_ratio"),
+                sum_per_sec(c.idx_scan),
+                sum_per_sec(c.seq_scan),
+                sum_per_sec(c.n_tup_ins),
+                sum_per_sec(c.n_tup_upd),
+                sum_per_sec(c.n_tup_hot_upd),
+                sum_per_sec(c.n_tup_del),
+                sum_per_sec(c.vacuum_count),
+                sum_per_sec(c.autovacuum_count),
+                sum_per_sec(c.analyze_count),
+                sum_per_sec(c.autoanalyze_count)]
+
+        return (select(cols)
+                .select_from(from_clause)
+                .where(c.datname == bindparam("database"))
+                .group_by(c.srvid, c.ts, c.mesure_interval)
+                .order_by(c.ts)
+                .params(samples=100))
+
+
 class ByQueryMetricGroup(MetricGroupDef):
     """Metric group for indivual query stats (displayed on the grid)."""
     name = "all_queries"
@@ -345,7 +413,8 @@ class DatabaseOverview(DashboardPage):
     base_url = r"/server/(\d+)/database/([^\/]+)/overview"
     datasources = [DatabaseOverviewMetricGroup, ByQueryMetricGroup,
                    ByQueryWaitSamplingMetricGroup, WizardMetricGroup,
-                   DatabaseWaitOverviewMetricGroup, ConfigChangesDatabase]
+                   DatabaseWaitOverviewMetricGroup, ConfigChangesDatabase,
+                   DatabaseAllRelMetricGroup]
     params = ["server", "database"]
     parent = ServerOverview
     title = '%(database)s'
@@ -364,20 +433,31 @@ class DatabaseOverview(DashboardPage):
                                      total_blks_hit],
                             color_scheme=None)
 
-        graphs = [Graph("Calls (On database %(database)s)",
-                  metrics=[DatabaseOverviewMetricGroup.avg_runtime,
-                           DatabaseOverviewMetricGroup.load,
-                           DatabaseOverviewMetricGroup.calls]),
-                  block_graph]
+        db_graphs = [Graph("Calls (On database %(database)s)",
+                     metrics=[DatabaseOverviewMetricGroup.avg_runtime,
+                              DatabaseOverviewMetricGroup.load,
+                              DatabaseOverviewMetricGroup.calls]),
+                     block_graph]
 
-        graphs_dash = []
+        graphs_dash = [Dashboard("General Overview", [db_graphs])]
+        graphs = [TabContainer("All databases", graphs_dash)]
 
-        # switch to tab container for the main graphs if any of the optional
-        # extensions is present
-        if ((self.has_extension(self.path_args[0], "pg_stat_kcache")) or
-           (self.has_extension(self.path_args[0], "pg_wait_sampling"))):
-            graphs_dash.append(Dashboard("General Overview", [graphs]))
-            graphs = [TabContainer("All databases", graphs_dash)]
+        # Add powa_stat_all_relations graphs
+        all_rel_graphs = [Graph("Access pattern",
+                          metrics=[DatabaseAllRelMetricGroup.seq_scan,
+                                   DatabaseAllRelMetricGroup.idx_scan,
+                                   DatabaseAllRelMetricGroup.idx_ratio]),
+                          Graph("DML activity",
+                          metrics=[DatabaseAllRelMetricGroup.n_tup_del,
+                                   DatabaseAllRelMetricGroup.n_tup_hot_upd,
+                                   DatabaseAllRelMetricGroup.n_tup_upd,
+                                   DatabaseAllRelMetricGroup.n_tup_ins]),
+                          Graph("Vacuum activity",
+                          metrics=[DatabaseAllRelMetricGroup.autoanalyze_count,
+                                   DatabaseAllRelMetricGroup.analyze_count,
+                                   DatabaseAllRelMetricGroup.autovacuum_count,
+                                   DatabaseAllRelMetricGroup.vacuum_count])]
+        graphs_dash.append(Dashboard("Database Objects", [all_rel_graphs]))
 
         if self.has_extension(self.path_args[0], "pg_stat_kcache"):
             block_graph.metrics.insert(0, DatabaseOverviewMetricGroup.
