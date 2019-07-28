@@ -121,6 +121,49 @@ def powa_base_statdata_db():
     return base_query
 
 
+def powa_base_bgwriter():
+    base_query = text("""(
+ SELECT h.*
+ FROM
+ (
+   SELECT srvid,
+     min(lower(coalesce_range)) AS min_ts,
+     max(upper(coalesce_range)) AS max_ts
+   FROM powa_stat_bgwriter_history bgwh
+   WHERE coalesce_range && tstzrange(:from, :to, '[]')
+   AND dbh.srvid = :server
+   GROUP BY srvid
+ ) ranges
+ LATERAL (
+   SELECT (unnested1.records).*
+   FROM (
+     SELECT bgwh.coalesce_range, unnest(records) AS records
+     FROM powa_stat_bgwriter_history bgwh
+     WHERE coalesce_range @> min_ts
+     AND bgwh.srvid = :server
+   ) AS unnested1
+   WHERE tstzrange(:from, :to, '[]') @> (unnested1.records).ts
+   UNION ALL
+   SELECT (unnested2.records).*
+   FROM (
+     SELECT bgwh.coalesce_range, unnest(records) AS records
+     FROM powa_stat_bgwriter_history bgwh
+     WHERE coalesce_range @> max_ts
+     AND bgwh.srvid = :server
+   ) AS unnested2
+   WHERE tstzrange(:from, :to, '[]') @> (unnested2.records).ts
+   UNION ALL
+   SELECT (bgwc.record).*
+   FROM powa_stat_bgwriter_history_current bgwc
+   WHERE tstzrange(:from, :to, '[]') @> (dbc.record).ts
+   AND dbc.srvid = d.srvid
+   AND dbc.srvid = :server
+    ) AS h
+) AS bgw_history
+    """)
+    return base_query
+
+
 def get_diffs_forstatdata():
     return [
         diff("calls"),
@@ -629,6 +672,42 @@ BASE_QUERY_WAIT_SAMPLE = text("""(
 """)
 
 
+BASE_QUERY_BGWRITER_SAMPLE = text("""
+    (SELECT srvid,
+      row_number() OVER (ORDER BY bgw_history.ts) AS number,
+      count(*) OVER () AS total,
+      ts,
+      sum(checkpoints_timed) AS checkpoints_timed,
+      sum(checkpoints_req) AS checkpoints_req,
+      sum(checkpoint_write_time) AS checkpoint_write_time,
+      sum(checkpoint_sync_time) AS checkpoint_sync_time,
+      sum(buffers_checkpoint) AS buffers_checkpoint,
+      sum(buffers_clean) AS buffers_clean,
+      sum(maxwritten_clean) AS maxwritten_clean,
+      sum(buffers_backend) AS buffers_backend,
+      sum(buffers_backend_fsync) AS buffers_backend_fsync,
+      sum(buffers_alloc) AS buffers_alloc
+      FROM (
+        SELECT *
+        FROM (
+          SELECT srvid, (unnest(records)).*
+          FROM powa_stat_bgwriter_history bgwh
+          WHERE coalesce_range && tstzrange(:from, :to, '[]')
+          AND bgwh.srvid = :server
+        ) AS unnested
+        WHERE tstzrange(:from, :to, '[]') @> ts
+        UNION ALL
+        SELECT srvid, (record).*
+        FROM powa_stat_bgwriter_history_current bgwc
+        WHERE tstzrange(:from, :to, '[]') @> (bgwc.record).ts
+        AND bgwc.srvid = :server
+      ) AS bgw_history
+      GROUP BY bgw_history.srvid, bgw_history.ts
+    ) AS bgw
+    WHERE number % ( int8larger((total)/(:samples+1),1) ) = 0
+""")
+
+
 def powa_base_waitdata_detailed_db():
     base_query = text("""
   powa_databases,
@@ -779,6 +858,32 @@ def powa_getwaitdata_sample(srvid, mode):
         .select_from(base_query)
         .apply_labels()
         .group_by(*(base_columns + [ts])))
+
+
+def powa_get_bgwriter_sample(srvid):
+    base_query = BASE_QUERY_BGWRITER_SAMPLE
+    base_columns = [column("srvid")]
+
+    ts = column('ts')
+    biggest = Biggest(base_columns, ts)
+    biggestsum = Biggestsum(base_columns, ts)
+
+    return (select(base_columns + [
+            ts,
+            biggest("ts", '0 s', "mesure_interval"),
+            biggestsum("checkpoints_timed"),
+            biggestsum("checkpoints_req"),
+            biggestsum("checkpoint_write_time"),
+            biggestsum("checkpoint_sync_time"),
+            biggestsum("buffers_checkpoint"),
+            biggestsum("buffers_clean"),
+            biggestsum("maxwritten_clean"),
+            biggestsum("buffers_backend"),
+            biggestsum("buffers_backend_fsync"),
+            biggestsum("buffers_alloc")])
+            .select_from(base_query)
+            .apply_labels()
+            .group_by(*(base_columns + [ts])))
 
 
 def get_config_changes(restrict_database=False):

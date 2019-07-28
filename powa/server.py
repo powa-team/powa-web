@@ -19,7 +19,8 @@ from powa.sql.views import (
     powa_getwaitdata_db,
     powa_getstatdata_sample,
     kcache_getstatdata_sample,
-    powa_getwaitdata_sample)
+    powa_getwaitdata_sample,
+    powa_get_bgwriter_sample)
 from powa.sql.utils import (total_read, total_hit, mulblock, round, greatest,
                             block_size, inner_cc, to_epoch)
 from powa.sql.tables import powa_databases
@@ -320,6 +321,94 @@ class GlobalWaitsMetricGroup(MetricGroupDef):
                 .params(samples=100))
 
 
+class GlobalBgwriterMetricGroup(MetricGroupDef):
+    """
+    Metric group used by bgwriter graphs.
+    """
+    name = "bgwriter"
+    xaxis = "ts"
+    data_url = r"/server/(\d+)/metrics/bgwriter/"
+    checkpoints_timed = MetricDef(label="# of scheduled checkpoints",
+                                  type="number",
+                                  desc="Number of scheduled checkpoints that"
+                                       " have been performed")
+    checkpoints_req = MetricDef(label="# of requested checkpoints",
+                                type="number",
+                                desc="Number of requested checkpoints that"
+                                     " have been performed")
+    checkpoint_write_time = MetricDef(label="Write time",
+                                      type="duration",
+                                      desc="Total amount of time that has been"
+                                      " spent in the portion of checkpoint"
+                                      " processing where files are written to"
+                                      " disk, in milliseconds")
+    checkpoint_sync_time = MetricDef(label="Sync time",
+                                     type="duration",
+                                     desc="Total amount of time that has been"
+                                     " spent in the portion of checkpoint"
+                                     " processing where files are synchronized"
+                                     " to disk, in milliseconds")
+    buffers_checkpoint = MetricDef(label="Buffers checkpoint",
+                                   type="sizerate",
+                                   desc="Number of buffers written during"
+                                   " checkpoints")
+    buffers_clean = MetricDef(label="Buffers clean",
+                              type="sizerate",
+                              desc="Number of buffers written by the"
+                                   " background writer")
+    maxwritten_clean = MetricDef(label="Maxwritten clean",
+                                 type="number",
+                                 desc="Number of times the background writer"
+                                      " stopped a cleaning scan because it had"
+                                      " written too many buffers")
+    buffers_backend = MetricDef(label="Buffers backend",
+                                type="sizerate",
+                                desc="Number of buffers written directly by a"
+                                      " backend")
+    buffers_backend_fsync = MetricDef(label="Buffers backend fsync",
+                                      type="number",
+                                      desc="Number of times a backend had to"
+                                      " execute its own fsync call"
+                                      " (normally the background writer handles"
+                                      " those even when the backend does its"
+                                      " own write")
+    buffers_alloc = MetricDef(label="Buffers alloc",
+                                type="sizerate",
+                                desc="Number of buffers allocated")
+
+    @property
+    def query(self):
+        bs = block_size.c.block_size
+        query = powa_get_bgwriter_sample(bindparam("server"))
+        query = query.alias()
+        c = query.c
+
+        def sum_per_sec(col):
+            ts = extract("epoch", greatest(c.mesure_interval, '1 second'))
+            return (sum(col) / ts).label(col.name)
+
+        from_clause = query
+
+        cols = [c.srvid,
+                extract("epoch", c.ts).label("ts"),
+                sum(c.checkpoints_timed).label("checkpoints_timed"),
+                sum(c.checkpoints_req).label("checkpoints_req"),
+                sum_per_sec(c.checkpoint_write_time),
+                sum_per_sec(c.checkpoint_sync_time),
+                sum_per_sec(mulblock(c.buffers_checkpoint)),
+                sum_per_sec(mulblock(c.buffers_clean)),
+                sum_per_sec(c.maxwritten_clean),
+                sum_per_sec(mulblock(c.buffers_backend)),
+                sum_per_sec(c.buffers_backend_fsync),
+                sum_per_sec(mulblock(c.buffers_alloc))]
+
+        return (select(cols)
+                .select_from(from_clause)
+                .group_by(c.srvid, c.ts, bs, c.mesure_interval)
+                .order_by(c.ts)
+                .params(samples=100))
+
+
 class ServerOverview(DashboardPage):
     """
     ServerOverview dashboard page.
@@ -327,6 +416,7 @@ class ServerOverview(DashboardPage):
     base_url = r"/server/(\d+)/overview/"
     datasources = [GlobalDatabasesMetricGroup, ByDatabaseMetricGroup,
                    ByDatabaseWaitSamplingMetricGroup, GlobalWaitsMetricGroup,
+                   GlobalBgwriterMetricGroup,
                    ConfigChangesGlobal]
     params = ["server"]
     title = "All databases"
@@ -342,20 +432,33 @@ class ServerOverview(DashboardPage):
                             metrics=[GlobalDatabasesMetricGroup.
                                      total_blks_hit],
                             color_scheme=None)
-        graphs = [Graph("Query runtime per second (all databases)",
-                        metrics=[GlobalDatabasesMetricGroup.avg_runtime,
-                                 GlobalDatabasesMetricGroup.load,
-                                 GlobalDatabasesMetricGroup.calls]),
-                  block_graph]
+        all_db_graphs = [Graph("Query runtime per second (all databases)",
+                               metrics=[GlobalDatabasesMetricGroup.avg_runtime,
+                                        GlobalDatabasesMetricGroup.load,
+                                        GlobalDatabasesMetricGroup.calls]),
+                         block_graph]
 
-        graphs_dash = []
+        graphs_dash = [Dashboard("General Overview", [all_db_graphs])]
+        graphs = [TabContainer("All databases", graphs_dash)]
 
-        # switch to tab container for the main graphs if any of the optional
-        # extensions is present
-        if ((self.has_extension(self.path_args[0], "pg_stat_kcache")) or
-           (self.has_extension(self.path_args[0], "pg_wait_sampling"))):
-            graphs_dash.append(Dashboard("General Overview", [graphs]))
-            graphs = [TabContainer("All databases", graphs_dash)]
+        # Add pg_stat_bgwriter graphs
+        bgw_graphs = [[Graph("Checkpointer scheduling",
+                      metrics=[GlobalBgwriterMetricGroup.checkpoints_timed,
+                               GlobalBgwriterMetricGroup.checkpoints_req]),
+                      Graph("Checkpointer activity",
+                      metrics=[GlobalBgwriterMetricGroup.checkpoint_write_time,
+                               GlobalBgwriterMetricGroup.checkpoint_sync_time,
+                               GlobalBgwriterMetricGroup.buffers_checkpoint,
+                               GlobalBgwriterMetricGroup.buffers_alloc])],
+                      [Graph("Background writer",
+                       metrics=[GlobalBgwriterMetricGroup.buffers_clean,
+                                GlobalBgwriterMetricGroup.maxwritten_clean]),
+                       Graph("Backends",
+                       metrics=[GlobalBgwriterMetricGroup.buffers_backend,
+                                GlobalBgwriterMetricGroup.buffers_backend_fsync
+                                ])
+                       ]]
+        graphs_dash.append(Dashboard("Background Writer", bgw_graphs))
 
         if self.has_extension(self.path_args[0], "pg_stat_kcache"):
             block_graph.metrics.insert(0, GlobalDatabasesMetricGroup.
