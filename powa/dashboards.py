@@ -566,7 +566,7 @@ class DashboardPage(object):
     timeline = None
 
     @classmethod
-    def url_specs(cls):
+    def url_specs(cls, url_prefix):
         """
         Return the URLSpecs to be register on the application.
         This usually includes one URLSpec for the page itself, and one for
@@ -575,7 +575,7 @@ class DashboardPage(object):
 
         url_specs = []
         url_specs.append(URLSpec(
-            r"%s/" % cls.base_url.rstrip("/"),
+            r"%s%s/" % (url_prefix, cls.base_url.strip("/")),
             type(cls.__name__, (cls.dashboard_handler_cls, cls), {}), {
                 "template": cls.template,
                 "params": cls.params},
@@ -585,7 +585,7 @@ class DashboardPage(object):
                 raise KeyError("A Datasource must have a data_url: %s" %
                                datasource.__name__)
             url_specs.append(URLSpec(
-                datasource.data_url,
+                r"%s%s/" % (url_prefix, datasource.data_url.strip("/")),
                 type(datasource.__name__, (datasource, datasource.datasource_handler_cls),
                      dict(datasource.__dict__)),
                 {"datasource": datasource, "params": cls.params}, name=datasource.url_name))

@@ -27,7 +27,7 @@ class LoginHandler(BaseHandler):
         if version is None:
             self.flash('PoWA is not installed on your target database. '
                        'You should check your installation.', 'alert')
-            self.redirect('/')
+            self.redirect(self.url_prefix)
         # Major.Minor version should be the same
         if version[0:2] != __VERSION_NUM__[0:2]:
             self.flash(
@@ -35,15 +35,15 @@ class LoginHandler(BaseHandler):
                 ('.'.join(str(x) for x in version[0:2]),
                  '.'.join(str(x) for x in __VERSION_NUM__[0:2])),
                 'alert')
-            self.redirect('/')
+            self.redirect(self.url_prefix)
         self.set_secure_cookie('username', username)
         self.set_secure_cookie('password', password)
         self.set_secure_cookie('server', server)
-        self.redirect(self.get_argument('next', '/'))
+        self.redirect(self.get_argument('next', self.url_prefix))
 
 
 class LogoutHandler(BaseHandler):
 
     def get(self):
         self.clear_all_cookies()
-        return self.redirect('/')
+        return self.redirect(self.url_prefix)

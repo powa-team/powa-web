@@ -29,7 +29,7 @@ define("port", type=int, default=8888, metavar="port",
 define("address", type=str, default="0.0.0.0", metavar="address",
        help="Listen on <address>")
 define("config", type=str, help="path to config file")
-define("index_url", type=str, default="/server/")
+define("url_prefix", type=str, help="optional prefix URL", default='/')
 
 
 def parse_file(filepath):
@@ -65,6 +65,12 @@ def parse_options():
             print("\n\t".join([""] + CONF_LOCATIONS))
             print(SAMPLE_CONFIG_FILE)
             sys.exit(-1)
+
+    if options['url_prefix'] == '':
+        options['url_prefix'] = "/"
+    elif options['url_prefix'] != '/':
+        options['url_prefix'] = "/" + options['url_prefix'].strip("/") + "/"
+    define("index_url", type=str, default="%sserver/" % options['url_prefix'])
 
     # we expect a field named "username", but many people expect to be able to
     # use "user" instead, so accept "user" as en alias for "username"

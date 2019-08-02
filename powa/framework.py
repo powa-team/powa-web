@@ -25,6 +25,7 @@ class BaseHandler(RequestHandler):
         self._databases = None
         self._servers = None
         self._connections = {}
+        self.url_prefix = options.url_prefix
         self.logger = logging.getLogger("tornado.application")
 
     def render_json(self, value):
