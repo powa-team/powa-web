@@ -149,10 +149,11 @@ class BaseHandler(RequestHandler):
             return self.current_connection
         else:
             return self.execute("""
-                                   SELECT hostname || ':' || port
-                                   FROM powa_servers
-                                   WHERE id = %(srvid)s
-                                   """, params={'srvid': int(srvid)}
+                                SELECT COALESCE(alias,
+                                                hostname || ':' || port)
+                                FROM powa_servers
+                                WHERE id = %(srvid)s
+                                """, params={'srvid': int(srvid)}
                                 ).scalar()
 
     @property
