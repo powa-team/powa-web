@@ -41,7 +41,7 @@ define([
                 this.render();
                 this.$nodata_el = $("<div>").html("No data").css({
                     position: "absolute",
-                    left: "50%",
+                    "text-align": "center",
                     top: "50%",
                     width: "100%",
                     height: "100%"
