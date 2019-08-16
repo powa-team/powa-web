@@ -195,6 +195,16 @@ define([
                 this.$nodata_el.width(this.$el.innerWidth());
                 this.$nodata_el.height(this.$el.innerHeight());
                 this.el.insertBefore(this.nodata_el, this.el.firstChild||null);
+                if (this.legend) {
+                    $(this.legend.element).hide();
+                }
+                if (this.graph) {
+                    $(this.graph.element).hide();
+                }
+                $('.graph_timeline').hide();
+                _.each(this.y_axes, function(axis){
+                    $(axis.element).empty();
+                });
             },
 
             remove_nodata: function(){
@@ -225,6 +235,8 @@ define([
                 }
                 else{
                    this.getGraph(newseries);
+                   $(this.graph.element).show();
+                   $(this.legend.element).show();
                    this.graph.update();
                    if(this.legend){
                        this.legend.render();
