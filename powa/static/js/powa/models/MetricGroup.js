@@ -65,7 +65,14 @@ define([
                 });
                 self.get("metrics").each(function(metric){
                     var series = series_by_metric[metric.get("name")];
-                    metric.set("series", series);
+                    if (!$.isEmptyObject(series)) {
+                        metric.set("series", series);
+                    } else {
+                        // ugly hack to make sure data change is detected even
+                        // after several empty responses
+                        // Forces "change:series" event to be triggered
+                        metric.set("series", new Date());
+                    }
                 });
             }).fail(function(response){
                 var value = response.status != 500 ? response.responseText: ""

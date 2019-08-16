@@ -3,18 +3,23 @@ define(["powa/views/GraphView","powa/views/GraphPreview"], function(GraphView, G
         rendername: "time",
         update: function(newseries){
             GraphView.prototype.update.call(this, newseries);
-            if(this.preview){
-                var domain = this.graph.dataDomain();
-                this.graph.window.xMin = domain[0];
-                this.graph.window.xMax = domain[1];
-                if(!this.preview.rendered){
-                    this.preview.range = domain;
-                }
-                this.preview.render();
-            }
             if(newseries.length > 0){
                 this.graph.render();
+                if(this.preview){
+                    var domain = this.graph.dataDomain();
+                    this.graph.window.xMin = domain[0];
+                    this.graph.window.xMax = domain[1];
+                    if(!this.preview.rendered){
+                        this.preview.range = domain;
+                    }
+                    this.preview.render();
+                }
             }
+        },
+
+        nodata: function(){
+            GraphView.prototype.nodata.call(this);
+            this.$el.find(".graph_preview").empty();
         },
 
         initGoodies: function(){
