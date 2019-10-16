@@ -331,7 +331,6 @@ def qualstat_base_statdata():
         FROM powa_qualstats_quals_history pqnh
         WHERE coalesce_range  && tstzrange(:from, :to, '[]')
         AND pqnh.srvid = :server
-        AND pqnh.queryid = :query
     ) AS unnested
     WHERE tstzrange(:from, :to, '[]') @> (records).ts
     UNION ALL
@@ -340,7 +339,6 @@ def qualstat_base_statdata():
     FROM powa_qualstats_quals_history_current pqnc
     WHERE tstzrange(:from, :to, '[]') @> pqnc.ts
     AND pqnc.srvid = :server
-    AND pqnc.queryid = :query
     ) h
     JOIN powa_qualstats_quals pqnh USING (srvid, queryid, qualid)
     """)
