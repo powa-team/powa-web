@@ -528,10 +528,12 @@ BASE_QUERY_KCACHE_SAMPLE = text("""
 def kcache_getstatdata_sample(mode):
     if (mode == "db"):
         base_query = BASE_QUERY_KCACHE_SAMPLE_DB
-        base_columns = [column("srvid"), column("datname")]
+        base_columns = [literal_column("d.oid").label("dbid"),
+                        column("srvid"), column("datname")]
     elif (mode == "query"):
         base_query = BASE_QUERY_KCACHE_SAMPLE
-        base_columns = [literal_column("d.srvid").label("srvid"),
+        base_columns = [literal_column("d.oid").label("dbid"),
+                        literal_column("d.srvid").label("srvid"),
                         column("datname"), column("queryid"),
                         column("userid")]
 
