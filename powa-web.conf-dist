@@ -7,3 +7,11 @@ servers={
   }
 }
 cookie_secret="SUPERSECRET_THAT_YOU_SHOULD_CHANGE"
+# Some extra options you can set
+#
+# port on which the UI should be available.
+# port=8888
+# Address on which the UI should be available on
+# address=0.0.0.0
+# Custom URL prefix the UI should be available on
+# url_prefix="/"
