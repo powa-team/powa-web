@@ -122,7 +122,15 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
 
         render: function(){
             var self = this;
-            if(!this.model.get("has_qualstats")){
+            if (!this.model.get("has_remote_conn")) {
+                this.$el.html('<h4>' + this.model.get("title") + '</h4>' +
+                        '<span>Impossible to suggest indexes: impossible ' +
+                        ' to connect to the remote database. <br />' +
+                        this.model.get("conn_error") +
+                        '</span>');
+                return this;
+            }
+            if (!this.model.get("has_qualstats")) {
                 this.$el.html('<h4>' + this.model.get("title") + '</h4>' +
                         '<span>Impossible to suggest indexes: please ' +
                         ' enable support for pg_qualstats in powa or update ' +

@@ -16,6 +16,7 @@ from sqlalchemy.sql import (bindparam, literal_column, join, select,
                             alias, text, func, column, cast)
 from sqlalchemy.types import TEXT
 from sqlalchemy.exc import DBAPIError
+from tornado.web import HTTPError
 
 
 class IndexSuggestionHandler(AuthHandler):
@@ -145,6 +146,18 @@ class Wizard(Widget):
         values['metrics'] = []
         values['type'] = 'wizard'
         values['datasource'] = 'wizard'
+
+        # First check that we can connect on the remote server, otherwise we
+        # won't be able to do anything
+        try:
+            remote_conn = handler.connect(parms["server"], database=parms["database"])
+        except Exception as e:
+            values['has_remote_conn'] = False
+            values['conn_error'] = str(e)
+            return values
+
+        values['has_remote_conn'] = True
+
         hypover = handler.has_extension_version(parms["server"],
                                                 "hypopg",
                                                 database=parms["database"])
@@ -153,4 +166,5 @@ class Wizard(Widget):
         values['has_qualstats'] = qsver and qsver >= '0.0.7'
         values['server'] = parms["server"]
         values['database'] = parms["database"]
+        remote_conn.close()
         return values

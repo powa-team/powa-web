@@ -246,6 +246,13 @@ class QueryIndexes(ContentWidget):
     def get(self, srvid, database, query):
         if not self.has_extension(srvid, "pg_qualstats"):
             raise HTTPError(501, "PG qualstats is not installed")
+
+        try:
+            remote_conn = self.connect(srvid, database=database)
+        except Exception as e:
+            raise HTTPError(501, "Could not connect to remote server: %s" %
+                                 str(e))
+
         base_query = qualstat_getstatdata(srvid)
         c = inner_cc(base_query)
         base_query.append_from(text("""LATERAL unnest(quals) as qual"""))
@@ -259,7 +266,7 @@ class QueryIndexes(ContentWidget):
                                  'to': 'infinity'}))
         optimizable = list(self.execute(base_query, params={'server': srvid,
                                                             'query': query}))
-        optimizable = resolve_quals(self.connect(srvid, database=database),
+        optimizable = resolve_quals(remote_conn,
                                     optimizable,
                                     'quals')
         hypoplan = None
@@ -287,8 +294,7 @@ class QueryIndexes(ContentWidget):
                                             self.get_argument("from"),
                                             self.get_argument("to"))
             try:
-                hypoplan = get_hypoplans(self.connect(srvid,
-                                                      database=database),
+                hypoplan = get_hypoplans(remote_conn,
                                          querystr, allindexes)
             except DBAPIError as e:
                 # TODO: offer the possibility to fill in parameters from the UI
@@ -480,7 +486,12 @@ class QualList(MetricGroupDef):
         return (base.where(c.queryid == bindparam("query")))
 
     def post_process(self, data, server, database, query, **kwargs):
-        conn = self.connect(server, database=database)
+        try:
+            conn = self.connect(server, database=database)
+        except Exception as e:
+            raise HTTPError(501, "Could not connect to remote server: %s" %
+                                 str(e))
+
         data["data"] = resolve_quals(conn, data["data"])
         for qual in data["data"]:
             qual.url = self.reverse_url('QualOverview', server, database, query,
