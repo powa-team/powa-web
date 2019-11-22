@@ -166,5 +166,4 @@ class Wizard(Widget):
         values['has_qualstats'] = qsver and qsver >= '0.0.7'
         values['server'] = parms["server"]
         values['database'] = parms["database"]
-        remote_conn.close()
         return values
