@@ -16,6 +16,7 @@ extract( epoch from
     ELSE min(total_mesure_interval) END)
 """
 
+
 def unprepare(sql):
     if sql.startswith('PREPARE'):
         sql = re.sub('PREPARE.*AS', '', sql)
@@ -330,8 +331,10 @@ def qual_constants(srvid, type, tsfrom, tsto, filter_clause, top=1):
     base = base.params(top_value=top, **filter_clause.params)
     return select(["*"]).select_from(base)
 
+
 def quote_ident(name):
     return '"' + name + '"'
+
 
 def get_plans(self, query, database, qual):
     plans = []
@@ -344,7 +347,7 @@ def get_plans(self, query, database, qual):
                                   database=database,
                                   remote_access=True)
             plan = "\n".join(v[0] for v in result)
-        except:
+        except Exception:
             pass
         plans.append(Plan(key, vals['constants'], query,
                           plan, vals["filter_ratio"], vals['execution_count'],
@@ -360,9 +363,9 @@ def get_unjumbled_query(ctrl, srvid, database, queryid, _from, _to,
     Gather a jumbled query from powa_statements, then try to denormalized it
     using stored const values, by its kind (least/most filtering, most common).
 
-    This function can return None if the query has not been gathered by powa, or
-    a partially or fully normalized query, depending on const values has been
-    found and/or the SELECT clause has been normalized
+    This function can return None if the query has not been gathered by powa,
+    or a partially or fully normalized query, depending on const values has
+    been found and/or the SELECT clause has been normalized
     """
 
     rs = list(ctrl.execute(text("""
@@ -385,6 +388,7 @@ def get_unjumbled_query(ctrl, srvid, database, queryid, _from, _to,
                                values[kind].get('constants', []))
     return sql
 
+
 def get_any_sample_query(ctrl, srvid, database, queryid, _from, _to):
     """
     From a queryid, get a non normalized query.
@@ -403,7 +407,7 @@ def get_any_sample_query(ctrl, srvid, database, queryid, _from, _to):
             FROM powa_statements
             WHERE queryid = :queryid
             LIMIT 1
-        """), params={"queryid": queryid}), remote_access=True)[0]
+        """), params={"queryid": queryid}, remote_access=True))[0]
         example_query = rs[1]
         if example_query is not None:
             unprepared = unprepare(example_query)
@@ -589,6 +593,6 @@ def get_hypoplans(conn, query, indexes=None):
     hypocost = float(m.group(0))
     used_indexes = []
     for ind in indexes:
-        if ind.name != None and ind.name in hypoplan:
+        if ind.name is not None and ind.name in hypoplan:
             used_indexes.append(ind)
     return HypoPlan(baseplan, basecost, hypoplan, hypocost, query, used_indexes)
