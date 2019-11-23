@@ -1,11 +1,12 @@
 """
 Dashboard for the qual page
 """
+from sqlalchemy.sql import text, bindparam
+from tornado.web import HTTPError
 from powa.dashboards import (
     Dashboard, Graph,
     MetricGroupDef, MetricDef,
     DashboardPage, ContentWidget)
-from sqlalchemy.sql import text, bindparam
 from powa.sql import qual_constants, resolve_quals
 from powa.sql.utils import inner_cc
 from powa.query import QueryOverview
@@ -42,11 +43,9 @@ class QualConstantsMetricGroup(MetricGroupDef):
                 .column(totals.c.occurences.label('total_occurences'))
                 .correlate(query))
 
-
     def post_process(self, data, server, database, query, qual, **kwargs):
         if not data['data']:
             return data
-        conn = self.connect(server, database=database)
         max_rownumber = 0
         total_top10 = 0
         total = None
@@ -70,6 +69,13 @@ class QualDetail(ContentWidget):
     data_url = r"/server/(\d+)/database/([^\/]+)/query/(-?\d+)/qual/(\d+)/detail"
 
     def get(self, server, database, query, qual):
+        try:
+            # Check remote access first
+            remote_conn = self.connect(server, database=database,
+                                       remote_access=True)
+        except Exception as e:
+            raise HTTPError(501, "Could not connect to remote server: %s" %
+                                 str(e))
         stmt = qualstat_getstatdata(server)
         c = inner_cc(stmt)
         stmt = stmt.alias()
@@ -90,9 +96,7 @@ class QualDetail(ContentWidget):
 
         for qual in quals:
             if qual['is_my_query']:
-                my_qual = resolve_quals(self.connect(server,
-                                        database=database),
-                                        [qual])[0]
+                my_qual = resolve_quals(remote_conn, [qual])[0]
             else:
                 other_queries[qual['queryid']] = qual['query']
 

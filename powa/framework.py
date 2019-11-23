@@ -181,25 +181,31 @@ class BaseHandler(RequestHandler):
             engine.dispose()
 
     def connect(self, srvid=None, server=None, username=None, password=None,
-                database=None, **kwargs):
+                database=None, remote_access=False, **kwargs):
         """
         Connect to a specific database.
         Parameters default values are taken from the cookies and the server
         configuration file.
         """
+        # Check for global connection restriction first
+        if (remote_access and not options['allow_ui_connection']):
+            raise Exception("UI connection globally not allowed.")
+
+        conn_allowed = None
         server = server or self.get_str_cookie('server')
         username = username or self.get_str_cookie('username')
         password = (password or
                     self.get_str_cookie('password'))
         if server not in options.servers:
-            raise HTTPError(404)
+            raise HTTPError(404, "Server %s not found." % server)
 
         connoptions = options.servers[server].copy()
 
         if (srvid is not None and srvid != "0"):
             tmp = self.connect()
             rows = tmp.execute("""
-            SELECT hostname, port, username, password, dbname
+            SELECT hostname, port, username, password, dbname,
+                allow_ui_connection
             FROM powa_servers WHERE id = %(srvid)s
             """, {'srvid': srvid})
             row = rows.fetchone()
@@ -210,14 +216,33 @@ class BaseHandler(RequestHandler):
             connoptions['username'] = row[2]
             connoptions['password'] = row[3]
             connoptions['database'] = row[4]
+            conn_allowed = row[5]
         else:
             if 'username' not in connoptions:
                 connoptions['username'] = username
             if 'password' not in connoptions:
                 connoptions['password'] = password
 
+        # If a non-powa connection is requested, check if we're allowed
+        if (remote_access):
+            # authorization check for local connection has not been done yet
+            if (conn_allowed is None):
+                tmp = self.connect(remote_access=False, server=server,
+                                   username=username, password=password)
+                rows = tmp.execute("""
+                SELECT allow_ui_connection
+                FROM powa_servers WHERE id = 0
+                """)
+                row = rows.fetchone()
+                rows.close()
+                conn_allowed = row[0]
+
+            if (not conn_allowed):
+                raise Exception("UI connection not allowed for this server.")
+
         if database is not None:
             connoptions['database'] = database
+
         # engineoptions = {'_initialize': False}
         engineoptions = {}
         engineoptions.update(**kwargs)
@@ -246,7 +271,9 @@ class BaseHandler(RequestHandler):
         if (srvid == '0' or srvid == 0):
             # if local server, fallback to the full test, as it won't be more
             # expensive
-            return (self.has_extension_version(srvid, extname) is not None)
+            return (self.has_extension_version(srvid,
+                                               extname, remote_access=False)
+                    is not None)
         else:
             try:
                 # Look for at least an enabled snapshot function.  If a module
@@ -263,7 +290,8 @@ class BaseHandler(RequestHandler):
             except Exception:
                 return False
 
-    def has_extension_version(self, srvid, extname, database=None):
+    def has_extension_version(self, srvid, extname, database=None,
+                              remote_access=True):
         """
         Returns the version of the specific extension on the specific server
         and database, or None if the extension is not installed.
@@ -276,7 +304,8 @@ class BaseHandler(RequestHandler):
                 WHERE extname = :extname
                 LIMIT 1
                 """), srvid=srvid, database=database,
-                params={"extname": extname}).scalar()
+                params={"extname": extname}, remote_access=remote_access
+            ).scalar()
         except Exception:
             return None
 
@@ -298,14 +327,16 @@ class BaseHandler(RequestHandler):
     def execute(self, query, srvid=None, params=None, server=None,
                 username=None,
                 database=None,
-                password=None):
+                password=None,
+                remote_access=False):
         """
         Execute a query against a database, with specific bind parameters.
         """
         if params is None:
             params = {}
 
-        engine = self.connect(srvid, server, username, password, database)
+        engine = self.connect(srvid, server, username, password, database,
+                              remote_access)
         return engine.execute(query, **params)
 
     def notify_collector(self, command, args=[], timeout=3):

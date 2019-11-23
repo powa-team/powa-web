@@ -248,7 +248,9 @@ class QueryIndexes(ContentWidget):
             raise HTTPError(501, "PG qualstats is not installed")
 
         try:
-            remote_conn = self.connect(srvid, database=database)
+            # Check remote access first
+            remote_conn = self.connect(srvid, database=database,
+                                       remote_access=True)
         except Exception as e:
             raise HTTPError(501, "Could not connect to remote server: %s" %
                                  str(e))
@@ -285,7 +287,8 @@ class QueryIndexes(ContentWidget):
                 if ddl is not None:
                     try:
                         ind.name = self.execute(ddl, srvid=srvid,
-                                                database=database).scalar()
+                                                database=database,
+                                                remote_access=True).scalar()
                     except DBAPIError as e:
                         self.flash("Could not create hypothetical index: %s" %
                                    str(e.orig.diag.message_primary))
@@ -331,9 +334,10 @@ class QueryExplains(ContentWidget):
                     sqlQuery = text("EXPLAIN %s" % query)
                     result = self.execute(sqlQuery,
                                           srvid=server,
-                                          database=database)
+                                          database=database,
+                                          remote_access=True)
                     plan = "\n".join(v[0] for v in result)
-                except:
+                except Exception:
                     pass
                 plans.append(Plan(key, vals['constants'], query,
                                   plan, vals["filter_ratio"],
@@ -487,15 +491,16 @@ class QualList(MetricGroupDef):
 
     def post_process(self, data, server, database, query, **kwargs):
         try:
-            conn = self.connect(server, database=database)
+            remote_conn = self.connect(server, database=database,
+                                       remote_access=True)
         except Exception as e:
             raise HTTPError(501, "Could not connect to remote server: %s" %
                                  str(e))
 
-        data["data"] = resolve_quals(conn, data["data"])
+        data["data"] = resolve_quals(remote_conn, data["data"])
         for qual in data["data"]:
-            qual.url = self.reverse_url('QualOverview', server, database, query,
-                                        qual.qualid)
+            qual.url = self.reverse_url('QualOverview', server, database,
+                                        query, qual.qualid)
         return data
 
 

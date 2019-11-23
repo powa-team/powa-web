@@ -16,7 +16,8 @@ def get_pgts_query(handler, restrict_database=False):
     # installed in version 2.0.0 or more.  We check for local installation
     # only, as query will look in local table.  If the extension isn't setup
     # remotely, the check will be pretty quick.
-    pgts = handler.has_extension_version('0', "pg_track_settings")
+    pgts = handler.has_extension_version('0', "pg_track_settings",
+                                         remote_access=False)
     if ((pgts is None) or (pgts.split('.')[0] < '2')):
         return None
 
@@ -148,6 +149,7 @@ class PowaServersMetricGroup(MetricGroupDef):
     dbname = MetricDef(label="Database name", type="string")
     frequency = MetricDef(label="Frequency", type="string")
     retention = MetricDef(label="Retention", type="string")
+    allow_ui_connection = MetricDef(label="Allow UI connection", type="bool")
     snapts = MetricDef(label="Last snapshot", type="string")
     no_err = MetricDef(label="Error", type="bool")
     collector_status = MetricDef(label="Collector Status", type="string")
@@ -162,6 +164,7 @@ class PowaServersMetricGroup(MetricGroupDef):
      s.hostname, s.port, s.username,
      CASE WHEN s.password IS NULL THEN '<NULL>' ELSE '********' END AS password,
      s.dbname, s.frequency, s.retention::text AS retention,
+     s.allow_ui_connection,
      CASE WHEN coalesce(m.snapts, '-infinity') = '-infinity'::timestamptz THEN
         NULL
      ELSE

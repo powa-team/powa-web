@@ -126,7 +126,7 @@ function(WidgetView, Wizard, template, highlight, moment, Backgrid, Backbone){
                 this.$el.html('<h4>' + this.model.get("title") + '</h4>' +
                         '<span>Impossible to suggest indexes: impossible ' +
                         ' to connect to the remote database. <br />' +
-                        this.model.get("conn_error") +
+                        '<b>' + this.model.get("conn_error") + '</b>' +
                         '</span>');
                 return this;
             }

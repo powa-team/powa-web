@@ -341,7 +341,8 @@ def get_plans(self, query, database, qual):
         plan = "N/A"
         try:
             result = self.execute("EXPLAIN %s" % query,
-                                  database=database)
+                                  database=database,
+                                  remote_access=True)
             plan = "\n".join(v[0] for v in result)
         except:
             pass
@@ -402,7 +403,7 @@ def get_any_sample_query(ctrl, srvid, database, queryid, _from, _to):
             FROM powa_statements
             WHERE queryid = :queryid
             LIMIT 1
-        """), params={"queryid": queryid}))[0]
+        """), params={"queryid": queryid}), remote_access=True)[0]
         example_query = rs[1]
         if example_query is not None:
             unprepared = unprepare(example_query)
@@ -413,7 +414,7 @@ def get_any_sample_query(ctrl, srvid, database, queryid, _from, _to):
 
 
 def qualstat_get_figures(conn, srvid, database, tsfrom, tsto,
-        queries=None, quals=None):
+                         queries=None, quals=None):
     condition = text("""datname = :database
             AND coalesce_range && tstzrange(:from, :to)""")
 
@@ -487,6 +488,7 @@ class HypoPlan(JSONizable):
         base['gain_percent'] = self.gain_percent
         return base
 
+
 class HypoIndex(JSONizable):
 
     def __init__(self, nspname, relname, amname,
@@ -513,7 +515,6 @@ class HypoIndex(JSONizable):
                     quote_ident(self.relname),
                     ",".join(attrs)))
 
-
     def __setattr(self, name, value):
         super(HypoIndex, self).__setattr__(name, value)
         # Only btree is supported right now
@@ -528,7 +529,8 @@ class HypoIndex(JSONizable):
     def hypo_ddl(self):
         ddl = self.ddl
         if ddl is not None:
-            return select([column("indexname")]).select_from(func.hypopg_create_index(self.ddl))
+            return select([column("indexname")]
+                          ).select_from(func.hypopg_create_index(self.ddl))
 
     def to_json(self):
         base = super(HypoIndex, self).to_json()
@@ -538,6 +540,7 @@ class HypoIndex(JSONizable):
 
 def possible_indexes(composed_qual, order=()):
     by_am = defaultdict(list)
+
     def sorter(qual):
         attnum = qual.attnum
         if attnum in order:

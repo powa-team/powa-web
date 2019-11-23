@@ -22,6 +22,14 @@ from tornado.web import HTTPError
 class IndexSuggestionHandler(AuthHandler):
 
     def post(self, srvid, database):
+        try:
+            # Check remote access first
+            remote_conn = self.connect(srvid, database=database,
+                                       remote_access=True)
+        except Exception as e:
+            raise HTTPError(501, "Could not connect to remote server: %s" %
+                                 str(e))
+
         payload = json.loads(self.request.body.decode("utf8"))
         from_date = payload['from_date']
         to_date = payload['to_date']
@@ -51,11 +59,9 @@ class IndexSuggestionHandler(AuthHandler):
             # create them
             for ind in indexes:
                 try:
-                    indname = self.execute(
+                    indname = remote_conn.execute(
                             select(["*"])
-                            .select_from(func.hypopg_create_index(ind.ddl)),
-                            database=database,
-                            srvid=srvid
+                            .select_from(func.hypopg_create_index(ind.ddl))
                     ).first()[1]
                     indbyname[indname] = ind
                 except DBAPIError as e:
@@ -73,8 +79,7 @@ class IndexSuggestionHandler(AuthHandler):
                 if querystr:
                     try:
                         hypoplans[query.queryid] = get_hypoplans(
-                            self.connect(srvid, database=database), querystr,
-                            indbyname.values())
+                            remote_conn, querystr, indbyname.values())
                     except Exception:
                         # TODO: stop ignoring the error
                         continue
@@ -131,7 +136,7 @@ class WizardMetricGroup(MetricGroupDef):
         return query
 
     def post_process(self, data, server, database, **kwargs):
-        conn = self.connect(server, database=database)
+        conn = self.connect(server, database=database, remote_access=True)
         data["data"] = resolve_quals(conn, data["data"])
         return data
 
@@ -150,7 +155,9 @@ class Wizard(Widget):
         # First check that we can connect on the remote server, otherwise we
         # won't be able to do anything
         try:
-            remote_conn = handler.connect(parms["server"], database=parms["database"])
+            remote_conn = handler.connect(parms["server"],
+                                          database=parms["database"],
+                                          remote_access=True)
         except Exception as e:
             values['has_remote_conn'] = False
             values['conn_error'] = str(e)
