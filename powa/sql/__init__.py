@@ -365,8 +365,11 @@ def get_unjumbled_query(ctrl, srvid, database, queryid, _from, _to,
     """
 
     rs = list(ctrl.execute(text("""
-        SELECT query FROM powa_statements WHERE queryid = :queryid LIMIT 1
-    """), params={"queryid": queryid}))[0]
+        SELECT query
+        FROM powa_statements
+        WHERE srvid= :srvid
+        AND queryid = :queryid LIMIT 1
+    """), params={"srvid": srvid, "queryid": queryid}))[0]
     normalized_query = rs[0]
     values = qualstat_get_figures(ctrl, srvid, database, _from, _to,
                                   queries=[queryid])
