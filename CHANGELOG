@@ -31,6 +31,8 @@
     thanks to irc user ChOcO-Bn for the report)
   - Fix some metrics in wait events and general query datasources (Julien
     Rouhaud, thanks to Adrien Nayrat for the report)
+  - Fix per-server graphs having multiple data and pg_stat_kcache enabled
+    (Alexander Kukushkin)
 3.2.0:
   - Add support for pg_wait_sampling to display wait events statistics and
     graphs, require pg9.6+ (Julien Rouhaud)
