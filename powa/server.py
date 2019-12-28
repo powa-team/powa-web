@@ -237,7 +237,8 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
                          nvcsws, nivcsws])
             from_clause = from_clause.join(
                 kcache_query,
-                kcache_query.c.ts == c.ts)
+                and_(kcache_query.c.dbid == c.dbid,
+                     kcache_query.c.ts == c.ts))
 
         return (select(cols)
                 .select_from(from_clause)
