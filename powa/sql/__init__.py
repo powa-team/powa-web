@@ -307,7 +307,7 @@ def qual_constants(srvid, type, tsfrom, tsto, filter_clause, top=1):
             WHERE srvid = :server
         ) qnc ON qnc.srvid = s.srvid AND qn.qualid = qnc.qualid AND qn.queryid = qnc.queryid,
         LATERAL
-                unnest(%(qual_type)s) as t(constants,occurences, nbfiltered,execution_count)
+                unnest(%(qual_type)s) as t(constants,occurences, execution_count, nbfiltered)
         WHERE %(filter)s
         AND s.srvid = :server
         GROUP BY s.srvid, qn.qualid, quals, constants, s.queryid, query
