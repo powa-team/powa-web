@@ -21,8 +21,7 @@ class CollectorServerDetail(MetricGroupDef):
         sql = """SELECT *
             FROM powa_servers s
             JOIN powa_snapshot_metas m ON m.srvid = s.id
-            WHERE s.id = %(server)s
-        """ % {'server': server}
+            WHERE s.id = %(server)s"""
 
         row = self.execute(sql, params={'server': server}).fetchone()
 
