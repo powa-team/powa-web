@@ -187,6 +187,9 @@ class BaseHandler(RequestHandler):
         Parameters default values are taken from the cookies and the server
         configuration file.
         """
+        if (srvid is not None and srvid != "0"):
+            remote_access = True
+
         # Check for global connection restriction first
         if (remote_access and not options['allow_ui_connection']):
             raise Exception("UI connection globally not allowed.")
