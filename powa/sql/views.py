@@ -323,7 +323,8 @@ def qualstat_base_statdata():
     WHERE  (records).ts <@ tstzrange(:from, :to, '[]')
     UNION ALL
     SELECT pqnc.srvid, qualid, queryid, dbid, userid, pqnc.ts, pqnc.occurences,
-      pqnc.execution_count, pqnc.nbfiltered
+      pqnc.execution_count, pqnc.nbfiltered,
+      pqnc.mean_err_estimate_ratio, pqnc.mean_err_estimate_num
     FROM powa_qualstats_quals_history_current pqnc
     WHERE pqnc.ts <@ tstzrange(:from, :to, '[]')
     AND pqnc.srvid = :server
