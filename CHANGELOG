@@ -11,6 +11,8 @@
   - Display configuration changes and PostgreSQL restart on graphs when
     pg_track_settings is configured (Julien Rouhaud)
   - Add an url_prefix parameter (Julien Rouhaud and github user rippiedoos)
+  - Add options to forbid the UI from connecting to databases different than
+    the dedicated powa one, or to remote server, either globally or per server.
   - Fix longstanding bug in graph hover boxes position (Julien Rouhaud)
   - Provide metric definitions and link to the documentation on the graph
     (Julien Rouhaud)
