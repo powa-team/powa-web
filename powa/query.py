@@ -140,12 +140,18 @@ class QueryOverviewMetricGroup(MetricGroupDef):
         total_blocks = ((sum(c.shared_blks_read) + sum(c.shared_blks_hit))
                         .label("total_blocks"))
 
+        def get_ts():
+            return extract("epoch", greatest(c.mesure_interval, '1 second'))
+
+        def sumps(col):
+            return (sum(col) / get_ts()).label(col.name)
+
         def bps(col):
-            ts = extract("epoch", greatest(c.mesure_interval, '1 second'))
-            return (mulblock(sum(col)) / ts).label(col.name)
+            return (mulblock(sum(col)) / get_ts()).label(col.name)
+
         cols = [to_epoch(c.ts),
                 sum(c.rows).label("rows"),
-                sum(c.calls).label("calls"),
+                sumps(c.calls),
                 case([(total_blocks == 0, 0)],
                      else_=cast(sum(c.shared_blks_hit), Numeric) * 100 /
                      total_blocks).label("hit_ratio"),
@@ -159,12 +165,8 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                 bps(c.local_blks_written),
                 bps(c.temp_blks_read),
                 bps(c.temp_blks_written),
-                sum(c.blk_read_time /
-                 extract("epoch", greatest(c.mesure_interval, '1 second'))
-                 ).label("blk_read_time"),
-                sum(c.blk_write_time /
-                 extract("epoch", greatest(c.mesure_interval, '1 second'))
-                 ).label("blk_write_time"),
+                sumps(c.blk_read_time),
+                sumps(c.blk_write_time),
                 (sum(c.runtime) / greatest(sum(c.calls), 1)).label("avg_runtime")]
 
         from_clause = query
