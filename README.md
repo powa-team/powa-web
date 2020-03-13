@@ -8,6 +8,6 @@ This project is a User Interface to the
 [PoWA](http://powa.readthedocs.io/) project.
 
 For more information, please read the [PoWA-web
-documentation](http://powa.readthedocs.io/en/latest/powa-web/index.html):
+documentation](https://powa.readthedocs.io/en/latest/components/powa-web/index.html):
 
-http://powa.readthedocs.io/en/latest/powa-web/index.html
+https://powa.readthedocs.io/en/latest/components/powa-web/index.html
