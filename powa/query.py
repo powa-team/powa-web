@@ -41,9 +41,11 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     xaxis = "ts"
     data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)"
     rows = MetricDef(label="#Rows",
-                     desc="Sum of the number of rows returned by the query")
+                     desc="Sum of the number of rows returned by the query"
+                          " per second")
     calls = MetricDef(label="#Calls",
-                      desc="Number of time the query has been executed")
+                      desc="Number of time the query has been executed"
+                           " per second")
     shared_blks_read = MetricDef(label="Shared read", type="sizerate",
                                  desc="Amount of data found in OS cache or"
                                       " read from disk")
@@ -150,7 +152,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
             return (mulblock(sum(col)) / get_ts()).label(col.name)
 
         cols = [to_epoch(c.ts),
-                sum(c.rows).label("rows"),
+                sumps(c.rows),
                 sumps(c.calls),
                 case([(total_blocks == 0, 0)],
                      else_=cast(sum(c.shared_blks_hit), Numeric) * 100 /
