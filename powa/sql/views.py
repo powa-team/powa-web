@@ -776,8 +776,60 @@ def powa_base_waitdata_db():
     return base_query
 
 
-def base_query_all_rels_sample():
-    base_query = text("""(
+BASE_QUERY_ALL_RELS_SAMPLE_DB = text("""(
+  SELECT powa_databases.srvid, powa_databases.oid as dbid,
+  powa_databases.datname,
+  CASE WHEN
+    (n_tup_ins + n_tup_upd + n_tup_del + n_tup_hot_upd +
+     n_liv_tup + n_dead_tup + n_mod_since_analyze) = 0
+  THEN 'i'
+  ELSE 'r'
+  END AS relkind,
+  CASE WHEN
+    (n_tup_ins + n_tup_upd + n_tup_del + n_tup_hot_upd +
+     n_liv_tup + n_dead_tup + n_mod_since_analyze) = 0
+  THEN numscan
+  ELSE 0
+  END AS idx_scan,
+  CASE WHEN
+    (n_tup_ins + n_tup_upd + n_tup_del + n_tup_hot_upd +
+     n_liv_tup + n_dead_tup + n_mod_since_analyze) = 0
+  THEN 0
+  ELSE numscan
+  END AS seq_scan,
+  h.*
+  FROM
+  powa_databases LEFT JOIN
+  (
+    SELECT dbid
+    FROM powa_all_relations_history arh
+    WHERE coalesce_range && tstzrange(:from, :to, '[]')
+    AND arh.srvid = :server
+    GROUP BY dbid
+  ) ranges ON powa_databases.oid = ranges.dbid,
+  LATERAL (
+    SELECT (unnested1.records).*
+    FROM (
+      SELECT unnest(records) AS records
+      FROM powa_all_relations_history arh
+      WHERE coalesce_range && tstzrange(:from, :to, '[]')
+      AND arh.dbid = ranges.dbid
+      AND arh.srvid = :server
+    ) AS unnested1
+    WHERE  (unnested1.records).ts <@ tstzrange(:from, :to, '[]')
+    UNION ALL
+    SELECT (arhc.record).*
+    FROM powa_all_relations_history_current arhc
+    WHERE  (arhc.record).ts <@ tstzrange(:from, :to, '[]')
+    AND arhc.dbid = powa_databases.oid
+    AND arhc.srvid = :server
+  ) AS h
+  WHERE powa_databases.srvid = :server
+) AS ar_history
+    """)
+
+
+BASE_QUERY_ALL_RELS_SAMPLE = text("""(
   SELECT powa_databases.srvid, powa_databases.oid as dbid,
   powa_databases.datname,
   CASE WHEN
@@ -828,7 +880,6 @@ def base_query_all_rels_sample():
   WHERE powa_databases.srvid = :server
 ) AS ar_history
     """)
-    return base_query
 
 
 def powa_getwaitdata_detailed_db(srvid):
@@ -924,9 +975,15 @@ def powa_get_bgwriter_sample(srvid):
             .group_by(*(base_columns + [ts])))
 
 
-def powa_get_all_tbl_sample(srvid):
-    base_query = base_query_all_rels_sample()
-    base_columns = [column("srvid"), column("dbid"), column("datname")]
+def powa_get_all_tbl_sample(mode, srvid):
+
+    if mode == "db":
+        base_query = BASE_QUERY_ALL_RELS_SAMPLE_DB
+        base_columns = [column("srvid"), column("dbid"), column("datname")]
+    else:
+        base_query = BASE_QUERY_ALL_RELS_SAMPLE
+        base_columns = [column("srvid"), column("dbid"), column("datname"),
+                        column("relid")]
 
     ts = column('ts')
     biggest = Biggest(base_columns, ts)

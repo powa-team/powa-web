@@ -264,7 +264,7 @@ class DatabaseAllRelMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        query = powa_get_all_tbl_sample(bindparam("server"))
+        query = powa_get_all_tbl_sample("db", bindparam("server"))
         query = query.alias()
         c = query.c
 
