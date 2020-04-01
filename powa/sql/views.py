@@ -779,30 +779,12 @@ def powa_base_waitdata_db():
 BASE_QUERY_ALL_RELS_SAMPLE_DB = text("""(
   SELECT powa_databases.srvid, powa_databases.oid as dbid,
   powa_databases.datname,
-  CASE WHEN
-    (n_tup_ins + n_tup_upd + n_tup_del + n_tup_hot_upd +
-     n_liv_tup + n_dead_tup + n_mod_since_analyze) = 0
-  THEN 'i'
-  ELSE 'r'
-  END AS relkind,
-  CASE WHEN
-    (n_tup_ins + n_tup_upd + n_tup_del + n_tup_hot_upd +
-     n_liv_tup + n_dead_tup + n_mod_since_analyze) = 0
-  THEN numscan
-  ELSE 0
-  END AS idx_scan,
-  CASE WHEN
-    (n_tup_ins + n_tup_upd + n_tup_del + n_tup_hot_upd +
-     n_liv_tup + n_dead_tup + n_mod_since_analyze) = 0
-  THEN 0
-  ELSE numscan
-  END AS seq_scan,
   h.*
   FROM
   powa_databases LEFT JOIN
   (
     SELECT dbid
-    FROM powa_all_relations_history arh
+    FROM powa_all_relations_history_db arh
     WHERE coalesce_range && tstzrange(:from, :to, '[]')
     AND arh.srvid = :server
     GROUP BY dbid
@@ -811,7 +793,7 @@ BASE_QUERY_ALL_RELS_SAMPLE_DB = text("""(
     SELECT (unnested1.records).*
     FROM (
       SELECT unnest(records) AS records
-      FROM powa_all_relations_history arh
+      FROM powa_all_relations_history_db arh
       WHERE coalesce_range && tstzrange(:from, :to, '[]')
       AND arh.dbid = ranges.dbid
       AND arh.srvid = :server
@@ -819,7 +801,7 @@ BASE_QUERY_ALL_RELS_SAMPLE_DB = text("""(
     WHERE  (unnested1.records).ts <@ tstzrange(:from, :to, '[]')
     UNION ALL
     SELECT (arhc.record).*
-    FROM powa_all_relations_history_current arhc
+    FROM powa_all_relations_history_current_db arhc
     WHERE  (arhc.record).ts <@ tstzrange(:from, :to, '[]')
     AND arhc.dbid = powa_databases.oid
     AND arhc.srvid = :server
