@@ -777,43 +777,43 @@ def powa_base_waitdata_db():
 
 
 BASE_QUERY_ALL_RELS_SAMPLE_DB = text("""(
-  SELECT powa_databases.srvid, powa_databases.oid as dbid,
-  powa_databases.datname,
-  h.*
-  FROM
-  powa_databases LEFT JOIN
-  (
-    SELECT dbid
-    FROM powa_all_relations_history_db arh
-    WHERE coalesce_range && tstzrange(:from, :to, '[]')
-    AND arh.srvid = :server
-    GROUP BY dbid
-  ) ranges ON powa_databases.oid = ranges.dbid,
+  SELECT d.srvid, d.datname, base.*
+  FROM powa_databases d,
   LATERAL (
-    SELECT (unnested1.records).*
+    SELECT *
     FROM (
-      SELECT unnest(records) AS records
-      FROM powa_all_relations_history_db arh
-      WHERE coalesce_range && tstzrange(:from, :to, '[]')
-      AND arh.dbid = ranges.dbid
-      AND arh.srvid = :server
-    ) AS unnested1
-    WHERE  (unnested1.records).ts <@ tstzrange(:from, :to, '[]')
-    UNION ALL
-    SELECT (arhc.record).*
-    FROM powa_all_relations_history_current_db arhc
-    WHERE  (arhc.record).ts <@ tstzrange(:from, :to, '[]')
-    AND arhc.dbid = powa_databases.oid
-    AND arhc.srvid = :server
-  ) AS h
-  WHERE powa_databases.srvid = :server
-) AS ar_history
-    """)
+      SELECT
+      row_number() OVER (PARTITION BY dbid ORDER BY ts) AS number,
+      count(*) OVER (PARTITION BY dbid ) AS total,
+      ar_history.*
+      FROM (
+        SELECT dbid, (unnested.records).*
+        FROM (
+          SELECT arh.dbid, unnest(records) AS records
+          FROM powa_all_relations_history_db arh
+          WHERE arh.dbid = d.oid
+          AND arh.srvid = d.srvid
+          AND arh.srvid = :server
+        ) AS unnested
+        WHERE (records).ts <@ tstzrange(:from, :to, '[]')
+        UNION ALL
+        SELECT dbid, (record).*
+        FROM powa_all_relations_history_current_db arhc
+        WHERE (record).ts <@ tstzrange(:from, :to, '[]')
+        AND arhc.dbid = d.oid
+        AND arhc.srvid = d.srvid
+        AND arhc.srvid = :server
+      ) AS ar_history
+    ) AS arh
+    WHERE number % (int8larger(total/(:samples+1),1) ) = 0
+  ) AS base
+  WHERE srvid = :server
+) AS by_db
+""")
 
 
 BASE_QUERY_ALL_RELS_SAMPLE = text("""(
-  SELECT powa_databases.srvid, powa_databases.oid as dbid,
-  powa_databases.datname,
+  SELECT d.srvid, d.datname,
   CASE WHEN
     (n_tup_ins + n_tup_upd + n_tup_del + n_tup_hot_upd +
      n_liv_tup + n_dead_tup + n_mod_since_analyze) = 0
@@ -832,35 +832,39 @@ BASE_QUERY_ALL_RELS_SAMPLE = text("""(
   THEN 0
   ELSE numscan
   END AS seq_scan,
-  h.*
+  base.*
   FROM
-  powa_databases LEFT JOIN
-  (
-    SELECT dbid
-    FROM powa_all_relations_history arh
-    WHERE coalesce_range && tstzrange(:from, :to, '[]')
-    AND arh.srvid = :server
-    GROUP BY dbid
-  ) ranges ON powa_databases.oid = ranges.dbid,
+  powa_databases d,
   LATERAL (
-    SELECT relid, (unnested1.records).*
+    SELECT *
     FROM (
-      SELECT arh.relid, unnest(records) AS records
-      FROM powa_all_relations_history arh
-      WHERE coalesce_range && tstzrange(:from, :to, '[]')
-      AND arh.dbid = ranges.dbid
-      AND arh.srvid = :server
-    ) AS unnested1
-    WHERE  (unnested1.records).ts <@ tstzrange(:from, :to, '[]')
-    UNION ALL
-    SELECT relid, (arhc.record).*
-    FROM powa_all_relations_history_current arhc
-    WHERE  (arhc.record).ts <@ tstzrange(:from, :to, '[]')
-    AND arhc.dbid = powa_databases.oid
-    AND arhc.srvid = :server
-  ) AS h
-  WHERE powa_databases.srvid = :server
-) AS ar_history
+      SELECT
+      row_number() OVER (PARTITION BY dbid, relid ORDER BY ts) AS number,
+      count(*) OVER (PARTITION BY dbid, relid ) AS total,
+      ar_history.*
+      FROM (
+        SELECT dbid, relid, (unnested.records).*
+        FROM (
+          SELECT arh.dbid, relid, unnest(records) AS records
+          FROM powa_all_relations_history_db arh
+          WHERE arh.dbid = d.oid
+          AND arh.srvid = d.srvid
+          AND arh.srvid = :server
+        ) AS unnested
+        WHERE (records).ts <@ tstzrange(:from, :to, '[]')
+        UNION ALL
+        SELECT dbid, relid, (record).*
+        FROM powa_all_relations_history_current_db arhc
+        WHERE (record).ts <@ tstzrange(:from, :to, '[]')
+        AND arhc.dbid = d.oid
+        AND arhc.srvid = d.srvid
+        AND arhc.srvid = :server
+      ) AS ar_history
+    ) AS arh
+    WHERE number % (int8larger(total/(:samples+1),1) ) = 0
+  ) AS base
+  WHERE srvid = :server
+) AS by_db
     """)
 
 
