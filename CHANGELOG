@@ -1,4 +1,5 @@
-4.0.0(Beta1):
+4.0.0:
+  New features:
   - Make the UI compatible with remote-mode setup (Julien Rouhaud)
   - Query and display powa-collector information (Julien Rouhaud)
   - Expose system cache hit / disk read metrics on global and per-database
@@ -13,9 +14,15 @@
   - Add an url_prefix parameter (Julien Rouhaud and github user rippiedoos)
   - Add options to forbid the UI from connecting to databases different than
     the dedicated powa one, or to remote server, either globally or per server.
-  - Fix longstanding bug in graph hover boxes position (Julien Rouhaud)
   - Provide metric definitions and link to the documentation on the graph
     (Julien Rouhaud)
+  - Add pg_stat_bgwriter graphs (Julien Rouhaud)
+  - Add database objects (based on pg_stat_all_tables info) graphs (Julien
+    Rouhaud)
+  - Move the "other queries" panel to its own grid (Ronan Dunklau)
+
+  Bug fixes:
+  - Fix longstanding bug in graph hover boxes position (Julien Rouhaud)
   - Fix the graph preview selection (Julien Rouhaud)
   - Add pg_wait_sampling in the config extension list (Julien Rouhaud, thanks
     to Adrien Nayrat for the report)
@@ -35,7 +42,18 @@
     Rouhaud, thanks to Adrien Nayrat for the report)
   - Fix per-server graphs having multiple data and pg_stat_kcache enabled
     (Alexander Kukushkin)
-  - Fix #calls metric on the per-query page
+  - Fix #calls and #rows metrics on the per-query page (Julien Rouhaud)
+  - Fix query detail and performance problems on quals (Ronan Dunklau)
+  - Fix queries for pg_stat_kcache and pg_qualstats (Ronan Dunklau)
+  - Fix query details when multiples users run the same query (Julien Rouhaud)
+  - Fix global databases metrics query (Alexander Kukushkin)
+  - Fix long standing bug in pg_qualstats aggregation
+  - Fix data retrieval when a time interval spread over more than 2 aggregated
+    rows
+
+  Misc:
+    - Display server's alias instead of hostname:port (Adrien Nayrat)
+    - Support pg_qualstats 2
 3.2.0:
   - Add support for pg_wait_sampling to display wait events statistics and
     graphs, require pg9.6+ (Julien Rouhaud)
