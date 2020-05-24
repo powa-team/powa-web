@@ -403,12 +403,11 @@ def get_any_sample_query(ctrl, srvid, database, queryid, _from, _to):
     example_query = None
     if has_pgqs and has_pgqs >= "0.0.7":
         rs = list(ctrl.execute(text("""
-            SELECT query, pg_qualstats_example_query(queryid)
-            FROM powa_statements
-            WHERE queryid = :queryid
+            SELECT pg_qualstats_example_query(:queryid)
             LIMIT 1
-        """), params={"queryid": queryid}, remote_access=True))[0]
-        example_query = rs[1]
+        """), params={"queryid": queryid}, srvid=srvid, remote_access=True))
+        if len(rs) > 0:
+            example_query = rs[0][0]
         if example_query is not None:
             unprepared = unprepare(example_query)
             if example_query == unprepared:
@@ -578,6 +577,10 @@ def get_hypoplans(conn, query, indexes=None):
         queries: a list of sql queries, already formatted with values
         indexes: a list of hypothetical index names to look for in the plan
     """
+    # Early exit if no query was provided
+    if query is None:
+        return None
+
     indexes = indexes or []
     # Escape literal '%'
     query = query.replace("%", "%%")
