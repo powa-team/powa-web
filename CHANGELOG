@@ -1,3 +1,7 @@
+4.0.1:
+  Bug fixes:
+  - Fix per-query hypothetical index checking (Julien Rouhaud, thanks to github
+    user hrawulwa)
 4.0.0:
   New features:
   - Make the UI compatible with remote-mode setup (Julien Rouhaud)
