@@ -33,7 +33,7 @@ setup(
     long_description="See https://powa.readthedocs.io/",
     scripts=['powa-web'],
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Intended Audience :: System Administrators",
         "Intended Audience :: End Users/Desktop",
         "License :: Other/Proprietary License",
