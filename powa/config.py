@@ -109,7 +109,7 @@ class AllCollectorsDetail(ContentWidget):
                 THEN 'Remote collector'
                   || coalesce(
                     substring(application_name,
-                        length('PoWA collector - main thread ')
+                        length('PoWA collector - worker ')
                     ), '')
                 ELSE 'Backgound worker'
             END AS powa_kind,
@@ -120,7 +120,7 @@ class AllCollectorsDetail(ContentWidget):
             FROM (
                 SELECT 'bgworker' AS id, 'PoWA - %%' AS val
                 UNION ALL
-                SELECT 'collector', 'PoWA collector - main thread (%%'
+                SELECT 'collector', 'PoWA collector - worker %%'
             ) n
             LEFT JOIN pg_stat_activity a ON a.application_name LIKE n.val
             ORDER BY 1"""
