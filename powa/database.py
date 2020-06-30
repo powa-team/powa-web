@@ -152,7 +152,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
 
         return (select(cols)
                 .select_from(from_clause)
-                .where(c.calls is not None)
+                .where(c.calls != '0')
                 .group_by(c.srvid, c.ts, bs, c.mesure_interval)
                 .order_by(c.ts)
                 .params(samples=100))
