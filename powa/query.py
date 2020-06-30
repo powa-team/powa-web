@@ -237,7 +237,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
 
         return (select(cols)
                 .select_from(from_clause)
-                .where(c.calls != None)
+                .where(c.calls != '0')
                 .group_by(c.ts, block_size.c.block_size, c.mesure_interval)
                 .order_by(c.ts)
                 .params(samples=100))
