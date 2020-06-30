@@ -293,6 +293,7 @@ class DatabaseAllRelMetricGroup(MetricGroupDef):
         return (select(cols)
                 .select_from(from_clause)
                 .where(c.datname == bindparam("database"))
+                .where(c.mesure_interval != '0')
                 .group_by(c.srvid, c.ts, c.mesure_interval)
                 .order_by(c.ts)
                 .params(samples=100))
