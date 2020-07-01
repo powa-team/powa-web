@@ -567,6 +567,7 @@ class DashboardPage(object):
     datasources = []
     parent = None
     timeline = None
+    docs_stats_url = 'https://powa.readthedocs.io/en/latest/components/stats_extensions/'
 
     @classmethod
     def url_specs(cls, url_prefix):

@@ -605,7 +605,7 @@ class QueryOverview(DashboardPage):
         iodash = Dashboard("IO",
             [[hit_ratio_graph,
               Graph("Read / Write time",
-                    url="https://powa.readthedocs.io/en/latest/stats_extensions/pg_stat_kcache.html",
+                    url=self.docs_stats_url + "pg_stat_kcache.html",
                     metrics=[QueryOverviewMetricGroup.blk_read_time,
                              QueryOverviewMetricGroup.blk_write_time])]])
         dashes.append(iodash)
@@ -613,11 +613,11 @@ class QueryOverview(DashboardPage):
         if self.has_extension(self.path_args[0], "pg_stat_kcache"):
             iodash.widgets.extend([[
                 Graph("Physical block (in Bps)",
-                      url="https://powa.readthedocs.io/en/latest/stats_extensions/pg_stat_kcache.html",
+                      url=self.docs_stats_url + "pg_stat_kcache.html",
                       metrics=[QueryOverviewMetricGroup.reads,
                                QueryOverviewMetricGroup.writes]),
                 Graph("CPU Time repartition",
-                      url="https://powa.readthedocs.io/en/latest/stats_extensions/pg_stat_kcache.html",
+                      url=self.docs_stats_url + "pg_stat_kcache.html",
                       metrics=[QueryOverviewMetricGroup.user_time,
                                QueryOverviewMetricGroup.system_time,
                                QueryOverviewMetricGroup.other_time],
@@ -630,7 +630,7 @@ class QueryOverview(DashboardPage):
                 QueryOverviewMetricGroup.disk_hit_ratio)
 
             sys_graphs = [Graph("System resources (events per sec)",
-                                url="https://powa.readthedocs.io/en/latest/stats_extensions/pg_stat_kcache.html",
+                                url=self.docs_stats_url + "pg_stat_kcache.html",
                                 metrics=[QueryOverviewMetricGroup.majflts,
                                          QueryOverviewMetricGroup.minflts,
                                          # QueryOverviewMetricGroup.nswaps,
@@ -664,10 +664,10 @@ class QueryOverview(DashboardPage):
                          WaitsQueryOverviewMetricGroup.count_io]
             dashes.append(Dashboard("Wait Events",
                 [[Graph("Wait Events (per second)",
-                        url="https://powa.readthedocs.io/en/latest/stats_extensions/pg_wait_sampling.html",
+                        url=self.docs_stats_url + "pg_wait_sampling.html",
                         metrics=metrics),
                   Grid("Wait events summary",
-                        url="https://powa.readthedocs.io/en/latest/stats_extensions/pg_wait_sampling.html",
+                       url=self.docs_stats_url + "pg_wait_sampling.html",
                        columns=[{
                            "name": "event_type",
                            "label": "Event Type",
