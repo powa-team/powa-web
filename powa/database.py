@@ -468,7 +468,7 @@ class DatabaseOverview(DashboardPage):
             block_graph.color_scheme = ['#cb513a', '#65b9ac', '#73c03a']
 
             sys_graphs = [Graph("System resources (events per sec)",
-                                url="https://powa.readthedocs.io/en/latest/stats_extensions/pg_stat_kcache.html",
+                                url=self.docs_stats_url + "pg_stat_kcache.html",
                                 metrics=[DatabaseOverviewMetricGroup.majflts,
                                          DatabaseOverviewMetricGroup.minflts,
                                          # DatabaseOverviewMetricGroup.nswaps,
@@ -504,7 +504,7 @@ class DatabaseOverview(DashboardPage):
 
             graphs_dash.append(Dashboard("Wait Events",
                 [[Graph("Wait Events (per second)",
-                        url="https://powa.readthedocs.io/en/latest/stats_extensions/pg_wait_sampling.html",
+                        url=self.docs_stats_url + "pg_wait_sampling.html",
                         metrics=metrics)]]))
 
         self._dashboard.widgets.extend(
@@ -541,7 +541,7 @@ class DatabaseOverview(DashboardPage):
         if self.has_extension(self.path_args[0], "pg_wait_sampling"):
             self._dashboard.widgets.extend([[
                 Grid("Wait events for all queries",
-                     url="https://powa.readthedocs.io/en/latest/stats_extensions/pg_wait_sampling.html",
+                     url=self.docs_stats_url + "pg_wait_sampling.html",
                      columns=[{
                        "name": "query",
                        "label": "Query",
