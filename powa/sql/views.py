@@ -55,6 +55,7 @@ def powa_base_statdata_detailed_db():
         SELECT powa_statements.queryid
         FROM powa_statements
         WHERE powa_statements.dbid = powa_databases.oid
+          AND powa_statements.srvid = :server
       )
       AND psh.srvid = :server
     ) AS unnested
@@ -68,6 +69,7 @@ def powa_base_statdata_detailed_db():
       SELECT powa_statements.queryid
       FROM powa_statements
       WHERE powa_statements.dbid = powa_databases.oid
+        AND powa_statements.srvid = :server
     )
     AND psc.srvid = :server
   ) h""")
@@ -720,6 +722,7 @@ def powa_base_waitdata_detailed_db():
         SELECT ps.queryid
         FROM powa_statements ps
         WHERE ps.dbid = powa_databases.oid
+          AND ps.srvid = :server
       )
       AND wsh.srvid = :server
     ) AS unnested
@@ -733,6 +736,7 @@ def powa_base_waitdata_detailed_db():
       SELECT ps.queryid
       FROM powa_statements ps
       WHERE ps.dbid = powa_databases.oid
+        AND ps.srvid = :server
     )
     AND wsc.srvid = :server
   ) h
