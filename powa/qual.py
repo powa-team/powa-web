@@ -86,7 +86,7 @@ class QualDetail(ContentWidget):
         stmt = (stmt.select()
                 .where((c.qualid == bindparam("qualid")))
                 .where(stmt.c.occurences > 0)
-                .column((c.queryid == bindparam("query")).label("is_my_query")))
+                .column((stmt.c.queryid == bindparam("query")).label("is_my_query")))
         quals = list(self.execute(
             stmt,
             params={"server": server,
