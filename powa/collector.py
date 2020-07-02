@@ -39,7 +39,7 @@ class CollectorServerDetail(MetricGroupDef):
                     FROM pg_stat_activity
                     WHERE application_name LIKE 'PoWA - %%'""").fetchone()[0]
         else:
-            raw = self.notify_collector('WORKERS_STATUS', server, 2)
+            raw = self.notify_collector('WORKERS_STATUS', [server], 2)
 
             status = None
             # did we receive a valid answer?
