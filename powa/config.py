@@ -149,6 +149,7 @@ class PowaServersMetricGroup(MetricGroupDef):
     dbname = MetricDef(label="Database name", type="string")
     frequency = MetricDef(label="Frequency", type="string")
     retention = MetricDef(label="Retention", type="string")
+    powa_coalesce = MetricDef(label="Powa coalesce", type="string")
     allow_ui_connection = MetricDef(label="Allow UI connection", type="bool")
     snapts = MetricDef(label="Last snapshot", type="string")
     no_err = MetricDef(label="Error", type="bool")
@@ -164,7 +165,7 @@ class PowaServersMetricGroup(MetricGroupDef):
      s.hostname, s.port, s.username,
      CASE WHEN s.password IS NULL THEN '<NULL>' ELSE '********' END AS password,
      s.dbname, s.frequency, s.retention::text AS retention,
-     s.allow_ui_connection,
+     s.powa_coalesce::text AS powa_coalesce, s.allow_ui_connection,
      CASE WHEN coalesce(m.snapts, '-infinity') = '-infinity'::timestamptz THEN
         NULL
      ELSE
