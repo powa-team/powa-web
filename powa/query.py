@@ -445,7 +445,7 @@ class WaitSamplingList(MetricGroupDef):
     xaxis = "event"
     axis_type = "category"
     data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)/wait_events"
-    counts = MetricDef(label="# of events", type="number",
+    counts = MetricDef(label="# of events", type="integer",
                        direction="descending")
 
     def prepare(self):
