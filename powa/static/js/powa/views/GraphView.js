@@ -74,29 +74,22 @@ define([
                 };
             },
 
-            updateScales: function(series){
-                var self = this;
+            updateScales: function(){
                 $.each(this.y_axes, function(key, axis){
-                    return;
-                    var unit = key;
-                    var ymin = +Infinity,
-                        ymax = -Infinity;
+                    var ymax = -Infinity;
                     axis.scale = d3.scale.linear();
                     var all_series = [];
                     _.each(this.graph.series, function(serie){
                         var metric = serie.metric;
                         if(metric.get("type") === key){
                             _.each(serie.data, function(datum){
-                                ymin = Math.min(datum.y, ymin);
                                 ymax = Math.max(datum.y, ymax);
                                 serie.scale = axis.scale;
                                 all_series.push(serie);
                             });
-                        };
+                        }
                     });
-                    ymin = 0.8 * ymin;
-                    ymax = 1.2 * ymax;
-                    axis.scale = axis.scale.domain([ymin, ymax]).range([0, 1]);
+                    axis.scale = axis.scale.domain([0, ymax]).range([0, 1]);
                     _.each(all_series, function(serie){
                         serie.scale = axis.scale;
                     });
@@ -159,7 +152,7 @@ define([
             },
 
             initGraphHelp: function() {
-              labels = '';
+              var labels = '';
               // retrieve the description of each metrics
               this.model.get("metrics").each(function(metric, index) {
                 labels ='<tr>'
@@ -169,7 +162,7 @@ define([
                   + '</td></td>'
                   + labels;
               });
-              help = '<table>'
+              var help = '<table>'
                 + labels
                 + '</table class="stack">'
               // add the hover info
@@ -269,8 +262,8 @@ define([
 
                 // display each new event
                 $.each(changes, function(i) {
-                  change = changes[i];
-                  txt = Message.format_config_change(change);
+                  var change = changes[i];
+                  var txt = Message.format_config_change(change);
                   self.annotator.add(change["ts"], txt);
                 })
                 this.annotator.update();
