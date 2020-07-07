@@ -406,7 +406,7 @@ class GlobalBgwriterMetricGroup(MetricGroupDef):
 
         return (select(cols)
                 .select_from(from_clause)
-                .where(c.mesure_interval != 0)
+                .where(c.mesure_interval != '0')
                 .group_by(c.srvid, c.ts, bs, c.mesure_interval)
                 .order_by(c.ts)
                 .params(samples=100))
