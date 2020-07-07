@@ -44,7 +44,7 @@ class ByDatabaseMetricGroup(MetricGroupDef):
     xaxis = "datname"
     data_url = r"/server/(\d+)/metrics/by_databases/"
     axis_type = "category"
-    calls = MetricDef(label="#Calls", type="number", direction="descending")
+    calls = MetricDef(label="#Calls", type="integer", direction="descending")
     runtime = MetricDef(label="Runtime", type="duration")
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
     shared_blks_read = MetricDef(label="Blocks read", type="size")
@@ -101,7 +101,7 @@ class ByDatabaseWaitSamplingMetricGroup(MetricGroupDef):
     data_url = r"/server/(\d+)/metrics/wait_event_by_databases/"
     axis_type = "category"
     counts = MetricDef(label="# of events",
-                       type="number", direction="descending")
+                       type="integer", direction="descending")
 
     @property
     def query(self):
