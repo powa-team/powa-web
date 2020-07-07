@@ -64,7 +64,7 @@ SELECT json_object_agg(oid, value)
         pg_operator
         LEFT JOIN pg_amop amop ON amop.amopopr = pg_operator.oid
         LEFT JOIN pg_am ON amop.amopmethod = pg_am.oid AND pg_am.amname != 'hash'
-        LEFt JOIN pg_opfamily f ON f.opfmethod = pg_am.oid AND amop.amopfamily = f.oid
+        LEFT JOIN pg_opfamily f ON f.opfmethod = pg_am.oid AND amop.amopfamily = f.oid
         LEFT JOIN pg_opclass c ON c.opcfamily = f.oid
         WHERE pg_operator.oid in :oid_list
         GROUP BY pg_operator.oid, oprname, pg_am.oid, amname
@@ -271,7 +271,8 @@ Plan = namedtuple(
     ("title", "values", "query", "plan", "filter_ratio", "exec_count", "occurences"))
 
 
-def qual_constants(srvid, type, tsfrom, tsto, filter_clause, top=1):
+def qual_constants(srvid, type, tsfrom, tsto, filter_clause,
+                   queries=None, quals=None, top=1):
     orders = {
         'most_executed': "8 DESC",
         'least_filtering': "9",
@@ -284,6 +285,20 @@ def qual_constants(srvid, type, tsfrom, tsto, filter_clause, top=1):
     dialect = pgdialect()
     dialect.paramstyle = 'named'
     filter_clause = filter_clause.compile(dialect=dialect)
+
+    query_subfilter = ""
+    query_filter = ""
+    qual_subfilter = ""
+    qual_filter = ""
+
+    if queries is not None:
+        query_subfilter = "AND queryid IN (%s)" % queries
+        query_filter = "AND s.queryid IN (%s)" % queries
+
+    if quals is not None:
+        qual_subfilter = "AND qualid IN (%s)" % quals
+        qual_filter = "AND qnc.qualid IN (%s)" % quals
+
     base = text("""
     (
     WITH sample AS (
@@ -300,15 +315,21 @@ def qual_constants(srvid, type, tsfrom, tsto, filter_clause, top=1):
             SELECT *
             FROM powa_qualstats_constvalues_history qnc
             WHERE srvid = :server
-            AND coalesce_range && tstzrange(:from, :to)
+            %(query_subfilter)s
+            %(qual_subfilter)s
+              AND coalesce_range && tstzrange(:from, :to)
             UNION ALL
             SELECT *
             FROM powa_qualstats_aggregate_constvalues_current(:server, :from, :to)
             WHERE srvid = :server
+            %(query_subfilter)s
+            %(qual_subfilter)s
         ) qnc ON qnc.srvid = s.srvid AND qn.qualid = qnc.qualid AND qn.queryid = qnc.queryid,
         LATERAL
                 unnest(%(qual_type)s) as t(constants,occurences, execution_count, nbfiltered)
         WHERE %(filter)s
+        %(query_filter)s
+        %(qual_filter)s
         AND s.srvid = :server
         GROUP BY s.srvid, qn.qualid, quals, constants, s.queryid, query
         ORDER BY %(order)s
@@ -327,6 +348,10 @@ def qual_constants(srvid, type, tsfrom, tsto, filter_clause, top=1):
     """ % {
         'qual_type': type,
         'filter': str(filter_clause),
+        'query_subfilter': str(query_subfilter),
+        'query_filter': str(query_filter),
+        'qual_subfilter': str(qual_subfilter),
+        'qual_filter': str(qual_filter),
         'order': orders[type]})
     base = base.params(top_value=top, **filter_clause.params)
     return select(["*"]).select_from(base)
@@ -422,12 +447,7 @@ def qualstat_get_figures(conn, srvid, database, tsfrom, tsto,
             AND coalesce_range && tstzrange(:from, :to)""")
 
     if queries is not None:
-        condition = and_(condition, array([int(q) for q in queries])
-                         .any(literal_column("s.queryid")))
-
-    if quals is not None:
-        condition = and_(condition, array([int(q) for q in quals])
-                         .any(literal_column("qnc.qualid")))
+        queries_str = ','.join(queries)
 
     sql = (select([
         text('most_filtering.quals'),
@@ -437,21 +457,25 @@ def qualstat_get_figures(conn, srvid, database, tsfrom, tsto,
         text('to_json(most_executed) as "most executed"'),
         text('to_json(most_used) as "most used"')])
            .select_from(
-               qual_constants(srvid, "most_filtering", tsfrom, tsto, condition)
+               qual_constants(srvid, "most_filtering", tsfrom, tsto, condition,
+                              queries_str, quals)
                .alias("most_filtering")
                .join(
                    qual_constants(srvid, "least_filtering",
-                                  tsfrom, tsto, condition)
+                                  tsfrom, tsto, condition,
+                                  queries_str, quals)
                    .alias("least_filtering"),
                    text("most_filtering.rownumber = "
                         "least_filtering.rownumber"))
                .join(qual_constants(srvid, "most_executed",
-                                    tsfrom, tsto, condition)
+                                    tsfrom, tsto, condition,
+                                    queries_str, quals)
                      .alias("most_executed"),
                      text("most_executed.rownumber = "
                           "least_filtering.rownumber"))
                .join(qual_constants(srvid, "most_used",
-                                    tsfrom, tsto, condition)
+                                    tsfrom, tsto, condition,
+                                    queries_str, quals)
                      .alias("most_used"),
                      text("most_used.rownumber = "
                           "least_filtering.rownumber"))))

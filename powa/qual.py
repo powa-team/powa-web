@@ -30,9 +30,7 @@ class QualConstantsMetricGroup(MetricGroupDef):
                                 bindparam("to"),
                                 text("""
             datname = :database AND
-            s.queryid = :query AND
-            qn.qualid = :qual AND
-            coalesce_range && tstzrange(:from, :to)"""), top=10))
+            coalesce_range && tstzrange(:from, :to)"""), ":query", ":qual", top=10))
         base = qualstat_getstatdata(bindparam("server"))
         c = inner_cc(base)
         base = base.where(c.queryid == bindparam("query")).alias()
