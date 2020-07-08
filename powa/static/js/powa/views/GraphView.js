@@ -210,7 +210,6 @@ define([
                if(this.graph){
                 this.graph.configure({width: this.$graph_elem.parent().innerWidth()});
                 _.each(this.y_axes, function(axis){
-                    var width = axis.orientation === "left" ? 0 : this.$el.innerWidth();
                     axis.setSize({height: this.graph.height + 4, auto: true});
                 }, this);
                 this.graph.render();

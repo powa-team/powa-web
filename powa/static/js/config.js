@@ -19,7 +19,6 @@ require.config({
     underscore: "../bower_components/underscore/underscore",
     backgrid: "../bower_components/backgrid/lib/backgrid",
     spin: "../bower_components/spin.js/spin",
-    twix: "../bower_components/twix/bin/twix",
     "backgrid-filter": "../bower_components/backgrid-filter/backgrid-filter",
     "backgrid-paginator": "../bower_components/backgrid-paginator/backgrid-paginator",
     "backbone-pageable": "../bower_components/backbone-pageable/lib/backbone-pageable",
