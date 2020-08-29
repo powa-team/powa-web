@@ -1,3 +1,19 @@
+4.0.2:
+  New features:
+  - Add powa_coaslesce setting on config page (Adrien Nayrat)
+  Performance improvements:
+  - Fix a cartesian product in the predicate view (Adrien Nayrat)
+  - Fix multiple queries so they can use the existing indexes (Adrien Nayrat)
+  - Multiple performance improvements on the per-predicate views (Adrien Nayrat
+    and Julien Rouhaud)
+  Bug fixes:
+  - Properly ignore queries that weren't called on the given interval (Adrien
+    Nayrat)
+  - Don't display the last retrieved value on graphs, as the value is known to
+    always be zero and lead to wrong graphs (Adrien Nayrat)
+  - Fix links to documentation (Matthias Dötsch)
+  - Fix collector worker status state when srvid greater than 9 (Julien
+    Rouhaud, thanks to Adrien Nayrat for the report)
 4.0.1:
   Bug fixes:
   - Fix per-query hypothetical index checking (Julien Rouhaud, thanks to github
