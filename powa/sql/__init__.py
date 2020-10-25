@@ -424,9 +424,9 @@ def get_any_sample_query(ctrl, srvid, database, queryid, _from, _to):
     If this fail, fallback get_unjumbled_query, with "most executed" const
     values.
     """
-    has_pgqs = ctrl.has_extension_version(srvid, "pg_qualstats")
+    has_pgqs = ctrl.has_extension_version(srvid, "pg_qualstats", "0.0.7")
     example_query = None
-    if has_pgqs and has_pgqs >= "0.0.7":
+    if has_pgqs:
         rs = list(ctrl.execute(text("""
             SELECT pg_qualstats_example_query(:queryid)
             LIMIT 1

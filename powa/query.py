@@ -78,6 +78,8 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                               desc="Time spent reading data")
     blk_write_time = MetricDef(label="Write time", type="duration",
                                desc="Time spent writing data")
+    avg_plantime = MetricDef(label="Avg plantime", type="duration",
+                             desc="Average query planning duration")
     avg_runtime = MetricDef(label="Avg runtime", type="duration",
                             desc="Average query duration")
     hit_ratio = MetricDef(label="Shared buffers hit ratio", type="percent",
@@ -85,6 +87,12 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     miss_ratio = MetricDef(label="Shared buffers miss ratio", type="percent",
                            desc="Percentage of data found in OS cache or read"
                                 " from disk")
+    wal_records = MetricDef(label="#Wal records", type="integer",
+                            desc="Amount of WAL records generated")
+    wal_fpi = MetricDef(label="#Wal FPI", type="integer",
+                        desc="Amount of WAL full-page images generated")
+    wal_bytes = MetricDef(label="Wal bytes", type="size",
+                          desc="Amount of WAL bytes generated")
 
     reads = MetricDef(label="Physical read", type="sizerate",
                       desc="Amount of data read from disk")
@@ -129,6 +137,11 @@ class QueryOverviewMetricGroup(MetricGroupDef):
         else:
             base.pop("miss_ratio")
 
+        if not handler.has_extension_version(params["server"],
+                                             'pg_stat_statements', '1.8'):
+            for key in ("avg_plantime", "wal_records", "wal_fpi", "wal_bytes"):
+                base.pop(key)
+
         return base
 
     @property
@@ -169,7 +182,19 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                 bps(c.temp_blks_written),
                 sumps(c.blk_read_time),
                 sumps(c.blk_write_time),
-                (sum(c.runtime) / greatest(sum(c.calls), 1)).label("avg_runtime")]
+                (sum(c.runtime) / greatest(sum(c.calls),
+                                           1)).label("avg_runtime")
+                ]
+
+        if self.has_extension_version(self.path_args[0],
+                                      'pg_stat_statements', '1.8'):
+            cols.extend([
+                (sum(c.plantime) / greatest(sum(c.calls),
+                                            1)).label("avg_plantime"),
+                sumps(c.wal_records),
+                sumps(c.wal_fpi),
+                sumps(c.wal_bytes)
+                ])
 
         from_clause = query
         if self.has_extension(self.path_args[0], "pg_stat_kcache"):
@@ -283,9 +308,9 @@ class QueryIndexes(ContentWidget):
         indexes = {}
         for qual in optimizable:
             indexes[qual.where_clause] = possible_indexes(qual)
-        hypo_version = self.has_extension_version(srvid, "hypopg",
+        hypo_version = self.has_extension_version(srvid, "hypopg", "0.0.3",
                                                   database=database)
-        if indexes and hypo_version and hypo_version >= "0.0.3":
+        if indexes and hypo_version:
             # identify indexes
             # create them
             allindexes = [ind for indcollection in indexes.values()
@@ -577,17 +602,35 @@ class QueryOverview(DashboardPage):
         if getattr(self, '_dashboard', None) is not None:
             return self._dashboard
 
+        pgss18 = self.has_extension_version(self.path_args[0],
+                                            'pg_stat_statements', '1.8')
+
         hit_ratio_graph = Graph("Hit ratio",
                                 metrics=[QueryOverviewMetricGroup.hit_ratio],
                                 renderer="bar",
                                 stack=True,
                                 color_scheme=['#73c03a','#65b9ac','#cb513a'])
+
+        gen_metrics = [QueryOverviewMetricGroup.avg_runtime,
+                       QueryOverviewMetricGroup.rows,
+                       QueryOverviewMetricGroup.calls]
+        if pgss18:
+            gen_metrics.extend([QueryOverviewMetricGroup.avg_plantime])
+
         dashes = []
         dashes.append(Dashboard("Query detail",
-            [[Graph("General",
-                    metrics=[QueryOverviewMetricGroup.avg_runtime,
-                             QueryOverviewMetricGroup.rows,
-                             QueryOverviewMetricGroup.calls ])]]))
+                                [[Graph("General",
+                                        metrics=gen_metrics)]]))
+
+        if pgss18:
+            # Add WALs graphs
+            wals_graphs = [[Graph("WAL activity",
+                            metrics=[QueryOverviewMetricGroup.wal_records,
+                                     QueryOverviewMetricGroup.wal_fpi,
+                                     QueryOverviewMetricGroup.wal_bytes]),
+                            ]]
+            dashes.append(Dashboard("WALs", wals_graphs))
+
         dashes.append(Dashboard(
             "PG Cache",
             [[Graph("Shared block (in Bps)",

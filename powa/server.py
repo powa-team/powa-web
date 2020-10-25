@@ -45,6 +45,7 @@ class ByDatabaseMetricGroup(MetricGroupDef):
     data_url = r"/server/(\d+)/metrics/by_databases/"
     axis_type = "category"
     calls = MetricDef(label="#Calls", type="integer", direction="descending")
+    plantime = MetricDef(label="Plantime", type="duration")
     runtime = MetricDef(label="Runtime", type="duration")
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
     shared_blks_read = MetricDef(label="Blocks read", type="size")
@@ -53,7 +54,20 @@ class ByDatabaseMetricGroup(MetricGroupDef):
     shared_blks_written = MetricDef(label="Blocks written", type="size")
     temp_blks_written = MetricDef(label="Temp Blocks written", type="size")
     io_time = MetricDef(label="I/O time", type="duration")
+    wal_records = MetricDef(label="#Wal records", type="integer")
+    wal_fpi = MetricDef(label="#Wal FPI", type="integer")
+    wal_bytes = MetricDef(label="Wal bytes", type="size")
     params = ["server"]
+
+    @classmethod
+    def _get_metrics(cls, handler, **params):
+        base = cls.metrics.copy()
+
+        if not handler.has_extension_version(handler.path_args[0],
+                                             'pg_stat_statements', '1.8'):
+            for key in ("plantime", "wal_records", "wal_fpi", "wal_bytes"):
+                base.pop(key)
+        return base
 
     @property
     def query(self):
@@ -65,21 +79,31 @@ class ByDatabaseMetricGroup(MetricGroupDef):
             and_(c.dbid == powa_databases.c.oid,
                  c.srvid == powa_databases.c.srvid))
 
-        return (select([
-            powa_databases.c.srvid,
-            powa_databases.c.datname,
-            sum(c.calls).label("calls"),
-            sum(c.runtime).label("runtime"),
-            round(cast(sum(c.runtime), Numeric) /
-                  greatest(sum(c.calls), 1), 2).label("avg_runtime"),
-            mulblock(sum(c.shared_blks_read).label("shared_blks_read")),
-            mulblock(sum(c.shared_blks_hit).label("shared_blks_hit")),
-            mulblock(sum(c.shared_blks_dirtied).label("shared_blks_dirtied")),
-            mulblock(sum(c.shared_blks_written).label("shared_blks_written")),
-            mulblock(sum(c.temp_blks_written).label("temp_blks_written")),
-            round(cast(sum(c.blk_read_time + c.blk_write_time),
-                       Numeric), 2).label("io_time")
-        ])
+        cols = [powa_databases.c.srvid,
+                powa_databases.c.datname,
+                sum(c.calls).label("calls"),
+                sum(c.runtime).label("runtime"),
+                round(cast(sum(c.runtime), Numeric) /
+                      greatest(sum(c.calls), 1), 2).label("avg_runtime"),
+                mulblock(sum(c.shared_blks_read).label("shared_blks_read")),
+                mulblock(sum(c.shared_blks_hit).label("shared_blks_hit")),
+                mulblock(sum(c.shared_blks_dirtied).label("shared_blks_dirtied")),
+                mulblock(sum(c.shared_blks_written).label("shared_blks_written")),
+                mulblock(sum(c.temp_blks_written).label("temp_blks_written")),
+                round(cast(sum(c.blk_read_time + c.blk_write_time),
+                           Numeric), 2).label("io_time")
+                ]
+
+        if self.has_extension_version(self.path_args[0], 'pg_stat_statements',
+                                      '1.8'):
+            cols.extend([
+                sum(c.plantime).label("plantime"),
+                sum(c.wal_records).label("wal_records"),
+                sum(c.wal_fpi).label("wal_fpi"),
+                sum(c.wal_bytes).label("wal_bytes")
+                ])
+
+        return (select(cols)
                 .select_from(from_clause)
                 .order_by(sum(c.calls).desc())
                 .group_by(powa_databases.c.srvid,
@@ -141,6 +165,8 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
                             desc="Average query duration")
     calls = MetricDef(label="Queries per sec", type="number",
                       desc="Number of time the query has been executed")
+    planload = MetricDef(label="Plantime per sec", type="duration",
+                         desc="Total planning duration")
     load = MetricDef(label="Runtime per sec", type="duration",
                      desc="Total duration of queries executed")
     total_blks_hit = MetricDef(label="Total hit", type="sizerate",
@@ -148,6 +174,12 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
     total_blks_read = MetricDef(label="Total read", type="sizerate",
                                 desc="Amount of data found in OS cache or"
                                      " read from disk")
+    wal_records = MetricDef(label="#Wal records", type="integer",
+                            desc="Number of WAL records generated")
+    wal_fpi = MetricDef(label="#Wal FPI", type="integer",
+                        desc="Number of WAL full-page images generated")
+    wal_bytes = MetricDef(label="Wal bytes", type="size",
+                          desc="Amount of WAL bytes generated")
 
     total_sys_hit = MetricDef(label="Total system cache hit", type="sizerate",
                               desc="Amount of data found in OS cache")
@@ -180,6 +212,10 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
         else:
             base.pop("total_blks_read")
 
+        if not handler.has_extension_version(params["server"],
+                                             'pg_stat_statements', '1.8'):
+            for key in ("planload", "wal_records", "wal_fpi", "wal_bytes"):
+                base.pop(key)
         return base
 
     @property
@@ -198,7 +234,24 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
                 (sum(c.runtime) / greatest(extract("epoch", c.mesure_interval),
                                            1)).label("load"),
                 total_read(c),
-                total_hit(c)]
+                total_hit(c)
+                ]
+
+        if self.has_extension_version(self.path_args[0],
+                                      'pg_stat_statements', '1.8'):
+            cols.extend([
+                (sum(c.plantime) / greatest(extract("epoch", c.mesure_interval),
+                                            1)).label("planload"),
+                (sum(c.wal_records) / greatest(extract("epoch",
+                                                       c.mesure_interval),
+                                               1)).label("wal_records"),
+                (sum(c.wal_fpi) / greatest(extract("epoch",
+                                                   c.mesure_interval),
+                                           1)).label("wal_fpi"),
+                (sum(c.wal_bytes) / greatest(extract("epoch",
+                                                     c.mesure_interval),
+                                             1)).label("wal_bytes")
+                ])
 
         from_clause = query
         if self.has_extension(self.path_args[0], "pg_stat_kcache"):
@@ -497,18 +550,35 @@ class ServerOverview(DashboardPage):
         if getattr(self, '_dashboard', None) is not None:
             return self._dashboard
 
+        pgss18 = self.has_extension_version(self.path_args[0],
+                                            'pg_stat_statements', '1.8')
+
+        all_db_metrics = [GlobalDatabasesMetricGroup.avg_runtime,
+                          GlobalDatabasesMetricGroup.load,
+                          GlobalDatabasesMetricGroup.calls]
+        if pgss18:
+            all_db_metrics.extend([GlobalDatabasesMetricGroup.planload])
+
         block_graph = Graph("Block access in Bps",
                             metrics=[GlobalDatabasesMetricGroup.
                                      total_blks_hit],
                             color_scheme=None)
+
         all_db_graphs = [Graph("Query runtime per second (all databases)",
-                               metrics=[GlobalDatabasesMetricGroup.avg_runtime,
-                                        GlobalDatabasesMetricGroup.load,
-                                        GlobalDatabasesMetricGroup.calls]),
+                               metrics=all_db_metrics),
                          block_graph]
 
         graphs_dash = [Dashboard("General Overview", [all_db_graphs])]
         graphs = [TabContainer("All databases", graphs_dash)]
+
+        # Add WALs graphs
+        if pgss18:
+            wals_graphs = [[Graph("WAL activity",
+                            metrics=[GlobalDatabasesMetricGroup.wal_records,
+                                     GlobalDatabasesMetricGroup.wal_fpi,
+                                     GlobalDatabasesMetricGroup.wal_bytes]),
+                            ]]
+            graphs_dash.append(Dashboard("WALs", wals_graphs))
 
         # Add pg_stat_bgwriter graphs
         bgw_graphs = [[Graph("Checkpointer scheduling",
@@ -602,7 +672,7 @@ class ServerOverview(DashboardPage):
                             "label": "Database",
                             "url_attr": "url"
                         }],
-                        metrics=ByDatabaseMetricGroup.all())]]
+                        metrics=ByDatabaseMetricGroup.all(self))]]
 
         if self.has_extension(self.path_args[0], "pg_wait_sampling"):
             dashes.append([Grid("Wait events for all databases",

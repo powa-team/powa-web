@@ -533,10 +533,13 @@ class MetricGroupDef(with_metaclass(MetaMetricGroup, DataSource)):
         base["metrics"] = list(cls._get_metrics(handler, **params).values())
         return base
 
-
     @classmethod
-    def all(cls):
-        return sorted(cls.metrics.values(), key=attrgetter("_order"))
+    def all(cls, handler=None, **params):
+        if handler is None:
+            return sorted(cls.metrics.values(), key=attrgetter("_order"))
+
+        return sorted(cls._get_metrics(handler, **params).values(),
+                      key=attrgetter("_order"))
 
     @property
     def metrics(self):

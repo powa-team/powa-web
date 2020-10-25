@@ -26,6 +26,7 @@ class OverviewMetricGroup(MetricGroupDef):
     data_url = r"/server/all_servers/"
     hostname = MetricDef(label="Hostname", type="text")
     port = MetricDef(label="Port", type="text")
+    version = MetricDef(label="Version", type="text")
 
     @property
     def query(self):
@@ -37,8 +38,13 @@ class OverviewMetricGroup(MetricGroupDef):
                    COALESCE(alias, hostname || ':' || port)
                 END AS alias,
                 CASE WHEN id = 0 THEN :host ELSE hostname END as hostname,
-                CASE WHEN id = 0 THEN :port ELSE port END AS port
-                FROM powa_servers""")
+                CASE WHEN id = 0 THEN :port ELSE port END AS port,
+                CASE WHEN id = 0 THEN set.setting
+                    ELSE s.version::text
+                END AS version
+                FROM powa_servers s
+                LEFT JOIN pg_settings set ON set.name = 'server_version'
+                    AND s.id = 0""")
 
         sql = sql.params(host=self.current_host, port=self.current_port)
         return sql

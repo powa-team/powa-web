@@ -46,6 +46,8 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     calls = MetricDef(label="Queries per sec", type="number",
                       desc="Number of time the query has been executed, "
                             "per second")
+    planload = MetricDef(label="Plantime per sec", type="duration",
+                         desc="Total planning duration")
     load = MetricDef(label="Runtime per sec", type="duration",
                      desc="Total duration of queries executed, per second")
     total_blks_hit = MetricDef(label="Total shared buffers hit",
@@ -55,6 +57,12 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
                                 type="sizerate",
                                 desc="Amount of data found in OS cache or"
                                      " read from disk")
+    wal_records = MetricDef(label="#Wal records", type="integer",
+                            desc="Number of WAL records generated")
+    wal_fpi = MetricDef(label="#Wal FPI", type="integer",
+                        desc="Number of WAL full-page images generated")
+    wal_bytes = MetricDef(label="Wal bytes", type="size",
+                          desc="Amount of WAL bytes generated")
 
     total_sys_hit = MetricDef(label="Total system cache hit", type="sizerate",
                               desc="Amount of data found in OS cache")
@@ -87,6 +95,10 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
         else:
             base.pop("total_blks_read")
 
+        if not handler.has_extension_version(params["server"],
+                                             'pg_stat_statements', '1.8'):
+            for key in ("planload", "wal_records", "wal_fpi", "wal_bytes"):
+                base.pop(key)
         return base
 
     @property
@@ -102,13 +114,30 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
         cols = [c.srvid,
                 to_epoch(c.ts),
                 (sum(c.calls) / greatest(extract("epoch", c.mesure_interval),
-                                           1)).label("calls"),
+                                         1)).label("calls"),
                 (sum(c.runtime) / greatest(sum(c.calls),
                                            1.)).label("avg_runtime"),
                 (sum(c.runtime) / greatest(extract("epoch", c.mesure_interval),
                                            1)).label("load"),
                 total_read(c),
-                total_hit(c)]
+                total_hit(c)
+                ]
+
+        if self.has_extension_version(self.path_args[0],
+                                      'pg_stat_statements', '1.8'):
+            cols.extend([
+                (sum(c.plantime) / greatest(extract("epoch", c.mesure_interval),
+                                            1)).label("planload"),
+                (sum(c.wal_records) / greatest(extract("epoch",
+                                                       c.mesure_interval),
+                                               1)).label("wal_records"),
+                (sum(c.wal_fpi) / greatest(extract("epoch",
+                                                   c.mesure_interval),
+                                           1)).label("wal_fpi"),
+                (sum(c.wal_bytes) / greatest(extract("epoch",
+                                                     c.mesure_interval),
+                                             1)).label("wal_bytes")
+                ])
 
         from_clause = query
         if self.has_extension(self.path_args[0], "pg_stat_kcache"):
@@ -306,6 +335,7 @@ class ByQueryMetricGroup(MetricGroupDef):
     axis_type = "category"
     data_url = r"/server/(\d+)/metrics/database_all_queries/([^\/]+)/"
     calls = MetricDef(label="#", type="integer")
+    plantime = MetricDef(label="Plantime", type="duration")
     runtime = MetricDef(label="Time", type="duration", direction="descending")
     avg_runtime = MetricDef(label="Avg time", type="duration")
     blks_read_time = MetricDef(label="Read", type="duration")
@@ -316,6 +346,19 @@ class ByQueryMetricGroup(MetricGroupDef):
     shared_blks_written = MetricDef(label="Written", type="size")
     temp_blks_read = MetricDef(label="Read", type="size")
     temp_blks_written = MetricDef(label="Written", type="size")
+    wal_records = MetricDef(label="#Wal records", type="integer")
+    wal_fpi = MetricDef(label="#Wal FPI", type="integer")
+    wal_bytes = MetricDef(label="Wal bytes", type="size")
+
+    @classmethod
+    def _get_metrics(cls, handler, **params):
+        base = cls.metrics.copy()
+
+        if not handler.has_extension_version(handler.path_args[0],
+                                             'pg_stat_statements', '1.8'):
+            for key in ("plantime", "wal_records", "wal_fpi", "wal_bytes"):
+                base.pop(key)
+        return base
 
     # TODO: refactor with GlobalDatabasesMetricGroup
     @property
@@ -339,7 +382,18 @@ class ByQueryMetricGroup(MetricGroupDef):
                    sum(mulblock(c.temp_blks_written)).label("temp_blks_written"),
                    (sum(c.runtime) / greatest(sum(c.calls), 1)).label("avg_runtime"),
                    sum(c.blk_read_time).label("blks_read_time"),
-                   sum(c.blk_write_time).label("blks_write_time")]
+                   sum(c.blk_write_time).label("blks_write_time")
+                   ]
+
+        if self.has_extension_version(self.path_args[0], 'pg_stat_statements',
+                                      '1.8'):
+            columns.extend([
+                            sum(c.plantime).label("plantime"),
+                            sum(c.wal_records).label("wal_records"),
+                            sum(c.wal_fpi).label("wal_fpi"),
+                            sum(c.wal_bytes).label("wal_bytes")
+                ])
+
         from_clause = inner_query.join(ps,
                                        (ps.c.srvid == c.srvid) &
                                        (ps.c.queryid == c.queryid) &
@@ -429,21 +483,36 @@ class DatabaseOverview(DashboardPage):
         if getattr(self, '_dashboard', None) is not None:
             return self._dashboard
 
+        pgss18 = self.has_extension_version(self.path_args[0],
+                                            'pg_stat_statements', '1.8')
+
         self._dashboard = Dashboard("Database overview for %(database)s")
 
+        db_metrics = [DatabaseOverviewMetricGroup.avg_runtime,
+                      DatabaseOverviewMetricGroup.load,
+                      DatabaseOverviewMetricGroup.calls]
+        if pgss18:
+            db_metrics.extend([DatabaseOverviewMetricGroup.planload])
         block_graph = Graph("Blocks (On database %(database)s)",
                             metrics=[DatabaseOverviewMetricGroup.
                                      total_blks_hit],
                             color_scheme=None)
 
         db_graphs = [Graph("Calls (On database %(database)s)",
-                     metrics=[DatabaseOverviewMetricGroup.avg_runtime,
-                              DatabaseOverviewMetricGroup.load,
-                              DatabaseOverviewMetricGroup.calls]),
+                     metrics=db_metrics),
                      block_graph]
 
         graphs_dash = [Dashboard("General Overview", [db_graphs])]
         graphs = [TabContainer("All databases", graphs_dash)]
+
+        if pgss18:
+            # Add WALs graphs
+            wals_graphs = [[Graph("WAL activity",
+                            metrics=[DatabaseOverviewMetricGroup.wal_records,
+                                     DatabaseOverviewMetricGroup.wal_fpi,
+                                     DatabaseOverviewMetricGroup.wal_bytes]),
+                            ]]
+            graphs_dash.append(Dashboard("WALs", wals_graphs))
 
         # Add powa_stat_all_relations graphs
         all_rel_graphs = [Graph("Access pattern",
@@ -509,10 +578,7 @@ class DatabaseOverview(DashboardPage):
                         url=self.docs_stats_url + "pg_wait_sampling.html",
                         metrics=metrics)]]))
 
-        self._dashboard.widgets.extend(
-            [graphs,
-             [Grid("Details for all queries",
-                   toprow=[{
+        toprow = [{
                        'merge': True
                    }, {
                        'name': 'Execution',
@@ -530,7 +596,17 @@ class DatabaseOverview(DashboardPage):
                        'name': 'Temp blocks',
                        'merge': False,
                        'colspan': 2
-                   }],
+                   }]
+        if pgss18:
+            toprow.extend([{
+                       'name': 'WALs',
+                       'merge': False,
+                       'colspan': 3
+                       }])
+        self._dashboard.widgets.extend(
+            [graphs,
+             [Grid("Details for all queries",
+                   toprow=toprow,
                    columns=[{
                        "name": "query",
                        "label": "Query",
@@ -538,7 +614,7 @@ class DatabaseOverview(DashboardPage):
                        "url_attr": "url",
                        "max_length": 70
                    }],
-                   metrics=ByQueryMetricGroup.all())]])
+                   metrics=ByQueryMetricGroup.all(self))]])
 
         if self.has_extension(self.path_args[0], "pg_wait_sampling"):
             self._dashboard.widgets.extend([[

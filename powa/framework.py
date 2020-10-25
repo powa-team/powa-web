@@ -9,6 +9,7 @@ from sqlalchemy.engine.url import URL
 from tornado.options import options
 import pickle
 import logging
+import re
 import select
 import random
 
@@ -293,26 +294,60 @@ class BaseHandler(RequestHandler):
             except Exception:
                 return False
 
-    def has_extension_version(self, srvid, extname, database=None,
+    def has_extension_version(self, srvid, extname, version, database=None,
                               remote_access=True):
         """
-        Returns the version of the specific extension on the specific server
-        and database, or None if the extension is not installed.
+        Returns whether the version of the specific extension on the specific
+        server and database is at least the given version.
         """
-        try:
-            extversion = self.execute(text(
-                """
-                SELECT extversion
-                FROM pg_catalog.pg_extension
-                WHERE extname = :extname
-                LIMIT 1
-                """), srvid=srvid, database=database,
-                params={"extname": extname}, remote_access=remote_access
-            ).scalar()
-        except Exception:
-            return None
+        if version is None:
+            raise Exception("No version provided!")
 
-        return extversion
+        remver = None
+
+        # For remote server, check first if powa-collector reported a version
+        # for that extension, but only for default database.
+        if (srvid != 0 and database is None):
+            try:
+                remver = self.execute(text(
+                    """
+                    SELECT version
+                    FROM public.powa_extensions
+                    WHERE srvid = :srvid
+                    AND extname = :extname
+                    """), params={'srvid': srvid, 'extname': extname}).scalar()
+
+            except Exception:
+                return False
+        else:
+            # Otherwise, fall back to querying on the target database.
+            try:
+                remver = self.execute(text(
+                    """
+                    SELECT extversion
+                    FROM pg_catalog.pg_extension
+                    WHERE extname = :extname
+                    LIMIT 1
+                    """), srvid=srvid, database=database,
+                    params={"extname": extname}, remote_access=remote_access
+                ).scalar()
+            except Exception:
+                return False
+
+        if remver is None:
+            return False
+
+        # Clean up any extraneous characters
+        remver = re.search(r'[0-9\.]*[0-9]', remver)
+
+        if remver is None:
+            return False
+
+        remver = tuple(map(int, remver.group(0).split('.')))
+
+        wanted = tuple(map(int, version.split('.')))
+
+        return remver >= wanted
 
     def write_error(self, status_code, **kwargs):
         if status_code == 403:

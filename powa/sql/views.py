@@ -156,7 +156,8 @@ def powa_base_bgwriter():
 def get_diffs_forstatdata():
     return [
         diff("calls"),
-        diff("total_time").label("runtime"),
+        diff("total_plan_time").label("plantime"),
+        diff("total_exec_time").label("runtime"),
         diff("shared_blks_read"),
         diff("shared_blks_hit"),
         diff("shared_blks_dirtied"),
@@ -164,7 +165,10 @@ def get_diffs_forstatdata():
         diff("temp_blks_read"),
         diff("temp_blks_written"),
         diff("blk_read_time"),
-        diff("blk_write_time")
+        diff("blk_write_time"),
+        diff("wal_records"),
+        diff("wal_fpi"),
+        diff("wal_bytes")
     ]
 
 
@@ -292,7 +296,8 @@ def powa_getstatdata_sample(mode, srvid):
         ts,
         biggest("ts", '0 s', "mesure_interval"),
         biggestsum("calls"),
-        biggestsum("total_time", label="runtime"),
+        biggestsum("total_plan_time").label("plantime"),
+        biggestsum("total_exec_time", label="runtime"),
         biggestsum("rows"),
         biggestsum("shared_blks_read"),
         biggestsum("shared_blks_hit"),
@@ -305,7 +310,11 @@ def powa_getstatdata_sample(mode, srvid):
         biggestsum("temp_blks_read"),
         biggestsum("temp_blks_written"),
         biggestsum("blk_read_time"),
-        biggestsum("blk_write_time")])
+        biggestsum("blk_write_time"),
+        biggestsum("wal_records"),
+        biggestsum("wal_fpi"),
+        biggestsum("wal_bytes")
+        ])
             .select_from(base_query)
             .apply_labels()
             .group_by(*(base_columns + [ts])))

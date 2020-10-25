@@ -49,12 +49,12 @@ class IndexSuggestionHandler(AuthHandler):
             AND queryid IN :queryids
         """), srvid=srvid, queryids=tuple(queryids)))
         # Create all possible indexes for this qual
-        hypo_version = self.has_extension_version(srvid, "hypopg",
+        hypo_version = self.has_extension_version(srvid, "hypopg", "0.0.3",
                                                   database=database)
         hypoplans = {}
         indbyname = {}
         inderrors = {}
-        if hypo_version and hypo_version >= "0.0.3":
+        if hypo_version:
             # identify indexes
             # create them
             for ind in indexes:
@@ -166,11 +166,12 @@ class Wizard(Widget):
         values['has_remote_conn'] = True
 
         hypover = handler.has_extension_version(parms["server"],
-                                                "hypopg",
+                                                "hypopg", "0.0.3",
                                                 database=parms["database"])
-        qsver = handler.has_extension_version(parms["server"], "pg_qualstats")
-        values['has_hypopg'] = hypover and hypover >= '0.0.3'
-        values['has_qualstats'] = qsver and qsver >= '0.0.7'
+        qsver = handler.has_extension_version(parms["server"], "pg_qualstats",
+                                              "0.0.7")
+        values['has_hypopg'] = hypover
+        values['has_qualstats'] = qsver
         values['server'] = parms["server"]
         values['database'] = parms["database"]
         return values
