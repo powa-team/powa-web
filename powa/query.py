@@ -466,6 +466,7 @@ class WaitSamplingList(MetricGroupDef):
                    c.event,
                    sum(c.count).label("counts")]
         from_clause = inner_query.join(ps,
+                                       (ps.c.srvid == c.srvid) &
                                        (ps.c.queryid == c.queryid) &
                                        (ps.c.dbid == c.dbid))
         return (select(columns)
