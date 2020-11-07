@@ -341,6 +341,7 @@ class ByQueryMetricGroup(MetricGroupDef):
                    sum(c.blk_read_time).label("blks_read_time"),
                    sum(c.blk_write_time).label("blks_write_time")]
         from_clause = inner_query.join(ps,
+                                       (ps.c.srvid == c.srvid) &
                                        (ps.c.queryid == c.queryid) &
                                        (ps.c.userid == c.userid) &
                                        (ps.c.dbid == c.dbid))
@@ -383,6 +384,7 @@ class ByQueryWaitSamplingMetricGroup(MetricGroupDef):
                    c.event,
                    sum(c.count).label("counts")]
         from_clause = inner_query.join(ps,
+                                       (ps.c.srvid == c.srvid) &
                                        (ps.c.queryid == c.queryid) &
                                        (ps.c.dbid == c.dbid))
         return (select(columns)
