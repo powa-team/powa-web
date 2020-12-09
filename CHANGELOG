@@ -2,6 +2,7 @@
   New features:
   - Add compatibility with pg_stat_statements 1.8, and expose all new counters
     (Julien Rouhaud)
+  - Add compatibility with pg_stat_kcache 2.2 (Julien Rouhaud)
 4.0.2:
   New features:
   - Add powa_coaslesce setting on config page (Adrien Nayrat)

@@ -435,18 +435,19 @@ BASE_QUERY_KCACHE_SAMPLE_DB = text("""
                         *
                 FROM (
                     SELECT km.ts,
-                    sum(km.reads) AS reads, sum(km.writes) AS writes,
-                    sum(km.user_time) AS user_time,
-                    sum(km.system_time) AS system_time,
-                    sum(km.minflts) AS minflts,
-                    sum(km.majflts) AS majflts,
+                    sum(km.plan_reads + km.exec_reads) AS reads,
+                    sum(km.plan_writes + km.exec_writes) AS writes,
+                    sum(km.plan_user_time + km.exec_user_time) AS user_time,
+                    sum(km.plan_system_time + km.exec_system_time) AS system_time,
+                    sum(km.plan_minflts + km.exec_minflts) AS minflts,
+                    sum(km.plan_majflts + km.exec_majflts) AS majflts,
                     -- not maintained on GNU/Linux, and not available on Windows
-                    -- sum(km.nswaps) AS nswaps,
-                    -- sum(km.msgsnds) AS msgsnds,
-                    -- sum(km.msgrcvs) AS msgrcvs,
-                    -- sum(km.nsignals) AS nsignals,
-                    sum(km.nvcsws) AS nvcsws,
-                    sum(km.nivcsws) AS nivcsws
+                    -- sum(km.plan_nswaps + km.exec_nswaps) AS nswaps,
+                    -- sum(km.plan_msgsnds + km.exec_msgsnds) AS msgsnds,
+                    -- sum(km.plan_msgrcvs + km.exec_msgrcvs) AS msgrcvs,
+                    -- sum(km.plan_nsignals + km.exec_nsignals) AS nsignals,
+                    sum(km.plan_nvcsws + km.exec_nvcsws) AS nvcsws,
+                    sum(km.plan_nivcsws + km.exec_nivcsws) AS nivcsws
                     FROM (
                         SELECT * FROM (
                             SELECT (unnest(metrics)).*
@@ -484,18 +485,19 @@ BASE_QUERY_KCACHE_SAMPLE = text("""
                         *
                 FROM (
                     SELECT km.ts,
-                    sum(km.reads) AS reads, sum(km.writes) AS writes,
-                    sum(km.user_time) AS user_time,
-                    sum(km.system_time) AS system_time,
-                    sum(km.minflts) AS minflts,
-                    sum(km.majflts) AS majflts,
+                    sum(km.plan_reads + km.exec_reads) AS reads,
+                    sum(km.plan_writes + km.exec_writes) AS writes,
+                    sum(km.plan_user_time + km.exec_user_time) AS user_time,
+                    sum(km.plan_system_time + km.exec_system_time) AS system_time,
+                    sum(km.plan_minflts + km.exec_minflts) AS minflts,
+                    sum(km.plan_majflts + km.exec_majflts) AS majflts,
                     -- not maintained on GNU/Linux, and not available on Windows
-                    -- sum(km.nswaps) AS nswaps,
-                    -- sum(km.msgsnds) AS msgsnds,
-                    -- sum(km.msgrcvs) AS msgrcvs,
-                    -- sum(km.nsignals) AS nsignals,
-                    sum(km.nvcsws) AS nvcsws,
-                    sum(km.nivcsws) AS nivcsws
+                    -- sum(km.plan_nswaps + km.exec_nswaps) AS nswaps,
+                    -- sum(km.plan_msgsnds + km.exec_msgsnds) AS msgsnds,
+                    -- sum(km.plan_msgrcvs + km.exec_msgrcvs) AS msgrcvs,
+                    -- sum(km.plan_nsignals + km.exec_nsignals) AS nsignals,
+                    sum(km.plan_nvcsws + km.exec_nvcsws) AS nvcsws,
+                    sum(km.plan_nivcsws + km.exec_nivcsws) AS nivcsws
                     FROM (
                         SELECT * FROM (
                             SELECT (unnest(metrics)).*
