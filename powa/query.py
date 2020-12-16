@@ -445,7 +445,8 @@ class WaitsQueryOverviewMetricGroup(MetricGroupDef):
         cols = [to_epoch(c.ts)]
 
         pg_version_num = self.get_pg_version_num(self.path_args[0])
-        if pg_version_num < 100000:
+        # if we can't connect to the remote server, assume pg10 or above
+        if pg_version_num is None or pg_version_num < 100000:
             cols += [wps(c.count_lwlocknamed), wps(c.count_lwlocktranche),
                      wps(c.count_lock), wps(c.count_bufferpin)]
         else:
@@ -692,8 +693,10 @@ class QueryOverview(DashboardPage):
 
         if self.has_extension(self.path_args[0], "pg_wait_sampling"):
             # Get the metrics depending on the pg server version
-            metrics=None
-            if self.get_pg_version_num(self.path_args[0]) < 100000:
+            metrics = None
+            pg_version_num = self.get_pg_version_num(self.path_args[0])
+            # if we can't connect to the remote server, assume pg10 or above
+            if pg_version_num is None or pg_version_num < 100000:
                 metrics=[WaitsQueryOverviewMetricGroup.count_lwlocknamed,
                          WaitsQueryOverviewMetricGroup.count_lwlocktranche,
                          WaitsQueryOverviewMetricGroup.count_lock,
