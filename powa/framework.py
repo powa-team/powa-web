@@ -307,7 +307,7 @@ class BaseHandler(RequestHandler):
 
         # For remote server, check first if powa-collector reported a version
         # for that extension, but only for default database.
-        if (srvid != 0 and database is None):
+        if (srvid != "0" and database is None):
             try:
                 remver = self.execute(text(
                     """
