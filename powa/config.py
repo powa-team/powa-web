@@ -254,21 +254,49 @@ class PgSettingsMetricGroup(MetricGroupDef):
             return None
 
     def post_process(self, data, server, **kwargs):
-        if (server != '0'):
-            values = None
+        # For local server we can return data already retrieved
+        if (server == '0'):
+            return data
+
+        values = None
+
+        # Check first if the info is available locally
+        if (self.has_extension_version(server, 'pg_track_settings', '2.0.0')):
+            try:
+                values = self.execute("""
+                        SELECT t.name AS setting_name,
+                            t.setting AS setting_value,
+                            s.unit AS setting_unit,
+                            s.category AS category_value
+                        FROM pg_track_settings(now(), %(srvid)s) t
+                        LEFT JOIN pg_catalog.pg_settings s
+                            ON s.name = t.name
+                        """, params={'srvid': server})
+
+                # If no rows were retrieved, it probably means that
+                # pg_tracksettings isn't sampled even if the extension exists.
+                # Reset values so we can try to fetch info from the remote
+                # server.
+                if (values.rowcount == 0):
+                    values = None
+            except Exception:
+                # ignore any error, we'll just fallback on remote check
+                pass
+
+        if (values is None):
             try:
                 values = self.execute(self.__query, srvid=server)
             except Exception:
                 # ignore any connection or remote execution error
                 pass
 
-            if (values is not None):
-                data = {"data": [self.process(val) for val in values]}
-            else:
-                data = {"data": [],
-                        "messages": {'alert': ["Could not retrieve PostgreSQL"
-                                               + " settings "
-                                               + "on remote server"]}}
+        if (values is not None):
+            data = {"data": [self.process(val) for val in values]}
+        else:
+            data = {"data": [],
+                    "messages": {'alert': ["Could not retrieve PostgreSQL"
+                                           + " settings "
+                                           + "on remote server"]}}
 
         return data
 
@@ -340,30 +368,60 @@ class PgExtensionsMetricGroup(MetricGroupDef):
             return data
 
         res = None
-        try:
-            res = self.execute("""
-            SELECT DISTINCT s.extname,
-              CASE WHEN avail.name IS NULL then false ELSE true END AS available,
-              CASE WHEN ins.extname IS NULL then false ELSE true END AS installed,
-              COALESCE(ins.extversion, '-') AS extversion
-            FROM (
-                 SELECT 'pg_stat_statements' AS extname
-                 UNION SELECT 'pg_qualstats'
-                 UNION SELECT 'pg_stat_kcache'
-                 UNION SELECT 'pg_track_settings'
-                 UNION SELECT 'hypopg'
-                 UNION SELECT 'powa'
-                 UNION SELECT 'pg_wait_sampling'
-            ) s
-            LEFT JOIN pg_available_extensions avail on s.extname = avail.name
-            LEFT JOIN pg_extension ins on s.extname = ins.extname
-            ORDER BY 1
-                    """, srvid=server)
-        except Exception:
-            # ignore any connection or remote execution error
-            pass
 
-        # if we couldn't connect to the remote server, send what we have
+        # Check first if the info is available locally.  Note that if an
+        # extension version has been updated by powa-collector, then the
+        # extension is available and the version reported is the version
+        # installed.
+        if (self.has_extension_version("0", "powa", "4.1.0")):
+            try:
+                res = self.execute("""
+                SELECT s.extname,
+                  CASE WHEN ins.extname IS NULL then false ELSE true END AS available,
+                  CASE WHEN ins.extname IS NULL then false ELSE true END AS installed,
+                  COALESCE(ins.version, '-') AS extversion
+                FROM (
+                     SELECT 'pg_stat_statements' AS extname
+                     UNION SELECT 'pg_qualstats'
+                     UNION SELECT 'pg_stat_kcache'
+                     UNION SELECT 'pg_track_settings'
+                     UNION SELECT 'hypopg'
+                     UNION SELECT 'powa'
+                     UNION SELECT 'pg_wait_sampling'
+                ) s
+                LEFT JOIN powa_extensions ins on s.extname = ins.extname
+                WHERE srvid = %(srvid)s
+                ORDER BY 1
+                        """, params={'srvid': server})
+            except Exception:
+                # ignore any error, we'll just fallback on remote check
+                pass
+
+        if (res is None):
+            try:
+                res = self.execute("""
+                SELECT DISTINCT s.extname,
+                  CASE WHEN avail.name IS NULL then false ELSE true END AS available,
+                  CASE WHEN ins.extname IS NULL then false ELSE true END AS installed,
+                  COALESCE(ins.extversion, '-') AS extversion
+                FROM (
+                     SELECT 'pg_stat_statements' AS extname
+                     UNION SELECT 'pg_qualstats'
+                     UNION SELECT 'pg_stat_kcache'
+                     UNION SELECT 'pg_track_settings'
+                     UNION SELECT 'hypopg'
+                     UNION SELECT 'powa'
+                     UNION SELECT 'pg_wait_sampling'
+                ) s
+                LEFT JOIN pg_available_extensions avail on s.extname = avail.name
+                LEFT JOIN pg_extension ins on s.extname = ins.extname
+                ORDER BY 1
+                        """, srvid=server)
+            except Exception:
+                # ignore any connection or remote execution error
+                pass
+
+        # if we couldn't get any data, send what we have
         if (res is None):
             data["messages"] = {'alert': ["Could not retrieve extensions"
                                           + " on remote server"]}
