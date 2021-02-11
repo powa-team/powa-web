@@ -1,8 +1,21 @@
+4.1.1:
+  New features:
+  - Use locally available info for remote server configuration page when
+    possible (Julien Rouhaud)
+  Bug fixes:
+  - Fix per-query page for queries with identical query identifier executed on
+    multiple remote servers (Julien Rouhaud)
+  - Properly handle situation where the UI doesn't know the remote server
+    PostgreSQL version (Julien Rouhaud)
+  - Fix local server detection (Julien Rouhaud, thanks to github user
+    alepaes1975 for the report)
 4.1.0:
   New features:
   - Add compatibility with pg_stat_statements 1.8, and expose all new counters
     (Julien Rouhaud)
   - Add compatibility with pg_stat_kcache 2.2 (Julien Rouhaud)
+  Performance improvements:
+  - General performance improvement of per-database queries (Adrien Nayrat)
 4.0.2:
   New features:
   - Add powa_coaslesce setting on config page (Adrien Nayrat)
