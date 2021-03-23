@@ -67,15 +67,21 @@ def parse_options():
             print(SAMPLE_CONFIG_FILE)
             sys.exit(-1)
 
-    if options['url_prefix'] == '':
-        options['url_prefix'] = "/"
-    elif options['url_prefix'] != '/':
-        options['url_prefix'] = "/" + options['url_prefix'].strip("/") + "/"
-    define("index_url", type=str, default="%sserver/" % options['url_prefix'])
+    if getattr(options, 'url_prefix', '') == '':
+        setattr(options, 'url_prefix', "/")
+    elif getattr(options, 'url_prefix', "/") != "/":
+        prefix = getattr(options, 'url_prefix', "/")
+        if (prefix[0] != "/"):
+            prefix = "/" + prefix
+        if (prefix[-1] != '/'):
+            prefix = prefix + "/"
+        setattr(options, 'url_prefix', prefix)
+    define("index_url", type=str,
+           default="%sserver/" % getattr(options, 'url_prefix', "/"))
 
     # we expect a field named "username", but many people expect to be able to
     # use "user" instead, so accept "user" as en alias for "username"
-    for key, conf in options['servers'].items():
+    for key, conf in getattr(options, 'servers', {}).items():
         if 'user' in conf.keys():
             conf['username'] = conf['user']
             del conf['user']

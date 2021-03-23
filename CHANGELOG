@@ -1,3 +1,7 @@
+4.1.2(WIP):
+  Bug fixes:
+  - Restore compatibility with tornado 2.0, thanks to github user hrawulwa for
+    the report.
 4.1.1:
   New features:
   - Use locally available info for remote server configuration page when
