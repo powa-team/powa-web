@@ -275,9 +275,8 @@ class BaseHandler(RequestHandler):
         if (srvid == '0' or srvid == 0):
             # if local server, fallback to the full test, as it won't be more
             # expensive
-            return (self.has_extension_version(srvid, extname, '0',
+            return self.has_extension_version(srvid, extname, '0',
                                                remote_access=False)
-                    is not None)
         else:
             try:
                 # Look for at least an enabled snapshot function.  If a module
