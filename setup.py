@@ -32,6 +32,10 @@ setup(
     description="A User Interface for the PoWA project",
     long_description="See https://powa.readthedocs.io/",
     scripts=['powa-web'],
+    entry_points='''
+        [console_scripts]
+        powa-web=powa.web:run_powa
+    ''',
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: System Administrators",
