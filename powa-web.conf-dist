@@ -15,6 +15,10 @@ cookie_secret="SUPERSECRET_THAT_YOU_SHOULD_CHANGE"
 # port=8888
 # Address on which the UI should be available on
 # address=0.0.0.0
+# path to certificate file, for https server
+# certfile=None
+# path to certificate private key file, for https server
+# keyfile=None
 # Forbid UI to connect to databases globally (can be configured per server)
 # allow_ui_connection=False
 # Custom URL prefix the UI should be available on

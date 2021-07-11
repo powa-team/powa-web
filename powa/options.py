@@ -33,6 +33,8 @@ define("address", type=str, default="0.0.0.0", metavar="address",
 define("config", type=str, help="path to config file")
 define("url_prefix", type=str, help="optional prefix URL", default='/')
 define("allow_ui_connection", type=bool, help="Allow UI to connect to databases", default=True)
+define("certfile", type=str, help="Path to certificate file", default=None)
+define("keyfile", type=str, help="Path to key file", default=None)
 
 
 def parse_file(filepath):
