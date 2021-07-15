@@ -24,6 +24,8 @@ CONF_LOCATIONS = [
 
 
 define("cookie_secret", type=str, help="Secret key for cookies")
+define("cookie_expires_days", type=int, default=30,
+       help="Cookie retention in days")
 define("port", type=int, default=8888, metavar="port",
        help="Listen on <port>")
 define("address", type=str, default="0.0.0.0", metavar="address",

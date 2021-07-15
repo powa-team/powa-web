@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from tornado.options import options
 from powa.framework import BaseHandler
 from powa import __VERSION_NUM__
 
@@ -13,6 +14,10 @@ class LoginHandler(BaseHandler):
         username = self.get_argument('username')
         password = self.get_argument('password')
         server = self.get_argument('server')
+        expires_days = options.cookie_expires_days
+        if expires_days == 0:
+            expires_days = None
+
         try:
             self.connect(username=username, password=password, server=server)
         except Exception as e:
@@ -36,9 +41,9 @@ class LoginHandler(BaseHandler):
                  '.'.join(str(x) for x in __VERSION_NUM__[0:2])),
                 'alert')
             self.redirect(self.url_prefix)
-        self.set_secure_cookie('username', username)
-        self.set_secure_cookie('password', password)
-        self.set_secure_cookie('server', server)
+        self.set_secure_cookie('username', username, expires_days=expires_days)
+        self.set_secure_cookie('password', password, expires_days=expires_days)
+        self.set_secure_cookie('server', server, expires_days=expires_days)
         self.redirect(self.get_argument('next', self.url_prefix))
 
 
