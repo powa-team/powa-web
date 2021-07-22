@@ -135,13 +135,13 @@ define([
                 too_long = value.length > max_length,
                 truncated_value = too_long ? value.substring(0, max_length) + '…' : value;
                 code_elem = $("<pre>").addClass("has-tip").addClass("tip-top").attr("data-tooltip", "")
-                            .html(highlight.highlight(truncated_value, {language: 'sql'}).value),
+                            .html(highlight.highlight(truncated_value, {language: 'pgsql'}).value),
                 base = this.$el;
             if(value === undefined){
                 return this;
             }
             base.append(code_elem);
-            code_elem.attr("title", "<pre>" + highlight.highlight(raw_value, {language: 'sql'}).value + "</pre>");
+            code_elem.attr("title", "<pre>" + highlight.highlight(raw_value, {language: 'pgsql'}).value + "</pre>");
             this.$el.foundation('tooltip', 'reflow');
             this.delegateEvents();
             return this;

@@ -26,7 +26,7 @@ function(WidgetView, Content, highlight, moment, duration){
         update: function(newcontent){
             this.$el.html(newcontent);
             this.$el.find("pre.sql code").each(function(i, block){
-                $(block).addClass("language-sql");
+                $(block).addClass("language-pgsql");
                 highlight.highlightElement(block);
             });
             this.$el.find("span.duration").each(function(i, block){
