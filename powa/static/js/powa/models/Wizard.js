@@ -90,7 +90,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                     return qual.get("label")
                 }, this)).join(" AND ");
             }
-            base = "<pre>" + highlight.highlight("sql", base, true).value + "</pre>";
+            base = "<pre>" + highlight.highlight(base, {language: 'sql'}).value + "</pre>";
             var unmanaged = this.get("trashedQuals").map(function(qual, idx){
                 var part = "<strike><pre>";
                 var value = qual.get("label");
@@ -100,7 +100,7 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
                 if(idx < this.get("trashedQuals").length - 1){
                     value += " AND ";
                 }
-                value = highlight.highlight("sql", "WHERE " + value, true).value;
+                value = highlight.highlight("WHERE " + value, {language: 'sql'}).value;
                 value = value.substring(value.indexOf("</span> ") + 8);
                 part += value + "</pre></strike>";
                 return part;
