@@ -291,7 +291,8 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
             from_clause = from_clause.join(
                 kcache_query,
                 and_(kcache_query.c.dbid == c.dbid,
-                     kcache_query.c.ts == c.ts))
+                     kcache_query.c.ts == c.ts),
+                isouter=True)
 
         return (select(cols)
                 .select_from(from_clause)

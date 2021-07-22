@@ -252,7 +252,8 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                 and_(kcache_query.c.ts == c.ts,
                      kcache_query.c.queryid == c.queryid,
                      kcache_query.c.userid == c.userid,
-                     kcache_query.c.dbid == c.dbid))
+                     kcache_query.c.dbid == c.dbid),
+                isouter=True)
         else:
             cols.extend([
                 case([(total_blocks == 0, 0)],
