@@ -26,7 +26,8 @@ function(WidgetView, Content, highlight, moment, duration){
         update: function(newcontent){
             this.$el.html(newcontent);
             this.$el.find("pre.sql code").each(function(i, block){
-                highlight.highlightBlock(block);
+                $(block).addClass("language-sql");
+                highlight.highlightElement(block);
             });
             this.$el.find("span.duration").each(function(i, block){
                 var date = moment(parseInt($(block).html()));
