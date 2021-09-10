@@ -1,0 +1,2 @@
+version=4
+https://github.com/powa-team/powa-web/releases .*/(.*).tar.gz

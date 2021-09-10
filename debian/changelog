@@ -1,3 +1,9 @@
+powa-web (4.1.2-1) UNRELEASED; urgency=medium
+
+  * New upstream version.
+
+ -- Christoph Berg <myon@debian.org>  Fri, 10 Sep 2021 15:51:25 +0200
+
 powa-web (3.1.2-1) unstable; urgency=medium
 
   * Team upload.
