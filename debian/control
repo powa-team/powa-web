@@ -8,7 +8,10 @@ Build-Depends:
  debhelper-compat (= 13),
  dh-python,
  python3,
+ python3-psycopg2,
  python3-setuptools,
+ python3-sqlalchemy,
+ python3-tornado,
 Standards-Version: 4.6.0
 Homepage: https://github.com/powa-team/powa
 Vcs-Git: https://github.com/powa-team/powa-web.git
@@ -19,6 +22,7 @@ Architecture: all
 Depends:
  adduser,
  help2man,
+ python3-psycopg2,
  python3-sqlalchemy,
  python3-tornado,
  ${misc:Depends},
