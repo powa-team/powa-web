@@ -2,9 +2,8 @@ define([
         'powa/views/WidgetView',
         'powa/models/Content',
         'highlight',
-        'moment',
-        'powa/utils/duration'],
-function(WidgetView, Content, highlight, moment, duration){
+        'moment'],
+function(WidgetView, Content, highlight, moment){
     return WidgetView.extend({
         model: Content,
         typname: "content",

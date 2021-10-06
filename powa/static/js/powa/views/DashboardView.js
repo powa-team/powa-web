@@ -3,11 +3,7 @@ define([
     'foundation/foundation.equalizer',
     'backbone',
     'powa/views/WidgetView',
-    'foundation-daterangepicker',
-    'moment',
-    'powa/utils/timeurls'
-], function(jquery, foundation, Backbone, WidgetView, daterangepicker,
-    moment, timeurls){
+], function(jquery, foundation, Backbone, WidgetView){
     return WidgetView.extend({
         tagName: "div",
         typname: "dashboard",
