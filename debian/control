@@ -17,6 +17,8 @@ Vcs-Browser: https://github.com/powa-team/powa-web
 Package: powa-web
 Architecture: all
 Depends:
+ adduser,
+ help2man,
  python3-sqlalchemy,
  python3-tornado,
  ${misc:Depends},

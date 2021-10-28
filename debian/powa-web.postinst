@@ -5,10 +5,14 @@ set -eu
 case $1 in
   configure)
     if [ -z "${2:-}" ]; then
-      echo "Creating /etc/powa-web.conf"
-      if ! test -f /etc/powa-web.conf; then
+      adduser --system --group --home /nonexistent --no-create-home --disabled-login powa
+
+      CONFIG=/etc/powa-web.conf
+      if ! test -f $CONFIG; then
+        echo "Creating $CONFIG"
         COOKIE="$(dd if=/dev/urandom bs=1k count=1 2>/dev/null | sha1sum | cut -d ' ' -f 1)"
-        cat > /etc/powa-web.conf <<-EOF
+        umask 077
+        cat > $CONFIG <<-EOF
 	servers={
 	  'main': {
 	    'host': 'localhost',
@@ -19,6 +23,7 @@ case $1 in
 	}
 	cookie_secret="$COOKIE"
 EOF
+        chown powa: $CONFIG
       fi
     fi
   ;;

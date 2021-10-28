@@ -1,0 +1,8 @@
+--- a/powa-web
++++ b/powa-web
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/python3
+ from powa import make_app
+ import tornado.ioloop
+ import logging

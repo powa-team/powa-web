@@ -1,0 +1,13 @@
+[Unit]
+Description=PoWA user interface
+Documentation=https://powa.readthedocs.io/en/latest/
+After=network.target
+
+[Service]
+Type=simple
+User=powa
+Environment=ARGS=--logging=warning
+ExecStart=/usr/bin/powa-web $ARGS
+
+[Install]
+WantedBy=multi-user.target
