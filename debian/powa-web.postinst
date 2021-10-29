@@ -5,7 +5,8 @@ set -eu
 case $1 in
   configure)
     if [ -z "${2:-}" ]; then
-      adduser --system --group --home /nonexistent --no-create-home --disabled-login powa
+      adduser --system --group --home /nonexistent --no-create-home --disabled-login \
+        --gecos 'PoWA PostgreSQL Workload Analyzer' powa
 
       CONFIG=/etc/powa-web.conf
       if ! test -f $CONFIG; then
