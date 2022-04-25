@@ -5,9 +5,9 @@ Powa main application.
 import os
 import re
 
-__VERSION__ = '4.2.0'
+__VERSION__ = '5.0.0dev'
 
-ver_tmp = re.sub("(alpha|beta)[0-9]*", "", __VERSION__)
+ver_tmp = re.sub("(alpha|beta|dev)[0-9]*", "", __VERSION__)
 __VERSION_NUM__ = [int(part) for part in (ver_tmp.split('.'))]
 
 POWA_ROOT = os.path.dirname(__file__)
