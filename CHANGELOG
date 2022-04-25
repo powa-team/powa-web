@@ -1,3 +1,5 @@
+5.0.0 (WIP):
+  New features:
 4.2.1:
   Misc
   - salqlchemy > 1.4 is not supported (thanks to David Mödinger for the report)
