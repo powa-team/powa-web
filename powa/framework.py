@@ -4,7 +4,8 @@ Utilities for the basis of Powa
 from tornado.web import RequestHandler, authenticated, HTTPError
 from powa import ui_methods
 from powa.json import to_json
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
+from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import URL
 from tornado.options import options
 import pickle
@@ -257,8 +258,41 @@ class BaseHandler(RequestHandler):
             return self._connections.get(url)
         engine = create_engine(url, **engineoptions)
         engine.connect()
+
+        # Get and cache all extensions schemas, in a dict with the extension
+        # name as the key and the *quoted* schema as the value.
+        ext_nsps = {row[0]: row[1] for row in engine.execute("""
+            SELECT extname, quote_ident(nspname)
+            FROM pg_catalog.pg_extension e
+            JOIN pg_catalog.pg_namespace n ON n.oid = e.extnamespace
+        """)}
+
+        engine = engine.execution_options(ext_nsps=ext_nsps)
+
+        # Cache the connection and return it
         self._connections[url] = engine
         return engine
+
+    @event.listens_for(Engine, "before_cursor_execute", retval=True)
+    def before_cur_exec(conn, cursor, stmt, params, context, executemany):
+        """
+        Hook called before executing a compiled query.  We simply call format()
+        on the passed query text if we have the cached schemas.
+
+        It's the caller duty to provide adequate parameters in the query
+        string, of the form:
+
+        SELECT ... {extension_name}.object ...
+
+        Note that the passed schema will be properly quoted, and we use
+        format() to not break any literal '%%' that may be written in the
+        query.
+        """
+
+        ext_nsps = conn._execution_options.get('ext_nsps', None)
+        if ext_nsps is not None:
+            stmt = stmt.format(**ext_nsps)
+        return stmt, params
 
     def has_extension(self, srvid, extname):
         """
