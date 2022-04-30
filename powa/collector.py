@@ -19,8 +19,8 @@ class CollectorServerDetail(MetricGroupDef):
 
     def post_process(self, data, server, **kwargs):
         sql = """SELECT *
-            FROM powa_servers s
-            JOIN powa_snapshot_metas m ON m.srvid = s.id
+            FROM {powa}.powa_servers s
+            JOIN {powa}.powa_snapshot_metas m ON m.srvid = s.id
             WHERE s.id = %(server)s"""
 
         row = self.execute(sql, params={'server': server}).fetchone()
