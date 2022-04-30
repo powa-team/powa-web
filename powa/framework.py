@@ -139,7 +139,7 @@ class BaseHandler(RequestHandler):
                 self._databases = [d[0] for d in self.execute(
                     """
                     SELECT p.datname
-                    FROM powa_databases p
+                    FROM {powa}.powa_databases p
                     LEFT JOIN pg_database d ON p.oid = d.oid
                     WHERE COALESCE(datallowconn, true)
                     AND srvid = %(srvid)s
@@ -154,7 +154,7 @@ class BaseHandler(RequestHandler):
             return self.execute("""
                                 SELECT COALESCE(alias,
                                                 hostname || ':' || port)
-                                FROM powa_servers
+                                FROM {powa}.powa_servers
                                 WHERE id = %(srvid)s
                                 """, params={'srvid': int(srvid)}
                                 ).scalar()
@@ -173,7 +173,7 @@ class BaseHandler(RequestHandler):
                     ELSE
                         s.hostname || ':' || s.port
                     END
-                    FROM powa_servers s
+                    FROM {powa}.powa_servers s
                     ORDER BY hostname
                     """, params={'default': self.current_connection})]
             return self._servers
@@ -211,7 +211,7 @@ class BaseHandler(RequestHandler):
             rows = tmp.execute("""
             SELECT hostname, port, username, password, dbname,
                 allow_ui_connection
-            FROM powa_servers WHERE id = %(srvid)s
+            FROM {powa}.powa_servers WHERE id = %(srvid)s
             """, {'srvid': srvid})
             row = rows.fetchone()
             rows.close()
@@ -236,7 +236,7 @@ class BaseHandler(RequestHandler):
                                    username=username, password=password)
                 rows = tmp.execute("""
                 SELECT allow_ui_connection
-                FROM powa_servers WHERE id = 0
+                FROM {powa}.powa_servers WHERE id = 0
                 """)
                 row = rows.fetchone()
                 rows.close()
@@ -318,7 +318,7 @@ class BaseHandler(RequestHandler):
                 # activated, let's assume that the extension is available.
                 return self.execute(text("""
                 SELECT COUNT(*) != 0
-                FROM public.powa_functions
+                FROM {powa}.powa_functions
                 WHERE srvid = :srvid
                 AND module = :extname
                 AND operation = 'snapshot'
@@ -345,7 +345,7 @@ class BaseHandler(RequestHandler):
                 remver = self.execute(text(
                     """
                     SELECT version
-                    FROM public.powa_extensions
+                    FROM {powa}.powa_extensions
                     WHERE srvid = :srvid
                     AND extname = :extname
                     """), params={'srvid': srvid, 'extname': extname}).scalar()
