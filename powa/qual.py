@@ -124,9 +124,9 @@ class OtherQueriesMetricGroup(MetricGroupDef):
         return text("""
             SELECT distinct queryid, query,
             query as query_str, pd.srvid
-            FROM powa_qualstats_quals pqs
-            JOIN powa_statements USING (queryid, dbid, srvid, userid)
-            JOIN powa_databases pd ON pd.oid = pqs.dbid AND pd.srvid =
+            FROM {powa}.powa_qualstats_quals pqs
+            JOIN {powa}.powa_statements USING (queryid, dbid, srvid, userid)
+            JOIN {powa}.powa_databases pd ON pd.oid = pqs.dbid AND pd.srvid =
             pqs.srvid
             WHERE qualid = :qual
                 AND pqs.queryid != :query
