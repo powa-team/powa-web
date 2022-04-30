@@ -308,19 +308,19 @@ def qual_constants(srvid, type, tsfrom, tsto, filter_clause,
                 sum(execution_count) as execution_count,
                 sum(nbfiltered) as nbfiltered,
                 CASE WHEN sum(execution_count) = 0 THEN 0 ELSE sum(nbfiltered) / sum(execution_count) END AS filter_ratio
-        FROM powa_statements s
-        JOIN powa_databases d ON d.oid = s.dbid AND d.srvid = s.srvid
-        JOIN powa_qualstats_quals qn ON s.queryid = qn.queryid AND s.srvid = qn.srvid
+        FROM {powa}.powa_statements s
+        JOIN {powa}.powa_databases d ON d.oid = s.dbid AND d.srvid = s.srvid
+        JOIN {powa}.powa_qualstats_quals qn ON s.queryid = qn.queryid AND s.srvid = qn.srvid
         JOIN (
             SELECT *
-            FROM powa_qualstats_constvalues_history qnc
+            FROM {powa}.powa_qualstats_constvalues_history qnc
             WHERE srvid = :server
             %(query_subfilter)s
             %(qual_subfilter)s
               AND coalesce_range && tstzrange(:from, :to)
             UNION ALL
             SELECT *
-            FROM powa_qualstats_aggregate_constvalues_current(:server, :from, :to)
+            FROM {powa}.powa_qualstats_aggregate_constvalues_current(:server, :from, :to)
             WHERE srvid = :server
             %(query_subfilter)s
             %(qual_subfilter)s
@@ -395,7 +395,7 @@ def get_unjumbled_query(ctrl, srvid, database, queryid, _from, _to,
 
     rs = list(ctrl.execute(text("""
         SELECT query
-        FROM powa_statements
+        FROM {powa}.powa_statements
         WHERE srvid= :srvid
         AND queryid = :queryid LIMIT 1
     """), params={"srvid": srvid, "queryid": queryid}))[0]

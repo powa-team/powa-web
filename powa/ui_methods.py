@@ -120,9 +120,9 @@ def sanitycheck_messages(self):
           COALESCE(alias, hostname || ':' || port)
        END AS alias,
         error
-        FROM powa_servers s
+        FROM {powa}.powa_servers s
         JOIN (SELECT srvid, unnest(errors) error
-            FROM powa_snapshot_metas
+            FROM {powa}.powa_snapshot_metas
             WHERE errors IS NOT NULL
         ) m ON m.srvid = s.id"""
     rows = self.execute(sql).fetchall()

@@ -42,7 +42,7 @@ class OverviewMetricGroup(MetricGroupDef):
                 CASE WHEN id = 0 THEN set.setting
                     ELSE s.version::text
                 END AS version
-                FROM powa_servers s
+                FROM {powa}.powa_servers s
                 LEFT JOIN pg_settings set ON set.name = 'server_version'
                     AND s.id = 0""")
 
