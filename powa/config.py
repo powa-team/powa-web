@@ -84,8 +84,8 @@ class ServersErrors(ContentWidget):
                username || '@' || hostname || ':' || port || '/' || dbname
             END AS server_alias,
             errors
-            FROM powa_servers s
-            JOIN powa_snapshot_metas m ON m.srvid = s.id
+            FROM {powa}.powa_servers s
+            JOIN {powa}.powa_snapshot_metas m ON m.srvid = s.id
             WHERE errors IS NOT NULL
             ORDER BY 1
         """
@@ -186,8 +186,8 @@ class PowaServersMetricGroup(MetricGroupDef):
      ELSE
        'unknown'
      END AS collector_status
-     FROM powa_servers s
-     LEFT JOIN powa_snapshot_metas m ON s.id = m.srvid
+     FROM {powa}.powa_servers s
+     LEFT JOIN {powa}.powa_snapshot_metas m ON s.id = m.srvid
      LEFT JOIN (SELECT
         CASE WHEN current_setting('powa.frequency') = '-1' THEN 'disabled'
             ELSE 'running'
@@ -273,7 +273,8 @@ class PgSettingsMetricGroup(MetricGroupDef):
                             t.setting AS setting_value,
                             s.unit AS setting_unit,
                             s.category AS category_value
-                        FROM pg_track_settings(now(), %(srvid)s) t
+                        FROM {pg_track_settings}.pg_track_settings(now(),
+                                                                   %(srvid)s) t
                         LEFT JOIN pg_catalog.pg_settings s
                             ON s.name = t.name
                         """, params={'srvid': server})
@@ -341,7 +342,7 @@ class PgExtensionsMetricGroup(MetricGroupDef):
             ) s
             LEFT JOIN pg_available_extensions avail on s.extname = avail.name
             LEFT JOIN pg_extension ins on s.extname = ins.extname
-            LEFT JOIN powa_functions f ON s.extname = f.module
+            LEFT JOIN {powa}.powa_functions f ON s.extname = f.module
                 AND f.srvid = 0
             ORDER BY 1
              """
@@ -363,7 +364,7 @@ class PgExtensionsMetricGroup(MetricGroupDef):
                  UNION SELECT 'powa'
                  UNION SELECT 'pg_wait_sampling'
             ) s
-            LEFT JOIN powa_functions f ON s.extname = f.module
+            LEFT JOIN {powa}.powa_functions f ON s.extname = f.module
                 AND f.srvid = %(server)s
             ORDER BY 1
              """
@@ -394,7 +395,7 @@ class PgExtensionsMetricGroup(MetricGroupDef):
                      UNION SELECT 'powa'
                      UNION SELECT 'pg_wait_sampling'
                 ) s
-                LEFT JOIN powa_extensions ins on s.extname = ins.extname
+                LEFT JOIN {powa}.powa_extensions ins on s.extname = ins.extname
                 WHERE srvid = %(srvid)s
                 ORDER BY 1
                         """, params={'srvid': server})

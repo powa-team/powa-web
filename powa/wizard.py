@@ -44,7 +44,7 @@ class IndexSuggestionHandler(AuthHandler):
         powa_conn = self.connect(database="powa")
         queries = list(powa_conn.execute(text("""
             SELECT DISTINCT query, ps.queryid
-            FROM powa_statements ps
+            FROM {powa}.powa_statements ps
             WHERE srvid = :srvid
             AND queryid IN :queryids
         """), srvid=srvid, queryids=tuple(queryids)))
