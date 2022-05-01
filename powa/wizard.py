@@ -9,12 +9,8 @@ from powa.dashboards import (
 from powa.sql import (resolve_quals, get_any_sample_query,
                       get_hypoplans, HypoIndex)
 import json
-from powa.sql.compat import JSONB
 from powa.sql.views import qualstat_getstatdata
-from powa.sql.tables import powa_databases
-from sqlalchemy.sql import (bindparam, literal_column, join, select,
-                            alias, text, func, column, cast)
-from sqlalchemy.types import TEXT
+from sqlalchemy.sql import (bindparam, select, text, func, column)
 from sqlalchemy.exc import DBAPIError
 from tornado.web import HTTPError
 
@@ -100,40 +96,42 @@ class WizardMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        pq = qualstat_getstatdata(bindparam("server"),
-                                  column("eval_type") == "f")
-        base = alias(pq)
-        query = (select([
+        pq = qualstat_getstatdata(eval_type='f')
+
+        cols = [
             # queryid in pg11+ is int64, so the value can exceed javascript's
-            # Number.MAX_SAFE_INTEGER, which mean that the value can get
+            # Number.MAX_SAFE_INTEGER, which means that the value can get
             # truncated by the browser, leading to looking for unexisting
             # queryid when processing this data.  To avoid that, simply cast
             # the value to text.
-            func.array_agg(cast(column("queryid"), TEXT)).label("queryids"),
-            column("qualid"),
-            cast(column("quals"), JSONB).label('quals'),
-            column("occurences"),
-            column("execution_count"),
-            func.array_agg(column("query")).label("queries"),
-            column("avg_filter"),
-            column("filter_ratio")
-        ]).select_from(
-            join(base, powa_databases,
-                 onclause=(
-                     powa_databases.c.oid == literal_column("dbid") and
-                     powa_databases.c.srvid == literal_column("srvid")
-                 )))
-            .where(powa_databases.c.datname == bindparam("database"))
-            .where(powa_databases.c.srvid == bindparam("server"))
-            .where(column("avg_filter") > 1000)
-            .where(column("filter_ratio") > 0.3)
-            .group_by(column("qualid"), column("execution_count"),
-                      column("occurences"),
-                      cast(column("quals"), JSONB),
-                     column("avg_filter"), column("filter_ratio"))
-            .order_by(column("occurences").desc())
-            .limit(200))
-        return query
+            "array_agg(cast(queryid AS text)) AS queryids",
+            "qualid",
+            "quals::jsonb AS quals",
+            "occurences",
+            "execution_count",
+            "array_agg(query) AS queries",
+            "avg_filter",
+            "filter_ratio"
+        ]
+
+        query = """SELECT {cols}
+        FROM (
+            {pq}
+        ) AS sub
+        JOIN {{powa}}.powa_databases pd ON pd.oid = sub.dbid
+            AND pd.srvid = sub.srvid
+        WHERE pd.datname = :database
+        AND pd.srvid = :server
+        AND sub.avg_filter > 1000
+        AND sub.filter_ratio > 0.3
+        GROUP BY sub.qualid, sub.execution_count, sub.occurences,
+            sub.quals::jsonb, sub.avg_filter, sub.filter_ratio
+        ORDER BY sub.occurences DESC
+        LIMIT 200""".format(
+            cols=', '.join(cols),
+            pq=pq,
+        )
+        return text(query)
 
     def post_process(self, data, server, database, **kwargs):
         conn = self.connect(server, database=database, remote_access=True)
