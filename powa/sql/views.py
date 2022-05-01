@@ -1,45 +1,65 @@
-from sqlalchemy.sql import (select, cast, func, column, text, case, and_,
-                            literal_column, join)
-from sqlalchemy.types import Numeric
-from sqlalchemy.sql.functions import max, min, sum
+from sqlalchemy.sql import text
 from powa.sql.utils import diff
-from powa.sql.tables import powa_statements
 
 
 class Biggest(object):
 
     def __init__(self, base_columns, order_by):
+        if type(base_columns) is str:
+            base_columns = [base_columns]
+        if type(order_by) is str:
+            order_by = [order_by]
+
         self.base_columns = base_columns
         self.order_by = order_by
 
     def __call__(self, var, minval=0, label=None):
         label = label or var
-        return func.greatest(
-            func.lead(column(var))
-            .over(order_by=self.order_by,
-                  partition_by=self.base_columns)
-            - column(var),
-            minval).label(label)
+
+        sql = "greatest(lead({var})" \
+              " OVER (PARTITION BY {partitionby} ORDER BY {orderby})" \
+              " - {var}," \
+              " {minval})" \
+              " AS {alias}".format(
+                  var=var,
+                  orderby=', '.join(self.order_by),
+                  partitionby=', '.join(self.base_columns),
+                  minval=minval,
+                  alias=label
+              )
+        return sql
 
 
 class Biggestsum(object):
 
     def __init__(self, base_columns, order_by):
+        if type(base_columns) is str:
+            base_columns = [base_columns]
+        if type(order_by) is str:
+            order_by = [order_by]
+
         self.base_columns = base_columns
         self.order_by = order_by
 
     def __call__(self, var, minval=0, label=None):
         label = label or var
-        return func.greatest(
-            func.lead(sum(column(var)))
-            .over(order_by=self.order_by,
-                  partition_by=self.base_columns)
-            - sum(column(var)),
-            minval).label(label)
+
+        sql = "greatest(lead(sum({var}))"\
+              " OVER (PARTITION BY {partitionby} ORDER BY {orderby})" \
+              " - sum({var})," \
+              " {minval})" \
+              " AS {alias}".format(
+                  var=var,
+                  orderby=', '.join(self.order_by),
+                  partitionby=', '.join(self.base_columns),
+                  minval=minval,
+                  alias=label
+              )
+        return sql
 
 
 def powa_base_statdata_detailed_db():
-    base_query = text("""
+    base_query = """
   {powa}.powa_databases,
   LATERAL
   (
@@ -72,12 +92,12 @@ def powa_base_statdata_detailed_db():
         AND powa_statements.srvid = :server
     )
     AND psc.srvid = :server
-  ) h""")
-    return base_query
+  ) h"""
+    return text(base_query)
 
 
 def powa_base_statdata_db():
-    base_query = text("""(
+    base_query = """(
  SELECT d.srvid, d.oid as dbid, h.*
  FROM
  {powa}.powa_databases d LEFT JOIN
@@ -117,12 +137,12 @@ def powa_base_statdata_db():
    AND dbc.srvid = :server
     ) AS h
 ) AS db_history
-    """)
-    return base_query
+    """
+    return text(base_query)
 
 
 def powa_base_bgwriter():
-    base_query = text("""(
+    base_query = """(
  SELECT h.*
  FROM
  (
@@ -149,15 +169,15 @@ def powa_base_bgwriter():
    AND dbc.srvid = :server
     ) AS h
 ) AS bgw_history
-    """)
-    return base_query
+    """
+    return text(base_query)
 
 
 def get_diffs_forstatdata():
     return [
         diff("calls"),
-        diff("total_plan_time").label("plantime"),
-        diff("total_exec_time").label("runtime"),
+        diff("total_plan_time", "plantime"),
+        diff("total_exec_time", "runtime"),
         diff("shared_blks_read"),
         diff("shared_blks_hit"),
         diff("shared_blks_dirtied"),
@@ -172,34 +192,59 @@ def get_diffs_forstatdata():
     ]
 
 
-def powa_getstatdata_detailed_db(srvid):
+def powa_getstatdata_detailed_db(srvid=":server", predicates=[]):
+    """
+    predicates is an optional array of plain-text predicates.
+    """
     base_query = powa_base_statdata_detailed_db()
     diffs = get_diffs_forstatdata()
-    return (select([
-        column("srvid"),
-        column("queryid"),
-        column("dbid"),
-        column("userid"),
-        column("datname"),
-    ] + diffs)
-            .select_from(base_query)
-            .where(column("srvid") == srvid)
-            .group_by(column("srvid"), column("queryid"), column("dbid"),
-                      column("userid"), column("datname"))
-            .having(max(column("calls")) - min(column("calls")) > 0))
+
+    where = ' AND '.join(predicates)
+    if where != '':
+        where = ' AND ' + where
+
+    cols = [
+        "srvid",
+        "queryid",
+        "dbid",
+        "userid",
+        "datname",
+    ] + diffs
+
+    return """SELECT {cols}
+    FROM {base_query}
+    WHERE srvid = {srvid}
+    {where}
+    GROUP BY srvid, queryid, dbid, userid, datname
+    HAVING max(calls) - min(calls) > 0""".format(
+        cols=', '.join(cols),
+        base_query=base_query,
+        srvid=srvid,
+        where=where
+    )
 
 
 def powa_getstatdata_db(srvid):
     base_query = powa_base_statdata_db()
     diffs = get_diffs_forstatdata()
-    return (select([column("srvid")] + [column("dbid")] + diffs)
-            .select_from(base_query)
-            .where(column("srvid") == srvid)
-            .group_by(column("srvid"), column("dbid"))
-            .having(max(column("calls")) - min(column("calls")) > 0))
+
+    cols = [
+            "srvid",
+            "dbid"
+            ] + diffs
+
+    return """SELECT {cols}
+    FROM {base_query}
+    WHERE srvid = {srvid}
+    GROUP BY srvid, dbid
+    HAVING max(calls) - min(calls) > 0""".format(
+        cols=', '.join(cols),
+        base_query=base_query,
+        srvid=srvid
+    )
 
 
-BASE_QUERY_SAMPLE_DB = text("""(
+BASE_QUERY_SAMPLE_DB = """(
   SELECT d.srvid, d.datname, base.* FROM {powa}.powa_databases d,
   LATERAL (
     SELECT *
@@ -233,10 +278,10 @@ BASE_QUERY_SAMPLE_DB = text("""(
     WHERE number % ( int8larger((total)/(:samples+1),1) ) = 0
   ) AS base
   WHERE srvid = :server
-) AS by_db""")
+) AS by_db"""
 
 
-BASE_QUERY_SAMPLE = text("""(
+BASE_QUERY_SAMPLE = """(
   SELECT powa_statements.srvid, datname, dbid, queryid, userid, base.*
   FROM {powa}.powa_statements
   JOIN {powa}.powa_databases ON powa_databases.oid = powa_statements.dbid
@@ -275,28 +320,33 @@ BASE_QUERY_SAMPLE = text("""(
   WHERE powa_statements.srvid = :server
 ) AS by_query
 
-""")
+"""
 
 
-def powa_getstatdata_sample(mode, srvid):
+def powa_getstatdata_sample(mode, predicates=[]):
+    """
+    predicates is an optional array of plain-text predicates.
+    """
     if mode == "db":
         base_query = BASE_QUERY_SAMPLE_DB
-        base_columns = [column("srvid"), column("dbid")]
+        base_columns = ["srvid", "dbid"]
 
     elif mode == "query":
         base_query = BASE_QUERY_SAMPLE
-        base_columns = [column("srvid"), column("dbid"), column("queryid"),
-                        column("userid")]
+        base_columns = ["srvid", "dbid", "queryid", "userid"]
 
-    ts = column('ts')
-    biggest = Biggest(base_columns, ts)
-    biggestsum = Biggestsum(base_columns, ts)
+    biggest = Biggest(base_columns, 'ts')
+    biggestsum = Biggestsum(base_columns, 'ts')
 
-    return (select(base_columns + [
-        ts,
-        biggest("ts", '0 s', "mesure_interval"),
+    where = ' AND '.join(predicates)
+    if where != '':
+        where = ' AND ' + where
+
+    cols = base_columns + [
+        'ts',
+        biggest("ts", "'0 s'", "mesure_interval"),
         biggestsum("calls"),
-        biggestsum("total_plan_time").label("plantime"),
+        biggestsum("total_plan_time", label="plantime"),
         biggestsum("total_exec_time", label="runtime"),
         biggestsum("rows"),
         biggestsum("shared_blks_read"),
@@ -314,20 +364,53 @@ def powa_getstatdata_sample(mode, srvid):
         biggestsum("wal_records"),
         biggestsum("wal_fpi"),
         biggestsum("wal_bytes")
-        ])
-            .select_from(base_query)
-            .apply_labels()
-            .group_by(*(base_columns + [ts])))
+    ]
+
+    return """SELECT {cols}
+    FROM {base_query}
+    WHERE srvid = :server
+    {where}
+    GROUP BY {base_columns}, ts""".format(
+        cols=', '.join(cols),
+        base_query=base_query,
+        where=where,
+        base_columns=', '.join(base_columns)
+    )
 
 
-def qualstat_base_statdata():
-    base_query = text("""
+def qualstat_base_statdata(eval_type=None):
+    if eval_type is not None:
+        base_cols = ["srvid",
+                     "qualid,"
+                     "queryid",
+                     "dbid",
+                     "userid"
+                     ]
+
+        pqnh = """(
+        SELECT {outer_cols}
+            FROM (
+                SELECT {inner_cols}
+                FROM {{powa}}.powa_qualstats_quals
+            ) expanded
+            WHERE (qual).eval_type = '{eval_type}'
+            GROUP BY {base_cols}
+        )""".format(
+            outer_cols=', '.join(base_cols + ["array_agg(qual) AS quals"]),
+            inner_cols=', '.join(base_cols + ["unnest(quals) AS qual"]),
+            base_cols=', '.join(base_cols),
+            eval_type=eval_type
+            )
+    else:
+        pqnh = "{powa}.powa_qualstats_quals"
+
+    base_query = """
     (
     SELECT srvid, qualid, queryid, dbid, userid, (unnested.records).*
     FROM (
         SELECT pqnh.srvid, pqnh.qualid, pqnh.queryid, pqnh.dbid, pqnh.userid,
           pqnh.coalesce_range, unnest(records) AS records
-        FROM {powa}.powa_qualstats_quals_history pqnh
+        FROM {{powa}}.powa_qualstats_quals_history pqnh
         WHERE coalesce_range  && tstzrange(:from, :to, '[]')
         AND pqnh.srvid = :server
     ) AS unnested
@@ -336,45 +419,73 @@ def qualstat_base_statdata():
     SELECT pqnc.srvid, qualid, queryid, dbid, userid, pqnc.ts, pqnc.occurences,
       pqnc.execution_count, pqnc.nbfiltered,
       pqnc.mean_err_estimate_ratio, pqnc.mean_err_estimate_num
-    FROM {powa}.powa_qualstats_quals_history_current pqnc
+    FROM {{powa}}.powa_qualstats_quals_history_current pqnc
     WHERE pqnc.ts <@ tstzrange(:from, :to, '[]')
     AND pqnc.srvid = :server
     ) h
-    JOIN {powa}.powa_qualstats_quals pqnh USING (srvid, queryid, qualid)
-    """)
+    JOIN {pqnh} AS pqnh USING (srvid, queryid, qualid)""".format(pqnh=pqnh)
+
     return base_query
 
 
-def qualstat_getstatdata(srvid, condition=None):
-    base_query = qualstat_base_statdata()
-    if condition:
-        base_query = base_query.where(condition)
-    return (select([
-        powa_statements.c.srvid,
-        column("qualid"),
-        powa_statements.c.queryid,
-        column("query"),
-        powa_statements.c.dbid,
-        func.to_json(column("quals")).label("quals"),
-        sum(column("execution_count")).label("execution_count"),
-        sum(column("occurences")).label("occurences"),
-        (sum(column("nbfiltered")) / sum(column("occurences")))
-        .label("avg_filter"),
-        case(
-            [(sum(column("execution_count")) == 0, 0)],
-            else_=sum(column("nbfiltered")) /
-            cast(sum(column("execution_count")), Numeric) * 100
-        ).label("filter_ratio")])
-            .select_from(
-                join(base_query, powa_statements,
-                     and_(powa_statements.c.queryid ==
-                          literal_column("pqnh.queryid"),
-                          powa_statements.c.srvid ==
-                          literal_column("pqnh.srvid")),
-                     powa_statements.c.srvid == column("srvid")))
-            .group_by(powa_statements.c.srvid, column("qualid"),
-                      powa_statements.c.queryid, powa_statements.c.dbid,
-                      powa_statements.c.query, column("quals")))
+QUALSTAT_FILTER_RATIO = """CASE
+            WHEN sum(execution_count) = 0 THEN 0
+            ELSE sum(nbfiltered) / sum(execution_count)::numeric * 100
+        END"""
+
+
+def qualstat_getstatdata(eval_type=None, extra_from='', extra_join='',
+                         extra_select=[], extra_where=[], extra_groupby=[],
+                         extra_having=[]):
+    base_query = qualstat_base_statdata(eval_type)
+
+    # Reformat extra_select, extra_where, extra_groupby and extra_having to be
+    # plain additional SQL clauses.
+    if len(extra_select) > 0:
+        extra_select = ', ' + ', '.join(extra_select)
+    else:
+        extra_select = ''
+
+    if len(extra_where) > 0:
+        extra_where = ' AND ' + ' AND '.join(extra_where)
+    else:
+        extra_where = ''
+
+    if len(extra_groupby) > 0:
+        extra_groupby = ', ' + ', '.join(extra_groupby)
+    else:
+        extra_groupby = ''
+
+    if len(extra_having) > 0:
+        extra_having = " HAVING " + ' AND '.join(extra_having)
+    else:
+        extra_having = ''
+
+    return """SELECT
+        ps.srvid, qualid, ps.queryid, query, ps.dbid,
+        to_json(quals) AS quals,
+        sum(execution_count) AS execution_count,
+        sum(occurences) AS occurences,
+        (sum(nbfiltered) / sum(occurences)) AS avg_filter,
+        {filter_ratio} AS filter_ratio
+        {extra_select}
+        FROM
+        {base_query}
+        JOIN {{powa}}.powa_statements ps USING(queryid, srvid)
+        {extra_join}
+        WHERE h.srvid = :server
+        {extra_where}
+        GROUP BY ps.srvid, qualid, ps.queryid, ps.dbid, ps.query, quals
+        {extra_groupby}
+        {extra_having}""".format(
+            filter_ratio=QUALSTAT_FILTER_RATIO,
+            extra_select=extra_select,
+            base_query=base_query,
+            extra_join=extra_join,
+            extra_where=extra_where,
+            extra_groupby=extra_groupby,
+            extra_having=extra_having
+            )
 
 
 TEXTUAL_INDEX_QUERY = """
@@ -425,7 +536,7 @@ FROM (SELECT t.nspname,
 ) q
 """
 
-BASE_QUERY_KCACHE_SAMPLE_DB = text("""
+BASE_QUERY_KCACHE_SAMPLE_DB = """
         {powa}.powa_databases d,
         LATERAL (
             SELECT *
@@ -470,10 +581,10 @@ BASE_QUERY_KCACHE_SAMPLE_DB = text("""
             ) kmn
         WHERE kmn.number % (int8larger(total/(:samples+1),1) ) = 0
         ) kcache
-""")
+"""
 
 
-BASE_QUERY_KCACHE_SAMPLE = text("""
+BASE_QUERY_KCACHE_SAMPLE = """
         {powa}.powa_statements s JOIN {powa}.powa_databases d
             ON d.oid = s.dbid AND d.srvid = s.srvid
             AND s.srvid = :server,
@@ -522,26 +633,31 @@ BASE_QUERY_KCACHE_SAMPLE = text("""
             ) kmn
         WHERE kmn.number % (int8larger(total/(:samples+1),1) ) = 0
         ) kcache
-""")
+"""
 
 
-def kcache_getstatdata_sample(mode):
+def kcache_getstatdata_sample(mode, predicates=[]):
+    """
+    predicates is an optional array of plain-text predicates.
+    """
     if (mode == "db"):
         base_query = BASE_QUERY_KCACHE_SAMPLE_DB
-        base_columns = [literal_column("d.oid").label("dbid"),
-                        column("srvid"), column("datname")]
+        base_columns = ["d.oid AS dbid", "srvid, datname"]
+        groupby_columns = "d.oid, srvid, datname"
     elif (mode == "query"):
         base_query = BASE_QUERY_KCACHE_SAMPLE
-        base_columns = [literal_column("d.oid").label("dbid"),
-                        literal_column("d.srvid").label("srvid"),
-                        column("datname"), column("queryid"),
-                        column("userid")]
+        base_columns = ["d.oid AS dbid", "d.srvid", "datname", "queryid",
+                        "userid"]
+        groupby_columns = "d.oid, d.srvid, datname, queryid, userid"
 
-    ts = column('ts')
-    biggestsum = Biggestsum(base_columns, ts)
+    biggestsum = Biggestsum(groupby_columns, "ts")
 
-    return (select(base_columns + [
-        ts,
+    where = ' AND '.join(predicates)
+    if where != '':
+        where = ' AND ' + where
+
+    base_columns.extend([
+        "ts",
         biggestsum("reads"),
         biggestsum("writes"),
         biggestsum("user_time"),
@@ -554,14 +670,22 @@ def kcache_getstatdata_sample(mode):
         # biggestsum("msgrcvs"),
         # biggestsum("nsignals"),
         biggestsum("nvcsws"),
-        biggestsum("nivcsws")
-        ])
-            .select_from(base_query)
-            .apply_labels()
-            .group_by(*(base_columns + [ts])))
+        biggestsum("nivcsws"),
+    ])
+
+    return """SELECT {base_columns}
+    FROM {base_query}
+    WHERE d.srvid = :server
+    {where}
+    GROUP BY {groupby_columns}, ts""".format(
+        base_columns=', '.join(base_columns),
+        groupby_columns=groupby_columns,
+        where=where,
+        base_query=base_query
+    )
 
 
-BASE_QUERY_WAIT_SAMPLE_DB = text("""(
+BASE_QUERY_WAIT_SAMPLE_DB = """(
   SELECT d.oid AS dbid, datname, base.*
   FROM {powa}.powa_databases d,
   LATERAL (
@@ -618,10 +742,10 @@ BASE_QUERY_WAIT_SAMPLE_DB = text("""(
   ) AS base
   WHERE d.srvid = :server
 ) AS by_db
-""")
+"""
 
 
-BASE_QUERY_WAIT_SAMPLE = text("""(
+BASE_QUERY_WAIT_SAMPLE = """(
   SELECT d.srvid, datname, dbid, queryid, base.*
   FROM {powa}.powa_statements s
   JOIN {powa}.powa_databases d ON d.oid = s.dbid
@@ -677,10 +801,10 @@ BASE_QUERY_WAIT_SAMPLE = text("""(
   ) AS base
   WHERE d.srvid = :server
 ) AS by_query
-""")
+"""
 
 
-BASE_QUERY_BGWRITER_SAMPLE = text("""
+BASE_QUERY_BGWRITER_SAMPLE = """
     (SELECT srvid,
       row_number() OVER (ORDER BY bgw_history.ts) AS number,
       count(*) OVER () AS total,
@@ -713,11 +837,11 @@ BASE_QUERY_BGWRITER_SAMPLE = text("""
       GROUP BY bgw_history.srvid, bgw_history.ts
     ) AS bgw
     WHERE number % ( int8larger((total)/(:samples+1),1) ) = 0
-""")
+"""
 
 
 def powa_base_waitdata_detailed_db():
-    base_query = text("""
+    base_query = """
   {powa}.powa_databases,
   LATERAL
   (
@@ -752,12 +876,12 @@ def powa_base_waitdata_detailed_db():
     AND wsc.srvid = :server
   ) h
   WHERE powa_databases.srvid = :server
-""")
+"""
     return base_query
 
 
 def powa_base_waitdata_db():
-    base_query = text("""(
+    base_query = """(
   SELECT powa_databases.srvid, powa_databases.oid as dbid, h.*
   FROM
   {powa}.powa_databases LEFT JOIN
@@ -787,11 +911,11 @@ def powa_base_waitdata_db():
   ) AS h
   WHERE powa_databases.srvid = :server
 ) AS ws_history
-    """)
+    """
     return base_query
 
 
-BASE_QUERY_ALL_RELS_SAMPLE_DB = text("""(
+BASE_QUERY_ALL_RELS_SAMPLE_DB = """(
   SELECT d.srvid, d.datname, base.*
   FROM {powa}.powa_databases d,
   LATERAL (
@@ -824,10 +948,10 @@ BASE_QUERY_ALL_RELS_SAMPLE_DB = text("""(
   ) AS base
   WHERE srvid = :server
 ) AS by_db
-""")
+"""
 
 
-BASE_QUERY_ALL_RELS_SAMPLE = text("""(
+BASE_QUERY_ALL_RELS_SAMPLE = """(
   SELECT d.srvid, d.datname,
   CASE WHEN
     (n_tup_ins + n_tup_upd + n_tup_del + n_tup_hot_upd +
@@ -880,58 +1004,55 @@ BASE_QUERY_ALL_RELS_SAMPLE = text("""(
   ) AS base
   WHERE srvid = :server
 ) AS by_db
-    """)
+    """
 
 
-def powa_getwaitdata_detailed_db(srvid):
+def powa_getwaitdata_detailed_db():
     base_query = powa_base_waitdata_detailed_db()
-    return (select([
-        column("srvid"),
-        column("queryid"),
-        column("dbid"),
-        column("datname"),
-        column("event_type"),
-        column("event"),
-        diff("count")
-    ])
-        .select_from(base_query)
-        .group_by(column("srvid"), column("queryid"), column("dbid"),
-                  column("datname"), column("event_type"), column("event"))
-        .having(max(column("count")) - min(column("count")) > 0))
+    return """SELECT srvid, queryid, dbid, datname, event_type, event,
+    {count}
+    FROM {base_query}
+    GROUP BY srvid, queryid, dbid, datname, event_type, event
+    HAVING max(count) - min(count) > 0""".format(
+        count=diff('count'),
+        base_query=base_query
+    )
 
 
 def powa_getwaitdata_db(srvid):
     base_query = powa_base_waitdata_db()
 
-    return (select([
-        column("srvid"),
-        column("dbid"),
-        column("event_type"),
-        column("event"),
-        diff("count")
-    ])
-        .select_from(base_query)
-        .group_by(column("srvid"), column("dbid"), column("event_type"),
-                  column("event"))
-        .having(max(column("count")) - min(column("count")) > 0))
+    return """SELECT srvid, dbid, event_type, event, {count}
+    FROM {base_query}
+    GROUP BY srvid, dbid, event_type, event
+    HAVING max(count) - min(count) > 0""".format(
+        count=diff('count'),
+        base_query=base_query
+    )
 
 
-def powa_getwaitdata_sample(srvid, mode):
+def powa_getwaitdata_sample(mode, predicates=[]):
+    """
+    predicates is an optional array of plain-text predicates.
+    """
     if mode == "db":
         base_query = BASE_QUERY_WAIT_SAMPLE_DB
-        base_columns = [column("srvid"), column("dbid")]
+        base_columns = ["srvid", "dbid"]
 
     elif mode == "query":
         base_query = BASE_QUERY_WAIT_SAMPLE
-        base_columns = [column("srvid"), column("dbid"), column("queryid")]
+        base_columns = ["srvid", "dbid", "queryid"]
 
-    ts = column('ts')
-    biggest = Biggest(base_columns, ts)
-    biggestsum = Biggestsum(base_columns, ts)
+    biggest = Biggest(base_columns, 'ts')
+    biggestsum = Biggestsum(base_columns, 'ts')
 
-    return (select(base_columns + [
-        ts,
-        biggest("ts", '0 s', "mesure_interval"),
+    where = ' AND '.join(predicates)
+    if where != '':
+        where = ' AND ' + where
+
+    all_cols = base_columns + [
+        "ts",
+        biggest("ts", "'0 s'", "mesure_interval"),
         # pg 96 only columns
         biggestsum("count_lwlocknamed"),
         biggestsum("count_lwlocktranche"),
@@ -944,70 +1065,89 @@ def powa_getwaitdata_sample(srvid, mode):
         biggestsum("count_extension"),
         biggestsum("count_ipc"),
         biggestsum("count_timeout"),
-        biggestsum("count_io")])
-        .select_from(base_query)
-        .apply_labels()
-        .group_by(*(base_columns + [ts])))
+        biggestsum("count_io"),
+    ]
+
+    return """SELECT {all_cols}
+    FROM {base_query}
+    WHERE srvid = :server
+    {where}
+    GROUP BY {base_columns}, ts""".format(
+        all_cols=', '.join(all_cols),
+        base_columns=', '.join(base_columns),
+        base_query=base_query,
+        where=where
+    )
 
 
 def powa_get_bgwriter_sample(srvid):
     base_query = BASE_QUERY_BGWRITER_SAMPLE
-    base_columns = [column("srvid")]
+    base_columns = ["srvid"]
 
-    ts = column('ts')
-    biggest = Biggest(base_columns, ts)
-    biggestsum = Biggestsum(base_columns, ts)
+    biggest = Biggest(base_columns, 'ts')
+    biggestsum = Biggestsum(base_columns, 'ts')
 
-    return (select(base_columns + [
-            ts,
-            biggest("ts", '0 s', "mesure_interval"),
-            biggestsum("checkpoints_timed"),
-            biggestsum("checkpoints_req"),
-            biggestsum("checkpoint_write_time"),
-            biggestsum("checkpoint_sync_time"),
-            biggestsum("buffers_checkpoint"),
-            biggestsum("buffers_clean"),
-            biggestsum("maxwritten_clean"),
-            biggestsum("buffers_backend"),
-            biggestsum("buffers_backend_fsync"),
-            biggestsum("buffers_alloc")])
-            .select_from(base_query)
-            .apply_labels()
-            .group_by(*(base_columns + [ts])))
+    all_cols = base_columns + [
+        "ts",
+        biggest("ts", "'0 s'", "mesure_interval"),
+        biggestsum("checkpoints_timed"),
+        biggestsum("checkpoints_req"),
+        biggestsum("checkpoint_write_time"),
+        biggestsum("checkpoint_sync_time"),
+        biggestsum("buffers_checkpoint"),
+        biggestsum("buffers_clean"),
+        biggestsum("maxwritten_clean"),
+        biggestsum("buffers_backend"),
+        biggestsum("buffers_backend_fsync"),
+        biggestsum("buffers_alloc"),
+    ]
+
+    return """SELECT {all_cols}
+    FROM {base_query}
+    GROUP BY {base_columns}, ts""".format(
+        all_cols=', '.join(all_cols),
+        base_columns=', '.join(base_columns),
+        base_query=base_query
+    )
 
 
-def powa_get_all_tbl_sample(mode, srvid):
+def powa_get_all_tbl_sample(mode):
 
     if mode == "db":
         base_query = BASE_QUERY_ALL_RELS_SAMPLE_DB
-        base_columns = [column("srvid"), column("dbid"), column("datname")]
+        base_columns = ["srvid", "dbid", "datname"]
     else:
         base_query = BASE_QUERY_ALL_RELS_SAMPLE
-        base_columns = [column("srvid"), column("dbid"), column("datname"),
-                        column("relid")]
+        base_columns = ["srvid", "dbid", "datname", "relid"]
 
-    ts = column('ts')
-    biggest = Biggest(base_columns, ts)
-    biggestsum = Biggestsum(base_columns, ts)
+    biggest = Biggest(base_columns, 'ts')
+    biggestsum = Biggestsum(base_columns, 'ts')
 
-    return (select(base_columns + [
-            ts,
-            biggest("ts", '0 s', "mesure_interval"),
-            biggestsum("seq_scan"),
-            biggestsum("idx_scan"),
-            biggestsum("tup_returned"),
-            biggestsum("tup_fetched"),
-            biggestsum("n_tup_ins"),
-            biggestsum("n_tup_upd"),
-            biggestsum("n_tup_del"),
-            biggestsum("n_tup_hot_upd"),
-            biggestsum("vacuum_count"),
-            biggestsum("autovacuum_count"),
-            biggestsum("analyze_count"),
-            biggestsum("autoanalyze_count")])
-            .select_from(base_query)
-            .apply_labels()
-            .group_by(*(base_columns + [ts])))
+    all_cols = base_columns + [
+        "ts",
+        biggest("ts", "'0 s'", "mesure_interval"),
+        biggestsum("seq_scan"),
+        biggestsum("idx_scan"),
+        biggestsum("tup_returned"),
+        biggestsum("tup_fetched"),
+        biggestsum("n_tup_ins"),
+        biggestsum("n_tup_upd"),
+        biggestsum("n_tup_del"),
+        biggestsum("n_tup_hot_upd"),
+        biggestsum("vacuum_count"),
+        biggestsum("autovacuum_count"),
+        biggestsum("analyze_count"),
+        biggestsum("autoanalyze_count"),
+    ]
+
+    return """SELECT {all_cols}
+        FROM {base_query}
+        WHERE srvid = :server
+        GROUP BY {base_columns}, ts""".format(
+            all_cols=', '.join(all_cols),
+            base_columns=', '.join(base_columns),
+            base_query=base_query
+    )
 
 
 def get_config_changes(restrict_database=False):
@@ -1015,7 +1155,7 @@ def get_config_changes(restrict_database=False):
     if (restrict_database):
         restrict_db = "AND (d.datname = :database OR h.setdatabase = 0)"
 
-    return text("""SELECT * FROM
+    sql = """SELECT * FROM
 (
   WITH src AS (
     select ts, name,
@@ -1023,7 +1163,7 @@ def get_config_changes(restrict_database=False):
     setting_pretty AS new_val,
     lag(is_dropped) OVER (PARTITION BY name ORDER BY ts) AS prev_is_dropped,
     is_dropped as is_dropped
-    FROM {pg_track_settings}.pg_track_settings_history h
+    FROM {{pg_track_settings}}.pg_track_settings_history h
     WHERE srvid = :server
     AND ts <= :to
   )
@@ -1051,12 +1191,12 @@ SELECT * FROM
     is_dropped as is_dropped,
     d.datname,
     h.setrole
-    FROM {pg_track_settings}.pg_track_db_role_settings_history h
-    LEFT JOIN {powa}.powa_databases d
+    FROM {{pg_track_settings}}.pg_track_db_role_settings_history h
+    LEFT JOIN {{powa}}.powa_databases d
       ON d.srvid = h.srvid
       AND d.oid = h.setdatabase
     WHERE h.srvid = :server
-    %(restrict_db)s
+    {restrict_db}
     AND ts <= :to
   )
   SELECT extract("epoch" FROM ts) AS ts, 'rds' AS kind,
@@ -1077,8 +1217,10 @@ UNION ALL
 
 SELECT extract("epoch" FROM ts) AS ts, 'reboot' AS kind,
 NULL AS data
-FROM {pg_track_settings}.pg_reboot AS r
+FROM {{pg_track_settings}}.pg_reboot AS r
 WHERE r.srvid = :server
 AND r.ts>= :from
 AND r.ts <= :to
-ORDER BY ts""" % {'restrict_db': restrict_db})
+ORDER BY ts""".format(restrict_db=restrict_db)
+
+    return text(sql)

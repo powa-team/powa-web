@@ -2,10 +2,8 @@
 Index page presenting an overview of the cluster stats.
 """
 
-from sqlalchemy import and_
 from sqlalchemy.sql.functions import sum
-from sqlalchemy.sql import select, case, cast, extract, bindparam
-from sqlalchemy.types import Numeric
+from sqlalchemy.sql import bindparam, text
 from tornado.web import HTTPError
 from powa.framework import AuthHandler
 from powa.dashboards import (
@@ -22,9 +20,8 @@ from powa.sql.views import (
     powa_getwaitdata_sample,
     powa_get_bgwriter_sample,
     powa_get_all_tbl_sample)
-from powa.sql.utils import (total_read, total_hit, mulblock, round, greatest,
-                            block_size, inner_cc, to_epoch)
-from powa.sql.tables import powa_databases
+from powa.sql.utils import (sum_per_sec, byte_per_sec, wps, total_read,
+                            total_hit, block_size, to_epoch, get_ts, mulblock)
 
 
 class ServerSelector(AuthHandler):
@@ -71,43 +68,44 @@ class ByDatabaseMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        bs = block_size.c.block_size
-        inner_query = powa_getstatdata_db(bindparam("server")).alias()
-        c = inner_query.c
-        from_clause = inner_query.join(
-            powa_databases,
-            and_(c.dbid == powa_databases.c.oid,
-                 c.srvid == powa_databases.c.srvid))
+        bs = block_size
+        inner_query = powa_getstatdata_db(bindparam("server"))
+        from_clause = """({inner_query}) AS sub
+        JOIN {{powa}}.powa_databases pd ON pd.oid = sub.dbid
+            AND pd.srvid = sub.srvid""".format(
+            inner_query=inner_query
+            )
 
-        cols = [powa_databases.c.srvid,
-                powa_databases.c.datname,
-                sum(c.calls).label("calls"),
-                sum(c.runtime).label("runtime"),
-                round(cast(sum(c.runtime), Numeric) /
-                      greatest(sum(c.calls), 1), 2).label("avg_runtime"),
-                mulblock(sum(c.shared_blks_read).label("shared_blks_read")),
-                mulblock(sum(c.shared_blks_hit).label("shared_blks_hit")),
-                mulblock(sum(c.shared_blks_dirtied).label("shared_blks_dirtied")),
-                mulblock(sum(c.shared_blks_written).label("shared_blks_written")),
-                mulblock(sum(c.temp_blks_written).label("temp_blks_written")),
-                round(cast(sum(c.blk_read_time + c.blk_write_time),
-                           Numeric), 2).label("io_time")
-                ]
+        cols = [
+            "pd.srvid",
+            "pd.datname",
+            "sum(calls) AS calls",
+            "sum(runtime) AS runtime",
+            "round(cast(sum(runtime) AS numeric) / greatest(sum(calls), 1), 2) AS avg_runtime",
+            mulblock('shared_blks_read', fn="sum"),
+            mulblock('shared_blks_hit', fn="sum"),
+            mulblock('shared_blks_dirtied', fn="sum"),
+            mulblock('shared_blks_written', fn="sum"),
+            mulblock('temp_blks_written', fn="sum"),
+            "round(cast(sum(blk_read_time + blk_write_time) AS numeric), 2) AS io_time"
+            ]
 
         if self.has_extension_version(self.path_args[0], 'pg_stat_statements',
                                       '1.8'):
             cols.extend([
-                sum(c.plantime).label("plantime"),
-                sum(c.wal_records).label("wal_records"),
-                sum(c.wal_fpi).label("wal_fpi"),
-                sum(c.wal_bytes).label("wal_bytes")
-                ])
+                "sum(plantime) AS plantime",
+                "sum(wal_records) AS wal_records",
+                "sum(wal_fpi) AS wal_fpi,"
+                "sum(wal_bytes) AS wal_bytes"])
 
-        return (select(cols)
-                .select_from(from_clause)
-                .order_by(sum(c.calls).desc())
-                .group_by(powa_databases.c.srvid,
-                          powa_databases.c.datname, bs))
+        return text("""SELECT {cols}
+        FROM {from_clause}
+        CROSS JOIN {bs}
+        GROUP BY pd.srvid, pd.datname, block_size""".format(
+            cols=', '.join(cols),
+            from_clause=from_clause,
+            bs=bs
+        ))
 
     def process(self, val, **kwargs):
         val = dict(val)
@@ -129,23 +127,21 @@ class ByDatabaseWaitSamplingMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        inner_query = powa_getwaitdata_db(bindparam("server")).alias()
-        c = inner_query.c
-        from_clause = inner_query.join(
-            powa_databases,
-            and_(c.dbid == powa_databases.c.oid,
-                 c.srvid == powa_databases.c.srvid))
+        inner_query = powa_getwaitdata_db(bindparam("server"))
 
-        return (select([
-            powa_databases.c.srvid,
-            powa_databases.c.datname,
-            c.event_type, c.event,
-            sum(c.count).label("counts"),
-        ])
-            .select_from(from_clause)
-            .order_by(sum(c.count).desc())
-            .group_by(powa_databases.c.srvid, powa_databases.c.datname,
-                      c.event_type, c.event))
+        from_clause = """({inner_query}) AS sub
+            JOIN {{powa}}.powa_databases pd ON pd.oid = sub.dbid
+            AND pd.srvid = sub.srvid""".format(
+                inner_query=inner_query
+                )
+
+        return text("""SELECT pd.srvid, pd.datname, sub.event_type, sub.event,
+            sum(sub.count) AS counts
+            FROM {from_clause}
+            GROUP BY pd.srvid, pd.datname, sub.event_type, sub.event
+            ORDER BY sum(sub.count) DESC""".format(
+                from_clause=from_clause
+            ))
 
     def process(self, val, **kwargs):
         val = dict(val)
@@ -220,86 +216,75 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        bs = block_size.c.block_size
-        query = powa_getstatdata_sample("db", bindparam("server"))
-        query = query.alias()
-        c = query.c
+        bs = block_size
+        query = powa_getstatdata_sample("db")
 
-        cols = [c.srvid,
-                extract("epoch", c.ts).label("ts"),
-                (sum(c.calls) / greatest(extract("epoch", c.mesure_interval),
-                                         1)).label("calls"),
-                (sum(c.runtime) / greatest(sum(c.calls),
-                                           1)).label("avg_runtime"),
-                (sum(c.runtime) / greatest(extract("epoch", c.mesure_interval),
-                                           1)).label("load"),
-                total_read(c),
-                total_hit(c)
-                ]
+        cols = [
+            "sub.srvid",
+            "extract(epoch FROM ts) AS ts",
+            sum_per_sec('calls'),
+            "sum(runtime) / greatest(sum(calls), 1) AS avg_runtime",
+            sum_per_sec('runtime', alias='load'),
+            total_read("sub"),
+            total_hit("sub")
+        ]
 
         if self.has_extension_version(self.path_args[0],
                                       'pg_stat_statements', '1.8'):
             cols.extend([
-                (sum(c.plantime) / greatest(extract("epoch", c.mesure_interval),
-                                            1)).label("planload"),
-                (sum(c.wal_records) / greatest(extract("epoch",
-                                                       c.mesure_interval),
-                                               1)).label("wal_records"),
-                (sum(c.wal_fpi) / greatest(extract("epoch",
-                                                   c.mesure_interval),
-                                           1)).label("wal_fpi"),
-                (sum(c.wal_bytes) / greatest(extract("epoch",
-                                                     c.mesure_interval),
-                                             1)).label("wal_bytes")
-                ])
+                sum_per_sec('plantime', alias='planload'),
+                sum_per_sec('wal_records'),
+                sum_per_sec('wal_fpi'),
+                sum_per_sec('wal_bytes')
+            ])
 
         from_clause = query
+
         if self.has_extension(self.path_args[0], "pg_stat_kcache"):
+            from_clause = "({query}) AS sub2".format(query=query)
+
             # Add system metrics from pg_stat_kcache,
             kcache_query = kcache_getstatdata_sample("db")
-            kc = inner_cc(kcache_query)
-            kcache_query = (
-                kcache_query
-                .where(
-                    (kc.srvid == bindparam("server"))
-                    )
-                .alias())
-            kc = kcache_query.c
 
-            def sum_per_sec(col):
-                ts = extract("epoch", greatest(c.mesure_interval, '1 second'))
-                return (sum(col) / ts).label(col.name)
-
-            total_sys_hit = (total_read(c) - sum(kc.reads) /
-                             greatest(extract("epoch", c.mesure_interval), 1.)
-                             ).label("total_sys_hit")
-            total_disk_read = (sum(kc.reads) /
-                               greatest(extract("epoch", c.mesure_interval), 1.)
-                               ).label("total_disk_read")
-            minflts = sum_per_sec(kc.minflts)
-            majflts = sum_per_sec(kc.majflts)
-            # nswaps = sum_per_sec(kc.nswaps)
-            # msgsnds = sum_per_sec(kc.msgsnds)
-            # msgrcvs = sum_per_sec(kc.msgrcvs)
-            # nsignals = sum_per_sec(kc.nsignals)
-            nvcsws = sum_per_sec(kc.nvcsws)
-            nivcsws = sum_per_sec(kc.nivcsws)
+            total_sys_hit = "{total_read} - sum(sub.reads)" \
+                "/ {ts}" \
+                " AS total_sys_hit""".format(
+                    total_read=total_read('sub', True),
+                    ts=get_ts()
+                )
+            total_disk_read = "sum(sub.reads)" \
+                " / " + get_ts() + \
+                " AS total_disk_read"
+            minflts = sum_per_sec('minflts', prefix="sub")
+            majflts = sum_per_sec('majflts', prefix="sub")
+            # nswaps = sum_per_sec('nswaps', prefix="sub")
+            # msgsnds = sum_per_sec('msgsnds', prefix="sub")
+            # msgrcvs = sum_per_sec('msgrcvs', prefix="sub")
+            # nsignals = sum_per_sec(.nsignals', prefix="sub")
+            nvcsws = sum_per_sec('nvcsws', prefix="sub")
+            nivcsws = sum_per_sec('nivcsws', prefix="sub")
 
             cols.extend([total_sys_hit, total_disk_read, minflts, majflts,
                          # nswaps, msgsnds, msgrcvs, nsignals,
                          nvcsws, nivcsws])
-            from_clause = from_clause.join(
-                kcache_query,
-                and_(kcache_query.c.dbid == c.dbid,
-                     kcache_query.c.ts == c.ts),
-                isouter=True)
 
-        return (select(cols)
-                .select_from(from_clause)
-                .where(c.calls != '0')
-                .group_by(c.srvid, c.ts, bs, c.mesure_interval)
-                .order_by(c.ts)
-                .params(samples=100))
+            from_clause += """
+            LEFT JOIN ({kcache_query}) AS kc USING (dbid, ts, srvid)""".format(
+                    kcache_query=kcache_query
+            )
+
+        return text("""SELECT {cols}
+        FROM (
+            {from_clause}
+        ) AS sub
+        CROSS JOIN {bs}
+        WHERE sub.calls != 0
+        GROUP BY sub.srvid, sub.ts, block_size, sub.mesure_interval
+        ORDER BY sub.ts""".format(
+            cols=', '.join(cols),
+            from_clause=from_clause,
+            bs=bs
+        )).params(samples=100)
 
 
 class GlobalWaitsMetricGroup(MetricGroupDef):
@@ -346,35 +331,31 @@ class GlobalWaitsMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        query = powa_getwaitdata_sample(bindparam("server"), "db")
-        query = query.alias()
-        c = query.c
+        query = powa_getwaitdata_sample("db")
 
-        def wps(col):
-            ts = extract("epoch", greatest(c.mesure_interval, '1 second'))
-            return (sum(col) / ts).label(col.name)
-
-        cols = [to_epoch(c.ts)]
+        cols = [to_epoch('ts', 'sub')]
 
         pg_version_num = self.get_pg_version_num(self.path_args[0])
         # if we can't connect to the remote server, assume pg10 or above
         if pg_version_num is None or pg_version_num < 100000:
-            cols += [wps(c.count_lwlocknamed), wps(c.count_lwlocktranche),
-                     wps(c.count_lock), wps(c.count_bufferpin)]
+            cols += [wps("count_lwlocknamed"), wps("count_lwlocktranche"),
+                     wps("count_lock"), wps("count_bufferpin")]
         else:
-            cols += [wps(c.count_lwlock), wps(c.count_lock),
-                     wps(c.count_bufferpin), wps(c.count_activity),
-                     wps(c.count_client), wps(c.count_extension),
-                     wps(c.count_ipc), wps(c.count_timeout), wps(c.count_io)]
+            cols += [wps("count_lwlock"), wps("count_lock"),
+                     wps("count_bufferpin"), wps("count_activity"),
+                     wps("count_client"), wps("count_extension"),
+                     wps("count_ipc"), wps("count_timeout"), wps("count_io")]
 
-        from_clause = query
+        from_clause = "({query}) AS sub".format(query=query)
 
-        return (select(cols)
-                .select_from(from_clause)
-                #.where(c.count != None)
-                .group_by(c.ts, c.mesure_interval)
-                .order_by(c.ts)
-                .params(samples=100))
+        return text("""SELECT {cols}
+        FROM {from_clause}
+        -- WHERE sub.count IS NOT NULL
+        GROUP BY sub.ts, sub.mesure_interval
+        ORDER BY sub.ts""".format(
+            cols=', '.join(cols),
+            from_clause=from_clause
+            )).params(samples=100)
 
 
 class GlobalBgwriterMetricGroup(MetricGroupDef):
@@ -434,36 +415,37 @@ class GlobalBgwriterMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        bs = block_size.c.block_size
+        bs = block_size
         query = powa_get_bgwriter_sample(bindparam("server"))
-        query = query.alias()
-        c = query.c
-
-        def sum_per_sec(col):
-            ts = extract("epoch", greatest(c.mesure_interval, '1 second'))
-            return (sum(col) / ts).label(col.name)
 
         from_clause = query
 
-        cols = [c.srvid,
-                extract("epoch", c.ts).label("ts"),
-                sum(c.checkpoints_timed).label("checkpoints_timed"),
-                sum(c.checkpoints_req).label("checkpoints_req"),
-                sum_per_sec(c.checkpoint_write_time),
-                sum_per_sec(c.checkpoint_sync_time),
-                sum_per_sec(mulblock(c.buffers_checkpoint)),
-                sum_per_sec(mulblock(c.buffers_clean)),
-                sum_per_sec(c.maxwritten_clean),
-                sum_per_sec(mulblock(c.buffers_backend)),
-                sum_per_sec(c.buffers_backend_fsync),
-                sum_per_sec(mulblock(c.buffers_alloc))]
+        cols = ["sub.srvid",
+                "extract(epoch FROM sub.ts) AS ts",
+                "sum(sub.checkpoints_timed) AS checkpoints_timed",
+                "sum(sub.checkpoints_req) AS checkpoints_req",
+                sum_per_sec("checkpoint_write_time", prefix="sub"),
+                sum_per_sec("checkpoint_sync_time", prefix="sub"),
+                byte_per_sec("buffers_checkpoint", prefix="sub"),
+                byte_per_sec("buffers_clean", prefix="sub"),
+                sum_per_sec("maxwritten_clean", prefix="sub"),
+                byte_per_sec("buffers_backend", prefix="sub"),
+                sum_per_sec("buffers_backend_fsync", prefix="sub"),
+                byte_per_sec("buffers_alloc", prefix="sub")
+                ]
 
-        return (select(cols)
-                .select_from(from_clause)
-                .where(c.mesure_interval != '0')
-                .group_by(c.srvid, c.ts, bs, c.mesure_interval)
-                .order_by(c.ts)
-                .params(samples=100))
+        return text("""SELECT {cols}
+        FROM (
+            {from_clause}
+        ) AS sub
+        CROSS JOIN {bs}
+        WHERE sub.mesure_interval != '0 s'
+        GROUP BY sub.srvid, sub.ts, block_size, sub.mesure_interval
+        ORDER BY sub.ts""".format(
+            cols=', '.join(cols),
+            from_clause=from_clause,
+            bs=bs
+        )).params(samples=100)
 
 
 class GlobalAllRelMetricGroup(MetricGroupDef):
@@ -498,38 +480,38 @@ class GlobalAllRelMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        query = powa_get_all_tbl_sample("db", bindparam("server"))
-        query = query.alias()
-        c = query.c
-
-        def sum_per_sec(col):
-            ts = extract("epoch", greatest(c.mesure_interval, '1 second'))
-            return (sum(col) / ts).label(col.name)
+        query = powa_get_all_tbl_sample("db")
 
         from_clause = query
 
-        cols = [c.srvid,
-                extract("epoch", c.ts).label("ts"),
-                case([(sum(c.idx_scan + c.seq_scan) == 0, 0)],
-                     else_=cast(sum(c.idx_scan), Numeric) * 100 /
-                     sum(c.idx_scan + c.seq_scan)).label("idx_ratio"),
-                sum_per_sec(c.idx_scan),
-                sum_per_sec(c.seq_scan),
-                sum_per_sec(c.n_tup_ins),
-                sum_per_sec(c.n_tup_upd),
-                sum_per_sec(c.n_tup_hot_upd),
-                sum_per_sec(c.n_tup_del),
-                sum_per_sec(c.vacuum_count),
-                sum_per_sec(c.autovacuum_count),
-                sum_per_sec(c.analyze_count),
-                sum_per_sec(c.autoanalyze_count)]
+        cols = ["sub.srvid",
+                "extract(epoch FROM sub.ts) AS ts",
+                "CASE WHEN sum(sub.idx_scan + sub.seq_scan) = 0"
+                " THEN 0"
+                " ELSE sum(sub.idx_scan) * 100"
+                " / sum(sub.idx_scan + sub.seq_scan)"
+                " END AS idx_ratio",
+                sum_per_sec("idx_scan", prefix="sub"),
+                sum_per_sec("seq_scan", prefix="sub"),
+                sum_per_sec("n_tup_ins", prefix="sub"),
+                sum_per_sec("n_tup_upd", prefix="sub"),
+                sum_per_sec("n_tup_hot_upd", prefix="sub"),
+                sum_per_sec("n_tup_del", prefix="sub"),
+                sum_per_sec("vacuum_count", prefix="sub"),
+                sum_per_sec("autovacuum_count", prefix="sub"),
+                sum_per_sec("analyze_count", prefix="sub"),
+                sum_per_sec("autoanalyze_count", prefix="sub")]
 
-        return (select(cols)
-                .select_from(from_clause)
-                .where(c.mesure_interval != '0')
-                .group_by(c.srvid, c.ts, c.mesure_interval)
-                .order_by(c.ts)
-                .params(samples=100))
+        return text("""SELECT {cols}
+        FROM (
+            {from_clause}
+        ) AS sub
+        WHERE sub.mesure_interval != '0 s'
+        GROUP BY sub.srvid, sub.ts, sub.mesure_interval
+        ORDER BY sub.ts""".format(
+            cols=', '.join(cols),
+            from_clause=from_clause
+        )).params(samples=100)
 
 
 class ServerOverview(DashboardPage):
