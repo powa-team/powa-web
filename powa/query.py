@@ -3,13 +3,7 @@ Dashboard for the by-query page.
 """
 
 from tornado.web import HTTPError
-from sqlalchemy.sql import (
-    bindparam, text, column, select,
-    case, cast, and_,
-    func, extract)
-from sqlalchemy.sql.functions import sum
-from sqlalchemy.types import Numeric
-from sqlalchemy.orm import outerjoin
+from sqlalchemy.sql import bindparam, text
 from sqlalchemy.exc import DBAPIError
 
 from powa.dashboards import (
@@ -26,10 +20,10 @@ from powa.sql.views import (powa_getstatdata_sample,
                             kcache_getstatdata_sample,
                             powa_getstatdata_detailed_db,
                             powa_getwaitdata_detailed_db,
-                            qualstat_getstatdata)
-from powa.sql.utils import (block_size, mulblock, greatest, least,
-                            to_epoch, inner_cc)
-from powa.sql.tables import powa_statements
+                            qualstat_getstatdata,
+                            QUALSTAT_FILTER_RATIO)
+from powa.sql.utils import (to_epoch, sum_per_sec, byte_per_sec, wps,
+                            block_size)
 from powa.config import ConfigChangesQuery
 
 
@@ -146,127 +140,137 @@ class QueryOverviewMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        query = powa_getstatdata_sample("query", bindparam("server"))
-        query = query.where(
-            (column("datname") == bindparam("database")) &
-            (column("queryid") == bindparam("query")))
-        query = query.alias()
-        c = query.c
-        total_blocks = ((sum(c.shared_blks_read) + sum(c.shared_blks_hit))
-                        .label("total_blocks"))
+        query = powa_getstatdata_sample("query", ["datname = :database",
+                                                  "queryid = :query"])
 
-        def get_ts():
-            return extract("epoch", greatest(c.mesure_interval, '1 second'))
+        total_blocks = "(sum(shared_blks_read) + sum(shared_blks_hit))"
 
-        def sumps(col):
-            return (sum(col) / get_ts()).label(col.name)
+        cols = [to_epoch('ts'),
+                sum_per_sec('rows'),
+                sum_per_sec('calls'),
 
-        def bps(col):
-            return (mulblock(sum(col)) / get_ts()).label(col.name)
+                "CASE WHEN {total_blocks} = 0 THEN 0 ELSE"
+                " sum(shared_blks_hit)::numeric * 100 / {total_blocks}"
+                "END AS hit_ratio".format(total_blocks=total_blocks),
 
-        cols = [to_epoch(c.ts),
-                sumps(c.rows),
-                sumps(c.calls),
-                case([(total_blocks == 0, 0)],
-                     else_=cast(sum(c.shared_blks_hit), Numeric) * 100 /
-                     total_blocks).label("hit_ratio"),
-                bps(c.shared_blks_read),
-                bps(c.shared_blks_hit),
-                bps(c.shared_blks_dirtied),
-                bps(c.shared_blks_written),
-                bps(c.local_blks_read),
-                bps(c.local_blks_hit),
-                bps(c.local_blks_dirtied),
-                bps(c.local_blks_written),
-                bps(c.temp_blks_read),
-                bps(c.temp_blks_written),
-                sumps(c.blk_read_time),
-                sumps(c.blk_write_time),
-                (sum(c.runtime) / greatest(sum(c.calls),
-                                           1)).label("avg_runtime")
+                byte_per_sec("shared_blks_read"),
+                byte_per_sec("shared_blks_hit"),
+                byte_per_sec("shared_blks_dirtied"),
+                byte_per_sec("shared_blks_written"),
+                byte_per_sec("local_blks_read"),
+                byte_per_sec("local_blks_hit"),
+                byte_per_sec("local_blks_dirtied"),
+                byte_per_sec("local_blks_written"),
+                byte_per_sec("temp_blks_read"),
+                byte_per_sec("temp_blks_written"),
+                sum_per_sec("blk_read_time"),
+                sum_per_sec("blk_write_time"),
+                "sum(runtime) / greatest(sum(calls), 1) AS avg_runtime"
                 ]
 
         if self.has_extension_version(self.path_args[0],
                                       'pg_stat_statements', '1.8'):
             cols.extend([
-                (sum(c.plantime) / greatest(sum(c.calls),
-                                            1)).label("avg_plantime"),
-                sumps(c.wal_records),
-                sumps(c.wal_fpi),
-                sumps(c.wal_bytes)
+                "sum(plantime) / greatest(sum(calls), 1) AS avg_plantime",
+                sum_per_sec("wal_records"),
+                sum_per_sec("wal_fpi"),
+                sum_per_sec("wal_bytes")
                 ])
 
         from_clause = query
         if self.has_extension(self.path_args[0], "pg_stat_kcache"):
             # Add system metrics from pg_stat_kcache,
             # and detailed hit ratio.
-            kcache_query = kcache_getstatdata_sample("query")
-            kc = inner_cc(kcache_query)
-            kcache_query = (
-                kcache_query
-                .where(
-                    (kc.srvid == bindparam("server")) &
-                    (kc.datname == bindparam("database")) &
-                    (kc.queryid == bindparam("query"))
-                    )
-                .alias())
-            kc = kcache_query.c
-            sys_hits = (greatest(mulblock(sum(c.shared_blks_read)) -
-                                 sum(kc.reads), 0)
-                        .label("kcache_hitblocks"))
-            sys_hitratio = (cast(sys_hits, Numeric) * 100 /
-                            mulblock(total_blocks))
-            disk_hit_ratio = (sum(kc.reads) * 100 /
-                              mulblock(total_blocks))
-            total_time = greatest(sum(c.runtime), 1)
+            kcache_query = kcache_getstatdata_sample("query",
+                                                     ["datname = :database",
+                                                      "queryid = :query"])
+
+            sys_hits = "greatest(sum(shared_blks_read) - sum(sub.reads), 0)" \
+                       " * block_size"
+            sys_hit_ratio = "{sys_hits}::numeric * 100 / ({total_blocks}" \
+                " * block_size)".format(
+                        sys_hits=sys_hits,
+                        total_blocks=total_blocks
+                )
+            disk_hit_ratio = "sum(sub.reads) * 100 / " \
+                "({total_blocks} * block_size)".format(
+                    total_blocks=total_blocks
+                )
+            total_time = "greatest(sum(runtime), 1)"
+            other_time = "sum(runtime) - ((" \
+                "(sum(user_time) + sum(system_time))" \
+                ") * 1000)"
+
             # Rusage can return values > real time due to sampling bias
             # aligned to kernel ticks. As such, we have to clamp values to 100%
-            total_time_percent = lambda x: least(100, (x * 100) /
-                                                 total_time)
+            def total_time_percent(col, alias=None, noalias=False):
+                val = "least(100, ({col} * 100) / {total_time})".format(
+                    col=col,
+                    total_time=total_time
+                    )
 
-            def per_sec(col):
-                ts = extract("epoch", greatest(c.mesure_interval, '1 second'))
-                return (sum(col) / ts).label(col.name)
+                if not noalias:
+                    val += " as " + alias
+
+                return val
+
             cols.extend([
-                per_sec(kc.reads),
-                per_sec(kc.writes),
-                per_sec(kc.minflts),
-                per_sec(kc.majflts),
-                # per_sec(kc.nswaps),
-                # per_sec(kc.msgsnds),
-                # per_sec(kc.msgrcvs),
-                # per_sec(kc.nsignals),
-                per_sec(kc.nvcsws),
-                per_sec(kc.nivcsws),
-                total_time_percent(sum(kc.user_time) * 1000).label("user_time"),
-                total_time_percent(sum(kc.system_time) * 1000).label("system_time"),
-                greatest(total_time_percent(
-                    sum(c.runtime) - ((sum(kc.user_time) + sum(kc.system_time)) *
-                    1000)), 0).label("other_time"),
-                case([(total_blocks == 0, 0)],
-                     else_=disk_hit_ratio).label("disk_hit_ratio"),
-                case([(total_blocks == 0, 0)],
-                     else_=sys_hitratio).label("sys_hit_ratio")])
-            from_clause = from_clause.join(
-                kcache_query,
-                and_(kcache_query.c.ts == c.ts,
-                     kcache_query.c.queryid == c.queryid,
-                     kcache_query.c.userid == c.userid,
-                     kcache_query.c.dbid == c.dbid),
-                isouter=True)
+                sum_per_sec("reads"),
+                sum_per_sec("writes"),
+                sum_per_sec("minflts"),
+                sum_per_sec("majflts"),
+                # sum_per_sec("nswaps"),
+                # sum_per_sec("msgsnds"),
+                # sum_per_sec("msgrcvs"),
+                # sum_per_sec("nsignals"),
+                sum_per_sec("nvcsws"),
+                sum_per_sec("nivcsws"),
+                total_time_percent("sum(user_time) * 1000", "user_time"),
+                total_time_percent("sum(system_time) * 1000", "system_time"),
+                "greatest({other}, 0) AS other_time".format(
+                    other=total_time_percent(other_time, noalias=True)
+                    ),
+                "CASE WHEN {tb} = 0 THEN 0 ELSE {dhr} END AS disk_hit_ratio"
+                .format(
+                    tb=total_blocks,
+                    dhr=disk_hit_ratio
+                ),
+                "CASE WHEN {tb} = 0 THEN 0 ELSE {shr} END AS sys_hit_ratio"
+                .format(
+                    tb=total_blocks,
+                    shr=sys_hit_ratio
+                )])
+
+            from_clause = """SELECT *
+                FROM (
+                    {from_clause}
+                ) sub2
+                LEFT JOIN (
+                    {kcache_query}
+                ) AS kc
+                    USING (ts, srvid, queryid, userid, dbid)""".format(
+                    from_clause=from_clause,
+                    kcache_query=kcache_query
+                    )
         else:
             cols.extend([
-                case([(total_blocks == 0, 0)],
-                     else_=cast(sum(c.shared_blks_read), Numeric) * 100 /
-                     total_blocks).label("miss_ratio")
+                """CASE WHEN {tb} = 0 THEN 0
+                    ELSE sum(shared_blks_read)::numeric * 100 / {tb}
+                END AS miss_ratio""".format(tb=total_blocks)
             ])
 
-        return (select(cols)
-                .select_from(from_clause)
-                .where(c.calls != '0')
-                .group_by(c.ts, block_size.c.block_size, c.mesure_interval)
-                .order_by(c.ts)
-                .params(samples=100))
+        return text("""SELECT {cols}
+        FROM (
+            {from_clause}
+        ) AS sub
+        CROSS JOIN {bs}
+        WHERE calls != 0
+        GROUP BY ts, block_size, mesure_interval
+        ORDER BY ts""".format(
+            cols=', '.join(cols),
+            from_clause=from_clause,
+            bs=block_size
+            )).params(samples=100)
 
 
 class QueryIndexes(ContentWidget):
@@ -289,17 +293,19 @@ class QueryIndexes(ContentWidget):
             raise HTTPError(501, "Could not connect to remote server: %s" %
                                  str(e))
 
-        base_query = qualstat_getstatdata(srvid)
-        c = inner_cc(base_query)
-        base_query.append_from(text("""LATERAL unnest(quals) as qual"""))
-        base_query = (base_query
-                      .where(c.queryid == query)
-                      .having(func.bool_or(column('eval_type') == 'f'))
-                      .having(c.execution_count > 1000)
-                      .having(c.occurences > 0)
-                      .having(c.filter_ratio > 0.5)
-                      .params(**{'from': '-infinity',
-                                 'to': 'infinity'}))
+        extra_join = """,
+        LATERAL unnest(quals) AS qual"""
+        base_query = qualstat_getstatdata(extra_join=extra_join,
+                                          extra_where=["queryid = " + query],
+                                          extra_having=[
+                                              "bool_or(eval_type = 'f')",
+                                              "sum(execution_count) > 1000",
+                                              "sum(occurences) > 0",
+                                              QUALSTAT_FILTER_RATIO + " > 0.5"
+                                              ]
+                                          )
+        base_query = text(base_query).params(**{'from': '-infinity',
+                                                'to': 'infinity'})
         optimizable = list(self.execute(base_query, params={'server': srvid,
                                                             'query': query}))
         optimizable = resolve_quals(remote_conn,
@@ -432,37 +438,40 @@ class WaitsQueryOverviewMetricGroup(MetricGroupDef):
     @property
     def query(self):
 
-        query = powa_getwaitdata_sample(bindparam("server"), "query")
-        query = query.where(
-            (column("datname") == bindparam("database")) &
-            (column("queryid") == bindparam("query")))
-        query = query.alias()
-        c = query.c
-
-        def wps(col):
-            ts = extract("epoch", greatest(c.mesure_interval, '1 second'))
-            return (col / ts).label(col.name)
-
-        cols = [to_epoch(c.ts)]
+        query = powa_getwaitdata_sample("query", ["datname = :database",
+                                                  "queryid = :query"])
+        cols = [to_epoch("ts")]
 
         pg_version_num = self.get_pg_version_num(self.path_args[0])
         # if we can't connect to the remote server, assume pg10 or above
         if pg_version_num is None or pg_version_num < 100000:
-            cols += [wps(c.count_lwlocknamed), wps(c.count_lwlocktranche),
-                     wps(c.count_lock), wps(c.count_bufferpin)]
+            cols += [wps("count_lwlocknamed", do_sum=False),
+                     wps("count_lwlocktranche", do_sum=False),
+                     wps("count_lock", do_sum=False),
+                     wps("count_bufferpin", do_sum=False)]
         else:
-            cols += [wps(c.count_lwlock), wps(c.count_lock),
-                     wps(c.count_bufferpin), wps(c.count_activity),
-                     wps(c.count_client), wps(c.count_extension),
-                     wps(c.count_ipc), wps(c.count_timeout), wps(c.count_io)]
+            cols += [wps("count_lwlock", do_sum=False),
+                     wps("count_lock", do_sum=False),
+                     wps("count_bufferpin", do_sum=False),
+                     wps("count_activity", do_sum=False),
+                     wps("count_client", do_sum=False),
+                     wps("count_extension", do_sum=False),
+                     wps("count_ipc", do_sum=False),
+                     wps("count_timeout", do_sum=False),
+                     wps("count_io", do_sum=False)]
 
         from_clause = query
 
-        return (select(cols)
-                .select_from(from_clause)
-                #.where(c.count != None)
-                .order_by(c.ts)
-                .params(samples=100))
+        return text("""SELECT {cols}
+        FROM (
+            {from_clause}
+        ) AS sub
+        -- WHERE count IS NOT NULL
+        ORDER BY ts""".format(
+            cols=', '.join(cols),
+            from_clause=from_clause
+            )).params(samples=100)
+
 
 class WaitSamplingList(MetricGroupDef):
     """
@@ -482,26 +491,28 @@ class WaitSamplingList(MetricGroupDef):
     @property
     def query(self):
         # Working from the waitdata detailed_db base query
-        inner_query = powa_getwaitdata_detailed_db(bindparam("server"))
-        inner_query = inner_query.alias()
-        c = inner_query.c
-        ps = powa_statements
+        inner_query = powa_getwaitdata_detailed_db()
 
-        columns = [c.queryid,
-                   ps.c.query,
-                   c.event_type,
-                   c.event,
-                   sum(c.count).label("counts")]
-        from_clause = inner_query.join(ps,
-                                       (ps.c.srvid == c.srvid) &
-                                       (ps.c.queryid == c.queryid) &
-                                       (ps.c.dbid == c.dbid))
-        return (select(columns)
-                .select_from(from_clause)
-                .where((c.datname == bindparam("database")) &
-                       (c.queryid == bindparam("query")))
-                .group_by(c.queryid, ps.c.query, c.event_type, c.event)
-                .order_by(sum(c.count).desc()))
+        cols = ["queryid",
+                "ps.query",
+                "event_type",
+                "event",
+                "sum(count) AS counts"]
+
+        from_clause = """(
+                {inner_query}
+            ) AS sub
+            JOIN {{powa}}.powa_statements AS ps
+                USING (srvid, queryid, dbid)""".format(inner_query=inner_query)
+
+        return text("""SELECT {cols}
+        FROM {from_clause}
+        WHERE datname = :database AND queryid = :query
+        GROUP BY queryid, query, event_type, event
+        ORDER BY sum(count) DESC""".format(
+            cols=', '.join(cols),
+            from_clause=from_clause
+            ))
 
 
 class QualList(MetricGroupDef):
@@ -521,9 +532,8 @@ class QualList(MetricGroupDef):
 
     @property
     def query(self):
-        base = qualstat_getstatdata(bindparam("server"))
-        c = inner_cc(base)
-        return (base.where(c.queryid == bindparam("query")))
+        base = qualstat_getstatdata(extra_where=["queryid = :query"])
+        return text(base)
 
     def post_process(self, data, server, database, query, **kwargs):
         try:
@@ -548,33 +558,39 @@ class QueryDetail(ContentWidget):
     data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)/detail"
 
     def get(self, srvid, database, query):
-        bs = block_size.c.block_size
-        stmt = powa_getstatdata_detailed_db(srvid)
-        stmt = stmt.where(
-            (column("datname") == bindparam("database")) &
-            (column("queryid") == bindparam("query")))
-        stmt = stmt.alias()
-        from_clause = outerjoin(powa_statements, stmt,
-                                and_(powa_statements.c.queryid == stmt.c.queryid,
-                                     powa_statements.c.dbid == stmt.c.dbid,
-                                     powa_statements.c.userid == stmt.c.userid))
-        c = stmt.c
-        rblk = mulblock(sum(c.shared_blks_read).label("shared_blks_read"))
-        wblk = mulblock(sum(c.shared_blks_hit).label("shared_blks_hit"))
-        stmt = (select([
-            column("query"),
-            sum(c.calls).label("calls"),
-            sum(c.runtime).label("runtime"),
-            rblk,
-            wblk,
-            (rblk + wblk).label("total_blks")])
-            .select_from(from_clause)
-            .where(
-                (powa_statements.c.queryid == bindparam("query")) &
-                (powa_statements.c.srvid == bindparam("server")))
-            .group_by(column("query"), bs))
+        stmt = powa_getstatdata_detailed_db(srvid, ["datname = :database",
+                                                    "queryid = :query"])
 
-        value = self.execute(stmt, params={
+        from_clause = """{{powa}}.powa_statements AS ps
+        LEFT JOIN (
+            {stmt}
+        ) AS sub USING (queryid, dbid, userid)
+        CROSS JOIN {block_size}""".format(
+            stmt=stmt,
+            block_size=block_size
+            )
+
+        rblk = "(sum(shared_blks_read) * block_size)"
+        wblk = "(sum(shared_blks_hit) * block_size)"
+        cols = [
+                "query",
+                "sum(calls) AS calls",
+                "sum(runtime) AS runtime",
+                rblk + " AS shared_blks_read",
+                wblk + " AS shared_blks_hit",
+                rblk + " + " + wblk + " AS total_blks"
+        ]
+
+        stmt = """SELECT {cols}
+        FROM {from_clause}
+        WHERE sub.queryid = :query
+        AND sub.srvid = :server
+        GROUP BY query, block_size""".format(
+            cols=', '.join(cols),
+            from_clause=from_clause
+            )
+
+        value = self.execute(text(stmt), params={
             "server": srvid,
             "query": query,
             "database": database,

@@ -8,7 +8,6 @@ from powa.dashboards import (
     MetricGroupDef, MetricDef,
     DashboardPage, ContentWidget)
 from powa.sql import qual_constants, resolve_quals
-from powa.sql.utils import inner_cc
 from powa.query import QueryOverview
 from powa.sql.views import qualstat_getstatdata
 
@@ -25,21 +24,29 @@ class QualConstantsMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        query = (qual_constants(bindparam("server"), "most_used",
-                                bindparam("from"),
-                                bindparam("to"),
-                                text("""
+        most_used = (qual_constants(":server", "most_used",
+                                    """
             datname = :database AND
-            coalesce_range && tstzrange(:from, :to)"""), ":query", ":qual", top=10))
-        base = qualstat_getstatdata(bindparam("server"))
-        c = inner_cc(base)
-        base = base.where(c.queryid == bindparam("query")).alias()
-        totals = (base.select()
-                  .where((c.qualid == bindparam("qual")) &
-                         (c.queryid == bindparam("query")))).alias()
-        return (query.alias().select()
-                .column(totals.c.occurences.label('total_occurences'))
-                .correlate(query))
+            coalesce_range && tstzrange(:from, :to)""",
+                                    ":query", ":qual", top=10))
+
+        correlated = qualstat_getstatdata(extra_where=["qualid = :qual",
+                                                       "queryid = :query"])
+        sql = """SELECT sub.*, correlated.occurences as total_occurences
+            FROM (
+                SELECT *
+                FROM (
+                    {most_used}
+                ) AS most_used
+            ) AS sub, (
+                {correlated}
+            ) AS correlated
+        """.format(
+            most_used=most_used,
+            correlated=correlated
+            )
+
+        return text(sql)
 
     def add_params(self, params):
         params['queryids'] = [int(params['query'])]
@@ -78,15 +85,13 @@ class QualDetail(ContentWidget):
         except Exception as e:
             raise HTTPError(501, "Could not connect to remote server: %s" %
                                  str(e))
-        stmt = qualstat_getstatdata(server)
-        c = inner_cc(stmt)
-        stmt = stmt.alias()
-        stmt = (stmt.select()
-                .where((c.qualid == bindparam("qualid")))
-                .where(stmt.c.occurences > 0)
-                .column((stmt.c.queryid == bindparam("query")).label("is_my_query")))
+        stmt = qualstat_getstatdata(extra_select=["queryid = :query"
+                                                  " AS is_my_query"],
+                                    extra_where=["qualid = :qualid",
+                                                 "occurences > 0"],
+                                    extra_groupby=["queryid"])
         quals = list(self.execute(
-            stmt,
+            text(stmt),
             params={"server": server,
                     "query": query,
                     "from": self.get_argument("from"),
@@ -95,7 +100,6 @@ class QualDetail(ContentWidget):
                     "qualid": qual}))
 
         my_qual = None
-        other_queries = {}
 
         for qual in quals:
             if qual['is_my_query']:
@@ -109,6 +113,7 @@ class QualDetail(ContentWidget):
                     qual=my_qual,
                     database=database,
                     server=server)
+
 
 class OtherQueriesMetricGroup(MetricGroupDef):
     """Metric group showing other queries for this qual."""
