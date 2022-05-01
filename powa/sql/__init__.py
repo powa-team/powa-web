@@ -2,9 +2,7 @@
 Utilities for commonly used SQL constructs.
 """
 import re
-from sqlalchemy.sql import (text, select, func, column,
-                            and_, literal_column)
-from sqlalchemy.dialects.postgresql import array, dialect as pgdialect
+from sqlalchemy.sql import text
 from collections import namedtuple, defaultdict
 from powa.json import JSONizable
 import sys
@@ -127,16 +125,16 @@ class ResolvedQual(JSONizable):
         self.attnum = attnum
 
     def __str__(self):
-        return "%s.%s %s ?" % (self.relname, self.attname, self.opname)
+        return "{}.{} {} ?".format(self.relname, self.attname, self.opname)
 
     @property
     def distinct_values(self):
         if self.n_distinct == 0:
             return None
         elif self.n_distinct > 0:
-            return "%s" % self.n_distinct
+            return "{}".format(self.n_distinct)
         else:
-            return "%s %%" % (abs(self.n_distinct) * 100)
+            return "{} %".format(abs(self.n_distinct) * 100)
 
     def to_json(self):
         base = super(ResolvedQual, self).to_json()
@@ -184,7 +182,7 @@ class ComposedQual(JSONizable):
 
     @property
     def where_clause(self):
-        return "WHERE %s" % self
+        return "WHERE {}".format(self)
 
     def to_json(self):
         base = super(ComposedQual, self).to_json()
@@ -241,7 +239,7 @@ def resolve_quals(conn, quallist, attribute="quals"):
         if not isinstance(values, list):
             values = [values]
         for v in values:
-            attname = attnames["%s.%s" % (v["relid"], v["attnum"])]
+            attname = attnames["{}.{}".format(v["relid"], v["attnum"])]
             if newqual.relname is not None:
                 if newqual.relname != attname['relname']:
                     raise ValueError("All individual qual parts should be on the "
@@ -271,8 +269,15 @@ Plan = namedtuple(
     ("title", "values", "query", "plan", "filter_ratio", "exec_count", "occurences"))
 
 
-def qual_constants(srvid, type, tsfrom, tsto, filter_clause,
-                   queries=None, quals=None, top=1):
+def qual_constants(srvid, type, filter_clause, queries=None, quals=None,
+                   top=1):
+    """
+    filter_clause is a plain string corresponding to the list of predicates to
+    apply in the main query.
+
+    queries and quals are optional list of respectively queryid and qualid to
+    filter on.
+    """
     orders = {
         'most_executed': "8 DESC",
         'least_filtering': "9",
@@ -282,9 +287,6 @@ def qual_constants(srvid, type, tsfrom, tsto, filter_clause,
     if type not in ('most_executed', 'most_filtering',
                     'least_filtering', 'most_used'):
         return
-    dialect = pgdialect()
-    dialect.paramstyle = 'named'
-    filter_clause = filter_clause.compile(dialect=dialect)
 
     query_subfilter = ""
     query_filter = ""
@@ -292,14 +294,14 @@ def qual_constants(srvid, type, tsfrom, tsto, filter_clause,
     qual_filter = ""
 
     if queries is not None:
-        query_subfilter = "AND queryid IN (%s)" % queries
-        query_filter = "AND s.queryid IN (%s)" % queries
+        query_subfilter = "AND queryid IN ({})".format(queries)
+        query_filter = "AND s.queryid IN ({})".format(queries)
 
     if quals is not None:
-        qual_subfilter = "AND qualid IN (%s)" % quals
-        qual_filter = "AND qnc.qualid IN (%s)" % quals
+        qual_subfilter = "AND qualid IN ({})".format(quals)
+        qual_filter = "AND qnc.qualid IN ({})".format(quals)
 
-    base = text("""
+    base = """
     (
     WITH sample AS (
     SELECT s.srvid, query, s.queryid, qn.qualid, quals as quals,
@@ -308,53 +310,57 @@ def qual_constants(srvid, type, tsfrom, tsto, filter_clause,
                 sum(execution_count) as execution_count,
                 sum(nbfiltered) as nbfiltered,
                 CASE WHEN sum(execution_count) = 0 THEN 0 ELSE sum(nbfiltered) / sum(execution_count) END AS filter_ratio
-        FROM {powa}.powa_statements s
-        JOIN {powa}.powa_databases d ON d.oid = s.dbid AND d.srvid = s.srvid
-        JOIN {powa}.powa_qualstats_quals qn ON s.queryid = qn.queryid AND s.srvid = qn.srvid
+        FROM {{powa}}.powa_statements s
+        JOIN {{powa}}.powa_databases d ON d.oid = s.dbid AND d.srvid = s.srvid
+        JOIN {{powa}}.powa_qualstats_quals qn ON s.queryid = qn.queryid AND s.srvid = qn.srvid
         JOIN (
             SELECT *
-            FROM {powa}.powa_qualstats_constvalues_history qnc
-            WHERE srvid = :server
-            %(query_subfilter)s
-            %(qual_subfilter)s
+            FROM {{powa}}.powa_qualstats_constvalues_history qnc
+            WHERE srvid = {srvid}
+            {query_subfilter}
+            {qual_subfilter}
               AND coalesce_range && tstzrange(:from, :to)
             UNION ALL
             SELECT *
-            FROM {powa}.powa_qualstats_aggregate_constvalues_current(:server, :from, :to)
-            WHERE srvid = :server
-            %(query_subfilter)s
-            %(qual_subfilter)s
+            FROM {{powa}}.powa_qualstats_aggregate_constvalues_current(:server, :from, :to)
+            WHERE srvid = {srvid}
+            {query_subfilter}
+            {qual_subfilter}
         ) qnc ON qnc.srvid = s.srvid AND qn.qualid = qnc.qualid AND qn.queryid = qnc.queryid,
         LATERAL
-                unnest(%(qual_type)s) as t(constants,occurences, execution_count, nbfiltered)
-        WHERE %(filter)s
-        %(query_filter)s
-        %(qual_filter)s
-        AND s.srvid = :server
+                unnest({qual_type}) as t(constants,occurences, execution_count, nbfiltered)
+        WHERE {filter}
+        {query_filter}
+        {qual_filter}
+        AND s.srvid = {srvid}
         GROUP BY s.srvid, qn.qualid, quals, constants, s.queryid, query
-        ORDER BY %(order)s
-        LIMIT :top_value
+        ORDER BY {order}
+        LIMIT {top_value}
     )
     SELECT srvid, query, queryid, qualid, quals, constants as constants,
                 occurences as occurences,
                 nbfiltered as nbfiltered,
                 execution_count as execution_count,
                 filter_ratio as filter_ratio,
-                row_number() OVER (ORDER BY execution_count desc NULLS LAST) as rownumber
+                row_number() OVER (ORDER BY execution_count desc NULLS LAST) AS rownumber
         FROM sample
-    ORDER BY 11
-    LIMIT :top_value
-    ) %(qual_type)s
-    """ % {
-        'qual_type': type,
-        'filter': str(filter_clause),
-        'query_subfilter': str(query_subfilter),
-        'query_filter': str(query_filter),
-        'qual_subfilter': str(qual_subfilter),
-        'qual_filter': str(qual_filter),
-        'order': orders[type]})
-    base = base.params(top_value=top, **filter_clause.params)
-    return select(["*"]).select_from(base)
+    ORDER BY rownumber
+    LIMIT {top_value}
+    ) {qual_type}
+    """.format(
+        qual_type=type,
+        filter=filter_clause,
+        query_subfilter=query_subfilter,
+        query_filter=query_filter,
+        qual_subfilter=qual_subfilter,
+        qual_filter=qual_filter,
+        order=orders[type],
+        top_value=top,
+        srvid=srvid)
+
+    query = "SELECT * FROM " + base
+
+    return text(query)
 
 
 def quote_ident(name):
@@ -368,7 +374,7 @@ def get_plans(self, query, database, qual):
         query = format_jumbled_query(query, vals['constants'])
         plan = "N/A"
         try:
-            result = self.execute("EXPLAIN %s" % query,
+            result = self.execute("EXPLAIN {}".format(query),
                                   database=database,
                                   remote_access=True)
             plan = "\n".join(v[0] for v in result)
@@ -395,8 +401,8 @@ def get_unjumbled_query(ctrl, srvid, database, queryid, _from, _to,
 
     rs = list(ctrl.execute(text("""
         SELECT query
-        FROM {powa}.powa_statements
-        WHERE srvid= :srvid
+        FROM {{powa}}.powa_statements
+        WHERE srvid= :server
         AND queryid = :queryid LIMIT 1
     """), params={"srvid": srvid, "queryid": queryid}))[0]
     normalized_query = rs[0]
@@ -428,7 +434,7 @@ def get_any_sample_query(ctrl, srvid, database, queryid, _from, _to):
     example_query = None
     if has_pgqs:
         rs = list(ctrl.execute(text("""
-            SELECT pg_qualstats_example_query(:queryid)
+            SELECT {pg_qualstats}.pg_qualstats_example_query(:queryid)
             LIMIT 1
         """), params={"queryid": queryid}, srvid=srvid, remote_access=True))
         if len(rs) > 0:
@@ -449,43 +455,37 @@ def qualstat_get_figures(conn, srvid, database, tsfrom, tsto,
     if queries is not None:
         queries_str = ','.join(str(q) for q in queries)
 
-    sql = (select([
-        text('most_filtering.quals'),
-        text('most_filtering.query'),
-        text('to_json(most_filtering) as "most filtering"'),
-        text('to_json(least_filtering) as "least filtering"'),
-        text('to_json(most_executed) as "most executed"'),
-        text('to_json(most_used) as "most used"')])
-           .select_from(
-               qual_constants(srvid, "most_filtering", tsfrom, tsto, condition,
-                              queries_str, quals)
-               .alias("most_filtering")
-               .join(
-                   qual_constants(srvid, "least_filtering",
-                                  tsfrom, tsto, condition,
-                                  queries_str, quals)
-                   .alias("least_filtering"),
-                   text("most_filtering.rownumber = "
-                        "least_filtering.rownumber"))
-               .join(qual_constants(srvid, "most_executed",
-                                    tsfrom, tsto, condition,
-                                    queries_str, quals)
-                     .alias("most_executed"),
-                     text("most_executed.rownumber = "
-                          "least_filtering.rownumber"))
-               .join(qual_constants(srvid, "most_used",
-                                    tsfrom, tsto, condition,
-                                    queries_str, quals)
-                     .alias("most_used"),
-                     text("most_used.rownumber = "
-                          "least_filtering.rownumber"))))
+    cols = [
+        'most_filtering.quals',
+        'most_filtering.query',
+        'to_json(most_filtering) as "most filtering"',
+        'to_json(least_filtering) as "least filtering"',
+        'to_json(most_executed) as "most executed"',
+        'to_json(most_used) as "most used"'
+    ]
+
+    sql = """SELECT {cols}
+    FROM ({most_filtering}) AS most_filtering
+    JOIN ({least_filtering}) AS least_filtering USING (rownumber)
+    JOIN ({most_executed}) AS most_executed USING (rownumber)
+    JOIN ({most_used}) AS most_used USING (rownumber)""".format(
+        cols=', '.join(cols),
+        most_filtering=qual_constants(srvid, "least_filtering",
+                                      condition, queries_str, quals),
+        least_filtering=qual_constants(srvid, "least_filtering",
+                                       condition, queries_str, quals),
+        most_executed=qual_constants(srvid, "most_executed",
+                                     condition, queries_str, quals),
+        most_used=qual_constants(srvid, "most_used",
+                                 condition, queries_str, quals)
+        )
 
     params = {"server": srvid,
               "database": database,
               "from": tsfrom,
               "to": tsto,
               "queryids": queries}
-    quals = conn.execute(sql, params=params)
+    quals = conn.execute(text(sql), params=params)
 
     if quals.rowcount == 0:
         return None
@@ -535,13 +535,13 @@ class HypoIndex(JSONizable):
             attrs = []
             for qual in self.qual:
                 if qual.attname not in attrs:
-                    attrs.append(qual.attname)
+                    attrs.append(quote_ident(qual.attname))
             super(HypoIndex, self).__setattr__(
                 '_ddl',
-                """CREATE INDEX ON %s.%s(%s)""" % (
-                    quote_ident(self.nspname),
-                    quote_ident(self.relname),
-                    ",".join(attrs)))
+                """CREATE INDEX ON {nsp}.{rel}({attrs})""".format(
+                    nsp=quote_ident(self.nspname),
+                    rel=quote_ident(self.relname),
+                    attrs=",".join(attrs)))
 
     def __setattr(self, name, value):
         super(HypoIndex, self).__setattr__(name, value)
@@ -557,8 +557,9 @@ class HypoIndex(JSONizable):
     def hypo_ddl(self):
         ddl = self.ddl
         if ddl is not None:
-            return select([column("indexname")]
-                          ).select_from(func.hypopg_create_index(self.ddl))
+            # FIXME: properly quote literal
+            return text("SELECT indexname FROM hypopg_create_index('{sql}')"
+                        .format(sql=self.ddl))
 
     def to_json(self):
         base = super(HypoIndex, self).to_json()
@@ -610,9 +611,13 @@ def get_hypoplans(conn, query, indexes=None):
     query = query.replace("%", "%%")
     with conn.begin() as trans:
         trans.execute("SET hypopg.enabled = off")
-        baseplan = "\n".join(v[0] for v in trans.execute("EXPLAIN %s" % query))
+        baseplan = "\n".join(v[0]
+                             for v in trans.execute("EXPLAIN {}".format(query))
+                             )
         trans.execute("SET hypopg.enabled = on")
-        hypoplan = "\n".join(v[0] for v in trans.execute("EXPLAIN %s" % query))
+        hypoplan = "\n".join(v[0]
+                             for v in trans.execute("EXPLAIN {}".format(query))
+                             )
     COST_RE = "(?<=\.\.)\d+\.\d+"
     m = re.search(COST_RE, baseplan)
     basecost = float(m.group(0))
@@ -622,4 +627,5 @@ def get_hypoplans(conn, query, indexes=None):
     for ind in indexes:
         if ind.name is not None and ind.name in hypoplan:
             used_indexes.append(ind)
-    return HypoPlan(baseplan, basecost, hypoplan, hypocost, query, used_indexes)
+    return HypoPlan(baseplan, basecost, hypoplan, hypocost, query,
+                    used_indexes)
