@@ -1,48 +1,109 @@
-from sqlalchemy import select, cast, func
-from sqlalchemy.types import Numeric
-from sqlalchemy.sql import (extract, column, case, column,
-                            ColumnCollection)
-from sqlalchemy.sql.functions import sum, min, max
-
-block_size = select([cast(func.current_setting('block_size'), Numeric)
-                     .label('block_size')]).alias('block_size')
+block_size = "(SELECT cast(current_setting('block_size') AS numeric)" \
+             " AS block_size) AS bs"
 
 
-round = func.round
-greatest = func.greatest
-least = func.least
+def mulblock(col, alias=None, fn=None):
+    alias = alias or col
 
-def mulblock(column, label=None):
-    return (column * block_size.c.block_size).label(label or column.name)
+    if fn is None:
+        sql = "{col}"
+    else:
+        sql = "{fn}({col})"
 
-def total_measure_interval(column):
-    return extract(
-        "epoch",
-        case([(min(column) == '0 second', '1 second')],
-             else_=min(column)))
+    sql += " * block_size AS {alias}"
 
-
-def diff(var):
-    return (max(column(var)) - min(column(var))).label(var)
-
-def to_epoch(column):
-    return extract("epoch", column).label(column.name)
+    return sql.format(col=col, alias=alias, fn=fn)
 
 
-def total_read(c):
-    bs = block_size.c.block_size
-    return (sum(c.shared_blks_read + c.local_blks_read
-                + c.temp_blks_read) * bs /
-            total_measure_interval(c.mesure_interval)).label("total_blks_read")
+def total_measure_interval(col):
+    sql = "extract(epoch FROM " \
+          + " CASE WHEN min({col}) = '0 second' THEN '1 second'" \
+          + " ELSE min({col})" \
+          + "END)"
+
+    return sql.format(col=col)
+
+
+def diff(var, alias=None):
+    alias = alias or var
+    return "max({var}) - min({var}) AS {alias}".format(
+        var=var,
+        alias=alias)
+
+
+def get_ts():
+    return "extract(epoch FROM greatest(mesure_interval, '1 second'))"
+
+
+def sum_per_sec(col, prefix=None, alias=None):
+    alias = alias or col
+    if prefix is not None:
+        prefix = prefix + "."
+    else:
+        prefix = ''
+
+    return "sum({prefix}{col}) / {ts} AS {alias}".format(
+        prefix=prefix,
+        col=col,
+        ts=get_ts(),
+        alias=alias
+    )
+
+
+def byte_per_sec(col, prefix=None, alias=None):
+    alias = alias or col
+    if prefix is not None:
+        prefix = prefix + "."
+    else:
+        prefix = ''
+
+    return "sum({prefix}{col}) * block_size / {ts} AS {alias}".format(
+        prefix=prefix,
+        col=col,
+        ts=get_ts(),
+        alias=alias
+    )
+
+
+def wps(col, do_sum=True):
+    field = "sub." + col
+    if do_sum:
+        field = "sum(" + field + ")"
+
+    return "({field} / {ts}) AS {col}".format(
+        field=field,
+        col=col,
+        ts=get_ts())
+
+
+def to_epoch(col, prefix=None):
+    if prefix is not None:
+        qn = "{prefix}.{col}".format(prefix=prefix, col=col)
+    else:
+        qn = col
+
+    return "extract(epoch FROM {qn}) AS {col}".format(qn=qn, col=col)
+
+
+def total_read(prefix, noalias=False):
+    if noalias:
+        alias = ''
+    else:
+        alias = ' AS total_blks_read'
+
+    sql = "sum({prefix}.shared_blks_hit" \
+          + "+ {prefix}.local_blks_read" \
+          + "+ {prefix}.temp_blks_read" \
+          ") * block_size / {total_measure_interval}{alias}"
+
+    return sql.format(
+        prefix=prefix,
+        total_measure_interval=total_measure_interval('mesure_interval'),
+        alias=alias
+    )
+
 
 def total_hit(c):
-    bs = block_size.c.block_size
-    return ((sum(c.shared_blks_hit + c.local_blks_hit) * bs /
-             total_measure_interval(c.mesure_interval))
-            .label("total_blks_hit"))
-
-def inner_cc(selectable):
-    new_cc = ColumnCollection()
-    for c in selectable.inner_columns:
-        new_cc.add(c)
-    return new_cc
+    return "sum(shared_blks_hit + local_blks_hit) * block_size /" \
+           + total_measure_interval('mesure_interval') \
+           + " AS total_blks_hit"
