@@ -83,9 +83,9 @@ def parse_options():
     define("index_url", type=str,
            default="%sserver/" % getattr(options, 'url_prefix', "/"))
 
-    # we expect a field named "username", but many people expect to be able to
-    # use "user" instead, so accept "user" as en alias for "username"
+    # we used to expect a field named "username", so accept "username" as an
+    # alias for "user"
     for key, conf in getattr(options, 'servers', {}).items():
-        if 'user' in conf.keys():
-            conf['username'] = conf['user']
-            del conf['user']
+        if 'username' in conf.keys():
+            conf['user'] = conf['username']
+            del conf['username']

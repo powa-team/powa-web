@@ -2,9 +2,8 @@
 Dashboard for the by-query page.
 """
 
+from psycopg2 import Error
 from tornado.web import HTTPError
-from sqlalchemy.sql import bindparam, text
-from sqlalchemy.exc import DBAPIError
 
 from powa.dashboards import (
     Dashboard, TabContainer, Graph, Grid,
@@ -13,8 +12,8 @@ from powa.dashboards import (
 from powa.database import DatabaseOverview
 
 from powa.sql import (Plan, format_jumbled_query, resolve_quals,
-                      qualstat_get_figures, get_hypoplans, get_any_sample_query,
-                      possible_indexes)
+                      qualstat_get_figures, get_hypoplans, get_plans,
+                      get_any_sample_query, possible_indexes)
 from powa.sql.views import (powa_getstatdata_sample,
                             powa_getwaitdata_sample,
                             kcache_getstatdata_sample,
@@ -140,8 +139,8 @@ class QueryOverviewMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        query = powa_getstatdata_sample("query", ["datname = :database",
-                                                  "queryid = :query"])
+        query = powa_getstatdata_sample("query", ["datname = %(database)s",
+                                                  "queryid = %(query)s"])
 
         total_blocks = "(sum(shared_blks_read) + sum(shared_blks_hit))"
 
@@ -182,8 +181,8 @@ class QueryOverviewMetricGroup(MetricGroupDef):
             # Add system metrics from pg_stat_kcache,
             # and detailed hit ratio.
             kcache_query = kcache_getstatdata_sample("query",
-                                                     ["datname = :database",
-                                                      "queryid = :query"])
+                                                     ["datname = %(database)s",
+                                                      "queryid = %(query)s"])
 
             sys_hits = "greatest(sum(shared_blks_read) - sum(sub.reads), 0)" \
                        " * block_size"
@@ -259,7 +258,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                 END AS miss_ratio""".format(tb=total_blocks)
             ])
 
-        return text("""SELECT {cols}
+        return """SELECT {cols}
         FROM (
             {from_clause}
         ) AS sub
@@ -270,7 +269,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
             cols=', '.join(cols),
             from_clause=from_clause,
             bs=block_size
-            )).params(samples=100)
+            )
 
 
 class QueryIndexes(ContentWidget):
@@ -304,13 +303,12 @@ class QueryIndexes(ContentWidget):
                                               QUALSTAT_FILTER_RATIO + " > 0.5"
                                               ]
                                           )
-        base_query = text(base_query).params(**{'from': '-infinity',
-                                                'to': 'infinity'})
-        optimizable = list(self.execute(base_query, params={'server': srvid,
-                                                            'query': query}))
-        optimizable = resolve_quals(remote_conn,
-                                    optimizable,
-                                    'quals')
+        optimizable = list(self.execute(base_query,
+                                        params={'server': srvid,
+                                                'query': query,
+                                                'from': '-infinity',
+                                                'to': 'infinity'}))
+        optimizable = resolve_quals(remote_conn, optimizable, 'quals')
         hypoplan = None
         indexes = {}
         for qual in optimizable:
@@ -323,27 +321,29 @@ class QueryIndexes(ContentWidget):
             allindexes = [ind for indcollection in indexes.values()
                           for ind in indcollection]
             for ind in allindexes:
-                ddl = ind.hypo_ddl
-                if ddl is not None:
+                (sql, params) = ind.hypo_ddl
+                if sql is not None:
                     try:
-                        ind.name = self.execute(ddl, srvid=srvid,
+                        ind.name = self.execute(sql, params=params,
+                                                srvid=srvid,
                                                 database=database,
-                                                remote_access=True).scalar()
-                    except DBAPIError as e:
+                                                remote_access=True
+                                                )[0]['indexname']
+                    except Error as e:
                         self.flash("Could not create hypothetical index: %s" %
-                                   str(e.orig.diag.message_primary))
+                                   str(e))
             # Build the query and fetch the plans
             querystr = get_any_sample_query(self, srvid, database, query,
                                             self.get_argument("from"),
                                             self.get_argument("to"))
             try:
-                hypoplan = get_hypoplans(remote_conn,
+                hypoplan = get_hypoplans(remote_conn.cursor(),
                                          querystr, allindexes)
-            except DBAPIError as e:
+            except Error as e:
                 # TODO: offer the possibility to fill in parameters from the UI
                 self.flash("We couldn't get plans for this query, presumably "
                            "because some parameters are missing: %s" %
-                           str(e.orig.diag.message_primary))
+                           str(e))
 
         self.render("database/query/indexes.html", indexes=indexes,
                     hypoplan=hypoplan)
@@ -366,23 +366,8 @@ class QueryExplains(ContentWidget):
                                    self.get_argument("to"),
                                    queries=[query])
         if row is not None:
-            for key in ('most filtering', 'least filtering', 'most executed', 'most used'):
-                vals = row[key]
-                query = format_jumbled_query(row['query'], vals['constants'])
-                plan = "N/A"
-                try:
-                    sqlQuery = text("EXPLAIN %s" % query)
-                    result = self.execute(sqlQuery,
-                                          srvid=server,
-                                          database=database,
-                                          remote_access=True)
-                    plan = "\n".join(v[0] for v in result)
-                except Exception:
-                    pass
-                plans.append(Plan(key, vals['constants'], query,
-                                  plan, vals["filter_ratio"],
-                                  vals['execution_count'],
-                                  vals['occurences']))
+            plans = get_plans(self, server, database, row['query'], row)
+
         if len(plans) == 0:
             self.flash("No quals found for this query", "warning")
             self.render("xhrm.html", content="")
@@ -438,8 +423,8 @@ class WaitsQueryOverviewMetricGroup(MetricGroupDef):
     @property
     def query(self):
 
-        query = powa_getwaitdata_sample("query", ["datname = :database",
-                                                  "queryid = :query"])
+        query = powa_getwaitdata_sample("query", ["datname = %(database)s",
+                                                  "queryid = %(query)s"])
         cols = [to_epoch("ts")]
 
         pg_version_num = self.get_pg_version_num(self.path_args[0])
@@ -462,7 +447,7 @@ class WaitsQueryOverviewMetricGroup(MetricGroupDef):
 
         from_clause = query
 
-        return text("""SELECT {cols}
+        return """SELECT {cols}
         FROM (
             {from_clause}
         ) AS sub
@@ -470,7 +455,7 @@ class WaitsQueryOverviewMetricGroup(MetricGroupDef):
         ORDER BY ts""".format(
             cols=', '.join(cols),
             from_clause=from_clause
-            )).params(samples=100)
+            )
 
 
 class WaitSamplingList(MetricGroupDef):
@@ -505,14 +490,14 @@ class WaitSamplingList(MetricGroupDef):
             JOIN {{powa}}.powa_statements AS ps
                 USING (srvid, queryid, dbid)""".format(inner_query=inner_query)
 
-        return text("""SELECT {cols}
+        return """SELECT {cols}
         FROM {from_clause}
-        WHERE datname = :database AND queryid = :query
+        WHERE datname = %(database)s AND queryid = %(query)s
         GROUP BY queryid, query, event_type, event
         ORDER BY sum(count) DESC""".format(
             cols=', '.join(cols),
             from_clause=from_clause
-            ))
+            )
 
 
 class QualList(MetricGroupDef):
@@ -532,8 +517,8 @@ class QualList(MetricGroupDef):
 
     @property
     def query(self):
-        base = qualstat_getstatdata(extra_where=["queryid = :query"])
-        return text(base)
+        base = qualstat_getstatdata(extra_where=["queryid = %(query)s"])
+        return base
 
     def post_process(self, data, server, database, query, **kwargs):
         try:
@@ -558,8 +543,8 @@ class QueryDetail(ContentWidget):
     data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)/detail"
 
     def get(self, srvid, database, query):
-        stmt = powa_getstatdata_detailed_db(srvid, ["datname = :database",
-                                                    "queryid = :query"])
+        stmt = powa_getstatdata_detailed_db(srvid, ["datname = %(database)s",
+                                                    "queryid = %(query)s"])
 
         from_clause = """{{powa}}.powa_statements AS ps
         LEFT JOIN (
@@ -583,24 +568,24 @@ class QueryDetail(ContentWidget):
 
         stmt = """SELECT {cols}
         FROM {from_clause}
-        WHERE sub.queryid = :query
-        AND sub.srvid = :server
+        WHERE sub.queryid = %(query)s
+        AND sub.srvid = %(server)s
         GROUP BY query, block_size""".format(
             cols=', '.join(cols),
             from_clause=from_clause
             )
 
-        value = self.execute(text(stmt), params={
+        value = self.execute(stmt, params={
             "server": srvid,
             "query": query,
             "database": database,
             "from": self.get_argument("from"),
             "to": self.get_argument("to")
         })
-        if value.rowcount < 1:
+        if len(value) < 1:
             self.render("xhr.html", content="No data")
             return
-        self.render("database/query/detail.html", stats=value.first())
+        self.render("database/query/detail.html", stats=value[0])
 
 
 class QueryOverview(DashboardPage):
