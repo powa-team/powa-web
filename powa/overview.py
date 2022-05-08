@@ -7,7 +7,6 @@ from powa.dashboards import (
     Dashboard, Grid,
     MetricGroupDef, MetricDef,
     DashboardPage)
-from sqlalchemy.sql import (text)
 
 from powa.server import ServerOverview
 try:
@@ -31,26 +30,24 @@ class OverviewMetricGroup(MetricGroupDef):
     @property
     def query(self):
 
-        sql = text("""SELECT id AS srvid,
+        sql = """SELECT id AS srvid,
                 CASE WHEN id = 0 THEN
                    '<local>'
                 ELSE
                    COALESCE(alias, hostname || ':' || port)
                 END AS alias,
-                CASE WHEN id = 0 THEN :host ELSE hostname END as hostname,
-                CASE WHEN id = 0 THEN :port ELSE port END AS port,
+                CASE WHEN id = 0 THEN %(host)s ELSE hostname END as hostname,
+                CASE WHEN id = 0 THEN %(port)s ELSE port END AS port,
                 CASE WHEN id = 0 THEN set.setting
                     ELSE s.version::text
                 END AS version
                 FROM {powa}.powa_servers s
                 LEFT JOIN pg_settings set ON set.name = 'server_version'
-                    AND s.id = 0""")
+                    AND s.id = 0"""
 
-        sql = sql.params(host=self.current_host, port=self.current_port)
-        return sql
+        return (sql, {'host': self.current_host, 'port': self.current_port})
 
     def process(self, val, **kwargs):
-        val = dict(val)
         val["url"] = self.reverse_url("ServerOverview", val["srvid"])
         return val
 

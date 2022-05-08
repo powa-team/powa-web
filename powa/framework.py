@@ -4,15 +4,105 @@ Utilities for the basis of Powa
 from tornado.web import RequestHandler, authenticated, HTTPError
 from powa import ui_methods
 from powa.json import to_json
-from sqlalchemy import create_engine, event, text
-from sqlalchemy.engine import Engine
-from sqlalchemy.engine.url import URL
+import psycopg2
+from psycopg2.extensions import connection as _connection, cursor as _cursor
+from psycopg2.extras import RealDictCursor
 from tornado.options import options
 import pickle
 import logging
+import random
 import re
 import select
-import random
+import time
+
+
+class CustomConnection(_connection):
+    """
+    Custom psycopg2 connection class that takes care of expanding extension
+    schema and optionally logs various information at debug level, both on
+    successful execution and in case of error.
+
+    Supports either plain cursor (through CustomCursor) or RealDictCursor
+    (through CustomDictCursor).
+
+    Before execution, and if a _nsps object is found cached in the connection,
+    the query will be formatted using this _nsps dict, which contains a list of
+    extension_name -> escaped_schema_name mapping.
+    All you need to do is pass query strings of the form
+    SELECT ... FROM {extension_name}.some_relation ...
+    """
+    def initialize(self, logger, srvid, dsn, encoding_query, debug):
+        self._logger = logger
+        self._srvid = srvid or 0
+        self._dsn = dsn
+        self._debug = debug
+
+        if encoding_query is not None:
+            self.set_client_encoding(encoding_query['client_encoding'])
+
+    def cursor(self, *args, **kwargs):
+        factory = kwargs.get('cursor_factory')
+
+        if factory is None:
+            kwargs['cursor_factory'] = CustomCursor
+        elif factory == RealDictCursor:
+            kwargs['cursor_factory'] = CustomDictCursor
+        else:
+            msg = "Unsupported cursor_factory: %s" % factory.__name__
+            self._logger.error(msg)
+            raise Exception(msg)
+
+        return _connection.cursor(self, *args, **kwargs)
+
+
+class CustomDictCursor(RealDictCursor):
+    def execute(self, query, params=None):
+        query = resolve_nsps(query, self.connection)
+
+        self.timestamp = time.time()
+        try:
+            return super(CustomDictCursor, self).execute(query, params)
+        except Exception as e:
+            log_query(self, query, params, e)
+            raise e
+        finally:
+            log_query(self, query, params)
+
+
+class CustomCursor(_cursor):
+    def execute(self, query, params=None):
+        query = resolve_nsps(query, self.connection)
+
+        self.timestamp = time.time()
+        try:
+            return super(CustomCursor, self).execute(query, params)
+        except Exception as e:
+            log_query(self, query, params, e)
+        finally:
+            log_query(self, query, params)
+
+
+def resolve_nsps(query, connection):
+    if hasattr(connection, '_nsps'):
+        return query.format(**connection._nsps)
+
+    return query
+
+
+def log_query(cls, query, params=None, exception=None):
+    t = round((time.time() - cls.timestamp) * 1000, 2)
+
+    fmt = ''
+    if exception is not None:
+        fmt = "Error during query execution:\n{}\n".format(exception)
+
+    fmt += "query on {dsn} (srvid {srvid}): {ms} ms\n{query}"
+    if params is not None:
+        fmt += "\n{params}"
+
+    cls.connection._logger.debug(fmt.format(ms=t, query=query, params=params,
+                                            dsn=cls.connection._dsn,
+                                            srvid=cls.connection._srvid))
 
 
 class BaseHandler(RequestHandler):
@@ -29,6 +119,22 @@ class BaseHandler(RequestHandler):
         self._connections = {}
         self.url_prefix = options.url_prefix
         self.logger = logging.getLogger("tornado.application")
+        if self.application.settings['debug']:
+            self.logger.setLevel(logging.DEBUG)
+
+    def __get_url(self, **connoptions):
+        url = ' '.join(['%s=%s' % (k, v)
+                        for (k, v) in connoptions.items() if v is not None])
+
+        return url
+
+    def __get_safe_dsn(self, **connoptions):
+        """
+        Return a simplified dsn that won't leak the password if provided in the
+        options, for logging purpose.
+        """
+        dsn = '{user}@{host}:{port}/{database}'.format(**connoptions)
+        return dsn
 
     def render_json(self, value):
         """
@@ -43,7 +149,7 @@ class BaseHandler(RequestHandler):
         Return the current_user if he is allowed to connect
         to his server of choice.
         """
-        raw = self.get_str_cookie('username')
+        raw = self.get_str_cookie('user')
         if raw is not None:
             try:
                 self.connect()
@@ -109,24 +215,24 @@ class BaseHandler(RequestHandler):
         return None
 
     def get_powa_version(self, **kwargs):
-        version = self.execute(text(
+        version = self.execute(
             """
-            SELECT regexp_replace(extversion, '(dev|beta\d*)', '')
+            SELECT regexp_replace(extversion, '(dev|beta\d*)', '') AS version
             FROM pg_extension
             WHERE extname = 'powa'
-            """), **kwargs).scalar()
+            """, **kwargs)[0]['version']
         if version is None:
             return None
         return [int(part) for part in version.split('.')]
 
     def get_pg_version_num(self, srvid=None, **kwargs):
         try:
-            return int(self.execute(text(
+            return int(self.execute(
                 """
                 SELECT setting
                 FROM pg_settings
                 WHERE name = 'server_version_num'
-                """), srvid=srvid, **kwargs).scalar())
+                """, srvid=srvid, **kwargs)[0]['setting'])
         except Exception:
             return None
 
@@ -136,7 +242,7 @@ class BaseHandler(RequestHandler):
         """
         if self.current_user:
             if self._databases is None:
-                self._databases = [d[0] for d in self.execute(
+                self._databases = [d['datname'] for d in self.execute(
                     """
                     SELECT p.datname
                     FROM {powa}.powa_databases p
@@ -166,23 +272,23 @@ class BaseHandler(RequestHandler):
         """
         if self.current_user:
             if self._servers is None:
-                self._servers = [[s[0], s[1]] for s in self.execute(
+                self._servers = [[s['id'], s['val']] for s in self.execute(
                     """
                     SELECT s.id, CASE WHEN s.id = 0 THEN
                         %(default)s
                     ELSE
                         s.hostname || ':' || s.port
-                    END
+                    END AS val
                     FROM {powa}.powa_servers s
                     ORDER BY hostname
                     """, params={'default': self.current_connection})]
             return self._servers
 
     def on_finish(self):
-        for engine in self._connections.values():
-            engine.dispose()
+        for conn in self._connections.values():
+            conn.close()
 
-    def connect(self, srvid=None, server=None, username=None, password=None,
+    def connect(self, srvid=None, server=None, user=None, password=None,
                 database=None, remote_access=False, **kwargs):
         """
         Connect to a specific database.
@@ -198,7 +304,7 @@ class BaseHandler(RequestHandler):
 
         conn_allowed = None
         server = server or self.get_str_cookie('server')
-        username = username or self.get_str_cookie('username')
+        user = user or self.get_str_cookie('user')
         password = (password or
                     self.get_str_cookie('password'))
         if server not in options.servers:
@@ -206,25 +312,40 @@ class BaseHandler(RequestHandler):
 
         connoptions = options.servers[server].copy()
 
+        # Handle "query" parameter.  It should be a dict contain a single
+        # client_encoding key.
+        encoding_query = connoptions.pop("query", None)
+        if encoding_query is not None:
+            if not isinstance(encoding_query, dict):
+                raise Exception('Invalid "query" parameter: %r, ' %
+                        encoding_query)
+
+            for k in encoding_query:
+                if k != "client_encoding":
+                    raise Exception('Invalid "query" parameter: %r", '
+                            'unexpected key "%s"'%
+                            (encoding_query, k))
+
         if (srvid is not None and srvid != "0"):
             tmp = self.connect()
-            rows = tmp.execute("""
+            cur = tmp.cursor(cursor_factory=RealDictCursor)
+            cur.execute("""
             SELECT hostname, port, username, password, dbname,
                 allow_ui_connection
             FROM {powa}.powa_servers WHERE id = %(srvid)s
             """, {'srvid': srvid})
-            row = rows.fetchone()
-            rows.close()
+            row = cur.fetchone()
+            cur.close()
 
-            connoptions['host'] = row[0]
-            connoptions['port'] = row[1]
-            connoptions['username'] = row[2]
-            connoptions['password'] = row[3]
-            connoptions['database'] = row[4]
-            conn_allowed = row[5]
+            connoptions['host'] = row['hostname']
+            connoptions['port'] = row['port']
+            connoptions['user'] = row['username']
+            connoptions['password'] = row['password']
+            connoptions['database'] = row['dbname']
+            conn_allowed = row['allow_ui_connection']
         else:
-            if 'username' not in connoptions:
-                connoptions['username'] = username
+            if 'user' not in connoptions:
+                connoptions['user'] = user
             if 'password' not in connoptions:
                 connoptions['password'] = password
 
@@ -233,13 +354,14 @@ class BaseHandler(RequestHandler):
             # authorization check for local connection has not been done yet
             if (conn_allowed is None):
                 tmp = self.connect(remote_access=False, server=server,
-                                   username=username, password=password)
-                rows = tmp.execute("""
+                                   user=user, password=password)
+                cur = tmp.cursor()
+                cur.execute("""
                 SELECT allow_ui_connection
                 FROM {powa}.powa_servers WHERE id = 0
                 """)
-                row = rows.fetchone()
-                rows.close()
+                row = cur.fetchone()
+                cur.close()
                 conn_allowed = row[0]
 
             if (not conn_allowed):
@@ -248,51 +370,31 @@ class BaseHandler(RequestHandler):
         if database is not None:
             connoptions['database'] = database
 
-        # engineoptions = {'_initialize': False}
-        engineoptions = {}
-        engineoptions.update(**kwargs)
-        if self.application.settings['debug']:
-            engineoptions['echo'] = True
-        url = URL("postgresql+psycopg2", **connoptions)
+        url = self.__get_url(**connoptions)
         if url in self._connections:
             return self._connections.get(url)
-        engine = create_engine(url, **engineoptions)
-        engine.connect()
+
+        conn = psycopg2.connect(connection_factory=CustomConnection,
+                                **connoptions)
+        conn.initialize(self.logger, srvid, self.__get_safe_dsn(**connoptions),
+                        encoding_query,
+                        self.application.settings['debug'])
 
         # Get and cache all extensions schemas, in a dict with the extension
         # name as the key and the *quoted* schema as the value.
-        ext_nsps = {row[0]: row[1] for row in engine.execute("""
-            SELECT extname, quote_ident(nspname)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT extname, quote_ident(nspname) AS nsp
             FROM pg_catalog.pg_extension e
             JOIN pg_catalog.pg_namespace n ON n.oid = e.extnamespace
-        """)}
-
-        engine = engine.execution_options(ext_nsps=ext_nsps)
+        """)
+        ext_nsps = {row[0]: row[1] for row in cur.fetchall()}
+        cur.close()
+        conn._nsps = ext_nsps
 
         # Cache the connection and return it
-        self._connections[url] = engine
-        return engine
-
-    @event.listens_for(Engine, "before_cursor_execute", retval=True)
-    def before_cur_exec(conn, cursor, stmt, params, context, executemany):
-        """
-        Hook called before executing a compiled query.  We simply call format()
-        on the passed query text if we have the cached schemas.
-
-        It's the caller duty to provide adequate parameters in the query
-        string, of the form:
-
-        SELECT ... {extension_name}.object ...
-
-        Note that the passed schema will be properly quoted, and we use
-        format() to not break any literal '%%' that may be written in the
-        query.
-        """
-
-        ext_nsps = conn._execution_options.get('ext_nsps', None)
-        if ext_nsps is not None:
-            stmt = stmt.format(**ext_nsps)
-        return stmt, params
+        self._connections[url] = conn
+        return self._connections[url]
 
     def has_extension(self, srvid, extname):
         """
@@ -310,20 +412,20 @@ class BaseHandler(RequestHandler):
             # if local server, fallback to the full test, as it won't be more
             # expensive
             return self.has_extension_version(srvid, extname, '0',
-                                               remote_access=False)
+                                              remote_access=False)
         else:
             try:
                 # Look for at least an enabled snapshot function.  If a module
                 # provides multiple snapshot functions and only a subset is
                 # activated, let's assume that the extension is available.
-                return self.execute(text("""
-                SELECT COUNT(*) != 0
+                return self.execute("""
+                SELECT COUNT(*) != 0 AS res
                 FROM {powa}.powa_functions
-                WHERE srvid = :srvid
-                AND module = :extname
+                WHERE srvid = %(srvid)s
+                AND module = %(extname)s
                 AND operation = 'snapshot'
                 AND enabled
-                """), params={"srvid": srvid, "extname": extname}).scalar()
+                """, params={"srvid": srvid, "extname": extname})[0]['res']
             except Exception:
                 return False
 
@@ -342,28 +444,29 @@ class BaseHandler(RequestHandler):
         # for that extension, but only for default database.
         if (srvid != "0" and database is None):
             try:
-                remver = self.execute(text(
+                remver = self.execute(
                     """
                     SELECT version
                     FROM {powa}.powa_extensions
-                    WHERE srvid = :srvid
-                    AND extname = :extname
-                    """), params={'srvid': srvid, 'extname': extname}).scalar()
+                    WHERE srvid = %(srvid)s
+                    AND extname = %(extname)s
+                    """, params={'srvid': srvid, 'extname': extname}
+                    )[0]['version']
 
             except Exception:
                 return False
         else:
             # Otherwise, fall back to querying on the target database.
             try:
-                remver = self.execute(text(
+                remver = self.execute(
                     """
                     SELECT extversion
                     FROM pg_catalog.pg_extension
-                    WHERE extname = :extname
+                    WHERE extname = %(extname)s
                     LIMIT 1
-                    """), srvid=srvid, database=database,
+                    """, srvid=srvid, database=database,
                     params={"extname": extname}, remote_access=remote_access
-                ).scalar()
+                )[0]['extversion']
             except Exception:
                 return False
 
@@ -396,7 +499,7 @@ class BaseHandler(RequestHandler):
         super(BaseHandler, self).write_error(status_code, **kwargs)
 
     def execute(self, query, srvid=None, params=None, server=None,
-                username=None,
+                user=None,
                 database=None,
                 password=None,
                 remote_access=False):
@@ -406,43 +509,65 @@ class BaseHandler(RequestHandler):
         if params is None:
             params = {}
 
-        engine = self.connect(srvid, server, username, password, database,
-                              remote_access)
-        return engine.execute(query, **params)
+        if 'samples' not in params:
+            params['samples'] = 100
+
+        conn = self.connect(srvid, server, user, password, database,
+                            remote_access)
+
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SAVEPOINT powa_web")
+        try:
+            cur.execute(query, params)
+
+            # Fetch all results if any, and return them.
+            if cur.rowcount > 0:
+                rows = cur.fetchall()
+            else:
+                rows = []
+
+            cur.execute("RELEASE powa_web")
+
+        except Exception as e:
+            cur.execute("ROLLBACK TO powa_web")
+            raise e
+        finally:
+            cur.close()
+        return rows
 
     def notify_collector(self, command, args=[], timeout=3):
         """
         Notify powa-collector and get its answer.
         """
-        engine = self.connect()
+        conn = self.connect()
 
-        conn = engine.connect()
-        trans = conn.begin()
+        cur = conn.cursor()
 
         # we shouldn't listen on anything else than our own channel, but just
         # in case discard everything
-        conn.execute("UNLISTEN *")
+        cur.execute("UNLISTEN *")
 
         random.seed()
         channel = "r%d" % random.randint(1, 99999)
-        conn.execute("LISTEN %s" % channel)
-        conn.execute("NOTIFY powa_collector, '%s %s %s'" %
-                     (command, channel, ' '.join(args)))
-        trans.commit()
+        cur.execute("LISTEN %s" % channel)
+        cur.execute("NOTIFY powa_collector, '%s %s %s'" %
+                    (command, channel, ' '.join(args)))
+        cur.close()
+        conn.commit()
 
         # wait for activity on the connection up to given timeout
-        select.select([conn.connection], [], [], timeout)
+        select.select([conn], [], [], timeout)
 
-        trans = conn.begin()
         # we shouldn't listen on anything else than our own channel, but just
         # in case discard everything
-        conn.execute("UNLISTEN *")
-        trans.commit()
+        cur = conn.cursor()
+        cur.execute("UNLISTEN *")
+        conn.commit()
 
-        conn.connection.poll()
+        conn.poll()
         res = []
-        while (conn.connection.notifies):
-            notif = conn.connection.notifies.pop(0)
+        while (conn.notifies):
+            notif = conn.notifies.pop(0)
 
             payload = notif.payload.split(' ')
 
