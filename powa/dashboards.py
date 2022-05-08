@@ -90,7 +90,14 @@ class MetricGroupHandler(AuthHandler):
             in self.request.arguments.items()))
         url_params.update(url_query_params)
         url_params = self.add_params(url_params)
-        query = self.query
+        res = self.query
+        if res is None:
+            query = None
+        elif isinstance(res, str):
+            query = res
+        else:
+            query = res[0]
+            url_params.update(res[1])
         if (query is not None):
             values = self.execute(query, params=url_params)
             data = {"data": [self.process(val, **url_params)
@@ -111,7 +118,7 @@ class MetricGroupHandler(AuthHandler):
         Arguments:
             handler (tornado.web.RequestHandler):
                 the current request handler
-            val (sqlalchemy.engine.result.RowProxy):
+            val (psycopg2.RealDictRow):
                 the row to process
             kwargs (dict):
                 the current url_parameters
@@ -128,7 +135,7 @@ class MetricGroupHandler(AuthHandler):
         Arguments:
             handler (tornado.web.RequestHandler):
                 the current request handler
-            val (sqlalchemy.engine.result.RowProxy):
+            val (psycopg2.RealDictRow):
                 the row to process
             kwargs (dict):
                 the current url_parameters

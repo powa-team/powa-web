@@ -2,8 +2,6 @@
 Index page presenting an overview of the cluster stats.
 """
 
-from sqlalchemy.sql.functions import sum
-from sqlalchemy.sql import bindparam, text
 from tornado.web import HTTPError
 from powa.framework import AuthHandler
 from powa.dashboards import (
@@ -69,7 +67,7 @@ class ByDatabaseMetricGroup(MetricGroupDef):
     @property
     def query(self):
         bs = block_size
-        inner_query = powa_getstatdata_db(bindparam("server"))
+        inner_query = powa_getstatdata_db("%(server)s")
         from_clause = """({inner_query}) AS sub
         JOIN {{powa}}.powa_databases pd ON pd.oid = sub.dbid
             AND pd.srvid = sub.srvid""".format(
@@ -98,17 +96,16 @@ class ByDatabaseMetricGroup(MetricGroupDef):
                 "sum(wal_fpi) AS wal_fpi,"
                 "sum(wal_bytes) AS wal_bytes"])
 
-        return text("""SELECT {cols}
+        return """SELECT {cols}
         FROM {from_clause}
         CROSS JOIN {bs}
         GROUP BY pd.srvid, pd.datname, block_size""".format(
             cols=', '.join(cols),
             from_clause=from_clause,
             bs=bs
-        ))
+        )
 
     def process(self, val, **kwargs):
-        val = dict(val)
         val["url"] = self.reverse_url("DatabaseOverview", val["srvid"],
                                       val["datname"])
         return val
@@ -127,7 +124,7 @@ class ByDatabaseWaitSamplingMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        inner_query = powa_getwaitdata_db(bindparam("server"))
+        inner_query = powa_getwaitdata_db()
 
         from_clause = """({inner_query}) AS sub
             JOIN {{powa}}.powa_databases pd ON pd.oid = sub.dbid
@@ -135,16 +132,15 @@ class ByDatabaseWaitSamplingMetricGroup(MetricGroupDef):
                 inner_query=inner_query
                 )
 
-        return text("""SELECT pd.srvid, pd.datname, sub.event_type, sub.event,
+        return """SELECT pd.srvid, pd.datname, sub.event_type, sub.event,
             sum(sub.count) AS counts
             FROM {from_clause}
             GROUP BY pd.srvid, pd.datname, sub.event_type, sub.event
             ORDER BY sum(sub.count) DESC""".format(
                 from_clause=from_clause
-            ))
+            )
 
     def process(self, val, **kwargs):
-        val = dict(val)
         val["url"] = self.reverse_url("DatabaseOverview",
                                       val["srvid"], val["datname"])
         return val
@@ -273,7 +269,7 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
                     kcache_query=kcache_query
             )
 
-        return text("""SELECT {cols}
+        return """SELECT {cols}
         FROM (
             {from_clause}
         ) AS sub
@@ -284,7 +280,7 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
             cols=', '.join(cols),
             from_clause=from_clause,
             bs=bs
-        )).params(samples=100)
+        )
 
 
 class GlobalWaitsMetricGroup(MetricGroupDef):
@@ -348,14 +344,14 @@ class GlobalWaitsMetricGroup(MetricGroupDef):
 
         from_clause = "({query}) AS sub".format(query=query)
 
-        return text("""SELECT {cols}
+        return """SELECT {cols}
         FROM {from_clause}
         -- WHERE sub.count IS NOT NULL
         GROUP BY sub.ts, sub.mesure_interval
         ORDER BY sub.ts""".format(
             cols=', '.join(cols),
             from_clause=from_clause
-            )).params(samples=100)
+            )
 
 
 class GlobalBgwriterMetricGroup(MetricGroupDef):
@@ -416,7 +412,7 @@ class GlobalBgwriterMetricGroup(MetricGroupDef):
     @property
     def query(self):
         bs = block_size
-        query = powa_get_bgwriter_sample(bindparam("server"))
+        query = powa_get_bgwriter_sample()
 
         from_clause = query
 
@@ -434,7 +430,7 @@ class GlobalBgwriterMetricGroup(MetricGroupDef):
                 byte_per_sec("buffers_alloc", prefix="sub")
                 ]
 
-        return text("""SELECT {cols}
+        return """SELECT {cols}
         FROM (
             {from_clause}
         ) AS sub
@@ -445,7 +441,7 @@ class GlobalBgwriterMetricGroup(MetricGroupDef):
             cols=', '.join(cols),
             from_clause=from_clause,
             bs=bs
-        )).params(samples=100)
+        )
 
 
 class GlobalAllRelMetricGroup(MetricGroupDef):
@@ -502,7 +498,7 @@ class GlobalAllRelMetricGroup(MetricGroupDef):
                 sum_per_sec("analyze_count", prefix="sub"),
                 sum_per_sec("autoanalyze_count", prefix="sub")]
 
-        return text("""SELECT {cols}
+        return """SELECT {cols}
         FROM (
             {from_clause}
         ) AS sub
@@ -511,7 +507,7 @@ class GlobalAllRelMetricGroup(MetricGroupDef):
         ORDER BY sub.ts""".format(
             cols=', '.join(cols),
             from_clause=from_clause
-        )).params(samples=100)
+        )
 
 
 class ServerOverview(DashboardPage):

@@ -5,7 +5,7 @@
   <div class="center row">
     <div class="columns large-4 large-offset-4 medium-6 medium-offset-3">
       <form method="POST" action="">
-        {% apply field(name="username", label=_("Username")) %}{% end %}
+        {% apply field(name="user", label=_("Username")) %}{% end %}
         {% apply field(name="password", label=_("Password"), type="password") %}{% end %}
         {% apply field(name="server", label=_("Server"), list="serverlist") %}{% end %}
         <datalist id="serverlist">

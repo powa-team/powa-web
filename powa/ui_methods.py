@@ -108,7 +108,7 @@ def sanitycheck_messages(self):
             SELECT 'PoWA collector - main thread (%%'
         ) n
         JOIN pg_stat_activity a ON a.application_name LIKE n.val"""
-    rows = self.execute(sql).fetchall()
+    rows = self.execute(sql)
 
     if (rows is None):
         messages["alert"].append("No collector is running!")
@@ -125,11 +125,11 @@ def sanitycheck_messages(self):
             FROM {powa}.powa_snapshot_metas
             WHERE errors IS NOT NULL
         ) m ON m.srvid = s.id"""
-    rows = self.execute(sql).fetchall()
+    rows = self.execute(sql)
 
     if (rows is not None and len(rows) > 0):
         for r in rows:
-            messages["alert"].append("%s: %s" % (r[0], r[1]))
+            messages["alert"].append("%s: %s" % (r['alias'], r['error']))
         return messages
 
     return {}
