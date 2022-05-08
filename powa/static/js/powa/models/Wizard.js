@@ -396,8 +396,17 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
             links: {},
             id: qual.qualid,
           });
-          nodes.add(node);
-          this.trigger("widget:update_progress", "Building nodes for " + total_quals + " quals ...",
+
+          // If we already found a node with the same qualid, we simply need to
+          // merge it with the new nodes, otherwise add it to the list.
+          existing = nodes.get(qual.id);
+          if (existing)
+            existing.merge(nodes);
+          else
+            nodes.add(node);
+
+          this.trigger("widget:update_progress",
+            "Building nodes for " + total_quals + " quals ...",
             10 + (10 * index / total_quals).toFixed(2));
         }, this);
         result = this.computeLinks(nodes);
