@@ -1,7 +1,6 @@
 """
 Dashboard for the qual page
 """
-from sqlalchemy.sql import text, bindparam
 from tornado.web import HTTPError
 from powa.dashboards import (
     Dashboard, Graph, Grid,
@@ -24,14 +23,14 @@ class QualConstantsMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        most_used = (qual_constants(":server", "most_used",
+        most_used = (qual_constants("%(server)s", "most_used",
                                     """
-            datname = :database AND
-            coalesce_range && tstzrange(:from, :to)""",
-                                    ":query", ":qual", top=10))
+            datname = %(database)s AND
+            coalesce_range && tstzrange(%(from)s, %(to)s)""",
+                                    "%(query)s", "%(qual)s", top=10))
 
-        correlated = qualstat_getstatdata(extra_where=["qualid = :qual",
-                                                       "queryid = :query"])
+        correlated = qualstat_getstatdata(extra_where=["qualid = %(qual)s",
+                                                       "queryid = %(query)s"])
         sql = """SELECT sub.*, correlated.occurences as total_occurences
             FROM (
                 SELECT *
@@ -46,7 +45,7 @@ class QualConstantsMetricGroup(MetricGroupDef):
             correlated=correlated
             )
 
-        return text(sql)
+        return sql
 
     def add_params(self, params):
         params['queryids'] = [int(params['query'])]
@@ -81,17 +80,17 @@ class QualDetail(ContentWidget):
         try:
             # Check remote access first
             remote_conn = self.connect(server, database=database,
-                                       remote_access=True)
+                                            remote_access=True)
         except Exception as e:
             raise HTTPError(501, "Could not connect to remote server: %s" %
                                  str(e))
-        stmt = qualstat_getstatdata(extra_select=["queryid = :query"
+        stmt = qualstat_getstatdata(extra_select=["queryid = %(query)s"
                                                   " AS is_my_query"],
-                                    extra_where=["qualid = :qualid",
+                                    extra_where=["qualid = %(qualid)s",
                                                  "occurences > 0"],
                                     extra_groupby=["queryid"])
         quals = list(self.execute(
-            text(stmt),
+            stmt,
             params={"server": server,
                     "query": query,
                     "from": self.get_argument("from"),
@@ -126,20 +125,19 @@ class OtherQueriesMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        return text("""
+        return """
             SELECT distinct queryid, query,
             query as query_str, pd.srvid
             FROM {powa}.powa_qualstats_quals pqs
             JOIN {powa}.powa_statements USING (queryid, dbid, srvid, userid)
             JOIN {powa}.powa_databases pd ON pd.oid = pqs.dbid AND pd.srvid =
             pqs.srvid
-            WHERE qualid = :qual
-                AND pqs.queryid != :query
-                AND pd.srvid = :server
-                AND pd.datname = :database""")
+            WHERE qualid = %(qual)s
+                AND pqs.queryid != %(query)s
+                AND pd.srvid = %(server)s
+                AND pd.datname = %(database)s"""
 
     def process(self, val, database=None, **kwargs):
-        val = dict(val)
         val["url"] = self.reverse_url(
             "QueryOverview", val["srvid"], database, val["queryid"])
         return val

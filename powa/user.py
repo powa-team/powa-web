@@ -11,7 +11,7 @@ class LoginHandler(BaseHandler):
         return self.render("login.html", title="Login")
 
     def post(self, *args, **kwargs):
-        username = self.get_argument('username')
+        user = self.get_argument('user')
         password = self.get_argument('password')
         server = self.get_argument('server')
         expires_days = options.cookie_expires_days
@@ -19,14 +19,14 @@ class LoginHandler(BaseHandler):
             expires_days = None
 
         try:
-            self.connect(username=username, password=password, server=server)
+            self.connect(user=user, password=password, server=server)
         except Exception as e:
             self.flash("Auth failed", "alert")
-            self.logger.error(e)
+            self.logger.error('Error: %r', e)
             self.get()
             return
         # Check that the database is correctly installed
-        version = self.get_powa_version(username=username,
+        version = self.get_powa_version(user=user,
                                         password=password,
                                         server=server)
         if version is None:
@@ -41,7 +41,7 @@ class LoginHandler(BaseHandler):
                  '.'.join(str(x) for x in __VERSION_NUM__[0:2])),
                 'alert')
             self.redirect(self.url_prefix)
-        self.set_secure_cookie('username', username, expires_days=expires_days)
+        self.set_secure_cookie('user', user, expires_days=expires_days)
         self.set_secure_cookie('password', password, expires_days=expires_days)
         self.set_secure_cookie('server', server, expires_days=expires_days)
         self.redirect(self.get_argument('next', self.url_prefix))

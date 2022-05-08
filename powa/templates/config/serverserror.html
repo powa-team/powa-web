@@ -7,9 +7,9 @@
     {% if (errors) %}
       <ul>
       {% for e in errors %}
-        <li><b>{{e.server_alias}}:</b>
+        <li><b>{{e['server_alias']}}:</b>
           <ul>
-            {% for msg in e.errors %}
+            {% for msg in e['errors'] %}
             <li>{{msg}}</li>
             {% end %}
           </ul>

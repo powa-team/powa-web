@@ -1,3 +1,2 @@
 psycopg2
-sqlalchemy>0.9.8
 tornado>=2.0
