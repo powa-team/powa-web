@@ -23,10 +23,10 @@ class CollectorServerDetail(MetricGroupDef):
             JOIN {powa}.powa_snapshot_metas m ON m.srvid = s.id
             WHERE s.id = %(server)s"""
 
-        row = self.execute(sql, params={'server': server}).fetchone()
+        row = self.execute(sql, params={'server': server})
 
         # unexisting server, bail out
-        if (row is None):
+        if (len(row) != 1):
             data["messages"] = {'alert': ["This server does not exists"]}
             return data
 
@@ -37,7 +37,7 @@ class CollectorServerDetail(MetricGroupDef):
                     ELSE 'stopped'
                     END
                     FROM pg_stat_activity
-                    WHERE application_name LIKE 'PoWA - %%'""").fetchone()[0]
+                    WHERE application_name LIKE 'PoWA - %%'""")[0]
         else:
             raw = self.notify_collector('WORKERS_STATUS', [server], 2)
 

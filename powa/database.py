@@ -1,7 +1,6 @@
 """
 Module containing the by-database dashboard.
 """
-from sqlalchemy.sql import bindparam, text
 from tornado.web import HTTPError
 from powa.framework import AuthHandler
 from powa.dashboards import (
@@ -100,7 +99,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     @property
     def query(self):
         # Fetch the base query for sample, and filter them on the database
-        query = powa_getstatdata_sample("db", ["datname = :database"])
+        query = powa_getstatdata_sample("db", ["datname = %(database)s"])
 
         cols = ["srvid",
                 to_epoch('ts'),
@@ -127,7 +126,8 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
 
             # Add system metrics from pg_stat_kcache,
             kcache_query = kcache_getstatdata_sample("db",
-                                                     ["datname = :database"])
+                                                     ["datname = %(database)s"]
+                                                     )
 
             total_sys_hit = "{total_read} - sum(sub.reads)" \
                 "/ greatest(extract(epoch FROM sub.mesure_interval), 1)" \
@@ -155,7 +155,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
                     kcache_query=kcache_query
             )
 
-        return text("""SELECT {cols}
+        return """SELECT {cols}
         FROM (
             {from_clause}
         ) AS sub
@@ -166,7 +166,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
             cols=', '.join(cols),
             from_clause=from_clause,
             bs=block_size
-        )).params(samples=100)
+        )
 
 
 class DatabaseWaitOverviewMetricGroup(MetricGroupDef):
@@ -213,7 +213,7 @@ class DatabaseWaitOverviewMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        query = powa_getwaitdata_sample("db", ["datname = :database"])
+        query = powa_getwaitdata_sample("db", ["datname = %(database)s"])
 
         cols = [to_epoch("ts")]
 
@@ -230,14 +230,14 @@ class DatabaseWaitOverviewMetricGroup(MetricGroupDef):
 
         from_clause = "({query}) AS sub".format(query=query)
 
-        return text("""SELECT {cols}
+        return """SELECT {cols}
         FROM {from_clause}
         -- WHERE sub.count IS NOT NULL
         GROUP BY sub.ts, sub.mesure_interval
         ORDER BY sub.ts""".format(
             cols=', '.join(cols),
             from_clause=from_clause
-            )).params(samples=100)
+            )
 
 
 class DatabaseAllRelMetricGroup(MetricGroupDef):
@@ -294,17 +294,17 @@ class DatabaseAllRelMetricGroup(MetricGroupDef):
                 sum_per_sec("analyze_count", prefix="sub"),
                 sum_per_sec("autoanalyze_count", prefix="sub")]
 
-        return text("""SELECT {cols}
+        return """SELECT {cols}
         FROM (
             {from_clause}
         ) AS sub
         WHERE sub.mesure_interval != '0 s'
-        AND datname = :database
+        AND datname = %(database)s
         GROUP BY sub.srvid, sub.ts, sub.mesure_interval
         ORDER BY sub.ts""".format(
             cols=', '.join(cols),
             from_clause=from_clause
-        )).params(samples=100)
+        )
 
 
 class ByQueryMetricGroup(MetricGroupDef):
@@ -381,17 +381,16 @@ class ByQueryMetricGroup(MetricGroupDef):
                     bs=block_size
         )
 
-        return text("""SELECT {cols}
+        return """SELECT {cols}
                 FROM {from_clause}
-                whERE datname = :database
+                whERE datname = %(database)s
                 GROUP BY srvid, queryid, query, block_size
                 ORDER BY sum(runtime) DESC""".format(
                     cols=', '.join(cols),
                     from_clause=from_clause
-                    ))
+                    )
 
     def process(self, val, database=None, **kwargs):
-        val = dict(val)
         val["url"] = self.reverse_url(
             "QueryOverview", val["srvid"], database, val["queryid"])
         return val
@@ -426,17 +425,16 @@ class ByQueryWaitSamplingMetricGroup(MetricGroupDef):
             JOIN {{powa}}.powa_statements AS ps
                 USING (srvid, queryid, dbid)""".format(inner_query=inner_query)
 
-        return text("""SELECT {cols}
+        return """SELECT {cols}
             FROM {from_clause}
-            WHERE datname = :database
+            WHERE datname = %(database)s
             GROUP BY srvid, queryid, query, event_type, event
             ORDER BY sum(count) DESC""".format(
                 cols=', '.join(cols),
                 from_clause=from_clause
-                ))
+                )
 
     def process(self, val, database=None, **kwargs):
-        val = dict(val)
         val["url"] = self.reverse_url(
             "QueryOverview", val["srvid"], database, val["queryid"])
         return val

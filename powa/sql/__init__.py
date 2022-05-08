@@ -2,7 +2,6 @@
 Utilities for commonly used SQL constructs.
 """
 import re
-from sqlalchemy.sql import text
 from collections import namedtuple, defaultdict
 from powa.json import JSONizable
 import sys
@@ -32,7 +31,7 @@ def format_jumbled_query(sql, params):
     return sql
 
 
-RESOLVE_OPNAME = text("""
+RESOLVE_OPNAME = """
 SELECT json_object_agg(oid, value)
     FROM (
 
@@ -64,14 +63,14 @@ SELECT json_object_agg(oid, value)
         LEFT JOIN pg_am ON amop.amopmethod = pg_am.oid AND pg_am.amname != 'hash'
         LEFT JOIN pg_opfamily f ON f.opfmethod = pg_am.oid AND amop.amopfamily = f.oid
         LEFT JOIN pg_opclass c ON c.opcfamily = f.oid
-        WHERE pg_operator.oid in :oid_list
+        WHERE pg_operator.oid in %(oid_list)s
         GROUP BY pg_operator.oid, oprname, pg_am.oid, amname
     ) by_am
     GROUP BY oproid, oprname
     ) detail
-""")
+"""
 
-RESOLVE_ATTNAME = text("""
+RESOLVE_ATTNAME = """
     SELECT json_object_agg(attrelid || '.'|| attnum, value)
     FROM (
     SELECT attrelid, attnum, json_build_object(
@@ -95,9 +94,9 @@ RESOLVE_ATTNAME = text("""
     INNER JOIN pg_namespace n ON n.oid = c.relnamespace
     LEFT JOIN pg_statistic s ON s.starelid = c.oid
                        AND s.staattnum = a.attnum
-    WHERE (attrelid, attnum) IN :att_list
+    WHERE (attrelid, attnum) IN %(att_list)s
     ) detail
-""")
+"""
 
 
 class ResolvedQual(JSONizable):
@@ -215,13 +214,18 @@ def resolve_quals(conn, quallist, attribute="quals"):
             operator_to_look.add(v['opno'])
             attname_to_look.add((v["relid"], v["attnum"]))
     if operator_to_look:
-        operators = conn.execute(
+        cur = conn.cursor()
+        cur.execute(
             RESOLVE_OPNAME,
-            {"oid_list": tuple(operator_to_look)}).scalar()
+            {"oid_list": tuple(operator_to_look)})
+        operators = cur.fetchone()[0]
+        cur.close()
     if attname_to_look:
-        attnames = conn.execute(
+        cur = conn.cursor()
+        cur.execute(
             RESOLVE_ATTNAME,
-            {"att_list": tuple(attname_to_look)}).scalar()
+            {"att_list": tuple(attname_to_look)})
+        attnames = cur.fetchone()[0]
     new_qual_list = []
     for row in quallist:
         row = dict(row)
@@ -319,10 +323,10 @@ def qual_constants(srvid, type, filter_clause, queries=None, quals=None,
             WHERE srvid = {srvid}
             {query_subfilter}
             {qual_subfilter}
-              AND coalesce_range && tstzrange(:from, :to)
+              AND coalesce_range && tstzrange(%(from)s, %(to)s)
             UNION ALL
             SELECT *
-            FROM {{powa}}.powa_qualstats_aggregate_constvalues_current(:server, :from, :to)
+            FROM {{powa}}.powa_qualstats_aggregate_constvalues_current(%(server)s, %(from)s, %(to)s)
             WHERE srvid = {srvid}
             {query_subfilter}
             {qual_subfilter}
@@ -360,25 +364,29 @@ def qual_constants(srvid, type, filter_clause, queries=None, quals=None,
 
     query = "SELECT * FROM " + base
 
-    return text(query)
+    return query
 
 
 def quote_ident(name):
     return '"' + name + '"'
 
 
-def get_plans(self, query, database, qual):
+def get_plans(cls, server, database, query, all_vals):
     plans = []
-    for key in ('most filtering', 'least filtering', 'most executed'):
-        vals = qual[key]
+    for key in ('most filtering', 'least filtering', 'most executed',
+                'most used'):
+        vals = all_vals[key]
         query = format_jumbled_query(query, vals['constants'])
         plan = "N/A"
         try:
-            result = self.execute("EXPLAIN {}".format(query),
-                                  database=database,
-                                  remote_access=True)
-            plan = "\n".join(v[0] for v in result)
-        except Exception:
+            sqlQuery = "EXPLAIN {}".format(query)
+            result = cls.execute(sqlQuery,
+                                 srvid=server,
+                                 database=database,
+                                 remote_access=True)
+            plan = "\n".join(v['QUERY PLAN'] for v in result)
+        except Exception as e:
+            plan = "ERROR: %r" % e
             pass
         plans.append(Plan(key, vals['constants'], query,
                           plan, vals["filter_ratio"], vals['execution_count'],
@@ -399,13 +407,13 @@ def get_unjumbled_query(ctrl, srvid, database, queryid, _from, _to,
     been found and/or the SELECT clause has been normalized
     """
 
-    rs = list(ctrl.execute(text("""
+    rs = list(ctrl.execute("""
         SELECT query
-        FROM {{powa}}.powa_statements
-        WHERE srvid= :server
-        AND queryid = :queryid LIMIT 1
-    """), params={"srvid": srvid, "queryid": queryid}))[0]
-    normalized_query = rs[0]
+        FROM {powa}.powa_statements
+        WHERE srvid= %(srvid)s
+        AND queryid = %(queryid)s LIMIT 1
+    """, params={"srvid": srvid, "queryid": queryid}))[0]
+    normalized_query = rs['query']
     values = qualstat_get_figures(ctrl, srvid, database, _from, _to,
                                   queries=[queryid])
 
@@ -425,7 +433,8 @@ def get_any_sample_query(ctrl, srvid, database, queryid, _from, _to):
     From a queryid, get a non normalized query.
 
     If pg_qualstats is available and recent enough, try to retrieve a randomly
-    chosen non normalized query, which is fast.
+    chosen non normalized query, which is fast, trying to avoid EXPLAIN
+    queries.
 
     If this fail, fallback get_unjumbled_query, with "most executed" const
     values.
@@ -433,12 +442,17 @@ def get_any_sample_query(ctrl, srvid, database, queryid, _from, _to):
     has_pgqs = ctrl.has_extension_version(srvid, "pg_qualstats", "0.0.7")
     example_query = None
     if has_pgqs:
-        rs = list(ctrl.execute(text("""
-            SELECT {pg_qualstats}.pg_qualstats_example_query(:queryid)
+        rows = ctrl.execute("""
+            WITH s(v) AS (
+                SELECT {pg_qualstats}.pg_qualstats_example_query(%(queryid)s)
+            )
+            SELECT v
+            FROM s
+            WHERE v NOT ILIKE '%%EXPLAIN%%'
             LIMIT 1
-        """), params={"queryid": queryid}, srvid=srvid, remote_access=True))
-        if len(rs) > 0:
-            example_query = rs[0][0]
+        """, params={"queryid": queryid}, srvid=srvid, remote_access=True)
+        if rows is not None and len(rows) > 0:
+            example_query = rows[0]['v']
         if example_query is not None:
             unprepared = unprepare(example_query)
             if example_query == unprepared:
@@ -447,10 +461,10 @@ def get_any_sample_query(ctrl, srvid, database, queryid, _from, _to):
                                _from, _to, 'most executed')
 
 
-def qualstat_get_figures(conn, srvid, database, tsfrom, tsto,
+def qualstat_get_figures(cls, srvid, database, tsfrom, tsto,
                          queries=None, quals=None):
-    condition = text("""datname = :database
-            AND coalesce_range && tstzrange(:from, :to)""")
+    condition = """datname = %(database)s
+            AND coalesce_range && tstzrange(%(from)s, %(to)s)"""
 
     if queries is not None:
         queries_str = ','.join(str(q) for q in queries)
@@ -485,12 +499,12 @@ def qualstat_get_figures(conn, srvid, database, tsfrom, tsto,
               "from": tsfrom,
               "to": tsto,
               "queryids": queries}
-    quals = conn.execute(text(sql), params=params)
+    quals = cls.execute(sql, params=params)
 
-    if quals.rowcount == 0:
+    if len(quals) == 0:
         return None
 
-    row = quals.first()
+    row = quals[0]
 
     return row
 
@@ -557,9 +571,9 @@ class HypoIndex(JSONizable):
     def hypo_ddl(self):
         ddl = self.ddl
         if ddl is not None:
-            # FIXME: properly quote literal
-            return text("SELECT indexname FROM hypopg_create_index('{sql}')"
-                        .format(sql=self.ddl))
+            return ("SELECT indexname FROM hypopg_create_index(%(sql)s)",
+                    {'sql': ddl})
+        return (None, None)
 
     def to_json(self):
         base = super(HypoIndex, self).to_json()
@@ -590,7 +604,7 @@ def possible_indexes(composed_qual, order=()):
     return indexes
 
 
-def get_hypoplans(conn, query, indexes=None):
+def get_hypoplans(cur, query, indexes=None):
     """
     With a connection to a database where hypothetical indexes
     have already been created, request two plans for each query:
@@ -609,15 +623,14 @@ def get_hypoplans(conn, query, indexes=None):
     indexes = indexes or []
     # Escape literal '%'
     query = query.replace("%", "%%")
-    with conn.begin() as trans:
-        trans.execute("SET hypopg.enabled = off")
-        baseplan = "\n".join(v[0]
-                             for v in trans.execute("EXPLAIN {}".format(query))
-                             )
-        trans.execute("SET hypopg.enabled = on")
-        hypoplan = "\n".join(v[0]
-                             for v in trans.execute("EXPLAIN {}".format(query))
-                             )
+    cur.execute("SET hypopg.enabled = off")
+    cur.execute("EXPLAIN {}".format(query))
+    baseplan = "\n".join(v[0] for v in cur.fetchall())
+
+    cur.execute("SET hypopg.enabled = on")
+    cur.execute("EXPLAIN {}".format(query))
+    hypoplan = "\n".join(v[0] for v in cur.fetchall())
+
     COST_RE = "(?<=\.\.)\d+\.\d+"
     m = re.search(COST_RE, baseplan)
     basecost = float(m.group(0))

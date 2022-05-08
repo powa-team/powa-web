@@ -10,7 +10,6 @@ with open('powa/__init__.py') as f:
 
 
 requires = [
-    'sqlalchemy>=0.7.2',
     'tornado>=2.0',
     'psycopg2'
 ]
