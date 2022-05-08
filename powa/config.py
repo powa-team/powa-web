@@ -90,7 +90,7 @@ class ServersErrors(ContentWidget):
             ORDER BY 1
         """
 
-        rows = self.execute(sql).fetchall()
+        rows = self.execute(sql)
 
         self.render("config/serverserror.html", errors=rows)
 
@@ -129,7 +129,7 @@ class AllCollectorsDetail(ContentWidget):
                 AND a.backend_type = n.backend_type
             ORDER BY 1"""
 
-        rows = self.execute(sql).fetchall()
+        rows = self.execute(sql)
 
         if (rows[0]["nb_found"] == 0):
             self.render("config/allcollectors.html", collector=None)
@@ -198,7 +198,6 @@ class PowaServersMetricGroup(MetricGroupDef):
      ORDER BY 2"""
 
     def process(self, val, **kwargs):
-        val = dict(val)
         val["url"] = self.reverse_url("RemoteConfigOverview", val["id"])
         return val
 
@@ -428,12 +427,12 @@ class PgExtensionsMetricGroup(MetricGroupDef):
                 pass
 
         # if we couldn't get any data, send what we have
-        if (res is None):
+        if res is None or len(res) == 0:
             data["messages"] = {'alert': ["Could not retrieve extensions"
                                           + " on remote server"]}
             return data
 
-        remote_exts = res.fetchall()
+        remote_exts = res
 
         alerts = []
         for ext in data["data"]:

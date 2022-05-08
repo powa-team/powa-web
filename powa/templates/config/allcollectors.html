@@ -7,13 +7,13 @@
   {% if (collector) %}
     {% for c in collector %}
     <ul class="large-block-grid-4">
-      {% if (c.start) %}
-      <li><b>{{c.powa_kind}}:</b> <i class="fi-check ok"></i></li>
-      <li><b>Connected as:</b> {{c.usename}}</li>
-      <li><b>Connected from:</b> {{c.client_addr}}</li>
-      <li><b>Connected since:</b> {{c.start}}</li>
+      {% if (c['start']) %}
+      <li><b>{{c['powa_kind']}}:</b> <i class="fi-check ok"></i></li>
+      <li><b>Connected as:</b> {{c['usename']}}</li>
+      <li><b>Connected from:</b> {{c['client_addr']}}</li>
+      <li><b>Connected since:</b> {{c['start']}}</li>
       {% else %}
-      <li><b>{{c.powa_kind}}:</b> <i class="fi-x ko"></i></li>
+      <li><b>{{c['powa_kind']}}:</b> <i class="fi-x ko"></i></li>
       {% end %}
     </ul>
     {% end %}

@@ -10,8 +10,8 @@ from powa.sql import (resolve_quals, get_any_sample_query,
                       get_hypoplans, HypoIndex)
 import json
 from powa.sql.views import qualstat_getstatdata
-from sqlalchemy.sql import (bindparam, select, text, func, column)
-from sqlalchemy.exc import DBAPIError
+from psycopg2 import Error
+from psycopg2.extras import RealDictCursor
 from tornado.web import HTTPError
 
 
@@ -22,6 +22,7 @@ class IndexSuggestionHandler(AuthHandler):
             # Check remote access first
             remote_conn = self.connect(srvid, database=database,
                                        remote_access=True)
+            remote_cur = remote_conn.cursor()
         except Exception as e:
             raise HTTPError(501, "Could not connect to remote server: %s" %
                                  str(e))
@@ -38,12 +39,15 @@ class IndexSuggestionHandler(AuthHandler):
             indexes.append(hypoind)
         queryids = payload['queryids']
         powa_conn = self.connect(database="powa")
-        queries = list(powa_conn.execute(text("""
+        cur = powa_conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("""
             SELECT DISTINCT query, ps.queryid
             FROM {powa}.powa_statements ps
-            WHERE srvid = :srvid
-            AND queryid IN :queryids
-        """), srvid=srvid, queryids=tuple(queryids)))
+            WHERE srvid = %(srvid)s
+            AND queryid IN %(queryids)s
+        """, ({'srvid': srvid, 'queryids': tuple(queryids)}))
+        queries = cur.fetchall()
+        cur.close()
         # Create all possible indexes for this qual
         hypo_version = self.has_extension_version(srvid, "hypopg", "0.0.3",
                                                   database=database)
@@ -55,31 +59,32 @@ class IndexSuggestionHandler(AuthHandler):
             # create them
             for ind in indexes:
                 try:
-                    indname = remote_conn.execute(
-                            select(["*"])
-                            .select_from(func.hypopg_create_index(ind.ddl))
-                    ).first()[1]
+                    remote_cur.execute("""SELECT *
+                            FROM hypopg_create_index(%(ddl)s)
+                            """, {'ddl': ind.ddl})
+                    indname = remote_cur.fetchone()[1]
                     indbyname[indname] = ind
-                except DBAPIError as e:
-                    inderrors[ind.ddl] = str(e.orig)
+                except Error as e:
+                    inderrors[ind.ddl] = str(e)
                     continue
-                except Exception:
-                    # TODO handle other errors?
+                except Exception as e:
+                    inderrors[ind.ddl] = str(e)
                     continue
             # Build the query and fetch the plans
-            for query in queries:
+            for row in queries:
                 querystr = get_any_sample_query(self, srvid, database,
-                                                query.queryid,
+                                                row['queryid'],
                                                 from_date,
                                                 to_date)
                 if querystr:
                     try:
-                        hypoplans[query.queryid] = get_hypoplans(
-                            remote_conn, querystr, indbyname.values())
+                        hypoplans[row['queryid']] = get_hypoplans(
+                            remote_cur, querystr, indbyname.values())
                     except Exception:
                         # TODO: stop ignoring the error
                         continue
             # To value of a link is the the reduction in cost
+        remote_cur.close()
         result = {}
         result["plans"] = hypoplans
         result["inderrors"] = inderrors
@@ -120,8 +125,8 @@ class WizardMetricGroup(MetricGroupDef):
         ) AS sub
         JOIN {{powa}}.powa_databases pd ON pd.oid = sub.dbid
             AND pd.srvid = sub.srvid
-        WHERE pd.datname = :database
-        AND pd.srvid = :server
+        WHERE pd.datname = %(database)s
+        AND pd.srvid = %(server)s
         AND sub.avg_filter > 1000
         AND sub.filter_ratio > 0.3
         GROUP BY sub.qualid, sub.execution_count, sub.occurences,
@@ -131,7 +136,7 @@ class WizardMetricGroup(MetricGroupDef):
             cols=', '.join(cols),
             pq=pq,
         )
-        return text(query)
+        return query
 
     def post_process(self, data, server, database, **kwargs):
         conn = self.connect(server, database=database, remote_access=True)
