@@ -443,16 +443,22 @@ def get_any_sample_query(ctrl, srvid, database, queryid, _from, _to):
     example_query = None
     if has_pgqs:
         rows = ctrl.execute("""
-            WITH s(v) AS (
-                SELECT {pg_qualstats}.pg_qualstats_example_query(%(queryid)s)
+            WITH s(max, v) AS (
+                SELECT
+                (SELECT setting::int
+                    FROM pg_catalog.pg_settings
+                    WHERE name = 'track_activity_query_size'
+                ), {pg_qualstats}.pg_qualstats_example_query(%(queryid)s)
             )
-            SELECT v
+            SELECT max, v, octet_length(v) AS len
             FROM s
             WHERE v NOT ILIKE '%%EXPLAIN%%'
             LIMIT 1
         """, params={"queryid": queryid}, srvid=srvid, remote_access=True)
         if rows is not None and len(rows) > 0:
-            example_query = rows[0]['v']
+            # Ignore the query if it looks like it was truncated
+            if rows[0]['len'] < (rows[0]['max'] - 1):
+                example_query = rows[0]['v']
         if example_query is not None:
             unprepared = unprepare(example_query)
             if example_query == unprepared:
@@ -572,7 +578,8 @@ class HypoIndex(JSONizable):
     def hypo_ddl(self):
         ddl = self.ddl
         if ddl is not None:
-            return ("SELECT indexname FROM hypopg_create_index(%(sql)s)",
+            return ("SELECT indexname"
+                    + " FROM {hypopg}.hypopg_create_index(%(sql)s)",
                     {'sql': ddl})
         return (None, None)
 
