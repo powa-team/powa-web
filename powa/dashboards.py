@@ -98,12 +98,12 @@ class MetricGroupHandler(AuthHandler):
         else:
             query = res[0]
             url_params.update(res[1])
+        data = {"data": []}
         if (query is not None):
             values = self.execute(query, params=url_params)
-            data = {"data": [self.process(val, **url_params)
-                             for val in values]}
-        else:
-            data = {}
+            if values is not None:
+                data = {"data": [self.process(val, **url_params)
+                                 for val in values]}
 
         data = self.post_process(data, **url_params)
         self.render_json(data)
