@@ -582,7 +582,7 @@ class QueryDetail(ContentWidget):
             "from": self.get_argument("from"),
             "to": self.get_argument("to")
         })
-        if len(value) < 1:
+        if value is None or len(value) < 1:
             self.render("xhr.html", content="No data")
             return
         self.render("database/query/detail.html", stats=value[0])
