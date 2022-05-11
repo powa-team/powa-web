@@ -549,12 +549,13 @@ class HypoIndex(JSONizable):
             attrs = []
             for qual in self.qual:
                 if qual.attname not in attrs:
-                    attrs.append(quote_ident(qual.attname))
+                    attrs.append(qual.attname)
+            # Qual resolution is responsible for quoting all identifiers
             super(HypoIndex, self).__setattr__(
                 '_ddl',
                 """CREATE INDEX ON {nsp}.{rel}({attrs})""".format(
-                    nsp=quote_ident(self.nspname),
-                    rel=quote_ident(self.relname),
+                    nsp=self.nspname,
+                    rel=self.relname,
                     attrs=",".join(attrs)))
 
     def __setattr(self, name, value):
