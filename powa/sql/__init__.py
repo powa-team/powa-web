@@ -624,18 +624,36 @@ def get_hypoplans(cur, query, indexes=None):
     # Escape literal '%'
     query = query.replace("%", "%%")
     cur.execute("SET hypopg.enabled = off")
-    cur.execute("EXPLAIN {}".format(query))
-    baseplan = "\n".join(v[0] for v in cur.fetchall())
+    try:
+        cur.execute("SAVEPOINT hypo")
+        cur.execute("EXPLAIN {}".format(query))
+        baseplan = "\n".join(v[0] for v in cur.fetchall())
+        cur.execute("RELEASE hypo")
+    except Exception as e:
+        cur.execute("ROLLBACK TO hypo")
+        raise e
 
     cur.execute("SET hypopg.enabled = on")
-    cur.execute("EXPLAIN {}".format(query))
-    hypoplan = "\n".join(v[0] for v in cur.fetchall())
+    try:
+        cur.execute("SAVEPOINT hypo")
+        cur.execute("EXPLAIN {}".format(query))
+        hypoplan = "\n".join(v[0] for v in cur.fetchall())
+        cur.execute("RELEASE hypo")
+    except Exception as e:
+        cur.execute("ROLLBACK TO hypo")
+        raise e
 
     COST_RE = "(?<=\.\.)\d+\.\d+"
     m = re.search(COST_RE, baseplan)
-    basecost = float(m.group(0))
+    if m:
+        basecost = float(m.group(0))
+    else:
+        basecost = None
     m = re.search(COST_RE, hypoplan)
-    hypocost = float(m.group(0))
+    if m:
+        hypocost = float(m.group(0))
+    else:
+        hypocost = None
     used_indexes = []
     for ind in indexes:
         if ind.name is not None and ind.name in hypoplan:
