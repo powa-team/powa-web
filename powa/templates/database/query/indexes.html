@@ -62,12 +62,12 @@
       <div class="columns large-12">
       {% end %}
         <pre>EXPLAIN plan <b>without</b> suggested indexes:</pre>
-        <pre><code data-equalizer-watch="">{{ hypoplan.baseplan }}</code></pre>
+        <pre class="sql"><code data-equalizer-watch="">{{ hypoplan.baseplan }}</code></pre>
       </div>
       {% if hypoplan.indexes %}
       <div class="columns large-6">
         <pre>EXPLAIN plan <b>with</b> suggested index</pre>
-        <pre><code data-equalizer-watch="">{{ hypoplan.hypoplan }}</code></pre>
+        <pre class="sql"><code data-equalizer-watch="">{{ hypoplan.hypoplan }}</code></pre>
       </div>
       <div class="columns large-12">
         <pre>Query cost gain factor with hypothetical index: <b>{{
