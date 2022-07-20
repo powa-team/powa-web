@@ -1,23 +1,25 @@
 {% for cat, messages in flashed_messages().items() %}
-    <div data-alert class="alert-box {{cat}}">
-        <ul>
-            {% for message in messages %}
-            <li>{{message}}</li>
-            {% end %}
-        </ul>
-        <a href="#" class="close">&times;</a>
-    </div>
+<!--
+current message category does not match v-alert type
+it must be in success, info, warning, error
+-->
+<v-alert type="{{cat}}" outlined transition="fade-transition" role="alert">
+  <ul>
+    {% for message in messages %}
+    <li>{{message}}</li>
+    {% end %}
+  </ul>
+</v-alert>
 {% end %}
 
 {% if current_user %}
-  {% for cat, messages in sanitycheck_messages().items() %}
-    <div data-alert class="alert-box {{cat}}">
-        <ul>
-            {% for message in messages %}
-            <li>{{message}}</li>
-            {% end %}
-        </ul>
-        <a href="#" class="close">&times;</a>
-    </div>
-  {% end %}
+{% for cat, messages in sanitycheck_messages().items() %}
+<v-alert type="{{cat}}" outlined transition="fade-transition" role="alert">
+  <ul>
+    {% for message in messages %}
+    <li>{{message}}</li>
+    {% end %}
+  </ul>
+</v-alert>
+{% end %}
 {% end %}

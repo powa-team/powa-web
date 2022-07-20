@@ -1,19 +1,38 @@
 {
   "name": "powa",
+  "private": true,
   "version": "0.1.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint --ext .js,.vue --fix powa/static/",
+    "format": "prettier powa/static/js --check",
+    "prepare": "husky install"
+  },
   "devDependencies": {
-    "bower": "1.8.12",
-    "grunt": "~1.4.1",
-    "grunt-bower-requirejs": "2.0.0",
-    "grunt-contrib-clean": "2.0.0",
-    "grunt-contrib-copy": "1.0.0",
-    "grunt-contrib-jshint": "3.0.0",
-    "grunt-contrib-nodeunit": "3.0.0",
-    "grunt-contrib-requirejs": "1.0.0",
-    "grunt-sass": "3.1.0",
-    "grunt-contrib-uglify": "5.0.1"
+    "@mdi/js": "^7.0.96",
+    "@types/d3": "^7.4.0",
+    "@types/lodash": "^4.14.186",
+    "@types/luxon": "^3.0.2",
+    "@vitejs/plugin-vue2": "^2.0.0",
+    "eslint": "^8.25.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-vue": "^9.6.0",
+    "husky": "^8.0.1",
+    "prettier": "2.7.1",
+    "sass": "~1.32",
+    "unplugin-vue-components": "^0.22.9",
+    "vite": "^3.2.5"
   },
   "dependencies": {
-    "node-sass": "^6.0.1"
+    "@grafana/data": "^9.4.7",
+    "d3": "^7.6.1",
+    "highlight.js": "^11.6.0",
+    "lodash": "^4.17.21",
+    "luxon": "^3.3.0",
+    "v-snackbars": "^3.2.8",
+    "vue": "^2.7.12",
+    "vuetify": "^2.6.11"
   }
 }
