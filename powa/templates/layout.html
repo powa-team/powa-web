@@ -4,158 +4,195 @@
     <title>{{ title }}</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" media="all" type="text/css" href="{{static_url('css/powa-all.min.css')}}" />
-    <link rel="stylesheet" media="all" type="text/css" href="{{static_url('css/translucent.css')}}" />
     <link rel="icon" type="image/x-icon" href="{{ static_url('img/favicon/favicon.ico') }}">
     <link rel="shortcut icon" href="{{static_url('img/favicon/favicon.ico') }}" type="image/x-icon" />
     <meta name="msapplication-TileColor" content="#2b5797">
     <meta name="msapplication-TileImage" content="{{ static_url('img/favicon/mstile-144x144.png') }}">
     {% block header %} {% end %}
+    <style>
+      #mask {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100vw;
+        height: 100vh;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background: #EFEFEF;
+        font-family: "Roboto", sans-serif;
+        text-align: center;
+      }
+      #mask > * {
+        display: block;
+      }
+
+      [v-cloak] > * { display:none }
+    </style>
   </head>
   <body>
-    <nav class="top-bar" data-topbar role="navigation">
-      <ul class="title-area">
-        <li class="name">
-          <h1><a href="{{ reverse_url('Overview')}}"><img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA</a></h1>
-        </li>
-      </ul>
-
-      {% if current_user %}
-      <section class="top-bar-section">
-        <ul class="left">
-          <li class="title powa-text">
+    <div id="mask" v-cloak>
+      <div>
+        <div style="display: flex; align-items: center; justify-content: center; color: #859145;">
+          <img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;<b>PoWA</b>
+        </div>
+        <br>
+        <noscript>
+          Javascript is required to display this page.
+        </noscript>
+        <script type="text/javascript">
+          document.write("Loading…<br>");
+        </script>
+        <span id="waiter"></span>
+      </div>
+    </div>
+    <div id="app" v-cloak>
+      <v-app>
+        <v-app-bar
+          app
+          elevation="2"
+          height="40px;"
+        >
+          <v-btn href="{{ reverse_url('Overview')}}" class="mr-2" text color="primary" elevation="0">
+            <img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;<b>PoWA</b>
+          </v-btn>
+          {% if current_user %}
+          <v-toolbar-title
+            text
+            class="mr-2 text-body-1"
+          >
             Server <b>{{ handler.current_server }}</b>
             ({{ handler.current_connection }})
-          </li>
-          <li>
-            <a href="{{ reverse_url('RepositoryConfigOverview')}}" title="Configuration">
-              <i class="fi-widget"></i>
-              Configuration
-            </a>
-          </li>
+          </v-toolbar-title>
+          <v-btn text color="primary"
+            href="{{ reverse_url('RepositoryConfigOverview')}}"
+            title="Configuration"
+          >
+            <v-icon left>
+              {{! icons.mdiCog  }}
+            </v-icon>
+            Configuration
+          </v-btn>
           {% if handler.notify_allowed %}
-            <li>
-              <a id="reload_collector" href="#">
-                <i class="fi-loop"></i> Reload collector
-              </a>
-            </li>
+            <v-btn text color="primary" id="reload_collector" @click="reloadCollector">
+              <v-icon left>
+                {{! icons.mdiReload  }}
+              </v-icon>
+              Reload collector
+            </v-btn>
             {% if handler.server is not None %}
-            <li>
-              <a id="force_snapshot"href="#"
-                data-srvid="{{ handler.server }}"
-                >
-                <i class="fi-loop"></i> Force a snapshot
-              </a>
-            </li>
+            <v-btn text color="primary" @click="forceSnapshot({{ handler.server }})">
+              <v-icon left>
+                {{! icons.mdiReload  }}
+              </v-icon>
+              Force a snapshot 
+            </v-btn>
             {% end %}
             {% if handler.server is not None %}
-            <li>
-              <a id="refresh_db_cat" href="#"
-                data-srvid="{{ handler.server }}"
-                {% if handler.database is not None %}
+            <v-btn text color="primary" @click="refreshDbCat('{{ handler.server }}', $event)"
+              {% if handler.database is not None %}
                 data-dbname="{{handler.database}}"
-                {% end %}
-              >
-                <i class="fi-loop"></i> Refresh catalogs
-                {% if handler.database is not None %}
-                on db {{ handler.database }}
-                {% else %}
-                on all db
-                {% end %}
-              </a>
-            </li>
-            {% end %}
-          {% end %}
-        </ul>
-      </section>
-
-      <section class="top-bar-section">
-        <ul class="right">
-          <li>
-            <a href="{{ reverse_url('logout')}}">
-              <i class="fi-power"></i>
-              Logout
-            </a>
-          </li>
-        </ul>
-      </section>
-      {% end %}
-    </nav>
-    {% if current_user %}
-    <div class="row">
-      <div class="large-7 columns">
-      {% if hasattr(handler, 'breadcrumb') %}
-        <ul class="breadcrumbs">
-          <li>
-            <strong>
-              <a href="{{ reverse_url('Overview') }}"><i class="fi-home"></i></a>
-            </strong>
-          </li>
-          {% set last = len(handler.breadcrumb) - 1 %}
-          {% for i, crumb_item in enumerate(reversed(handler.breadcrumb)) %}
-          <li class="{{'current' if last == i else ''}}">
-            {% if i != last %}
-            <a data-url-has-params href="{{ reverse_url_with_params(crumb_item.url_name, url_args=crumb_item.url_params.values())}}">{{crumb_item.title}}</a>
-            {% else %}
-            {{ crumb_item.title}}
-            {% end %}
-          </li>
-          {% if crumb_item.children and i == last %}
-          <li class="current">
-            &nbsp;
-            <button href="#" data-dropdown="drop-{{crumb_item.url_name}}" aria-controls="drop-{{crumb_item.url_name}}" aria-expanded="false" class="dropdown button button-link">Choose one ...</button>
-            <ul id="drop-{{crumb_item.url_name}}" data-dropdown-content class="f-dropdown" aria-hidden="true">
-              {% for child in crumb_item.children %}
-              <li>
-                <a data-url-has-params href="{{ reverse_url_with_params(child.url_name, url_args=child.url_params.values())}}">{{child.title}}</a>
-              </li>
               {% end %}
-            </ul>
-          </li>
+            >
+              <v-icon left>
+                {{! icons.mdiReload  }}
+              </v-icon>
+              Refresh catalogs
+              {% if handler.database is not None %}
+              on db {{ handler.database }}
+              {% else %}
+              on all db
+              {% end %}
+            </v-btn>
+            {% end %}
           {% end %}
-          {% end %}
-        </ul>
-      {% end %}
-      </div>
-      <div class="large-5 columns">
-        <div class="right" type="text" id="daterangepicker">
-          <strong>
-            <i class="fi-calendar"></i>&nbsp;
-          </strong>
-          <input data-role="start_date"></input>
-          <input data-role="end_date"></input>
-        </div>
-      </div>
-    </div>
-    {% end %}
-    <div id="messages">
-      {% module Messages() %}
-    </div>
-    {% block content %} {% end %}
-    <footer>
-      <div class="large-12 columns" >
-        <div class="row hide-for-small">
-          <div class="large-6 columns">
-            <ul class="inline-list ">
-              <li>Version {{version()}}</li>
-              <li>&copy; 2014-2017 Dalibo</li>
-              <li>&copy; 2018-{{year()}} The PoWA-team</li>
-              <li><a href="https://powa.readthedocs.io">https://powa.readthedocs.io</a></li>
-            </ul>
-          </div>
-          <div class="large-6 columns">
-            <ul class="inline-list right">
-              <li><a href="https://github.com/powa-team/powa-web/issues">Report a bug</a></li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </footer>
 
-      {% if handler.application.settings['debug'] %}
-        <script data-main="{{ static_url('js/config.js')}}" src="{{static_url('js/require.js')}}"></script>
-      {% else %}
-        <script data-main="{{ static_url('js/powa.min-all.js')}}" src="{{static_url('js/require.js')}}"></script>
-      {% end %}
+          <v-spacer></v-spacer>
+
+          <v-btn text color="primary"
+            href="{{ reverse_url('logout') }}"
+            >
+            <v-icon left>
+              {{! icons.mdiPower  }}
+            </v-icon>
+            Logout
+          </v-btn>
+          {% end %}
+          {% if current_user %}
+          <template v-slot:extension>
+            <bread-crumbs :bread-crumb-items="breadCrumbItems"></bread-crumbs>
+            <v-spacer></v-spacer>
+            <date-range-picker ml-auto></date-range-picker>
+          </template>
+          {% end %}
+        </v-app-bar>
+        <v-main class="grey lighten-3">
+          <v-container fluid>
+            <v-row>
+              <v-col>
+                {% block content %} {% end %}
+              </v-col>
+            </v-row>
+          </v-container>
+        </v-main>
+        <v-footer>
+          <v-container fluid>
+            <v-row>
+              <v-flex>
+                <ul style="margin-bottom: 0; padding-left: 0;">
+                  <li style="display: inline-block">Version {{version()}}</li>
+                  <li style="display: inline-block" class="ml-5">&copy; 2014-2017 Dalibo</li>
+                  <li style="display: inline-block" class="ml-5">&copy; 2018-{{year()}} The PoWA-team</li>
+                  <li style="display: inline-block" class="ml-5"><a href="https://powa.readthedocs.io">https://powa.readthedocs.io</a></li>
+                </ul>
+              </v-flex>
+              <v-flex ml-auto class="text-right">
+                <a href="https://github.com/powa-team/powa-web/issues">Report a bug</a>
+              </v-flex>
+            </v-row>
+          </v-container>
+        </v-footer>
+        <v-snackbars :objects.sync="store.alertMessages">
+          <template v-slot:default="{ message }">
+            <span v-html="message"></span>
+          </template>
+          <template v-slot:action="{ close, index, message, id }">
+            <v-icon text @click="close()">{{! icons.mdiClose }}</v-icon>
+          </template>
+        </v-snackbars>
+      </v-app>
+    </div>
+    <script type="text/messages">
+    {% raw to_json(dict(flashed_messages().items())) %}
+    </script>
+    {% if current_user %}
+    <script type="text/messages">
+    {% raw to_json(dict(sanitycheck_messages().items())) %}
+    </script>
+    {% end %}
+    {% if current_user %}
+<script type="text/breadcrumb">
+  {% set last = len(handler.breadcrumb) - 1 %}
+  {%
+    raw to_json([{
+      "text": item.title,
+      "href": reverse_url_with_params(item.url_name, url_args=item.url_params.values()),
+      "disabled": i == last,
+    } for i, item in enumerate(reversed(handler.breadcrumb))] + [{
+      "text": item.children_title,
+      "children": [{
+        "url": reverse_url_with_params(child.url_name, url_args=child.url_params.values()),
+        "title": child.title
+      } for child in item.children] if item.children and i == last else None
+    } for i, item in enumerate(reversed(handler.breadcrumb)) if i == last and item.children])
+  %}
+</script>
+    {% end %}
+    {% if handler.application.settings['debug'] %}
+      <script type="text/javascript" src="{{ static_url('js/waiter.js') }}"></script>
+      <script type="module" src="http://localhost:5173/powa/static/js/main.js"></script>
+    {% else %}
+      {% raw inject_assets("powa/static/js/main.js") %}
+    {% end %}
   </body>
 </html>
