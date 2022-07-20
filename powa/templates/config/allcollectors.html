@@ -1,41 +1,42 @@
 {% extends "../xhr.html" %}
 {% block content %}
 
-<div class="row">
-  <div class="columns large-12">
-    <h4>Collector processes</h4>
-  {% if (collector is None) %}
-  <div class="columns large-12">
-    <p class="alert-box warning">Not enough permission to check for collectors!</p>
-    <ul class="large-block-grid-2">
-      <li><b>Background worker status:</b> <i class="fi-prohibited"></i></li>
-    </ul>
-    <ul class="large-block-grid-2">
-      <li><b>Remote Collector status:</b> <i class="fi-prohibited"></i></li>
-    </ul>
-  {% elif (len(collector) == 0) %}
-  <div class="columns large-12">
-    <p class="alert-box alert">No PoWA collector daemon is running!</p>
-    <ul class="large-block-grid-2">
-      <li><b>Background worker status:</b> <i class="fi-x ko"></i></li>
-    </ul>
-    <ul class="large-block-grid-2">
-      <li><b>Remote Collector status:</b> <i class="fi-x ko"></i></li>
-    </ul>
-  {% else %}
-    {% for c in collector %}
-    <ul class="large-block-grid-4">
-      {% if (c['start']) %}
-      <li><b>{{c['powa_kind']}}:</b> <i class="fi-check ok"></i></li>
-      <li><b>Connected as:</b> {{c['usename']}}</li>
-      <li><b>Connected from:</b> {{c['client_addr']}}</li>
-      <li><b>Connected since:</b> {{c['start']}}</li>
-      {% else %}
-      <li><b>{{c['powa_kind']}}:</b> <i class="fi-x ko"></i></li>
+<v-row>
+  <v-col>
+    {% if (collector is None) %}
+    <v-alert type="error" role="alert">
+      Not enough permission to check for collectors!
+    </v-alert>
+    <v-row>
+      <v-col cols="12"><b>Background worker status:</b> <span class="text--disabled">∅</span></v-col>
+    </v-row>
+    <v-row>
+      <v-col cols="12"><b>Remote Collector status:</b> <span class="text--disabled">∅</span></v-col>
+    </v-row>
+    {% elif (len(collector) == 0) %}
+    <v-alert type="error" role="alert">
+      No PoWA collector daemon is running!
+    </v-alert>
+    <v-row>
+      <v-col cols="12"><b>Background worker status:</b> <span class="red--text">✗</span></v-col>
+    </v-row>
+    <v-row>
+      <v-col cols="12"><b>Remote Collector status:</b> <span class="red--text">✗</span></v-col>
+    </v-row>
+    {% else %}
+      {% for c in collector %}
+      <v-row>
+        {% if (c['start']) %}
+        <v-col cols="3"><b>{{c['powa_kind']}}:</b> <span class="green--text">✓</span></v-col>
+        <v-col cols="3"><b>Connected as:</b> {{c['usename']}}</v-col>
+        <v-col cols="3"><b>Connected from:</b> {{c['client_addr']}}</v-col>
+        <v-col cols="3"><b>Connected since:</b> {{c['start']}}</v-col>
+        {% else %}
+        <v-col cols="12"><b>{{c['powa_kind']}}:</b> <span class="red--text">✗</span></v-col>
+        {% end %}
+      </v-row>
       {% end %}
-    </ul>
     {% end %}
-  {% end %}
-  </div>
-</div>
+  </v-col>
+</v-row>
 {% end %}

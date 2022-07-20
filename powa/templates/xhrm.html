@@ -1,4 +1,6 @@
 <div>
   {% module Messages() %}
+  {% block content %}
+    {{ content }}
+  {% end %}
 </div>
-{% block content %} {{ content }}{% end %}
