@@ -2,13 +2,11 @@
 Index page presenting the list of available servers.
 """
 
-from powa.ui_modules import MenuEntry
 from powa.dashboards import (
     Dashboard, Grid,
     MetricGroupDef, MetricDef,
     DashboardPage)
 
-from powa.server import ServerOverview
 try:
     from collections import OrderedDict
 except:
@@ -80,6 +78,7 @@ class Overview(DashboardPage):
 
     @classmethod
     def get_childmenu(cls, handler, params):
+        from powa.server import ServerOverview
         children = []
         for s in list(handler.servers):
             new_params = params.copy()
