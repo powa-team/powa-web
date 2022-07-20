@@ -1,9 +1,9 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<div class="container">
+<div class="container-fluid">
   <div class="center row">
-    <div class="columns large-4 large-offset-4 medium-6 medium-offset-3">
+    <div class="columns col-lg-4 col-lg-offset-4 col-md-6 col-md-offset-3">
       <form method="POST" action="">
         {% apply field(name="username", label=_("Username")) %}{% end %}
         {% apply field(name="password", label=_("Password"), type="password") %}{% end %}
@@ -13,8 +13,9 @@
           <option value="{{opt}}"></option>
           {% end %}
         </datalist>
-        <div class="columns large-12 text-center">
+        <div class="col-lg-12 text-center">
           <input type="submit" name="login" class="button" id="Login" value="Login"/>
+          <input type="submit" name="login" class="btn btn-primary" id="Login" value="Login"/>
         </div>
       </form>
     </div>

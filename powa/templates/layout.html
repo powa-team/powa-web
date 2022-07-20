@@ -4,130 +4,125 @@
     <title>{{ title }}</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" media="all" type="text/css" href="{{static_url('css/powa-all.min.css')}}" />
-    <link rel="stylesheet" media="all" type="text/css" href="{{static_url('css/translucent.css')}}" />
     <link rel="icon" type="image/x-icon" href="{{ static_url('img/favicon/favicon.ico') }}">
     <link rel="shortcut icon" href="{{static_url('img/favicon/favicon.ico') }}" type="image/x-icon" />
     <meta name="msapplication-TileColor" content="#2b5797">
     <meta name="msapplication-TileImage" content="{{ static_url('img/favicon/mstile-144x144.png') }}">
+    <link href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
     {% block header %} {% end %}
   </head>
   <body>
-    <nav class="top-bar" data-topbar role="navigation">
-      <ul class="title-area">
-        <li class="name">
-          <h1><a href="{{ reverse_url('Overview')}}"><img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA</a></h1>
+    <nav class="navbar" role="navigation">
+      <div class="navbar-header">
+        <div class="navbar-brand">
+          <a href="{{ reverse_url('Overview')}}"><img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA</a>
+        </div>
+      </div>
+      {% if current_user %}
+      <div class="mr-auto">
+        <span class="navbar-text">
+          Server <b>{{ handler.current_server }}</b>
+          ({{ handler.current_connection }})
+        </span>
+        <span class="navbar-text">
+          <a class="nav-link" href="{{ reverse_url('RepositoryConfigOverview')}}" title="Configuration">
+            <i class="fa fa-cog"></i>
+            Configuration
+          </a>
+        </span>
+        <span class="navbar-text">
+          <a class="nav-link" href="#">
+            <i class="fa fa-refresh"></i>
+            Reload collector 
+          </a>
+        </span>
+      </div>
+      <ul class="navbar-nav">
+        <li>
+          <a href="{{ reverse_url('logout')}}">
+            <i class="fa fa-off"></i>
+            Logout
+          </a>
         </li>
       </ul>
-
-      {% if current_user %}
-      <section class="top-bar-section">
-        <ul class="left">
-          <li class="title powa-text">
-            Server <b>{{ handler.current_server }}</b>
-            ({{ handler.current_connection }})
-          </li>
-          <li>
-            <a href="{{ reverse_url('RepositoryConfigOverview')}}" title="Configuration">
-              <i class="fi-widget"></i>
-              Configuration
-            </a>
-          </li>
-          <li>
-            <a id="reload_collector"href="#">
-              <i class="fi-loop"></i> Reload collector
-            </a>
-          </li>
-        </ul>
-      </section>
-
-      <section class="top-bar-section">
-        <ul class="right">
-          <li>
-            <a href="{{ reverse_url('logout')}}">
-              <i class="fi-power"></i>
-              Logout
-            </a>
-          </li>
-        </ul>
-      </section>
       {% end %}
     </nav>
     {% if current_user %}
-    <div class="row">
-      <div class="large-7 columns">
-      {% if hasattr(handler, 'breadcrumb') %}
-        <ul class="breadcrumbs">
-          <li>
-            <strong>
-              <a href="{{ reverse_url('Overview') }}"><i class="fi-home"></i></a>
-            </strong>
-          </li>
-          {% set last = len(handler.breadcrumb) - 1 %}
-          {% for i, crumb_item in enumerate(reversed(handler.breadcrumb)) %}
-          <li class="{{'current' if last == i else ''}}">
-            {% if i != last %}
-            <a data-url-has-params href="{{ reverse_url_with_params(crumb_item.url_name, url_args=crumb_item.url_params.values())}}">{{crumb_item.title}}</a>
-            {% else %}
-            {{ crumb_item.title}}
-            {% end %}
-          </li>
-          {% if crumb_item.children and i == last %}
-          <li class="current">
-            &nbsp;
-            <button href="#" data-dropdown="drop-{{crumb_item.url_name}}" aria-controls="drop-{{crumb_item.url_name}}" aria-expanded="false" class="dropdown button button-link">Choose one ...</button>
-            <ul id="drop-{{crumb_item.url_name}}" data-dropdown-content class="f-dropdown" aria-hidden="true">
-              {% for child in crumb_item.children %}
-              <li>
-                <a data-url-has-params href="{{ reverse_url_with_params(child.url_name, url_args=child.url_params.values())}}">{{child.title}}</a>
-              </li>
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-lg-7">
+        {% if hasattr(handler, 'breadcrumb') %}
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+              <strong>
+                <a href="{{ reverse_url('Overview') }}"><i class="fa fa-home"></i></a>
+              </strong>
+            </li>
+            {% set last = len(handler.breadcrumb) - 1 %}
+            {% for i, crumb_item in enumerate(reversed(handler.breadcrumb)) %}
+            <li class="breadcrumb-item {{'active' if last == i else ''}}">
+              {% if i != last %}
+              <a data-url-has-params href="{{ reverse_url_with_params(crumb_item.url_name, url_args=crumb_item.url_params.values())}}">{{crumb_item.title}}</a>
+              {% else %}
+              {{ crumb_item.title}}
               {% end %}
-            </ul>
-          </li>
-          {% end %}
-          {% end %}
-        </ul>
-      {% end %}
-      </div>
-      <div class="large-5 columns">
-        <div class="right" type="text" id="daterangepicker">
-          <strong>
-            <i class="fi-calendar"></i>&nbsp;
-          </strong>
-          <input data-role="start_date"></input>
-          <input data-role="end_date"></input>
+            </li>
+            {% if crumb_item.children and i == last %}
+            <li class="breadcrumb-item active">
+              <div class="btn-group">
+                <button data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="dropdown-toggle btn btn-link my-0 py-0">Choose one ... <span class="caret"></span></button>
+                <div class="dropdown-menu">
+                  {% for child in crumb_item.children %}
+                  <a class="dropdown-item" href="{{ reverse_url_with_params(child.url_name, url_args=child.url_params.values())}}">{{child.title}}</a>
+                  {% end %}
+                </div>
+              </div>
+            </li>
+            {% end %}
+            {% end %}
+          </ol>
+        {% end %}
+        </div>
+        <div class="col-lg-5 ml-auto">
+          <div class="text-right" id="daterangepicker">
+            <strong>
+              <i class="fa fa-calendar"></i>&nbsp;
+            </strong>
+          </div>
         </div>
       </div>
     </div>
     {% end %}
-    <div id="messages">
+    <div class="container-fluid">
       {% module Messages() %}
     </div>
     {% block content %} {% end %}
-    <footer>
-      <div class="large-12 columns" >
-        <div class="row hide-for-small">
-          <div class="large-6 columns">
-            <ul class="inline-list ">
-              <li>Version {{version()}}</li>
-              <li>&copy; 2014-2017 Dalibo</li>
-              <li>&copy; 2018-{{year()}} The PoWA-team</li>
-              <li><a href="https://powa.readthedocs.io">https://powa.readthedocs.io</a></li>
-            </ul>
-          </div>
-          <div class="large-6 columns">
-            <ul class="inline-list right">
-              <li><a href="https://github.com/powa-team/powa-web/issues">Report a bug</a></li>
-            </ul>
+    <footer class="container-fluid">
+      <div class="row">
+        <div class="col-lg-12" >
+          <div class="row hide-for-small">
+            <div class="col-lg-6">
+              <ul class="list-inline">
+                <li class="list-inline-item">Version {{version()}}</li>
+                <li class="list-inline-item">&copy; 2014-2017 Dalibo</li>
+                <li class="list-inline-item">&copy; 2018-{{year()}} The PoWA-team</li>
+                <li class="list-inline-item"><a href="https://powa.readthedocs.io">https://powa.readthedocs.io</a></li>
+              </ul>
+            </div>
+            <div class="col-lg-6">
+              <ul class="list-inline text-right">
+                <li class="list-inline-item"><a href="https://github.com/powa-team/powa-web/issues">Report a bug</a></li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
     </footer>
-
-      {% if handler.application.settings['debug'] %}
-        <script data-main="{{ static_url('js/config.js')}}" src="{{static_url('js/require.js')}}"></script>
-      {% else %}
-        <script data-main="{{ static_url('js/powa.min-all.js')}}" src="{{static_url('js/require.js')}}"></script>
-      {% end %}
+    {% if handler.application.settings['debug'] %}
+      <!-- FIXME -->
+      <script type="module" src="http://localhost:5173/powa/static/js/powa/main_entry.js"></script> 
+    {% else %}
+      {% raw inject_assets("powa/static/js/powa/main_entry.js") %}
+    {% end %}
   </body>
 </html>
