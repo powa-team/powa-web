@@ -1,0 +1,20 @@
+// Globals
+$font-size-root: 14px;
+
+$spacer: 2px !default;
+
+$headings: (
+  // Apply to table headers, pagination
+  'caption': (
+    'size': 0.9rem,
+  ),
+  // Apply to data tables rows
+  'subtitle-2': (
+    'size': 0.9rem,
+  )
+);
+
+$snackbar-font-size: 1rem;
+$snackbar-content-font-size: 1rem;
+$breadcrumbs-item-font-size: 1rem;
+$label-font-size: 1rem;
