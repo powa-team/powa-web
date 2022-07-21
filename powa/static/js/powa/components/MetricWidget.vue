@@ -63,23 +63,16 @@ export default {
             if (row[xaxis] === undefined) {
               throw "Data is lacking for xaxis. Did you include " + xaxis + " column in your query ?";
             }
-            current_group.data.push($.extend({}, {x: row[xaxis], y: row[sourceConfig.metrics[metric].yaxis]}, row));
+            current_group.data.push($.extend({}, {x: new Date(row[xaxis] * 1000), y: row[sourceConfig.metrics[metric].yaxis]}, row));
           });
         });
 
         let newSeries = [];
-        const palette = new Rickshaw.Color.Palette(
-          {
-            scheme: this.config.color_scheme,
-            interpolatedStopCount: 1
-          }
-        );
         _.each(metrics, (metric) => {
           const series = seriesByMetric[metric];
           if (!$.isEmptyObject(series)) {
             $.each(series, function(key, serie){
               const newSerie = $.extend({}, sourceConfig.metrics[metric], serie);
-              newSerie.color = palette.color();
               newSeries.push(newSerie);
             });
           }
