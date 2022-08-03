@@ -2,6 +2,7 @@
 import Widget from './Widget.vue';
 import store from '../store';
 import * as _ from 'lodash';
+import $ from "jquery";
 import * as moment from 'moment';
 //import Rickshaw from 'rickshaw';
 

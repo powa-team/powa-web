@@ -44,6 +44,7 @@
 
 <script>
 import * as _ from 'lodash';
+import $ from "jquery";
 import Widget from './Widget.vue';
 
 export default {

@@ -1,19 +1,19 @@
 import _ from 'lodash';
-import Vue from 'vue';
-import Dashboard from './components/Dashboard.vue';
-import './components';
+import { createApp } from 'vue';
 import store from './store';
-import BootstrapVue from 'bootstrap-vue';
-
-Vue.use(BootstrapVue);
+import Dashboard from './components/Dashboard.vue';
+import Graph from './components/Graph.vue';
+import Grid from './components/Grid.vue';
+import Tabcontainer from './components/Tabcontainer.vue';
+import Wizard from './components/Wizard.vue';
+import Content from './components/Content.vue';
+import $ from "jquery";
 
 import 'bootstrap';
 
 import 'bootstrap/dist/css/bootstrap.css'
-import 'bootstrap-vue/dist/bootstrap-vue.css'
 
-var app = new Vue ({
-  el: '#dashboard',
+const app = createApp({
   components: {
     Dashboard
   },
@@ -23,6 +23,15 @@ var app = new Vue ({
     }
   }
 });
+
+
+app.component('dashboard', Dashboard);
+app.component('graph', Graph);
+app.component('grid', Grid);
+app.component('tabcontainer', Tabcontainer);
+app.component('wizard', Wizard);
+app.component('content-cmp', Content);
+const dashboard = app.mount("#dashboard");
 
 const colors = ["#c05020", "#30c020", "#6060c0"];
 // const ds = DataSourceCollection.get_instance();
@@ -47,7 +56,7 @@ $('script[type="text/datasources"]').each(function() {
 });
 
 $('script[type="text/dashboard"]').each(function(){
-  app.config = JSON.parse(this.text);
+  dashboard.$data.config = JSON.parse(this.text);
   //const widgetsEl = $('.widgets');
 
   //_.each(config.widgets, (w) => {

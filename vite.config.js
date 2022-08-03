@@ -1,19 +1,15 @@
 import { resolve } from 'path'
 import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue2'
-import inject from '@rollup/plugin-inject'
+import vue from '@vitejs/plugin-vue'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
-    inject({
-      $: "jquery"
-    })
   ],
   resolve: {
     alias: {
-      'vue': 'vue/dist/vue.esm.js'
+      'vue': 'vue/dist/vue.esm-bundler.js'
     }
   },
   build: {
