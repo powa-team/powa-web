@@ -4,59 +4,29 @@
       <h4>{{ config.title }}</h4>
       <div class="row">
         <div class="col-sm-4">
-          <b-input-group size="sm">
-            <b-form-input
-              id="filterInput"
-              v-model="filter"
-              type="search"
-              placeholder="Type to Search"
-            />
-            <b-input-group-append>
-              <b-button
-                :disabled="!filter"
-                @click="filter = ''"
-              >
-                Clear
-              </b-button>
-            </b-input-group-append>
-          </b-input-group>
         </div>
       </div>
-      <b-table
-        striped
-        hover
-        :items="items"
-        :fields="fields"
-        :current-page="currentPage"
-        :per-page="perPage"
-        :filter="filter"
-        class="table-sm table-borderless"
-        @filtered="onFiltered"
-        @row-clicked="onRowClicked"
-      >
-        <template
-          v-slot:cell(query)="data"
-        >
-          <pre v-html="data.value" />
-        </template>
-        <template
-          v-slot:cell(where_clause)="data"
-        >
-          <pre v-html="data.value" />
-        </template>
-      </b-table>
-      <div class="row">
-        <div class="col-sm-4">
-          <b-pagination
-            v-model="currentPage"
-            :total-rows="totalRows"
-            :per-page="perPage"
-            align="fill"
-            size="sm"
-            class="my-0"
-          />
-        </div>
-      </div>
+      <table class="table table-sm table-hover">
+        <thead>
+          <tr>
+            <th v-for="field in fields" :class="field.type">
+              {{ field.label }}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="entry in items" @click="onRowClicked(entry)">
+            <td v-for="field in fields" :class="field.type">
+              <template v-if="field.type == 'query' || field.type == 'where_clause'">
+                <pre v-html="field.formatter(entry[field.key])" />
+              </template>
+              <template v-else>
+                {{ field.formatter(entry[field.key]) }}
+              </template>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </template>
