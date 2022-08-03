@@ -21,8 +21,6 @@
     "jquery": "^3.6.0",
     "lodash": "^4.17.21",
     "moment": "^2.29.4",
-    "rickshaw": "^1.6.6",
-    "tippy.js": "^6.3.7",
-    "vue-class-component": "^7.2.6"
+    "tippy.js": "^6.3.7"
   }
 }
