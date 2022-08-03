@@ -42,32 +42,27 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed, onMounted, ref } from 'vue'
 import * as _ from 'lodash';
 import $ from "jquery";
-import Widget from './Widget.vue';
+import { widgetComponent } from "../utils2/widget-component.js"
 
-export default {
-  extends: Widget,
-  data: () => {
-    return {
-      activeTab: null
-    }
-  },
+const props = defineProps(["config"])
 
-  computed: {
-    tabs () {
-      // Provide a unique Id to tabs
-      return _.map(this.config.tabs,
-                   (tab) => Object.assign({uuid: _.uniqueId('tab-')}, tab));
-    }
-  },
+const activeTab = ref(null)
 
-  mounted() {
-    this.activeTab = this.tabs[0].uuid;
-    $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
-      this.activeTab = e.target.getAttribute('aria-controls');
-    }.bind(this));
+const tabs = computed(() => {
+  // Provide a unique Id to tabs
+  return _.map(props.config.tabs,
+               (tab) => Object.assign({uuid: _.uniqueId('tab-')}, tab));
   }
-}
+)
+
+onMounted(() => {
+  activeTab.value = tabs.value[0].uuid;
+  $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+    activeTab.value = e.target.getAttribute('aria-controls');
+  });
+})
 </script>

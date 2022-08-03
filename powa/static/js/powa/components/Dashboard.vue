@@ -21,9 +21,7 @@
   </div>
 </template>
 
-<script>
-import Widget from './Widget.vue';
-export default {
-  extends: Widget
-}
+<script setup>
+import { widgetComponent } from "../utils2/widget-component.js"
+defineProps(["config"])
 </script>
