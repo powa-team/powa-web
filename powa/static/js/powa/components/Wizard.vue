@@ -7,10 +7,6 @@
   </div>
 </template>
 
-<script>
-import Widget from './Widget.vue';
-
-export default {
-  extends: Widget
-}
+<script setup>
+defineProps(["config"])
 </script>
