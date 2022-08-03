@@ -2,59 +2,52 @@
   <div class="card mb-4">
     <div class="card-body">
       <h4>{{ config.title }}</h4>
-      <div ref="content" v-html="content" />
+      <div ref="contentEl" v-html="content" />
     </div>
   </div>
 </template>
 
-<script>
-import Widget from './Widget.vue';
+<script setup>
+import { onMounted, ref } from 'vue'
 import store from '../store';
 import moment from 'moment';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/default.css';
 import $ from "jquery";
 
-export default {
-  extends: Widget,
+const props = defineProps(["config"])
 
-  data: () => {
-    return {
-      content: ''
-    }
-  },
+const content = ref('')
+const contentEl = ref(null)
 
-  mounted() {
-    this.loadData();
-  },
+onMounted(() => {
+  loadData();
+})
 
-  methods: {
-    loadData() {
-      const sourceConfig = store.dataSources[this.config.name];
-      const toDate = moment();
-      const fromDate = toDate.clone().subtract(1, 'hour');
-      const params = {
-        from: fromDate.format("YYYY-MM-DD HH:mm:ssZZ"),
-        to: toDate.format("YYYY-MM-DD HH:mm:ssZZ")
-      };
-      $.ajax({
-        url: sourceConfig.data_url + '?' + $.param(params)
-      }).done((response) => {
-        this.content = response;
-        window.setTimeout(this.loaded, 1);
-      });
-    },
+function loadData() {
+  const sourceConfig = store.dataSources[props.config.name];
+  const toDate = moment();
+  const fromDate = toDate.clone().subtract(1, 'hour');
+  const params = {
+    from: fromDate.format("YYYY-MM-DD HH:mm:ssZZ"),
+    to: toDate.format("YYYY-MM-DD HH:mm:ssZZ")
+  };
+  $.ajax({
+    url: sourceConfig.data_url + '?' + $.param(params)
+  }).done((response) => {
+    content.value = response;
+    window.setTimeout(loaded, 1);
+  });
+}
 
-    loaded() {
-      const el = $(this.$refs.content);
-      el.find("pre.sql code").each(function(i, block){
-        hljs.highlightBlock(block);
-      });
-      el.find("span.duration").each(function(i, block){
-        const date = moment(parseInt($(block).html()));
-        $(block).html(date.preciseDiff(moment.unix(0)));
-      });
-    }
-  }
+function loaded() {
+  const el = $(contentEl.value);
+  el.find("pre.sql code").each(function(i, block){
+    hljs.highlightBlock(block);
+  });
+  el.find("span.duration").each(function(i, block){
+    const date = moment(parseInt($(block).html()));
+    $(block).html(date.preciseDiff(moment.unix(0)));
+  });
 }
 </script>
