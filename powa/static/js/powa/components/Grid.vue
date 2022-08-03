@@ -15,7 +15,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="entry in items" @click="onRowClicked(entry)">
+          <tr v-for="entry in items" @click="onRowClicked(entry)" :class="{clickable: !!entry.url}">
             <td v-for="field in fields" :class="field.type">
               <template v-if="field.type == 'query' || field.type == 'where_clause'">
                 <pre v-html="field.formatter(entry[field.key])" />
@@ -160,5 +160,8 @@ function onRowClicked(row) {
     &.size {
       text-align: right;
     }
+  }
+  .clickable {
+    cursor: pointer;
   }
 </style>
