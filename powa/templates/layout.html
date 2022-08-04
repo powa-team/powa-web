@@ -120,9 +120,9 @@
     </footer>
     {% if handler.application.settings['debug'] %}
       <!-- FIXME -->
-      <script type="module" src="http://localhost:5173/powa/static/js/powa/main.js"></script> 
+      <script type="module" src="http://localhost:5173/powa/static/js/main.js"></script> 
     {% else %}
-      {% raw inject_assets("powa/static/js/powa/main.js") %}
+      {% raw inject_assets("powa/static/js/main.js") %}
     {% end %}
   </body>
 </html>
