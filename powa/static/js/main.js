@@ -73,4 +73,17 @@ $('script[type="text/dashboard"]').each(function(){
   //picker.listenTo(dashboardview, "dashboard:updatePeriod", picker.updateUrls, picker);
 });
 
-addMessage("warning", "hey I'm here")
+$("#reload_collector").click(function() {
+  $.ajax({
+    url: '/reload_collector/',
+    type: 'GET',
+  }).done(function(response) {
+    if (response) {
+      addMessage("success", "Collector successfully reloaded!")
+    } else {
+      addMessage("danger", "Could not reload collector")
+    }
+  }).fail(function(response) {
+    addMessage("danger", "Error while trying to reload the collector.")
+  });
+});

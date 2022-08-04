@@ -31,9 +31,9 @@
           </a>
         </span>
         <span class="navbar-text">
-          <a class="nav-link" href="#">
+          <a class="nav-link" id="reload_collector" href="#">
             <i class="fa fa-refresh"></i>
-            Reload collector 
+            Reload collector
           </a>
         </span>
       </div>
@@ -120,7 +120,7 @@
     </footer>
     {% if handler.application.settings['debug'] %}
       <!-- FIXME -->
-      <script type="module" src="http://localhost:5173/powa/static/js/main.js"></script> 
+      <script type="module" src="http://localhost:5173/powa/static/js/main.js"></script>
     {% else %}
       {% raw inject_assets("powa/static/js/main.js") %}
     {% end %}
