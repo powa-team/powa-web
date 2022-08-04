@@ -21,10 +21,10 @@
 import { onMounted, ref } from 'vue'
 import * as _ from "lodash";
 import * as echarts from "echarts";
-import size from '../utils2/size';
+import size from '../utils/size';
 import store from '../store';
 import moment from 'moment';
-import '../utils2/precisediff';
+import '../utils/precisediff';
 import tippy from 'tippy.js';
 import 'tippy.js/dist/tippy.css';
 import $ from "jquery";

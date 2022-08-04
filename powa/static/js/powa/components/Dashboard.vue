@@ -22,6 +22,6 @@
 </template>
 
 <script setup>
-import { widgetComponent } from "../utils2/widget-component.js"
+import { widgetComponent } from "../utils/widget-component.js"
 defineProps(["config"])
 </script>

@@ -46,7 +46,7 @@
 import { computed, onMounted, ref } from 'vue'
 import * as _ from 'lodash';
 import $ from "jquery";
-import { widgetComponent } from "../utils2/widget-component.js"
+import { widgetComponent } from "../utils/widget-component.js"
 
 const props = defineProps(["config"])
 

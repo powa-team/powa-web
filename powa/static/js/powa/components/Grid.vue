@@ -38,7 +38,7 @@ import store from '../store';
 import * as _ from 'lodash';
 import $ from "jquery";
 import * as moment from 'moment';
-import size from '../utils2/size';
+import size from '../utils/size';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/default.css';
 import pgsql from 'highlight.js/lib/languages/pgsql';
