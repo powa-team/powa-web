@@ -8,6 +8,7 @@ import Tabcontainer from './components/Tabcontainer.vue';
 import Wizard from './components/Wizard.vue';
 import Content from './components/Content.vue';
 import $ from "jquery";
+import { addMessage } from './utils/message.js';
 
 import 'bootstrap';
 
@@ -71,3 +72,5 @@ $('script[type="text/dashboard"]').each(function(){
   //dashboardview.refreshSources(picker.start_date, picker.end_date);
   //picker.listenTo(dashboardview, "dashboard:updatePeriod", picker.updateUrls, picker);
 });
+
+addMessage("warning", "hey I'm here")
