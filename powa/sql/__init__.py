@@ -447,7 +447,7 @@ def qualstat_get_figures(conn, srvid, database, tsfrom, tsto,
             AND coalesce_range && tstzrange(:from, :to)""")
 
     if queries is not None:
-        queries_str = ','.join(queries)
+        queries_str = ','.join(str(q) for q in queries)
 
     sql = (select([
         text('most_filtering.quals'),

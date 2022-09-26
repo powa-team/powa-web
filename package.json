@@ -2,17 +2,18 @@
   "name": "powa",
   "version": "0.1.0",
   "devDependencies": {
-    "bower": "1.8.8",
-    "grunt": "~0.4.5",
+    "bower": "1.8.12",
+    "grunt": "~1.4.1",
     "grunt-bower-requirejs": "2.0.0",
-    "grunt-contrib-copy": "0.7.0",
-    "grunt-contrib-jshint": "0.10.0",
-    "grunt-contrib-nodeunit": "0.4.1",
-    "grunt-contrib-requirejs": "0.4.4",
-    "grunt-sass": "2.1.0",
-    "grunt-contrib-uglify": "0.5.0"
+    "grunt-contrib-clean": "2.0.0",
+    "grunt-contrib-copy": "1.0.0",
+    "grunt-contrib-jshint": "3.0.0",
+    "grunt-contrib-nodeunit": "3.0.0",
+    "grunt-contrib-requirejs": "1.0.0",
+    "grunt-sass": "3.1.0",
+    "grunt-contrib-uglify": "5.0.1"
   },
   "dependencies": {
-    "node-sass": "^4.13.0"
+    "node-sass": "^6.0.1"
   }
 }

@@ -2,6 +2,7 @@
 Set of helper functions available from the templates.
 """
 
+from datetime import datetime
 from powa import __VERSION__
 from powa.json import JSONEncoder
 from tornado.options import options
@@ -17,6 +18,14 @@ def version(_):
         the current powa version.
     """
     return __VERSION__
+
+
+def year(_):
+    """
+    Returns:
+        the current year.
+    """
+    return datetime.now().year
 
 
 def servers(_):

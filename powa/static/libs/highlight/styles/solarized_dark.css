@@ -3,88 +3,80 @@
 Orginal Style from ethanschoonover.com/solarized (c) Jeremy Hull <sourdrums@gmail.com>
 
 */
-
-pre code {
-  display: block; padding: 0.5em;
-  background: #002b36; color: #839496;
+pre code.hljs {
+    display: block;
+    overflow-x: auto;
+    padding: 0.5em;
 }
 
-pre .comment,
-pre .template_comment,
-pre .diff .header,
-pre .doctype,
-pre .pi,
-pre .lisp .string,
-pre .javadoc {
-  color: #586e75;
-  font-style: italic;
+.hljs {
+    background: #333333;
+    color: #839496;
 }
 
-pre .keyword,
-pre .winutils,
-pre .method,
-pre .addition,
-pre .css .tag,
-pre .request,
-pre .status,
-pre .nginx .title {
-  color: #859900;
+.hljs ::selection {
+    color: #586e75
 }
 
-pre .number,
-pre .command,
-pre .string,
-pre .tag .value,
-pre .phpdoc,
-pre .tex .formula,
-pre .regexp,
-pre .hexcolor {
-  color: #2aa198;
+.hljs-comment {
+    color: #586e75;
+    font-style: italic;
 }
 
-pre .title,
-pre .localvars,
-pre .chunk,
-pre .decorator,
-pre .builtin,
-pre .built_in,
-pre .identifier,
-pre .title .keymethods,
-pre .vhdl .literal,
-pre .id {
-  color: #268bd2;
+.hljs-tag {
+    color: #859900;
 }
 
-pre .attribute,
-pre .variable,
-pre .instancevar,
-pre .lisp .body,
-pre .smalltalk .number,
-pre .constant,
-pre .class .title,
-pre .parent,
-pre .haskell .type {
-  color: #b58900;
+.hljs-operator, .hljs-punctuation, .hljs-subst {
+    color: #93a1a1
 }
 
-pre .preprocessor,
-pre .preprocessor .keyword,
-pre .shebang,
-pre .symbol,
-pre .diff .change,
-pre .special,
-pre .keymethods,
-pre .attr_selector,
-pre .important,
-pre .subst,
-pre .cdata {
-  color: #cb4b16;
+.hljs-operator {
+    opacity: .7
 }
 
-pre .deletion {
-  color: #dc322f;
+.hljs-bullet, .hljs-deletion, .hljs-name, .hljs-selector-tag, .hljs-template-variable, .hljs-variable {
+    color: #dc322f
 }
 
-pre .tex .formula {
-  background: #073642;
+.hljs-attr, .hljs-link, .hljs-literal, .hljs-number, .hljs-symbol, .hljs-variable.constant_ {
+    color: #2aa198
+}
+
+.hljs-class .hljs-title, .hljs-title, .hljs-title.class_ {
+    color: #b58900
+}
+
+.hljs-strong {
+    font-weight: 700;
+    color: #b58900
+}
+
+.hljs-addition, .hljs-code, .hljs-string, .hljs-title.class_.inherited__ {
+    color: #2aa198
+}
+
+.hljs-built_in, .hljs-doctag, .hljs-keyword.hljs-atrule, .hljs-quote, .hljs-regexp {
+    color: #859900
+}
+
+.hljs-attribute, .hljs-function .hljs-title, .hljs-section, .hljs-title.function_, .ruby .hljs-property {
+    color: #268bd2
+}
+
+.diff .hljs-meta, .hljs-keyword, .hljs-template-tag, .hljs-type {
+    color: #859900
+}
+
+.hljs-emphasis {
+    color: #6c71c4;
+    font-style: italic
+}
+
+.hljs-meta, .hljs-meta .hljs-keyword, .hljs-meta .hljs-string {
+    color: #2aa198
+}
+
+.hljs-meta .hljs-keyword, .hljs-meta-keyword {
+    font-weight: 700
 }

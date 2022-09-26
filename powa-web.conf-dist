@@ -7,6 +7,8 @@ servers={
   }
 }
 cookie_secret="SUPERSECRET_THAT_YOU_SHOULD_CHANGE"
+# Retention of the authentication cookies in days.  Use 0 for a session cookie.
+# cookie_expires_days=30
 # Some extra options you can set
 #
 # port on which the UI should be available.
