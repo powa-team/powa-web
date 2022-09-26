@@ -1,2 +1,2 @@
 version=4
-https://github.com/powa-team/powa-web/releases .*/(.*).tar.gz
+https://github.com/powa-team/powa-web/tags .*/([0-9.]*).tar.gz
