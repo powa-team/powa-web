@@ -62,7 +62,7 @@ Copyright:
  Google Code style (c) Aahan Krish <geekpanth3r@gmail.com>
  Author: pumbur <pumbur@pumbur.net>
  FAR Style (c) MajestiC <majestic2k@gmail.com>
-License: BSD
+License: BSD-3-Clause
 
 Files: powa/static/bower_components/jquery.cookie/jquery.cookie.js
 Copyright: Copyright 2013 Klaus Hartl
@@ -97,9 +97,9 @@ Copyright: Copyright (c) 2011-2015 Felix Gnass
 License: MIT
 
 Files: powa/static/bower_components/requirejs/require.js
-Files: powa/static/js/require.js
+       powa/static/js/require.js
 Copyright: Copyright (c) 2010-2015, The Dojo Foundation All Rights Reserved.
-License: MIT or BSD
+License: BSD-3-Clause or MIT
 
 Files: powa/static/bower_components/backbone-pageable/*
 Copyright: Copyright (c) 2013 Jimmy Yuen Ho Wong and contributors
@@ -111,7 +111,7 @@ License: MIT
 
 Files: powa/static/bower_components/backbone-pageable/test/vendor/sinon.js
 Copyright: Copyright (c) 2010-2012, Christian Johansen, christian@cjohansen.no
-License: BSD
+License: BSD-3-Clause
 
 Files: powa/static/bower_components/backbone-pageable/test/vendor/zepto.js
 Copyright: Copyright (c) 2010-2014 Thomas Fuchs
@@ -120,11 +120,11 @@ License: MIT
 Files: powa/static/bower_components/backbone-pageable/test/vendor/qunit.js
 Copyright: Copyright 2013 jQuery Foundation and other contributors
  jsDump Copyright (c) 2008 Ariel Flesler - aflesler(at)gmail(dot)com
-License: MIT and BSD
+License: BSD-3-Clause and MIT
 
 Files: powa/static/bower_components/backbone-pageable/test/vendor/json2.js
 Copyright: Public Domain
-License: Public Domain
+License: Public-Domain
  NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
 
 Files: powa/static/bower_components/backbone-pageable/test/vendor/jslitmus.js
@@ -140,10 +140,10 @@ Copyright: (c) 2010-2014 Jeremy Ashkenas, DocumentCloud and Investigative Report
 License: MIT
 
 Files: powa/static/bower_components/backbone-pageable/test/coverage/lib/backbone-pageable.js.html
-Files: powa/static/bower_components/backbone-pageable/examples/js/backgrid.js
-Files: powa/static/bower_components/backbone-pageable/examples/js/extensions/paginator/backgrid-paginator.js
-Files: powa/static/bower_components/backgrid/*
-Files: powa/static/bower_components/backgrid-paginator/Gruntfile.js
+       powa/static/bower_components/backbone-pageable/examples/js/backgrid.js
+       powa/static/bower_components/backbone-pageable/examples/js/extensions/paginator/backgrid-paginator.js
+       powa/static/bower_components/backgrid/*
+       powa/static/bower_components/backgrid-paginator/Gruntfile.js
 Copyright: Copyright (c) 2013 Jimmy Yuen Ho Wong
 License: MIT
 
@@ -152,8 +152,8 @@ Copyright: Copyright (c) 2006-2012, Sencha Inc.
 License: GPL-3
 
 Files: powa/static/bower_components/backbone-pageable/examples/js/bootstrap.js
-Files: powa/static/bower_components/backbone-pageable/examples/css/bootstrap.scss
-Files: powa/static/bower_components/backbone-pageable/examples/css/bootstrap-theme.css
+       powa/static/bower_components/backbone-pageable/examples/css/bootstrap.scss
+       powa/static/bower_components/backbone-pageable/examples/css/bootstrap-theme.css
 Copyright: Copyright 2012 Twitter, Inc.
 License: Apache-2.0
 
@@ -162,9 +162,9 @@ Copyright: Copyright (c) Faruk Ates, Paul Irish, Alex Sexton
 License: MIT
 
 Files: powa/static/bower_components/modernizr/test/caniuse_files/jquery.min.js
-Files: powa/static/bower_components/modernizr/test/qunit/qunit.css
-Files: powa/static/bower_components/modernizr/test/js/lib/jquery-1.7b2.js
-Files: powa/static/bower_components/lunr.js/test/env/jquery.js
+       powa/static/bower_components/modernizr/test/qunit/qunit.css
+       powa/static/bower_components/modernizr/test/js/lib/jquery-1.7b2.js
+       powa/static/bower_components/lunr.js/test/env/jquery.js
 Copyright: Copyright 2011, John Resig
  Copyright 2011, The Dojo Foundation
 License: MIT or GPL-2
@@ -186,7 +186,7 @@ License: ISC
 
 Files: powa/static/bower_components/modernizr/test/js/lib/polyfills.js
 Copyright: Public Domain
-License: Public Domain
+License: Public-Domain
  NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
 
 Files: powa/static/bower_components/foundation-daterangepicker/daterangepicker.js
@@ -194,7 +194,7 @@ Copyright: Copyright (c) 2012-2013 Dan Grossman. All rights reserved.
 License: Apache-2.0
 
 Files: powa/static/bower_components/foundation-daterangepicker/examples/scss/_settings.scss
-Files: powa/static/bower_components/foundation/*
+       powa/static/bower_components/foundation/*
 Copyright: Foundation by ZURB
 License: MIT
 
@@ -222,10 +222,10 @@ License: fastclick
 
 Files: powa/static/bower_components/requirejs-text/*
 Copyright: Copyright (c) 2010-2014, The Dojo Foundation
-License: BSD or MIT
+License: BSD-3-Clause or MIT
 
 Files: powa/static/bower_components/backbone/*
-Files: powa/static/bower_components/underscore/*
+       powa/static/bower_components/underscore/*
 Copyright: Copyright (c) 2010-2014 Jeremy Ashkenas, DocumentCloud
 License: backbone
  Permission is hereby granted, free of charge, to any person
@@ -272,10 +272,10 @@ Copyright: Copyright (C) 2006 Google Inc.
 License: Apache-2.0
 
 Files: powa/static/bower_components/requirejs-tpl/tpl.js
-Files: powa/static/bower_components/requirejs-tpl/tools/r.js
-Files: powa/static/bower_components/requirejs-tpl/demo-build/lib/require.js
+       powa/static/bower_components/requirejs-tpl/tools/r.js
+       powa/static/bower_components/requirejs-tpl/demo-build/lib/require.js
 Copyright: RequireJS text 0.24.0 Copyright (c) 2010-2011, The Dojo Foundation All Rights Reserved.
-License: MIT or BSD
+License: MIT or BSD-3-Clause
 
 Files: powa/static/bower_components/moment/LICENSE
 Copyright: Copyright (c) 2011-2013 Tim Wood, Iskren Chernev, Moment.js contributors
@@ -300,7 +300,7 @@ License: moment
  OTHER DEALINGS IN THE SOFTWARE.
 
 Files: powa/static/bower_components/lunr.js/lunr.min.js
-Files: powa/static/bower_components/lunr.js/test/env/augment.min.js
+       powa/static/bower_components/lunr.js/test/env/augment.min.js
 Copyright: Copyright (C) 2014 Oliver Nightingale
  Copyright (c) 2010 Alexis Sellier
 License: MIT
@@ -316,6 +316,30 @@ License: Apache-2.0
 Files: powa/static/css/powa-all.min.css
 Copyright: (c) Nicolas Gallagher
 License: MIT and GPL-2
+
+License: BSD-3-Clause
+ Redistribution and use in source and binary forms, with or without modification,
+ are permitted provided that the following conditions are met:
+ .
+     * Redistributions of source code must retain the above copyright notice,
+       this list of conditions and the following disclaimer.
+     * Redistributions in binary form must reproduce the above copyright notice,
+       this list of conditions and the following disclaimer in the documentation
+       and/or other materials provided with the distribution.
+     * Neither the name of Christian Johansen nor the names of his contributors
+       may be used to endorse or promote products derived from this software
+       without specific prior written permission.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 License: MIT
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -336,7 +360,20 @@ License: MIT
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  SOFTWARE.
 
-License: GPL
+License: GPL-2
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 2 of the License, or
+ (at your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ See: /usr/share/common-licenses/GPL
+
+License: GPL-3
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
@@ -348,3 +385,6 @@ License: GPL
  GNU General Public License for more details.
  .
  See: /usr/share/common-licenses/GPL
+
+License: Apache-2.0
+ See: /usr/share/common-licenses/Apache-2.0
