@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import { createApp } from 'vue';
+import Vue from 'vue';
 import store from './store';
 import Dashboard from './components/Dashboard.vue';
 import Graph from './components/Graph.vue';
@@ -14,7 +14,8 @@ import 'bootstrap';
 
 import 'bootstrap/dist/css/bootstrap.css'
 
-const app = createApp({
+const app = new Vue({
+  el: '#dashboard',
   components: {
     Dashboard
   },
@@ -26,13 +27,12 @@ const app = createApp({
 });
 
 
-app.component('dashboard', Dashboard);
-app.component('graph', Graph);
-app.component('grid', Grid);
-app.component('tabcontainer', Tabcontainer);
-app.component('wizard', Wizard);
-app.component('content-cmp', Content);
-const dashboard = app.mount("#dashboard");
+Vue.component('dashboard', Dashboard);
+Vue.component('graph', Graph);
+Vue.component('grid', Grid);
+Vue.component('tabcontainer', Tabcontainer);
+Vue.component('wizard', Wizard);
+Vue.component('content-cmp', Content);
 
 const colors = ["#c05020", "#30c020", "#6060c0"];
 // const ds = DataSourceCollection.get_instance();
@@ -57,7 +57,7 @@ $('script[type="text/datasources"]').each(function() {
 });
 
 $('script[type="text/dashboard"]').each(function(){
-  dashboard.$data.config = JSON.parse(this.text);
+  app.config = JSON.parse(this.text);
   //const widgetsEl = $('.widgets');
 
   //_.each(config.widgets, (w) => {
