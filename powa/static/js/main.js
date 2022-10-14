@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import Vue from 'vue';
+import Vuetify from "vuetify";
 import store from './store';
 import Dashboard from './components/Dashboard.vue';
 import Graph from './components/Graph.vue';
@@ -13,6 +14,9 @@ import { addMessage } from './utils/message.js';
 import 'bootstrap';
 
 import 'bootstrap/dist/css/bootstrap.css'
+import 'vuetify/dist/vuetify.min.css'
+
+Vue.use(Vuetify);
 
 const app = new Vue({
   el: '#dashboard',

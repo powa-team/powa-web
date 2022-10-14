@@ -10,7 +10,6 @@
   "devDependencies": {
     "@vitejs/plugin-vue2": "^2.0.0",
     "sass": "~1.32",
-    "unplugin-vue-components": "^0.22.8",
     "vite": "^3.0.4"
   },
   "dependencies": {
