@@ -9,7 +9,8 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue2": "^2.0.0",
-    "sass": "^1.53.0",
+    "sass": "~1.32",
+    "unplugin-vue-components": "^0.22.8",
     "vite": "^3.0.4"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "lodash": "^4.17.21",
     "moment": "^2.29.4",
     "tippy.js": "^6.3.7",
-    "vue": "^2.7.12"
+    "vue": "^2.7.12",
+    "vuetify": "^2.6.11"
   }
 }
