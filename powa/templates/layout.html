@@ -12,112 +12,93 @@
     {% block header %} {% end %}
   </head>
   <body>
-    <nav class="navbar" role="navigation">
-      <div class="navbar-header">
-        <div class="navbar-brand">
-          <a href="{{ reverse_url('Overview')}}"><img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA</a>
-        </div>
-      </div>
-      {% if current_user %}
-      <div class="mr-auto">
-        <span class="navbar-text">
-          Server <b>{{ handler.current_server }}</b>
-          ({{ handler.current_connection }})
-        </span>
-        <span class="navbar-text">
-          <a class="nav-link" href="{{ reverse_url('RepositoryConfigOverview')}}" title="Configuration">
-            <i class="fa fa-cog"></i>
-            Configuration
-          </a>
-        </span>
-        <span class="navbar-text">
-          <a class="nav-link" id="reload_collector" href="#">
-            <i class="fa fa-refresh"></i>
-            Reload collector
-          </a>
-        </span>
-      </div>
-      <ul class="navbar-nav">
-        <li>
-          <a href="{{ reverse_url('logout')}}">
-            <i class="fa fa-off"></i>
-            Logout
-          </a>
-        </li>
-      </ul>
-      {% end %}
-    </nav>
-    {% if current_user %}
-    <div class="container-fluid">
-      <div class="row">
-        <div class="col-lg-7">
-        {% if hasattr(handler, 'breadcrumb') %}
-          <ol class="breadcrumb">
-            <li class="breadcrumb-item">
-              <strong>
-                <a href="{{ reverse_url('Overview') }}"><i class="fa fa-home"></i></a>
-              </strong>
-            </li>
-            {% set last = len(handler.breadcrumb) - 1 %}
-            {% for i, crumb_item in enumerate(reversed(handler.breadcrumb)) %}
-            <li class="breadcrumb-item {{'active' if last == i else ''}}">
-              {% if i != last %}
-              <a data-url-has-params href="{{ reverse_url_with_params(crumb_item.url_name, url_args=crumb_item.url_params.values())}}">{{crumb_item.title}}</a>
-              {% else %}
-              {{ crumb_item.title}}
-              {% end %}
-            </li>
-            {% if crumb_item.children and i == last %}
-            <li class="breadcrumb-item active">
-              <div class="btn-group">
-                <button data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="dropdown-toggle btn btn-link my-0 py-0">Choose one ... <span class="caret"></span></button>
-                <div class="dropdown-menu">
-                  {% for child in crumb_item.children %}
-                  <a class="dropdown-item" href="{{ reverse_url_with_params(child.url_name, url_args=child.url_params.values())}}">{{child.title}}</a>
-                  {% end %}
-                </div>
-              </div>
-            </li>
+    <div id="app">
+      <v-app>
+        <v-app-bar
+          app
+          flat
+        >
+          <v-container fluid class="py-0 fill-height">
+
+            <v-btn href="{{ reverse_url('Overview')}}" class="mr-2">
+              <img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA
+            </v-btn>
+            {% if current_user %}
+            <v-toolbar-title
+              text
+              class="mr-2"
+            >
+              Server <b>{{ handler.current_server }}</b>
+              ({{ handler.current_connection }})
+            </v-toolbar-title>
+            <v-btn text color="primary"
+              href="{{ reverse_url('RepositoryConfigOverview')}}"
+              title="Configuration"
+            >
+              Configuration
+            </v-btn>
+            <v-btn text color="primary" id="reload_collector">
+              Reload collector
+            </v-btn>
+
+            <v-spacer></v-spacer>
+
+            <v-btn text color="primary"
+              href="{{ reverse_url('logout') }}"
+              >
+              Logout
+            </v-btn>
             {% end %}
-            {% end %}
-          </ol>
-        {% end %}
-        </div>
-        <div class="col-lg-5 ml-auto">
-          <div class="text-right" id="daterangepicker">
-            <strong>
-              <i class="fa fa-calendar"></i>&nbsp;
-            </strong>
-          </div>
-        </div>
-      </div>
-    </div>
-    {% end %}
+          </v-container>
+          {% if current_user %}
+          <template v-slot:extension>
+            <v-breadcrumbs :items="breadCrumbItems">
+            </v-breadcrumbs>
+          </template>
+          {% end %}
+        </v-app-bar>
+        <v-main class="grey lighten-3">
+          <v-container fluid>
+            <v-row>
+              <v-col>
+                {% block content %} {% end %}
+              </v-col>
+            </v-row>
+          </v-container>
     <div id="messages" class="container-fluid">
       {% module Messages() %}
     </div>
-    {% block content %} {% end %}
-    <footer class="container-fluid">
-      <div class="row">
-        <div class="col-lg-12" >
-          <div class="row hide-for-small">
-            <div class="col-lg-6">
-              <ul class="list-inline">
-                <li class="list-inline-item">Version {{version()}}</li>
-                <li class="list-inline-item">&copy; 2014-2017 Dalibo</li>
-                <li class="list-inline-item">&copy; 2018-{{year()}} The PoWA-team</li>
-                <li class="list-inline-item"><a href="https://powa.readthedocs.io">https://powa.readthedocs.io</a></li>
-              </ul>
-            </div>
-            <div class="col-lg-6">
-              <ul class="list-inline text-right">
-                <li class="list-inline-item"><a href="https://github.com/powa-team/powa-web/issues">Report a bug</a></li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-    </footer>
+        </v-main>
+        <v-footer>
+          <v-container fluid>
+            <v-row>
+              <v-flex>
+                <ul style="margin-bottom: 0; padding-left: 0;">
+                  <li style="display: inline-block">Version {{version()}}</li>
+                  <li style="display: inline-block">&copy; 2014-2017 Dalibo</li>
+                  <li style="display: inline-block">&copy; 2018-{{year()}} The PoWA-team</li>
+                  <li style="display: inline-block"><a href="https://powa.readthedocs.io">https://powa.readthedocs.io</a></li>
+                </ul>
+              </v-flex>
+              <v-flex ml-auto class="text-right">
+                <a href="https://github.com/powa-team/powa-web/issues">Report a bug</a>
+              </v-flex>
+            </v-row>
+          </v-container>
+        </v-footer>
+      </v-app>
+    </div>
+    {% if current_user %}
+<script type="text/breadcrumb">
+  {%
+    raw to_json([{
+      "text": item.title,
+      "href": reverse_url_with_params(item.url_name, url_args=item.url_params.values()),
+      "disabled": i == len(handler.breadcrumb) - 1
+    } for i, item in enumerate(reversed(handler.breadcrumb))])
+  %}
+</script>
+    {% end %}
     {% if handler.application.settings['debug'] %}
       <!-- FIXME -->
       <script type="module" src="http://localhost:5173/powa/static/js/main.js"></script>

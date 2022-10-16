@@ -1,9 +1,6 @@
 {% extends "layout.html" %}
 {% block content %}
-<div id="dashboard" class="container-fluid">
-  <v-btn elevation="2">mon joli bouton</v-btn>
-  <dashboard :config="config"></dashboard>
-</div>
+<dashboard :config="config"></dashboard>
 
 <script type="text/dashboard">
   {% raw to_json(dashboard) %}

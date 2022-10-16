@@ -19,16 +19,16 @@ import 'vuetify/dist/vuetify.min.css'
 Vue.use(Vuetify);
 
 const app = new Vue({
-  el: '#dashboard',
+  el: "#app",
+  vuetify: new Vuetify({}),
+  data: () => ({
+    breadCrumbItems: [],
+    config: {}
+  }),
   components: {
     Dashboard
   },
-  data () {
-    return {
-      config: {}
-    }
-  }
-});
+})
 
 
 Vue.component('dashboard', Dashboard);
@@ -75,6 +75,10 @@ $('script[type="text/dashboard"]').each(function(){
   //dashboardview.listenTo(picker, "pickerChanged", dashboardview.refreshSources, dashboardview);
   //dashboardview.refreshSources(picker.start_date, picker.end_date);
   //picker.listenTo(dashboardview, "dashboard:updatePeriod", picker.updateUrls, picker);
+});
+
+$('script[type="text/breadcrumb"]').each(function(){
+  app.breadCrumbItems = JSON.parse(this.text);
 });
 
 $("#reload_collector").click(function() {
