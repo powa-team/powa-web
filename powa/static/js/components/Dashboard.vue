@@ -1,16 +1,16 @@
 <template>
   <div>
-    <div v-for="(row, rIndex) in config.widgets" :key="rIndex" class="row">
-      <div
+    <v-row v-for="(row, rIndex) in config.widgets" :key="rIndex">
+      <v-col
         v-for="(widget, wIndex) in row"
         :key="rIndex + wIndex"
-        :class="['col-lg-' + 12 / Object.keys(row).length]"
+        :cols="12 / Object.keys(row).length"
       >
         <div class="">
           <component :is="widgetComponent(widget.type)" :config="widget" />
         </div>
-      </div>
-    </div>
+      </v-col>
+    </v-row>
   </div>
 </template>
 
