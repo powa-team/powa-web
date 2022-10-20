@@ -10,37 +10,57 @@
     <v-card-title>{{ config.title }}</v-card-title>
     <v-card-text>
       <v-row>
-        <v-col> Search field here </v-col>
+        <v-col cols="12" sm="6" md="4" xl="2">
+          <v-text-field
+            v-model="search"
+            label="Search"
+            :append-icon="mdiMagnify"
+            single-line
+            hide-details
+          ></v-text-field>
+        </v-col>
       </v-row>
-      <table class="table table-sm table-hover">
-        <thead>
-          <tr>
-            <th v-for="field in fields" :key="field.key" :class="field.type">
-              {{ field.label }}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="(entry, index) in items"
-            :key="index"
-            :class="{ clickable: !!entry.url }"
-            @click="onRowClicked(entry)"
-          >
+      <v-data-table
+        :headers="headers"
+        :items="items"
+        :footer-props="{
+          'items-per-page-options': [25, 50, -1],
+        }"
+        :items-per-page="25"
+        :search="search"
+        :dense="true"
+        hide-default-header
+        class="superdense"
+      >
+        <template #header>
+          <thead class="v-data-table-header">
+            <tr>
+              <th
+                v-for="header in headers"
+                :key="header.value"
+                :class="header.class"
+              >
+                {{ header.text }}
+              </th>
+            </tr>
+          </thead>
+        </template>
+        <template #item="{ item }">
+          <tr class="clickable" @click="onRowClicked(item)">
             <td v-for="field in fields" :key="field.key" :class="field.type">
               <template
                 v-if="field.type == 'query' || field.type == 'where_clause'"
               >
                 <!-- eslint-disable-next-line vue/no-v-html -->
-                <pre v-html="field.formatter(entry[field.key])" />
+                <pre v-html="field.formatter(item[field.key])" />
               </template>
               <template v-else>
-                {{ field.formatter(entry[field.key]) }}
+                {{ field.formatter(item[field.key]) }}
               </template>
             </td>
           </tr>
-        </tbody>
-      </table>
+        </template>
+      </v-data-table>
     </v-card-text>
   </v-card>
 </template>
@@ -57,6 +77,8 @@ import size from "../utils/size";
 import hljs from "highlight.js";
 import "highlight.js/styles/default.css";
 import pgsql from "highlight.js/lib/languages/pgsql";
+import { mdiMagnify } from "@mdi/js";
+
 hljs.registerLanguage("pgsql", pgsql);
 
 const props = defineProps({
@@ -69,7 +91,8 @@ const props = defineProps({
 });
 
 const loading = ref(false);
-const items = ref(null);
+const search = ref("");
+const items = ref([]);
 
 onMounted(() => {
   loadData();
@@ -99,6 +122,19 @@ const fields = computed(() => {
     });
   });
   return columns;
+});
+
+const headers = computed(() => {
+  return _.uniqBy(
+    _.map(fields.value, function headerize(n) {
+      return {
+        text: n.label,
+        value: n.key,
+        class: n.type,
+      };
+    }),
+    "value"
+  );
 });
 
 function loadData() {
@@ -173,31 +209,42 @@ watch(
 </script>
 
 <style lang="scss">
-td {
-  white-space: nowrap;
-
-  &.query {
-    width: 50%;
-    overflow: hidden;
-    max-width: 0;
-    pre,
-    code {
-      overflow: hidden;
-      text-overflow: ellipsis;
+.v-data-table.superdense > .v-data-table__wrapper > table {
+  tbody,
+  thead,
+  tfoot {
+    td {
       white-space: nowrap;
-      margin-bottom: 0;
+
+      &.query {
+        width: 50%;
+        overflow: hidden;
+        max-width: 0;
+        pre,
+        code {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          margin-bottom: 0;
+        }
+      }
+    }
+    th,
+    td {
+      padding: 0 0.3rem;
+      &.duration,
+      &.integer,
+      &.number,
+      &.size {
+        text-align: right;
+      }
+      &.bool {
+        text-align: center;
+      }
+    }
+    .clickable {
+      cursor: pointer;
     }
   }
-}
-th,
-td {
-  &.duration,
-  &.number,
-  &.size {
-    text-align: right;
-  }
-}
-.clickable {
-  cursor: pointer;
 }
 </style>
