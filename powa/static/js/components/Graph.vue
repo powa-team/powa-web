@@ -3,14 +3,11 @@
     <div class="card-body">
       <h4 class="card-title">
         {{ config.title }}
-        <i
-          ref="helpEl"
-          class="fa fa-info"
-        />
+        <i ref="helpEl" class="fa fa-info" />
       </h4>
       <div class="row no-gutters">
         <div class="col">
-          <div ref="graphContainer" style="height: 400px"/>
+          <div ref="graphContainer" style="height: 400px" />
         </div>
       </div>
     </div>
@@ -18,129 +15,162 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref } from "vue";
 import * as _ from "lodash";
 import * as echarts from "echarts";
-import size from '../utils/size';
-import store from '../store';
-import moment from 'moment';
-import '../utils/precisediff';
-import tippy from 'tippy.js';
-import 'tippy.js/dist/tippy.css';
+import size from "../utils/size";
+import store from "../store";
+import moment from "moment";
+import "../utils/precisediff";
+import tippy from "tippy.js";
+import "tippy.js/dist/tippy.css";
 import $ from "jquery";
 
-const props = defineProps(["config"])
+const props = defineProps({
+  config: {
+    type: Object,
+    default() {
+      return {};
+    },
+  },
+});
 
 const axisFormats = {
   //"number": Rickshaw.Fixtures.Number.formatKMBT,
-  "size": new size.SizeFormatter().fromRaw,
-  "sizerate": function(value){ return new size.SizeFormatter({suffix: "ps"}).fromRaw(value)},
-  "duration": function(data){
-    return moment(parseFloat(data, 10)).preciseDiff(moment(0))
+  size: new size.SizeFormatter().fromRaw,
+  sizerate: function (value) {
+    return new size.SizeFormatter({ suffix: "ps" }).fromRaw(value);
   },
-  "percent": function(value){ return Math.round(value * 100) / 100 + '%'}
-}
+  duration: function (data) {
+    return moment(parseFloat(data, 10)).preciseDiff(moment(0));
+  },
+  percent: function (value) {
+    return Math.round(value * 100) / 100 + "%";
+  },
+};
 
-const graphContainer = ref(null)
+const graphContainer = ref(null);
 
-const helpEl = ref(null)
-
+const helpEl = ref(null);
 
 onMounted(() => {
   loadData();
-})
+});
 
 function loadData() {
-  const metricGroup = _.uniq(_.map(props.config.metrics, (metric) => {
-    return metric.split('.')[0];
-  }));
+  const metricGroup = _.uniq(
+    _.map(props.config.metrics, (metric) => {
+      return metric.split(".")[0];
+    })
+  );
   const metrics = _.map(props.config.metrics, (metric) => {
-    return metric.split('.')[1];
+    return metric.split(".")[1];
   });
   const toDate = moment();
-  const fromDate = toDate.clone().subtract(1, 'hour');
+  const fromDate = toDate.clone().subtract(1, "hour");
   const params = {
     from: fromDate.format("YYYY-MM-DD HH:mm:ssZZ"),
-    to: toDate.format("YYYY-MM-DD HH:mm:ssZZ")
+    to: toDate.format("YYYY-MM-DD HH:mm:ssZZ"),
   };
   const sourceConfig = store.dataSources[metricGroup];
   const grouper = props.config.grouper || null;
   const xaxis = sourceConfig.xaxis;
-  const yaxis = sourceConfig.yaxis;
   $.ajax({
-    url: sourceConfig.data_url + '?' + $.param(params)
-  }).done((response) => {
-    const seriesByMetric = {}
+    url: sourceConfig.data_url + "?" + $.param(params),
+  })
+    .done((response) => {
+      const seriesByMetric = {};
 
-    _.each(metrics, (metric) => {
-      seriesByMetric[metric] = {};
-    });
-
-    if (response.messages !== undefined) {
-      $.each(response.messages, function(level, arr) {
-        $.each(arr, function(i) {
-          msg = Message.add_message(level, arr[i]);
-          $("#messages").append(msg);
-        });
-      });
-    }
-
-    _.each(response.data, (row) => {
-      const group = grouper || "";
       _.each(metrics, (metric) => {
-        const series = seriesByMetric[metric];
-        let current_group = series[group];
-        if (current_group === undefined) {
-          current_group = series[group] = {
-            metric: metric,
-            id: metric + group,
-            // name: metric.label_template({group: group}),
-            data: []
-          }
-        }
-        if (row[xaxis] === undefined) {
-          throw "Data is lacking for xaxis. Did you include " + xaxis + " column in your query ?";
-        }
-        current_group.data.push($.extend({}, {x: new Date(row[xaxis] * 1000), y: row[sourceConfig.metrics[metric].yaxis]}, row));
+        seriesByMetric[metric] = {};
       });
-    });
 
-    let newSeries = [];
-    _.each(metrics, (metric) => {
-      const series = seriesByMetric[metric];
-      if (!$.isEmptyObject(series)) {
-        $.each(series, function(key, serie){
-          const newSerie = $.extend({}, sourceConfig.metrics[metric], serie);
-          newSeries.push(newSerie);
+      if (response.messages !== undefined) {
+        $.each(response.messages, function (level, arr) {
+          $.each(arr, function (i) {
+            console.error(`FIXME: error ${level} ${i}`);
+            /*msg = Message.add_message(level, arr[i]);*/
+            /*$("#messages").append(msg);*/
+          });
         });
       }
+
+      _.each(response.data, (row) => {
+        const group = grouper || "";
+        _.each(metrics, (metric) => {
+          const series = seriesByMetric[metric];
+          let current_group = series[group];
+          if (current_group === undefined) {
+            current_group = series[group] = {
+              metric: metric,
+              id: metric + group,
+              // name: metric.label_template({group: group}),
+              data: [],
+            };
+          }
+          if (row[xaxis] === undefined) {
+            throw (
+              "Data is lacking for xaxis. Did you include " +
+              xaxis +
+              " column in your query ?"
+            );
+          }
+          current_group.data.push(
+            $.extend(
+              {},
+              {
+                x: new Date(row[xaxis] * 1000),
+                y: row[sourceConfig.metrics[metric].yaxis],
+              },
+              row
+            )
+          );
+        });
+      });
+
+      let newSeries = [];
+      _.each(metrics, (metric) => {
+        const series = seriesByMetric[metric];
+        if (!$.isEmptyObject(series)) {
+          $.each(series, function (key, serie) {
+            const newSerie = $.extend({}, sourceConfig.metrics[metric], serie);
+            newSeries.push(newSerie);
+          });
+        }
+      });
+      dataLoaded(newSeries);
+    })
+    .fail(() => {
+      console.log("fail");
     });
-    dataLoaded(newSeries);
-  }).fail((response) => {
-    console.log ('fail');
-  });
 }
 
 function getType(metric) {
-  const metricGroup = _.uniq(_.map(props.config.metrics, (metric) => {
-    return metric.split('.')[0];
-  }));
+  const metricGroup = _.uniq(
+    _.map(props.config.metrics, (metric) => {
+      return metric.split(".")[0];
+    })
+  );
   const sourceConfig = store.dataSources[metricGroup];
-  return sourceConfig.metrics[metric].type || 'number';
+  return sourceConfig.metrics[metric].type || "number";
 }
 
 function getLabel(metric) {
-  const metricGroup = _.uniq(_.map(props.config.metrics, (metric) => {
-    return metric.split('.')[0];
-  }));
+  const metricGroup = _.uniq(
+    _.map(props.config.metrics, (metric) => {
+      return metric.split(".")[0];
+    })
+  );
   const sourceConfig = store.dataSources[metricGroup];
   return sourceConfig.metrics[metric].label;
 }
 
 function getDesc(metric) {
-  const metricGroup = _.uniq(_.map(props.config.metrics, (metric) => {
-    return metric.split('.')[0];
-  }));
+  const metricGroup = _.uniq(
+    _.map(props.config.metrics, (metric) => {
+      return metric.split(".")[0];
+    })
+  );
   const sourceConfig = store.dataSources[metricGroup];
   return sourceConfig.metrics[metric].desc;
 }
@@ -151,11 +181,11 @@ function dataLoaded(data) {
 
   const chart = echarts.init(graphContainer.value);
 
-  const yAxis = {}
+  const yAxis = {};
   const metrics = _.map(props.config.metrics, (metric) => {
-    return metric.split('.')[1];
+    return metric.split(".")[1];
   });
-  _.each(metrics, (metric, index) => {
+  _.each(metrics, (metric) => {
     const type = getType(metric);
     if (yAxis[type] == undefined) {
       const formatter = axisFormats[type];
@@ -164,8 +194,8 @@ function dataLoaded(data) {
         alignTicks: true,
         axisLabel: {
           formatter: formatter,
-        }
-      }
+        },
+      };
     }
   });
 
@@ -174,7 +204,7 @@ function dataLoaded(data) {
       type: "line",
       name: serie.label,
       data: _.map(serie.data, (d) => [d.x, d.y]),
-      yAxisIndex: _.keys(yAxis).indexOf(serie.type)
+      yAxisIndex: _.keys(yAxis).indexOf(serie.type),
     };
   });
 
@@ -182,8 +212,8 @@ function dataLoaded(data) {
     tooltip: {
       trigger: "axis",
       position: function (pt) {
-        return [pt[0], '10%'];
-      }
+        return [pt[0], "10%"];
+      },
     },
     legend: {
       data: _.map(series, (serie) => serie.name),
@@ -192,32 +222,35 @@ function dataLoaded(data) {
       type: "time",
     },
     yAxis: _.map(yAxis, (axis) => axis),
-    series: series
-  }
+    series: series,
+  };
   chart.setOption(option);
 }
 
 function initGraphHelp() {
-  let labels = '';
+  let labels = "";
   const metrics = _.map(props.config.metrics, (metric) => {
-    return metric.split('.')[1];
+    return metric.split(".")[1];
   });
-  _.each(metrics, (metric, index) => {
-    labels = '<tr>'
-      + '<td><b>' + getLabel(metric) + '</b></td>'
-      + '<td>'
-      + getDesc(metric)
-      + '</td></td>'
-      + labels;
+  _.each(metrics, (metric) => {
+    labels =
+      "<tr>" +
+      "<td><b>" +
+      getLabel(metric) +
+      "</b></td>" +
+      "<td>" +
+      getDesc(metric) +
+      "</td></td>" +
+      labels;
   });
-  const help = '<table>' + labels + '</table class="stack">';
+  const help = "<table>" + labels + '</table class="stack">';
   // add the hover info
   tippy(helpEl.value, {
     content: help,
     arrow: true,
-    maxWidth: '100%',
-    theme: 'translucent',
-    allowHTML: true
+    maxWidth: "100%",
+    theme: "translucent",
+    allowHTML: true,
   });
 }
 </script>

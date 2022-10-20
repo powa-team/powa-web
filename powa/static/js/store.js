@@ -1,5 +1,5 @@
 const store = {
-  dataSources: {}
-}
+  dataSources: {},
+};
 
-export default store
+export default store;

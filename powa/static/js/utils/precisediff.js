@@ -1,31 +1,32 @@
-import moment from 'moment';
+import moment from "moment";
 
 const STRINGS = {
-  nodiff: '0',
-  year: 'year',
-  years: 'years',
-  month: 'month',
-  months: 'months',
-  day: 'day',
-  days: 'days',
-  hour: 'hour',
-  hours: 'hours',
-  minute: 'min',
-  minutes: 'min',
-  second: 's',
-  seconds: 's',
-  millisecond: 'ms',
-  milliseconds: 'ms',
-  microsecond: 'µs',
-  microseconds: 'µs',
-  delimiter: ' '
+  nodiff: "0",
+  year: "year",
+  years: "years",
+  month: "month",
+  months: "months",
+  day: "day",
+  days: "days",
+  hour: "hour",
+  hours: "hours",
+  minute: "min",
+  minutes: "min",
+  second: "s",
+  seconds: "s",
+  millisecond: "ms",
+  milliseconds: "ms",
+  microsecond: "µs",
+  microseconds: "µs",
+  delimiter: " ",
 };
 
-moment.fn.preciseDiff = function(d2, imprecise) {
+moment.fn.preciseDiff = function (d2, imprecise) {
   return moment.preciseDiff(this, d2, imprecise);
 };
-moment.preciseDiff = function(d1, d2, imprecise) {
-  let m1 = moment(d1), m2 = moment(d2);
+moment.preciseDiff = function (d1, d2, imprecise) {
+  let m1 = moment(d1),
+    m2 = moment(d2);
   if (m1.isAfter(m2) || (m1.isSame(m2) && m1._i > m2._i)) {
     const tmp = m1;
     m1 = m2;
@@ -40,13 +41,15 @@ moment.preciseDiff = function(d1, d2, imprecise) {
   let msecDiff = m2.millisecond() - m1.millisecond();
   let microsecDiff = 0;
   if (typeof m1._i == "number" && typeof m2._i == "number") {
-    microsecDiff = Math.round((1000 * (m2._i - Math.floor(m2)) - 1000 * (m1._i - Math.floor(m1))))
+    microsecDiff = Math.round(
+      1000 * (m2._i - Math.floor(m2)) - 1000 * (m1._i - Math.floor(m1))
+    );
   } else {
     if (m1.isSame(m2)) {
       return STRINGS.nodiff;
     }
   }
-  if (microsecDiff < 0){
+  if (microsecDiff < 0) {
     microsecDiff = 1000 + microsecDiff;
     msecDiff--;
   }
@@ -67,8 +70,14 @@ moment.preciseDiff = function(d1, d2, imprecise) {
     dDiff--;
   }
   if (dDiff < 0) {
-    const daysInLastFullMonth = moment(m2.year() + '-' + (m2.month() + 1), "YYYY-MM").subtract('months', 1).daysInMonth();
-    if (daysInLastFullMonth < m1.date()) { // 31/01 -> 2/03
+    const daysInLastFullMonth = moment(
+      m2.year() + "-" + (m2.month() + 1),
+      "YYYY-MM"
+    )
+      .subtract("months", 1)
+      .daysInMonth();
+    if (daysInLastFullMonth < m1.date()) {
+      // 31/01 -> 2/03
       dDiff = daysInLastFullMonth + dDiff + (m1.date() - daysInLastFullMonth);
     } else {
       dDiff = daysInLastFullMonth + dDiff;
@@ -80,34 +89,34 @@ moment.preciseDiff = function(d1, d2, imprecise) {
     yDiff--;
   }
   function pluralize(num, word) {
-    return num + ' ' + STRINGS[word + (num === 1 ? '' : 's')];
+    return num + " " + STRINGS[word + (num === 1 ? "" : "s")];
   }
   let result = [];
   if (yDiff) {
-    result.push(pluralize(yDiff, 'year'));
+    result.push(pluralize(yDiff, "year"));
   }
   if (mDiff) {
-    result.push(pluralize(mDiff, 'month'));
+    result.push(pluralize(mDiff, "month"));
   }
   if (dDiff) {
-    result.push(pluralize(dDiff, 'day'));
+    result.push(pluralize(dDiff, "day"));
   }
   if (hourDiff) {
-    result.push(pluralize(hourDiff, 'hour'));
+    result.push(pluralize(hourDiff, "hour"));
   }
   if (minDiff) {
-    result.push(pluralize(minDiff, 'minute'));
+    result.push(pluralize(minDiff, "minute"));
   }
   if (secDiff) {
-    result.push(pluralize(secDiff, 'second'));
+    result.push(pluralize(secDiff, "second"));
   }
   if (msecDiff) {
-    result.push(pluralize(msecDiff, 'millisecond'));
+    result.push(pluralize(msecDiff, "millisecond"));
   }
-  if (microsecDiff){
-    result.push(pluralize(microsecDiff, 'microsecond'));
+  if (microsecDiff) {
+    result.push(pluralize(microsecDiff, "microsecond"));
   }
-  if (result.length == 0){
+  if (result.length == 0) {
     return "0";
   }
   // Keep only the first 2 results, more it too precise

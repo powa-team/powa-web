@@ -3,21 +3,28 @@
     <div class="card-body">
       <h4>{{ config.title }}</h4>
       <div class="row">
-        <div class="col-sm-4">
-        </div>
+        <div class="col-sm-4"></div>
       </div>
       <table class="table table-sm table-hover">
         <thead>
           <tr>
-            <th v-for="field in fields" :class="field.type">
+            <th v-for="field in fields" :key="field.key" :class="field.type">
               {{ field.label }}
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="entry in items" @click="onRowClicked(entry)" :class="{clickable: !!entry.url}">
-            <td v-for="field in fields" :class="field.type">
-              <template v-if="field.type == 'query' || field.type == 'where_clause'">
+          <tr
+            v-for="entry in items"
+            :key="entry"
+            :class="{ clickable: !!entry.url }"
+            @click="onRowClicked(entry)"
+          >
+            <td v-for="field in fields" :key="field.key" :class="field.type">
+              <template
+                v-if="field.type == 'query' || field.type == 'where_clause'"
+              >
+                <!-- eslint-disable-next-line vue/no-v-html -->
                 <pre v-html="field.formatter(entry[field.key])" />
               </template>
               <template v-else>
@@ -32,37 +39,45 @@
 </template>
 
 <script setup>
-
-import { computed, onMounted, ref } from 'vue'
-import store from '../store';
-import * as _ from 'lodash';
+import { computed, onMounted, ref } from "vue";
+import store from "../store";
+import * as _ from "lodash";
 import $ from "jquery";
-import * as moment from 'moment';
-import size from '../utils/size';
-import hljs from 'highlight.js';
-import 'highlight.js/styles/default.css';
-import pgsql from 'highlight.js/lib/languages/pgsql';
-hljs.registerLanguage('pgsql', pgsql);
+import * as moment from "moment";
+import size from "../utils/size";
+import hljs from "highlight.js";
+import "highlight.js/styles/default.css";
+import pgsql from "highlight.js/lib/languages/pgsql";
+hljs.registerLanguage("pgsql", pgsql);
 
-const props = defineProps(["config"])
+const props = defineProps({
+  config: {
+    type: Object,
+    default() {
+      return {};
+    },
+  },
+});
 
-const items = ref(null)
+const items = ref(null);
 
 onMounted(() => {
   loadData();
-})
+});
 
 const fields = computed(() => {
-  const metricGroup = _.uniq(_.map(props.config.metrics, (metric) => {
-    return metric.split('.')[0];
-  }));
+  const metricGroup = _.uniq(
+    _.map(props.config.metrics, (metric) => {
+      return metric.split(".")[0];
+    })
+  );
   const metrics = _.map(props.config.metrics, (metric) => {
-    return metric.split('.')[1];
+    return metric.split(".")[1];
   });
   const sourceConfig = store.dataSources[metricGroup];
 
   const columns = props.config.columns;
-  _.each(metrics, function(metric) {
+  _.each(metrics, function (metric) {
     columns.push($.extend({}, sourceConfig.metrics[metric]));
   });
   _.each(columns, (c) => {
@@ -70,25 +85,27 @@ const fields = computed(() => {
       key: c.name,
       label: c.label,
       formatter: getFormatter(c.type),
-      class: c.type
-    })
+      class: c.type,
+    });
   });
   return columns;
-})
+});
 
 function loadData() {
-  const metricGroup = _.uniq(_.map(props.config.metrics, (metric) => {
-    return metric.split('.')[0];
-  }));
+  const metricGroup = _.uniq(
+    _.map(props.config.metrics, (metric) => {
+      return metric.split(".")[0];
+    })
+  );
   const sourceConfig = store.dataSources[metricGroup];
   const toDate = moment();
-  const fromDate = toDate.clone().subtract(1, 'hour');
+  const fromDate = toDate.clone().subtract(1, "hour");
   const params = {
     from: fromDate.format("YYYY-MM-DD HH:mm:ssZZ"),
-    to: toDate.format("YYYY-MM-DD HH:mm:ssZZ")
+    to: toDate.format("YYYY-MM-DD HH:mm:ssZZ"),
   };
   $.ajax({
-    url: sourceConfig.data_url + '?' + $.param(params)
+    url: sourceConfig.data_url + "?" + $.param(params),
   }).done((response) => {
     dataLoaded(response.data);
   });
@@ -99,7 +116,7 @@ function dataLoaded(data) {
 }
 
 function formatBool(value) {
-  return value ? '✓' : '✗';
+  return value ? "✓" : "✗";
 }
 
 function formatDuration(value) {
@@ -111,20 +128,20 @@ function formatSize(value) {
 }
 
 function formatQuery(value) {
-  return hljs.highlightAuto(value, ['pgsql']).value;
+  return hljs.highlightAuto(value, ["pgsql"]).value;
 }
 
 function getFormatter(type) {
   switch (type) {
-    case 'bool':
+    case "bool":
       return formatBool;
-    case 'duration':
+    case "duration":
       return formatDuration;
-    case 'percent':
-      return (value) => value + '%';
-    case 'query':
+    case "percent":
+      return (value) => value + "%";
+    case "query":
       return formatQuery;
-    case 'size':
+    case "size":
       return formatSize;
     default:
       return (value) => value;
@@ -139,29 +156,31 @@ function onRowClicked(row) {
 </script>
 
 <style lang="scss">
-  td {
-    white-space: nowrap;
+td {
+  white-space: nowrap;
 
-    &.query {
-      width: 50%;
+  &.query {
+    width: 50%;
+    overflow: hidden;
+    max-width: 0;
+    pre,
+    code {
       overflow: hidden;
-      max-width: 0;
-      pre, code {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        margin-bottom: 0;
-      }
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-bottom: 0;
     }
   }
-  th, td {
-    &.duration,
-    &.number,
-    &.size {
-      text-align: right;
-    }
+}
+th,
+td {
+  &.duration,
+  &.number,
+  &.size {
+    text-align: right;
   }
-  .clickable {
-    cursor: pointer;
-  }
+}
+.clickable {
+  cursor: pointer;
+}
 </style>

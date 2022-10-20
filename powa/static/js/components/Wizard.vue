@@ -8,5 +8,13 @@
 </template>
 
 <script setup>
-defineProps(["config"])
+// eslint-disable-next-line no-unused-vars
+const props = defineProps({
+  config: {
+    type: Object,
+    default() {
+      return {};
+    },
+  },
+});
 </script>
