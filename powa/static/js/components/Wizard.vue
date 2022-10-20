@@ -1,10 +1,12 @@
 <template>
-  <div class="card mb-4">
-    <div class="card-body">
-      <h4>{{ config.title }}</h4>
+  <v-card>
+    <v-card-title>
+      {{ config.title }}
+    </v-card-title>
+    <v-card-text>
       <em>Wizard component not implemented.</em>
-    </div>
-  </div>
+    </v-card-text>
+  </v-card>
 </template>
 
 <script setup>
