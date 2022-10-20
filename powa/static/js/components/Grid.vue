@@ -1,10 +1,10 @@
 <template>
-  <div class="card mb-4">
-    <div class="card-body">
-      <h4>{{ config.title }}</h4>
-      <div class="row">
-        <div class="col-sm-4"></div>
-      </div>
+  <v-card>
+    <v-card-title>{{ config.title }}</v-card-title>
+    <v-card-text>
+      <v-row>
+        <v-col> Search field here </v-col>
+      </v-row>
       <table class="table table-sm table-hover">
         <thead>
           <tr>
@@ -16,7 +16,7 @@
         <tbody>
           <tr
             v-for="entry in items"
-            :key="entry"
+            :key="entry.srvid"
             :class="{ clickable: !!entry.url }"
             @click="onRowClicked(entry)"
           >
@@ -34,8 +34,8 @@
           </tr>
         </tbody>
       </table>
-    </div>
-  </div>
+    </v-card-text>
+  </v-card>
 </template>
 
 <script setup>
