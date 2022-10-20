@@ -1,17 +1,13 @@
 <template>
-  <div class="card shadow border-0 mb-4">
-    <div class="card-body">
-      <h4 class="card-title">
-        {{ config.title }}
-        <i ref="helpEl" class="fa fa-info" />
-      </h4>
-      <div class="row no-gutters">
-        <div class="col">
-          <div ref="graphContainer" style="height: 400px" />
-        </div>
-      </div>
-    </div>
-  </div>
+  <v-card>
+    <v-card-title>
+      {{ config.title }}
+      <i ref="helpEl" class="fa fa-info" />
+    </v-card-title>
+    <v-card-text>
+      <div ref="graphContainer" style="height: 400px" />
+    </v-card-text>
+  </v-card>
 </template>
 
 <script setup>
