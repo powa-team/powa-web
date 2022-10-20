@@ -1,11 +1,11 @@
 <template>
-  <div class="card mb-4">
-    <div class="card-body">
-      <h4>{{ config.title }}</h4>
+  <v-card>
+    <v-card-title>{{ config.title }}</v-card-title>
+    <v-card-text ref="contentEl">
       <!-- eslint-disable-next-line vue/no-v-html -->
-      <div ref="contentEl" v-html="content" />
-    </div>
-  </div>
+      <div v-html="content"></div>
+    </v-card-text>
+  </v-card>
 </template>
 
 <script setup>
