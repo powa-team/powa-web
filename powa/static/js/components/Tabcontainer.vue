@@ -1,44 +1,34 @@
 <template>
-  <div class="card mb-4">
-    <div class="card-header">
-      <ul class="nav nav-tabs card-header-tabs" role="tablist">
-        <li v-for="(tab, index) in tabs" :key="tab.uuid" class="nav-item">
-          <a
-            :href="'#' + tab.uuid"
-            :class="['nav-link', { active: index === 0 }]"
-            data-toggle="tab"
-            role="tab"
-            :aria-controls="tab.uuid"
-            :aria-selected="index === 0 ? 'true' : 'false'"
-          >
-            {{ tab.title }}
-          </a>
-        </li>
-      </ul>
-    </div>
-    <div class="tab-content">
-      <div
-        v-for="(tab, index) in tabs"
-        :id="tab.uuid"
-        :key="tab.uuid"
-        :class="['tab-pane card-body', { 'show active': index === 0 }]"
-        role="tabpanel"
-        :aria-labelledby="tab.uuid"
-      >
-        <component
-          :is="widgetComponent(tab.type)"
-          v-if="activeTab == tab.uuid"
-          :config="tab"
-        />
-      </div>
-    </div>
-  </div>
+  <v-card>
+    <v-card-text>
+      <v-tabs v-model="activeTab" align-with-title role="tablist" show-arrows>
+        <v-tab v-for="(tab, index) in props.config.tabs" :key="'tab' + index">
+          {{ tab.title }}
+        </v-tab>
+      </v-tabs>
+      <v-tabs-items v-model="activeTab">
+        <v-tab-item
+          v-for="(tab, index) in props.config.tabs"
+          :key="'tab_content' + index"
+          :transition="false"
+        >
+          <v-card>
+            <v-card-text>
+              <component
+                :is="widgetComponent(tab.type)"
+                v-if="activeTab == index"
+                :config="tab"
+              />
+            </v-card-text>
+          </v-card>
+        </v-tab-item>
+      </v-tabs-items>
+    </v-card-text>
+  </v-card>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
-import * as _ from "lodash";
-import $ from "jquery";
+import { ref } from "vue";
 import { widgetComponent } from "../utils/widget-component.js";
 
 const props = defineProps({
@@ -50,19 +40,5 @@ const props = defineProps({
   },
 });
 
-const activeTab = ref(null);
-
-const tabs = computed(() => {
-  // Provide a unique Id to tabs
-  return _.map(props.config.tabs, (tab) =>
-    Object.assign({ uuid: _.uniqueId("tab-") }, tab)
-  );
-});
-
-onMounted(() => {
-  activeTab.value = tabs.value[0].uuid;
-  $('a[data-toggle="tab"]').on("shown.bs.tab", function (e) {
-    activeTab.value = e.target.getAttribute("aria-controls");
-  });
-});
+const activeTab = ref(0);
 </script>
