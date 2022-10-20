@@ -4,6 +4,7 @@ import Vuetify from "vuetify";
 import { mdiCog, mdiHome, mdiReload, mdiPower } from "@mdi/js";
 import store from "./store";
 import Dashboard from "./components/Dashboard.vue";
+import DateRangePicker from "./components/DateRangePicker/DateRangePicker.vue";
 import Graph from "./components/Graph.vue";
 import Grid from "./components/Grid.vue";
 import Tabcontainer from "./components/Tabcontainer.vue";
@@ -28,6 +29,7 @@ const app = new Vue({
   }),
   components: {
     Dashboard,
+    DateRangePicker,
   },
   data: () => ({
     breadCrumbItems: [],
@@ -42,6 +44,7 @@ const app = new Vue({
 });
 
 Vue.component("Dashboard", Dashboard);
+Vue.component("DateRangePicker", DateRangePicker);
 Vue.component("Graph", Graph);
 Vue.component("Grid", Grid);
 Vue.component("Tabcontainer", Tabcontainer);

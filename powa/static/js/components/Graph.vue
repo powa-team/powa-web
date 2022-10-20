@@ -15,10 +15,11 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 import * as _ from "lodash";
 import * as echarts from "echarts";
 import { mdiInformation } from "@mdi/js";
+import { dateMath } from "@grafana/data";
 import size from "../utils/size";
 import store from "../store";
 import moment from "moment";
@@ -67,11 +68,9 @@ function loadData() {
   const metrics = _.map(props.config.metrics, (metric) => {
     return metric.split(".")[1];
   });
-  const toDate = moment();
-  const fromDate = toDate.clone().subtract(1, "hour");
   const params = {
-    from: fromDate.format("YYYY-MM-DD HH:mm:ssZZ"),
-    to: toDate.format("YYYY-MM-DD HH:mm:ssZZ"),
+    from: dateMath.parse(store.from).format("YYYY-MM-DD HH:mm:ssZZ"),
+    to: dateMath.parse(store.to, true).format("YYYY-MM-DD HH:mm:ssZZ"),
   };
   const sourceConfig = store.dataSources[metricGroup];
   const grouper = props.config.grouper || null;
@@ -254,4 +253,11 @@ function initGraphHelp() {
     allowHTML: true,
   });
 }
+
+watch(
+  () => store.from + store.to,
+  () => {
+    loadData();
+  }
+);
 </script>

@@ -15,8 +15,8 @@
         </thead>
         <tbody>
           <tr
-            v-for="entry in items"
-            :key="entry.srvid"
+            v-for="(entry, index) in items"
+            :key="index"
             :class="{ clickable: !!entry.url }"
             @click="onRowClicked(entry)"
           >
@@ -39,8 +39,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import store from "../store";
+import { serialize } from "../store";
+import { dateMath } from "@grafana/data";
 import * as _ from "lodash";
 import $ from "jquery";
 import * as moment from "moment";
@@ -98,11 +100,9 @@ function loadData() {
     })
   );
   const sourceConfig = store.dataSources[metricGroup];
-  const toDate = moment();
-  const fromDate = toDate.clone().subtract(1, "hour");
   const params = {
-    from: fromDate.format("YYYY-MM-DD HH:mm:ssZZ"),
-    to: toDate.format("YYYY-MM-DD HH:mm:ssZZ"),
+    from: dateMath.parse(store.from).format("YYYY-MM-DD HH:mm:ssZZ"),
+    to: dateMath.parse(store.to, true).format("YYYY-MM-DD HH:mm:ssZZ"),
   };
   $.ajax({
     url: sourceConfig.data_url + "?" + $.param(params),
@@ -150,9 +150,16 @@ function getFormatter(type) {
 
 function onRowClicked(row) {
   if (row.url) {
-    window.location.href = row.url;
+    window.location.href = [row.url, serialize(store.from, store.to)].join("?");
   }
 }
+
+watch(
+  () => store.from + store.to,
+  () => {
+    loadData();
+  }
+);
 </script>
 
 <style lang="scss">

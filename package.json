@@ -12,6 +12,8 @@
   },
   "devDependencies": {
     "@mdi/js": "^7.0.96",
+    "@types/lodash": "^4.14.186",
+    "@types/luxon": "^3.0.2",
     "@vitejs/plugin-vue2": "^2.0.0",
     "eslint": "^8.25.0",
     "eslint-config-prettier": "^8.5.0",
@@ -22,11 +24,13 @@
     "vite": "^3.0.4"
   },
   "dependencies": {
+    "@grafana/data": "^9.2.1",
     "bootstrap": "^4.6.2",
     "echarts": "^5.3.3",
     "highlight.js": "^11.6.0",
     "jquery": "^3.6.0",
     "lodash": "^4.17.21",
+    "luxon": "^3.0.4",
     "moment": "^2.29.4",
     "tippy.js": "^6.3.7",
     "vue": "^2.7.12",
