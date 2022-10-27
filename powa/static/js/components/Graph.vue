@@ -220,6 +220,8 @@ function dataLoaded(data) {
     },
     xAxis: {
       type: "time",
+      min: dateMath.parse(store.from).toDate(),
+      max: dateMath.parse(store.to).toDate(),
     },
     yAxis: _.map(yAxis, (axis) => axis),
     series: series,
