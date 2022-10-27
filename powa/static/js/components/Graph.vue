@@ -1,5 +1,12 @@
 <template>
-  <v-card>
+  <v-card :loading="loading">
+    <template #progress>
+      <v-progress-linear
+        height="2"
+        indeterminate
+        style="position: absolute"
+      ></v-progress-linear>
+    </template>
     <v-card-title>
       {{ config.title }}
       <span ref="helpEl">
@@ -37,6 +44,8 @@ const props = defineProps({
   },
 });
 
+const loading = ref(false);
+
 const axisFormats = {
   //"number": Rickshaw.Fixtures.Number.formatKMBT,
   size: new size.SizeFormatter().fromRaw,
@@ -55,11 +64,16 @@ const graphContainer = ref(null);
 
 const helpEl = ref(null);
 
+const chart = ref();
+
 onMounted(() => {
+  chart.value = echarts.init(graphContainer.value);
   loadData();
 });
 
 function loadData() {
+  chart.value.showLoading();
+  loading.value = true;
   const metricGroup = _.uniq(
     _.map(props.config.metrics, (metric) => {
       return metric.split(".")[0];
@@ -139,9 +153,11 @@ function loadData() {
         }
       });
       dataLoaded(newSeries);
+      loading.value = false;
     })
     .fail(() => {
       console.log("fail");
+      loading.value = false;
     });
 }
 
@@ -178,8 +194,6 @@ function getDesc(metric) {
 function dataLoaded(data) {
   // Help
   initGraphHelp();
-
-  const chart = echarts.init(graphContainer.value);
 
   const yAxis = {};
   const metrics = _.map(props.config.metrics, (metric) => {
@@ -228,7 +242,8 @@ function dataLoaded(data) {
     series: series,
     animation: false,
   };
-  chart.setOption(option);
+  chart.value.setOption(option);
+  chart.value.hideLoading();
 }
 
 function initGraphHelp() {
