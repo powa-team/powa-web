@@ -62,6 +62,19 @@
           {% if current_user %}
           <template v-slot:extension>
             <v-breadcrumbs :items="breadCrumbItems">
+              <template v-slot:item="{ item }">
+                <v-breadcrumbs-item
+                  :href="item.href"
+                  :disabled="item.disabled"
+                >
+                  <template v-if="item.text != 'Home'">
+                    {{! item.text }}
+                  </template>
+                  <template v-else>
+                    <v-icon color="primary" small>{{! icons.mdiHome }}</v-icon>
+                  </template>
+                </v-breadcrumbs-item>
+              </template>
             </v-breadcrumbs>
           </template>
           {% end %}
@@ -101,6 +114,10 @@
 <script type="text/breadcrumb">
   {%
     raw to_json([{
+      "text": "Home",
+      "href": reverse_url('Overview'),
+      "disabled": False
+    }] + [{
       "text": item.title,
       "href": reverse_url_with_params(item.url_name, url_args=item.url_params.values()),
       "disabled": i == len(handler.breadcrumb) - 1

@@ -1,7 +1,7 @@
 import _ from "lodash";
 import Vue from "vue";
 import Vuetify from "vuetify";
-import { mdiCog, mdiReload, mdiPower } from "@mdi/js";
+import { mdiCog, mdiHome, mdiReload, mdiPower } from "@mdi/js";
 import store from "./store";
 import Dashboard from "./components/Dashboard.vue";
 import Graph from "./components/Graph.vue";
@@ -34,6 +34,7 @@ const app = new Vue({
     config: {},
     icons: {
       mdiCog,
+      mdiHome,
       mdiPower,
       mdiReload,
     },
