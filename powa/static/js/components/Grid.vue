@@ -1,5 +1,12 @@
 <template>
-  <v-card>
+  <v-card :loading="loading">
+    <template #progress>
+      <v-progress-linear
+        height="2"
+        indeterminate
+        style="position: absolute"
+      ></v-progress-linear>
+    </template>
     <v-card-title>{{ config.title }}</v-card-title>
     <v-card-text>
       <v-row>
@@ -61,6 +68,7 @@ const props = defineProps({
   },
 });
 
+const loading = ref(false);
 const items = ref(null);
 
 onMounted(() => {
@@ -94,6 +102,7 @@ const fields = computed(() => {
 });
 
 function loadData() {
+  loading.value = true;
   const metricGroup = _.uniq(
     _.map(props.config.metrics, (metric) => {
       return metric.split(".")[0];
@@ -108,6 +117,7 @@ function loadData() {
     url: sourceConfig.data_url + "?" + $.param(params),
   }).done((response) => {
     dataLoaded(response.data);
+    loading.value = false;
   });
 }
 

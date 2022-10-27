@@ -1,5 +1,12 @@
 <template>
-  <v-card>
+  <v-card :loading="loading">
+    <template #progress>
+      <v-progress-linear
+        height="2"
+        indeterminate
+        style="position: absolute"
+      ></v-progress-linear>
+    </template>
     <v-card-title>{{ config.title }}</v-card-title>
     <v-card-text ref="contentEl">
       <!-- eslint-disable-next-line vue/no-v-html -->
@@ -25,6 +32,7 @@ const props = defineProps({
   },
 });
 
+const loading = ref(false);
 const content = ref("");
 const contentEl = ref(null);
 
@@ -33,6 +41,7 @@ onMounted(() => {
 });
 
 function loadData() {
+  loading.value = true;
   const sourceConfig = store.dataSources[props.config.name];
   const toDate = moment();
   const fromDate = toDate.clone().subtract(1, "hour");
@@ -45,6 +54,7 @@ function loadData() {
   }).done((response) => {
     content.value = response;
     window.setTimeout(loaded, 1);
+    loading.value = false;
   });
 }
 
