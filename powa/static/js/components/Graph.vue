@@ -205,6 +205,7 @@ function dataLoaded(data) {
       name: serie.label,
       data: _.map(serie.data, (d) => [d.x, d.y]),
       yAxisIndex: _.keys(yAxis).indexOf(serie.type),
+      symbol: "none",
     };
   });
 
