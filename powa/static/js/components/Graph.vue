@@ -2,7 +2,11 @@
   <v-card>
     <v-card-title>
       {{ config.title }}
-      <i ref="helpEl" class="fa fa-info" />
+      <span ref="helpEl">
+        <v-icon class="pl-2">
+          {{ mdiInformation }}
+        </v-icon>
+      </span>
     </v-card-title>
     <v-card-text>
       <div ref="graphContainer" style="height: 400px" />
@@ -14,6 +18,7 @@
 import { onMounted, ref } from "vue";
 import * as _ from "lodash";
 import * as echarts from "echarts";
+import { mdiInformation } from "@mdi/js";
 import size from "../utils/size";
 import store from "../store";
 import moment from "moment";

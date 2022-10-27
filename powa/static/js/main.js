@@ -1,6 +1,7 @@
 import _ from "lodash";
 import Vue from "vue";
 import Vuetify from "vuetify";
+import { mdiCog, mdiReload, mdiPower } from "@mdi/js";
 import store from "./store";
 import Dashboard from "./components/Dashboard.vue";
 import Graph from "./components/Graph.vue";
@@ -20,13 +21,22 @@ Vue.use(Vuetify);
 
 const app = new Vue({
   el: "#app",
-  vuetify: new Vuetify({}),
+  vuetify: new Vuetify({
+    icons: {
+      iconfont: "mdiSvg",
+    },
+  }),
   components: {
     Dashboard,
   },
   data: () => ({
     breadCrumbItems: [],
     config: {},
+    icons: {
+      mdiCog,
+      mdiPower,
+      mdiReload,
+    },
   }),
 });
 

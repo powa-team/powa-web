@@ -35,9 +35,15 @@
               href="{{ reverse_url('RepositoryConfigOverview')}}"
               title="Configuration"
             >
+              <v-icon left>
+                {{! icons.mdiCog  }}
+              </v-icon>
               Configuration
             </v-btn>
             <v-btn text color="primary" id="reload_collector">
+              <v-icon left>
+                {{! icons.mdiReload  }}
+              </v-icon>
               Reload collector
             </v-btn>
 
@@ -46,6 +52,9 @@
             <v-btn text color="primary"
               href="{{ reverse_url('logout') }}"
               >
+              <v-icon left>
+                {{! icons.mdiPower  }}
+              </v-icon>
               Logout
             </v-btn>
             {% end %}
