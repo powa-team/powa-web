@@ -244,6 +244,9 @@ function dataLoaded(data) {
   };
   chart.value.setOption(option);
   chart.value.hideLoading();
+  window.addEventListener("resize", function () {
+    chart.value.resize();
+  });
 }
 
 function initGraphHelp() {
