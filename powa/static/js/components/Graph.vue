@@ -226,6 +226,7 @@ function dataLoaded(data) {
     },
     yAxis: _.map(yAxis, (axis) => axis),
     series: series,
+    animation: false,
   };
   chart.setOption(option);
 }
