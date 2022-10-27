@@ -4,7 +4,8 @@
       <v-col
         v-for="(widget, wIndex) in row"
         :key="rIndex + wIndex"
-        :cols="12 / Object.keys(row).length"
+        :cols="12"
+        :md="12 / Object.keys(row).length"
       >
         <div class="">
           <component :is="widgetComponent(widget.type)" :config="widget" />
