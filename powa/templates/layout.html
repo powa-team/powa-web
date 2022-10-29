@@ -17,48 +17,46 @@
         <v-app-bar
           app
           flat
+          height="40px;"
         >
-          <v-container fluid class="py-0 fill-height">
+          <v-btn href="{{ reverse_url('Overview')}}" class="mr-2">
+            <img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA
+          </v-btn>
+          {% if current_user %}
+          <v-toolbar-title
+            text
+            class="mr-2"
+          >
+            Server <b>{{ handler.current_server }}</b>
+            ({{ handler.current_connection }})
+          </v-toolbar-title>
+          <v-btn text color="primary"
+            href="{{ reverse_url('RepositoryConfigOverview')}}"
+            title="Configuration"
+          >
+            <v-icon left>
+              {{! icons.mdiCog  }}
+            </v-icon>
+            Configuration
+          </v-btn>
+          <v-btn text color="primary" id="reload_collector">
+            <v-icon left>
+              {{! icons.mdiReload  }}
+            </v-icon>
+            Reload collector
+          </v-btn>
 
-            <v-btn href="{{ reverse_url('Overview')}}" class="mr-2">
-              <img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;PoWA
-            </v-btn>
-            {% if current_user %}
-            <v-toolbar-title
-              text
-              class="mr-2"
+          <v-spacer></v-spacer>
+
+          <v-btn text color="primary"
+            href="{{ reverse_url('logout') }}"
             >
-              Server <b>{{ handler.current_server }}</b>
-              ({{ handler.current_connection }})
-            </v-toolbar-title>
-            <v-btn text color="primary"
-              href="{{ reverse_url('RepositoryConfigOverview')}}"
-              title="Configuration"
-            >
-              <v-icon left>
-                {{! icons.mdiCog  }}
-              </v-icon>
-              Configuration
-            </v-btn>
-            <v-btn text color="primary" id="reload_collector">
-              <v-icon left>
-                {{! icons.mdiReload  }}
-              </v-icon>
-              Reload collector
-            </v-btn>
-
-            <v-spacer></v-spacer>
-
-            <v-btn text color="primary"
-              href="{{ reverse_url('logout') }}"
-              >
-              <v-icon left>
-                {{! icons.mdiPower  }}
-              </v-icon>
-              Logout
-            </v-btn>
-            {% end %}
-          </v-container>
+            <v-icon left>
+              {{! icons.mdiPower  }}
+            </v-icon>
+            Logout
+          </v-btn>
+          {% end %}
           {% if current_user %}
           <template v-slot:extension>
             <v-breadcrumbs :items="breadCrumbItems">

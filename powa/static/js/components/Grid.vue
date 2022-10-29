@@ -8,7 +8,7 @@
       ></v-progress-linear>
     </template>
     <v-card-title>{{ config.title }}</v-card-title>
-    <v-card-text>
+    <v-card-text class="pb-0">
       <v-row>
         <v-col cols="12" sm="6" md="4" xl="2">
           <v-text-field
@@ -17,6 +17,7 @@
             :append-icon="mdiMagnify"
             single-line
             hide-details
+            class="pt-0 mt-0"
           ></v-text-field>
         </v-col>
       </v-row>
