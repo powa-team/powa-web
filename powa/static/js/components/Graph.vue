@@ -1,5 +1,5 @@
 <template>
-  <v-card :loading="loading">
+  <v-card :loading="loading" outlined>
     <template #progress>
       <v-progress-linear
         height="2"
