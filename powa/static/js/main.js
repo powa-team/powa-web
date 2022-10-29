@@ -1,6 +1,22 @@
 import _ from "lodash";
 import Vue from "vue";
-import Vuetify from "vuetify";
+import Vuetify, {
+  ClickOutside,
+  VApp,
+  VAppBar,
+  VBreadcrumbs,
+  VBreadcrumbsItem,
+  VBtn,
+  VCol,
+  VContainer,
+  VFlex,
+  VFooter,
+  VIcon,
+  VMain,
+  VRow,
+  VSpacer,
+  VToolbarTitle,
+} from "vuetify/lib";
 import { mdiCog, mdiHome, mdiReload, mdiPower } from "@mdi/js";
 import store from "./store";
 import Dashboard from "./components/Dashboard.vue";
@@ -15,10 +31,15 @@ import { addMessage } from "./utils/message.js";
 
 import "bootstrap";
 
-import "bootstrap/dist/css/bootstrap.css";
-import "vuetify/dist/vuetify.min.css";
+//import "vuetify/src/styles/styles";
+//import "bootstrap/dist/css/bootstrap.css";
+//import "vuetify/dist/vuetify.min.css";
 
-Vue.use(Vuetify);
+Vue.use(Vuetify, {
+  directives: {
+    ClickOutside,
+  },
+});
 
 const app = new Vue({
   el: "#app",
@@ -26,10 +47,34 @@ const app = new Vue({
     icons: {
       iconfont: "mdiSvg",
     },
+    theme: {
+      themes: {
+        light: {
+          primary: "#859145",
+          secondary: "#b0bec5",
+          accent: "#8c9eff",
+          error: "#b71c1c",
+        },
+      },
+    },
   }),
   components: {
     Dashboard,
     DateRangePicker,
+    VApp,
+    VAppBar,
+    VBreadcrumbs,
+    VBreadcrumbsItem,
+    VBtn,
+    VCol,
+    VContainer,
+    VFlex,
+    VFooter,
+    VIcon,
+    VMain,
+    VRow,
+    VSpacer,
+    VToolbarTitle,
   },
   data: () => ({
     breadCrumbItems: [],
