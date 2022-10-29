@@ -7,9 +7,7 @@
         :cols="12"
         :md="12 / Object.keys(row).length"
       >
-        <div class="">
-          <component :is="widgetComponent(widget.type)" :config="widget" />
-        </div>
+        <component :is="widgetComponent(widget.type)" :config="widget" />
       </v-col>
     </v-row>
   </div>
