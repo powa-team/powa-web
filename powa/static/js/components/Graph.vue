@@ -9,11 +9,21 @@
     </template>
     <v-card-title>
       {{ config.title }}
-      <span ref="helpEl">
-        <v-icon class="pl-2">
-          {{ mdiInformation }}
-        </v-icon>
-      </span>
+      <v-tooltip bottom>
+        <template #activator="{ on, attrs }">
+          <v-icon class="pl-2" v-bind="attrs" v-on="on">
+            {{ mdiInformation }}
+          </v-icon>
+        </template>
+        <div>
+          <dl>
+            <div v-for="metric in metrics" :key="metric">
+              <dt>{{ getLabel(metric) }}</dt>
+              <dd>{{ getDesc(metric) }}</dd>
+            </div>
+          </dl>
+        </div>
+      </v-tooltip>
     </v-card-title>
     <v-card-text>
       <div ref="graphContainer" style="height: 400px" />
@@ -31,8 +41,6 @@ import size from "../utils/size";
 import store from "../store";
 import moment from "moment";
 import "../utils/precisediff";
-import tippy from "tippy.js";
-import "tippy.js/dist/tippy.css";
 import $ from "jquery";
 
 const props = defineProps({
@@ -62,9 +70,9 @@ const axisFormats = {
 
 const graphContainer = ref(null);
 
-const helpEl = ref(null);
-
 const chart = ref();
+
+const metrics = ref();
 
 onMounted(() => {
   chart.value = echarts.init(graphContainer.value);
@@ -79,7 +87,7 @@ function loadData() {
       return metric.split(".")[0];
     })
   );
-  const metrics = _.map(props.config.metrics, (metric) => {
+  metrics.value = _.map(props.config.metrics, (metric) => {
     return metric.split(".")[1];
   });
   const params = {
@@ -95,7 +103,7 @@ function loadData() {
     .done((response) => {
       const seriesByMetric = {};
 
-      _.each(metrics, (metric) => {
+      _.each(metrics.value, (metric) => {
         seriesByMetric[metric] = {};
       });
 
@@ -111,7 +119,7 @@ function loadData() {
 
       _.each(response.data, (row) => {
         const group = grouper || "";
-        _.each(metrics, (metric) => {
+        _.each(metrics.value, (metric) => {
           const series = seriesByMetric[metric];
           let current_group = series[group];
           if (current_group === undefined) {
@@ -143,7 +151,7 @@ function loadData() {
       });
 
       let newSeries = [];
-      _.each(metrics, (metric) => {
+      _.each(metrics.value, (metric) => {
         const series = seriesByMetric[metric];
         if (!$.isEmptyObject(series)) {
           $.each(series, function (key, serie) {
@@ -192,9 +200,6 @@ function getDesc(metric) {
 }
 
 function dataLoaded(data) {
-  // Help
-  initGraphHelp();
-
   const yAxis = {};
   const metrics = _.map(props.config.metrics, (metric) => {
     return metric.split(".")[1];
@@ -246,33 +251,6 @@ function dataLoaded(data) {
   chart.value.hideLoading();
   window.addEventListener("resize", function () {
     chart.value.resize();
-  });
-}
-
-function initGraphHelp() {
-  let labels = "";
-  const metrics = _.map(props.config.metrics, (metric) => {
-    return metric.split(".")[1];
-  });
-  _.each(metrics, (metric) => {
-    labels =
-      "<tr>" +
-      "<td><b>" +
-      getLabel(metric) +
-      "</b></td>" +
-      "<td>" +
-      getDesc(metric) +
-      "</td></td>" +
-      labels;
-  });
-  const help = "<table>" + labels + '</table class="stack">';
-  // add the hover info
-  tippy(helpEl.value, {
-    content: help,
-    arrow: true,
-    maxWidth: "100%",
-    theme: "translucent",
-    allowHTML: true,
   });
 }
 
