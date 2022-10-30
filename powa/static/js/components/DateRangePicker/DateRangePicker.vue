@@ -15,12 +15,12 @@
       "
     >
       <v-card style="height: 100%">
-        <v-card-text style="height: 100%" class="p-0">
+        <v-card-text style="height: 100%" class="pa-0">
           <v-row style="height: 100%; overflow: hidden" no-gutters>
             <v-col
               cols="12"
               sm="7"
-              class="p-2"
+              class="pa-6"
               style="border-right: 1px solid #dfdfdf"
             >
               <v-form ref="form" v-model="valid">
