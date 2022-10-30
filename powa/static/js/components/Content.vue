@@ -10,13 +10,13 @@
     <v-card-title>{{ config.title }}</v-card-title>
     <v-card-text ref="contentEl">
       <!-- eslint-disable-next-line vue/no-v-html -->
-      <div v-html="content"></div>
+      <component :is="content"></component>
     </v-card-text>
   </v-card>
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import Vue, { onMounted, ref } from "vue";
 import store from "../store";
 import moment from "moment";
 import hljs from "highlight.js";
@@ -52,7 +52,7 @@ function loadData() {
   $.ajax({
     url: sourceConfig.data_url + "?" + $.param(params),
   }).done((response) => {
-    content.value = response;
+    content.value = Vue.compile(response);
     window.setTimeout(loaded, 1);
     loading.value = false;
   });
