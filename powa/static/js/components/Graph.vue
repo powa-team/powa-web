@@ -18,8 +18,10 @@
         <div>
           <dl>
             <div v-for="metric in metrics" :key="metric">
-              <dt>{{ getLabel(metric) }}</dt>
-              <dd>{{ getDesc(metric) }}</dd>
+              <dt>
+                <b>{{ getLabel(metric) }}</b>
+              </dt>
+              <dd class="ml-4">{{ getDesc(metric) }}</dd>
             </div>
           </dl>
         </div>
