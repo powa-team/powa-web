@@ -237,6 +237,28 @@ function dataLoaded(data) {
         return [pt[0], "10%"];
       },
       confine: true,
+      formatter: function (params) {
+        let html = params[0].axisValueLabel + "<br />";
+        _.each(params, (value) => {
+          const formatter = option.yAxis[value.axisIndex].axisLabel.formatter;
+          html += `
+            <div style="margin: 10px 0 0;line-height:1;">
+              <div style="margin: 0px 0 0;line-height:1;">
+                <span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:${
+                  value.color
+                };"></span>
+                <span style="font-size:14px;color:#666;font-weight:400;margin-left:2px">${
+                  value.seriesName
+                }</span>
+                <span style="float:right;margin-left:20px;font-size:14px;color:#666;font-weight:900">${formatter(
+                  value.value[1]
+                )}</span>
+              <div style="clear:both">
+            </div>
+          `;
+        });
+        return html;
+      },
     },
     legend: {
       data: _.map(series, (serie) => serie.name),
