@@ -156,7 +156,7 @@ function loadData() {
       _.each(metrics.value, (metric) => {
         const series = seriesByMetric[metric];
         if (!$.isEmptyObject(series)) {
-          $.each(series, function (key, serie) {
+          $.each(series, function (_, serie) {
             const newSerie = $.extend({}, sourceConfig.metrics[metric], serie);
             newSeries.push(newSerie);
           });
