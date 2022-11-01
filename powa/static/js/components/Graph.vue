@@ -7,26 +7,28 @@
         style="position: absolute"
       ></v-progress-linear>
     </template>
-    <v-card-title>
-      {{ config.title }}
-      <v-tooltip bottom>
-        <template #activator="{ on, attrs }">
-          <v-icon class="pl-2" v-bind="attrs" v-on="on">
-            {{ mdiInformation }}
-          </v-icon>
-        </template>
-        <div>
-          <dl>
-            <div v-for="metric in metrics" :key="metric">
-              <dt>
-                <b>{{ getLabel(metric) }}</b>
-              </dt>
-              <dd class="ml-4">{{ getDesc(metric) }}</dd>
-            </div>
-          </dl>
-        </div>
-      </v-tooltip>
-    </v-card-title>
+    <v-app-bar flat height="40px;">
+      <v-toolbar-title class="mx-auto">
+        {{ config.title }}
+        <v-tooltip bottom>
+          <template #activator="{ on, attrs }">
+            <v-icon class="pl-2" v-bind="attrs" v-on="on">
+              {{ mdiInformation }}
+            </v-icon>
+          </template>
+          <div>
+            <dl>
+              <div v-for="metric in metrics" :key="metric">
+                <dt>
+                  <b>{{ getLabel(metric) }}</b>
+                </dt>
+                <dd class="ml-4">{{ getDesc(metric) }}</dd>
+              </div>
+            </dl>
+          </div>
+        </v-tooltip>
+      </v-toolbar-title>
+    </v-app-bar>
     <v-card-text>
       <div ref="graphContainer" style="height: 400px" />
     </v-card-text>

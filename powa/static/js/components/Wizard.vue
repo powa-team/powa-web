@@ -1,8 +1,10 @@
 <template>
   <v-card>
-    <v-card-title>
-      {{ config.title }}
-    </v-card-title>
+    <v-app-bar flat height="40px;">
+      <v-toolbar-title>
+        <v-card-title class="pl-0">{{ config.title }}</v-card-title>
+      </v-toolbar-title>
+    </v-app-bar>
     <v-card-text>
       <em>Wizard component not implemented.</em>
     </v-card-text>
