@@ -7,7 +7,7 @@ export default {
         return "(NA)";
       }
       if (val <= 1024) {
-        return val + " " + "B";
+        return val.toFixed(2) + " " + "B";
       }
       var scale = [null, "K", "M", "G", "T", "P"];
       let i = 0;
