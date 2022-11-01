@@ -38,7 +38,11 @@
 <script setup>
 import { onMounted, ref, watch } from "vue";
 import * as _ from "lodash";
-import * as echarts from "echarts";
+import * as echarts from "echarts/lib/echarts";
+import "echarts/lib/chart/line";
+import "echarts/lib/component/tooltip";
+import "echarts/lib/component/legend";
+import "echarts/lib/component/grid";
 import { mdiInformation } from "@mdi/js";
 import { dateMath } from "@grafana/data";
 import size from "../utils/size";
