@@ -236,6 +236,7 @@ function dataLoaded(data) {
       position: function (pt) {
         return [pt[0], "10%"];
       },
+      confine: true,
     },
     legend: {
       data: _.map(series, (serie) => serie.name),
