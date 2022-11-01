@@ -145,16 +145,10 @@ function loadData() {
               " column in your query ?"
             );
           }
-          current_group.data.push(
-            $.extend(
-              {},
-              {
-                x: new Date(row[xaxis] * 1000),
-                y: row[sourceConfig.metrics[metric].yaxis],
-              },
-              row
-            )
-          );
+          current_group.data.push({
+            x: new Date(row[xaxis] * 1000),
+            y: row[sourceConfig.metrics[metric].yaxis],
+          });
         });
       });
 
