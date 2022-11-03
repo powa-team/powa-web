@@ -12,15 +12,14 @@
         <v-card-title class="pl-0">{{ config.title }}</v-card-title>
       </v-toolbar-title>
     </v-app-bar>
-    <v-card-text ref="contentEl">
-      <!-- eslint-disable-next-line vue/no-v-html -->
-      <component :is="content"></component>
-    </v-card-text>
+    <!-- eslint-disable-next-line vue/no-v-html -->
+    <v-card-text ref="contentEl"><div v-html="content"></div></v-card-text>
   </v-card>
 </template>
 
 <script setup>
 import Vue, { onMounted, ref } from "vue";
+import { components, createVuetify } from "../plugins/vuetify.js";
 import store from "../store";
 import moment from "moment";
 import hljs from "highlight.js";
@@ -56,7 +55,13 @@ function loadData() {
   $.ajax({
     url: sourceConfig.data_url + "?" + $.param(params),
   }).done((response) => {
-    content.value = Vue.compile(response);
+    const el = new Vue({
+      components,
+      template: response,
+      vuetify: createVuetify(),
+    });
+    const html = el.$mount().$el.outerHTML;
+    content.value = html;
     window.setTimeout(loaded, 1);
     loading.value = false;
   });
