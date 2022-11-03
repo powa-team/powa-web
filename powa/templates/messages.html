@@ -1,27 +1,25 @@
 {% for cat, messages in flashed_messages().items() %}
-    <div class="alert alert-{{cat}} alert-dismissible fade show" role="alert">
-      <ul>
-          {% for message in messages %}
-          <li>{{message}}</li>
-          {% end %}
-      </ul>
-      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-        <span aria-hidden="true">&times;</span>
-      </button>
-    </div>
+<!--
+current message category does not match v-alert type
+it must be in success, info, warning, error
+-->
+<v-alert type="{{cat}}" dismissible transition="fade-transition" role="alert">
+  <ul>
+    {% for message in messages %}
+    <li>{{message}}</li>
+    {% end %}
+  </ul>
+</v-alert>
 {% end %}
 
 {% if current_user %}
-  {% for cat, messages in sanitycheck_messages().items() %}
-    <div class="alert alert-{{cat}} alert-dismissible fade show" role="alert">
-      <ul>
-        {% for message in messages %}
-        <li>{{message}}</li>
-        {% end %}
-      </ul>
-      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-        <span aria-hidden="true">&times;</span>
-      </button>
-    </div>
-  {% end %}
+{% for cat, messages in sanitycheck_messages().items() %}
+<v-alert type="{{cat}}" dismissible transition="fade-transition" role="alert">
+  <ul>
+    {% for message in messages %}
+    <li>{{message}}</li>
+    {% end %}
+  </ul>
+</v-alert>
+{% end %}
 {% end %}

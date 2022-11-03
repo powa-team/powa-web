@@ -3,6 +3,7 @@ import { mdiCog, mdiHome, mdiReload, mdiPower } from "@mdi/js";
 
 import Vuetify, {
   ClickOutside,
+  VAlert,
   VApp,
   VAppBar,
   VBreadcrumbs,
@@ -23,6 +24,7 @@ const directives = {
   ClickOutside,
 };
 const components = {
+  VAlert,
   VApp,
   VAppBar,
   VBreadcrumbs,
