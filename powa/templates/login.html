@@ -1,24 +1,35 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<div class="container-fluid">
-  <div class="center row">
-    <div class="columns col-lg-4 col-lg-offset-4 col-md-6 col-md-offset-3">
-      <form method="POST" action="">
-        {% apply field(name="username", label=_("Username")) %}{% end %}
-        {% apply field(name="password", label=_("Password"), type="password") %}{% end %}
-        {% apply field(name="server", label=_("Server"), list="serverlist") %}{% end %}
-        <datalist id="serverlist">
-          {% for opt in sorted(servers().keys()) %}
-          <option value="{{opt}}"></option>
-          {% end %}
-        </datalist>
-        <div class="col-lg-12 text-center">
-          <input type="submit" name="login" class="button" id="Login" value="Login"/>
-          <input type="submit" name="login" class="btn btn-primary" id="Login" value="Login"/>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
+<v-container fluid>
+  <v-layout align-center justify-center>
+    <v-flex xs12 sm8 md4>
+      <v-card class="elevation-12">
+        <v-toolbar dark color="primary">
+          <v-toolbar-title>Login form</v-toolbar-title>
+        </v-toolbar>
+        <v-form method="post" action="">
+          <v-card-text>
+            <v-text-field name="username" label="Username"></v-text-field>
+            <v-text-field
+              name="password"
+              label="Password"
+              type="password"
+            ></v-text-field>
+            <v-combobox
+              name="server"
+              label="Server"
+              :items="{{ sorted(servers().keys()) }}"
+            >
+            </v-combobox>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn color="primary" type="submit">Login</v-btn>
+          </v-card-actions>
+        </v-form>
+      </v-card>
+    </v-flex>
+  </v-layout>
+</v-container>
 {% end %}
