@@ -1,24 +1,7 @@
 import _ from "lodash";
 import Vue from "vue";
-import Vuetify, {
-  ClickOutside,
-  VApp,
-  VAppBar,
-  VBreadcrumbs,
-  VBreadcrumbsItem,
-  VBtn,
-  VCol,
-  VContainer,
-  VFlex,
-  VFooter,
-  VIcon,
-  VMain,
-  VRow,
-  VSpacer,
-  VToolbarTitle,
-} from "vuetify/lib";
-import { mdiCog, mdiHome, mdiReload, mdiPower } from "@mdi/js";
 import store from "./store";
+import { components, createVuetify, icons } from "./plugins/vuetify.js";
 import Dashboard from "./components/Dashboard.vue";
 import DateRangePicker from "./components/DateRangePicker/DateRangePicker.vue";
 import Graph from "./components/Graph.vue";
@@ -35,56 +18,20 @@ import "bootstrap";
 //import "bootstrap/dist/css/bootstrap.css";
 //import "vuetify/dist/vuetify.min.css";
 
-Vue.use(Vuetify, {
-  directives: {
-    ClickOutside,
-  },
-});
-
 const app = new Vue({
   el: "#app",
-  vuetify: new Vuetify({
-    icons: {
-      iconfont: "mdiSvg",
+  vuetify: createVuetify(),
+  components: Object.assign(
+    {
+      Dashboard,
+      DateRangePicker,
     },
-    theme: {
-      themes: {
-        light: {
-          primary: "#859145",
-          secondary: "#b0bec5",
-          accent: "#8c9eff",
-          error: "#b71c1c",
-        },
-      },
-    },
-  }),
-  components: {
-    Dashboard,
-    DateRangePicker,
-    VApp,
-    VAppBar,
-    VBreadcrumbs,
-    VBreadcrumbsItem,
-    VBtn,
-    VCol,
-    VContainer,
-    VFlex,
-    VFooter,
-    VIcon,
-    VMain,
-    VRow,
-    VSpacer,
-    VToolbarTitle,
-  },
+    components
+  ),
   data: () => ({
     breadCrumbItems: [],
     config: {},
-    icons: {
-      mdiCog,
-      mdiHome,
-      mdiPower,
-      mdiReload,
-    },
+    icons,
   }),
 });
 
