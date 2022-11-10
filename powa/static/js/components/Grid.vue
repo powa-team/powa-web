@@ -4,7 +4,7 @@
       <v-progress-linear
         height="2"
         indeterminate
-        style="position: absolute"
+        style="position: absolute; z-index: 1"
       ></v-progress-linear>
     </template>
     <v-app-bar flat height="40px;">
