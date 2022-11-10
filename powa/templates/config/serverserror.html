@@ -1,8 +1,8 @@
 {% extends "../xhr.html" %}
 {% block content %}
 
-<div class="row">
-  <div class="columns large-12">
+<v-row>
+  <v-col cols="12">
     <h4>Errors</h4>
     {% if (errors) %}
       <ul>
@@ -19,6 +19,6 @@
   {% else %}
   No error!
   {% end %}
-  </div>
-</div>
+  </vcol>
+</v-row>
 {% end %}
