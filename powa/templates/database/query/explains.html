@@ -1,20 +1,23 @@
 {% extends "../../xhr.html" %}
 {% block content %}
+
 <div class="indexes">
-<h4>Example values</h4>
-<div class="row">
+  <h4>Example values</h4>
+  <v-row>
     {% for plan in plans %}
-    <div class="columns large-4">
-        <h5>{{plan.title.title()}} values</h5>
-        <dl>
-            <dt>Executed:</dt><dd>{{plan.exec_count}} times</dd>
-            <dt>Average filter ratio:</dt><dd>{{round(plan.filter_ratio * 100, 2) }}%</dd>
-        </dl>
-        <h6 class="subheader">Example plan:</h6>
-        <pre class="sql"><code>{{plan.query}}</code></pre>
-        <pre class="sql"><code>{{plan.plan}}</code></pre>
-    </div>
+    <v-col cols="4">
+      <h5>{{plan.title.title()}} values</h5>
+      <dl>
+        <dt>Executed:</dt>
+        <dd>{{plan.exec_count}} times</dd>
+        <dt>Average filter ratio:</dt>
+        <dd>{{round(plan.filter_ratio * 100, 2) }}%</dd>
+      </dl>
+      <h6 class="subheader">Example plan:</h6>
+      <pre class="sql"><code>{{plan.query}}</code></pre>
+      <pre class="sql"><code>{{plan.plan}}</code></pre>
+    </v-col>
     {% end %}
-</div>
+  </v-row>
 </div>
 {% end %}
