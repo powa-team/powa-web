@@ -56,13 +56,13 @@ def field(_, **kwargs):
         """
         kwargs['content'] = content.decode('utf8')
         return """
-<div class="large-12 columns">
+<v-col cols="12">
     <label>%(label)s:
     <%(tag)s %(attrs)s>
         %(content)s
     </%(tag)s>
     </label>
-</div>
+</v-col>
 """ % kwargs
 
     return render
