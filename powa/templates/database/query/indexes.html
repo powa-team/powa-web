@@ -1,84 +1,83 @@
 {% extends "../../xhrm.html" %}
 {% block content %}
 <div class="indexes">
-
-  <div class="row" data-equalizer>
-    <div class="columns large-4">
-    <h4>Index suggestion</h4>
-        {% if indexes %}
+  <v-row data-equalizer>
+    <v-col cols="4">
+      <h4>Index suggestion</h4>
+      {% if indexes %}
+      <ul>
+        {% for clause, inds in indexes.items() %}
+        <li>
+          <h5>Possible indexes for attributes present in <b>{{clause}}</b>:</h5>
           <ul>
-                {% for clause, inds in indexes.items() %}
+            {% for index in inds %}
+            <h6>With access method <em>{{ index.amname }}</em></h6>
+            <li>
+              <ul>
+                {% for qual in index.qual %}
                 <li>
-                <h5>Possible indexes for attributes present in <b>{{clause}}</b>:</h5>
-                <ul>
-                {% for index in inds %}
-                  <h6>With access method <em>{{ index.amname }}</em></h6>
-                  <li>
-                  <ul>
-                  {% for qual in index.qual %}
-                    <li>
-                      <dl>
-                        <dt>Attribute</dt>
-                        <dd>{{ qual.relname }}.{{ qual.attname}}</dd>
-                        <dt>Data distribution</dt>
-                        {% if qual.distinct_values is None %}
-                        <dd>Unknown</dd>
-                        {% else %}
-                        <dd>approximately <b>{{ qual.distinct_values }}</b> distinct values</dd>
-                        {% end %}
-                        <dt>
-                      </dl>
-                    </li>
-                  {% end %}
-                  </ul>
-                  </li>
+                  <dl>
+                    <dt>Attribute</dt>
+                    <dd>{{ qual.relname }}.{{ qual.attname}}</dd>
+                    <dt>Data distribution</dt>
+                    {% if qual.distinct_values is None %}
+                    <dd>Unknown</dd>
+                    {% else %}
+                    <dd>approximately <b>{{ qual.distinct_values }}</b> distinct values</dd>
+                    {% end %}
+                  </dl>
+                </li>
                 {% end %}
-                </ul>
-                {% end %}
+              </ul>
+            </li>
+            {% end %}
           </ul>
-        {% else %}
-            No suitable index to suggest.
-        {% end %}
-  </div>
-  <div class="columns large-8">
-{% if hypoplan  %}
-    <div class="row">
-      <div class="columns large-12">
-        {% if hypoplan.indexes %}
-        The following indexes would be <span class="label radius"
-          title="Tooltip" style="background-color: #12cd21">used</span>:
-        <pre class="sql">
-        {% for ind in hypoplan.indexes %}
-        <code>{{ind.ddl}}</code>
-        {% end %}
-        </pre>
-        {% else %}
-        None of the indexes would be used !
-        {% end %}
-      </div>
-      {% if hypoplan.indexes %}
-      <div class="columns large-6">
+          {% end %}
+        </li>
+      </ul>
       {% else %}
-      <div class="columns large-12">
+      No suitable index to suggest.
       {% end %}
-        <pre>EXPLAIN plan <b>without</b> suggested indexes:</pre>
-        <pre class="sql"><code data-equalizer-watch="">{{ hypoplan.baseplan }}</code></pre>
-      </div>
-      {% if hypoplan.indexes %}
-      <div class="columns large-6">
-        <pre>EXPLAIN plan <b>with</b> suggested index</pre>
-        <pre class="sql"><code data-equalizer-watch="">{{ hypoplan.hypoplan }}</code></pre>
-      </div>
-      <div class="columns large-12">
-        <pre>Query cost gain factor with hypothetical index: <b>{{
+    </v-col>
+    <v-col cols="8">
+      {% if hypoplan %}
+      <v-row>
+        <v-col cols="12">
+          {% if hypoplan.indexes %}
+          The following indexes would be <span class="label radius"
+            title="Tooltip" style="background-color: #12cd21">used</span>:
+          <pre class="sql">
+                        {% for ind in hypoplan.indexes %}
+                        <code>{{ind.ddl}}</code>
+                        {% end %}
+                    </pre>
+          {% else %}
+          None of the indexes would be used !
+          {% end %}
+        </v-col>
+      </v-row>
+      <v-row>
+        {% if hypoplan.indexes %}
+        <v-col cols="6">
+          {% else %}
+          <v-col cols="12">
+            {% end %}
+            <pre>EXPLAIN plan <b>without</b> suggested indexes:</pre>
+            <pre class="sql"><code data-equalizer-watch="">{{ hypoplan.baseplan }}</code></pre>
+          </v-col>
+          {% if hypoplan.indexes %}
+          <v-col cols="6">
+            <pre>EXPLAIN plan <b>with</b> suggested index</pre>
+            <pre class="sql"><code data-equalizer-watch="">{{ hypoplan.hypoplan }}</code></pre>
+          </v-col>
+          <v-col cols="12">
+            <pre>Query cost gain factor with hypothetical index: <b>{{
           hypoplan.gain_percent }} %</b></pre>
-      </div>
+          </v-col>
+          {% end %}
+      </v-row>
       {% end %}
-    </div>
-{% end %}
-  </div>
+    </v-col>
+  </v-row>
 </div>
-
-
-
 {% end %}
