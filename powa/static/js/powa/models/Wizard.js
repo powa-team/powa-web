@@ -399,9 +399,9 @@ define(['backbone', 'powa/models/DataSourceCollection', 'jquery',
 
           // If we already found a node with the same qualid, we simply need to
           // merge it with the new nodes, otherwise add it to the list.
-          existing = nodes.get(qual.id);
+          existing = nodes.get(qual.qualid);
           if (existing)
-            existing.merge(nodes);
+            existing.merge(node);
           else
             nodes.add(node);
 
