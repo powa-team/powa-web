@@ -333,7 +333,7 @@ class GlobalWaitsMetricGroup(MetricGroupDef):
 
         pg_version_num = self.get_pg_version_num(self.path_args[0])
         # if we can't connect to the remote server, assume pg10 or above
-        if pg_version_num is None or pg_version_num < 100000:
+        if pg_version_num is not None and pg_version_num < 100000:
             cols += [wps("count_lwlocknamed"), wps("count_lwlocktranche"),
                      wps("count_lock"), wps("count_bufferpin")]
         else:
@@ -623,7 +623,7 @@ class ServerOverview(DashboardPage):
             metrics=None
             pg_version_num = self.get_pg_version_num(self.path_args[0])
             # if we can't connect to the remote server, assume pg10 or above
-            if pg_version_num is None or pg_version_num < 100000:
+            if pg_version_num is not None and pg_version_num < 100000:
                 metrics = [GlobalWaitsMetricGroup.count_lwlocknamed,
                            GlobalWaitsMetricGroup.count_lwlocktranche,
                            GlobalWaitsMetricGroup.count_lock,
