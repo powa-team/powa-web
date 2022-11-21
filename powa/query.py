@@ -429,7 +429,7 @@ class WaitsQueryOverviewMetricGroup(MetricGroupDef):
 
         pg_version_num = self.get_pg_version_num(self.path_args[0])
         # if we can't connect to the remote server, assume pg10 or above
-        if pg_version_num is None or pg_version_num < 100000:
+        if pg_version_num is not None and pg_version_num < 100000:
             cols += [wps("count_lwlocknamed", do_sum=False),
                      wps("count_lwlocktranche", do_sum=False),
                      wps("count_lock", do_sum=False),
@@ -698,7 +698,7 @@ class QueryOverview(DashboardPage):
             metrics = None
             pg_version_num = self.get_pg_version_num(self.path_args[0])
             # if we can't connect to the remote server, assume pg10 or above
-            if pg_version_num is None or pg_version_num < 100000:
+            if pg_version_num is not None and pg_version_num < 100000:
                 metrics=[WaitsQueryOverviewMetricGroup.count_lwlocknamed,
                          WaitsQueryOverviewMetricGroup.count_lwlocktranche,
                          WaitsQueryOverviewMetricGroup.count_lock,
