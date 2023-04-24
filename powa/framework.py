@@ -260,10 +260,11 @@ class BaseHandler(RequestHandler):
             return self.execute("""
                                 SELECT COALESCE(alias,
                                                 hostname || ':' || port)
+                                       AS server
                                 FROM {powa}.powa_servers
                                 WHERE id = %(srvid)s
                                 """, params={'srvid': int(srvid)}
-                                ).scalar()
+                                )[0]['server']
 
     @property
     def servers(self, **kwargs):
