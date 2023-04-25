@@ -118,11 +118,15 @@ class AllCollectorsDetail(ContentWidget):
             coalesce(host(client_addr), '<local>') AS client_addr,
             count(datname) OVER () AS nb_found
             FROM (
-                SELECT 'bgworker' AS id, 'PoWA - %%' AS val
+                SELECT 'bgworker' AS id, 'PoWA - %%' AS val,
+                    'powa' AS backend_type
                 UNION ALL
-                SELECT 'collector', 'PoWA collector - main thread (%%'
+                SELECT 'collector', 'PoWA collector - main thread (%%',
+                    'client backend' AS backend_type
             ) n
-            LEFT JOIN pg_stat_activity a ON a.application_name LIKE n.val
+            LEFT JOIN pg_stat_activity a ON
+                a.application_name LIKE n.val
+                AND a.backend_type = n.backend_type
             ORDER BY 1"""
 
         rows = self.execute(sql).fetchall()
@@ -189,6 +193,7 @@ class PowaServersMetricGroup(MetricGroupDef):
             ELSE 'running'
         END AS val, application_name
        FROM pg_stat_activity
+       WHERE backend_type = 'powa'
      ) a ON a.application_name LIKE 'PoWA - %%'
      ORDER BY 2"""
 
