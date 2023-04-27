@@ -39,6 +39,12 @@ class Biggestsum(object):
 
 
 def powa_base_statdata_detailed_db():
+    """
+    Base for query used in the grids displaying info about pgss.
+
+    This is based on the "detailed" version of the table, with queryid
+    information.
+    """
     base_query = text("""
   powa_databases,
   LATERAL
@@ -77,6 +83,12 @@ def powa_base_statdata_detailed_db():
 
 
 def powa_base_statdata_db():
+    """
+    Query used in the grids displaying info about pgss.
+
+    This is based on the db-aggregated version of the tables, without queryid
+    information.
+    """
     base_query = text("""(
  SELECT d.srvid, d.oid as dbid, h.*
  FROM
@@ -173,6 +185,12 @@ def get_diffs_forstatdata():
 
 
 def powa_getstatdata_detailed_db(srvid):
+    """
+    Query used in the grids displaying info about pgss.
+
+    This is based on the "detailed" version of the tables, with queryid
+    information.
+    """
     base_query = powa_base_statdata_detailed_db()
     diffs = get_diffs_forstatdata()
     return (select([
@@ -190,6 +208,12 @@ def powa_getstatdata_detailed_db(srvid):
 
 
 def powa_getstatdata_db(srvid):
+    """
+    Query used in the grids displaying info about pgss.
+
+    This is based on the db-aggregated version of the tables, without queryid
+    information.
+    """
     base_query = powa_base_statdata_db()
     diffs = get_diffs_forstatdata()
     return (select([column("srvid")] + [column("dbid")] + diffs)
@@ -717,6 +741,12 @@ BASE_QUERY_BGWRITER_SAMPLE = text("""
 
 
 def powa_base_waitdata_detailed_db():
+    """
+    Query used in the grids displaying info about pg_wait_sampling.
+
+    This is based on the "detailed" version of the tables, with queryid
+    information.
+    """
     base_query = text("""
   powa_databases,
   LATERAL
@@ -757,6 +787,12 @@ def powa_base_waitdata_detailed_db():
 
 
 def powa_base_waitdata_db():
+    """
+    Query used in the grids displaying info about pg_wait_sampling.
+
+    This is based on the db-aggregated version of the tables, without queryid
+    information.
+    """
     base_query = text("""(
   SELECT powa_databases.srvid, powa_databases.oid as dbid, h.*
   FROM
@@ -884,6 +920,12 @@ BASE_QUERY_ALL_RELS_SAMPLE = text("""(
 
 
 def powa_getwaitdata_detailed_db(srvid):
+    """
+    Query used in the grids displaying info about pg_wait_sampling.
+
+    This is based on the "detailed" version of the tables, with queryid
+    information.
+    """
     base_query = powa_base_waitdata_detailed_db()
     return (select([
         column("srvid"),
@@ -901,6 +943,12 @@ def powa_getwaitdata_detailed_db(srvid):
 
 
 def powa_getwaitdata_db(srvid):
+    """
+    Query used in the grids displaying info about pg_wait_sampling.
+
+    This is based on the db-aggregated version of the tables, without queryid
+    information.
+    """
     base_query = powa_base_waitdata_db()
 
     return (select([
