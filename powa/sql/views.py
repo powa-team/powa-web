@@ -44,16 +44,86 @@ def powa_base_statdata_detailed_db():
 
     This is based on the "detailed" version of the table, with queryid
     information.
+
+    As the data is stored in 2 sets of tables (the coalesced records and the
+    "current" records), we have to retrieve the query in multiple steps.
+
+    To improve performance, the retrieval of the coalesced records is divided
+    in 3 parts, which can greatly limit the number of rows that will need to be
+    sorted.
+
+    Those 3 parts are split in 3 subqueries.  For the left and right bounds
+    (the smallest and largest timestamp in the given interval), we get the 2
+    underlying records in the coalesced records (if any) and unnest them
+    fully, filtering any records outside of the interval bound.  For any record
+    in the coalesced records that are entirely inside the given interval,
+    we rely on the pre-computed metadata (mins_in_range and maxs_in_range) and
+    simply return that, which can greatly reduces the amount of rows to sort.
+
+    For the "current" records, we simply return all the rows in the given
+    interval.
     """
     base_query = text("""
   powa_databases,
   LATERAL
   (
+    -- Left bound: the search interval is a single timestamp, the smallest one
+    -- of the search interval, and has to be inside the coalesce_range. We
+    -- still need to unnest this one as we may have to remove some of the
+    -- underlying records
     SELECT unnested.dbid, unnested.userid, unnested.queryid,
       (unnested.records).*
     FROM (
       SELECT psh.dbid, psh.userid, psh.queryid, psh.coalesce_range,
         unnest(records) AS records
+      FROM powa_statements_history psh
+      WHERE coalesce_range && tstzrange(:from, :from, '[]')
+      AND psh.dbid = powa_databases.oid
+      AND psh.queryid IN (
+        SELECT powa_statements.queryid
+        FROM powa_statements
+        WHERE powa_statements.dbid = powa_databases.oid
+          AND powa_statements.srvid = :server
+      )
+      AND psh.srvid = :server
+    ) AS unnested
+    WHERE (records).ts <@ tstzrange(:from, :to, '[]')
+
+    UNION ALL
+
+    -- Right bound: the search interval is a single timestamp, the largest one
+    -- of the search interval, and has to be inside the coalesce_range. We
+    -- still need to unnest this one as we may have to remove some of the
+    -- underlying records
+    SELECT unnested.dbid, unnested.userid, unnested.queryid,
+      (unnested.records).*
+    FROM (
+      SELECT psh.dbid, psh.userid, psh.queryid, psh.coalesce_range,
+        unnest(records) AS records
+      FROM powa_statements_history psh
+      WHERE coalesce_range && tstzrange(:to, :to, '[]')
+      AND psh.dbid = powa_databases.oid
+      AND psh.queryid IN (
+        SELECT powa_statements.queryid
+        FROM powa_statements
+        WHERE powa_statements.dbid = powa_databases.oid
+          AND powa_statements.srvid = :server
+      )
+      AND psh.srvid = :server
+    ) AS unnested
+    WHERE (records).ts <@ tstzrange(:from, :to, '[]')
+
+    UNION ALL
+
+    -- These entries have their coalesce_range ENTIRELY inside the search range
+    -- so we don't need to unnest them.  We just retrieve the mins_in_range,
+    -- maxs_in_range from the record, build an array of this and return it as
+    -- if it was the full record
+    SELECT unnested.dbid, unnested.userid, unnested.queryid,
+      (unnested.records).*
+    FROM (
+      SELECT psh.dbid, psh.userid, psh.queryid, psh.coalesce_range,
+        unnest(ARRAY[mins_in_range,maxs_in_range]) AS records
       FROM powa_statements_history psh
       WHERE coalesce_range && tstzrange(:from, :to, '[]')
       AND psh.dbid = powa_databases.oid
@@ -66,7 +136,10 @@ def powa_base_statdata_detailed_db():
       AND psh.srvid = :server
     ) AS unnested
     WHERE (records).ts <@ tstzrange(:from, :to, '[]')
+
     UNION ALL
+
+    -- The "current" records are simply returned after filtering
     SELECT psc.dbid, psc.userid, psc.queryid,(psc.record).*
     FROM powa_statements_history_current psc
     WHERE (record).ts <@ tstzrange(:from,:to,'[]')
@@ -88,6 +161,8 @@ def powa_base_statdata_db():
 
     This is based on the db-aggregated version of the tables, without queryid
     information.
+
+    This uses the same optimization as powa_base_statdata_detailed_db.
     """
     base_query = text("""(
  SELECT d.srvid, d.oid as dbid, h.*
@@ -101,9 +176,45 @@ def powa_base_statdata_db():
    GROUP BY srvid, dbid
  ) ranges ON d.oid = ranges.dbid AND d.srvid = ranges.srvid,
  LATERAL (
+   -- Left bound: the search interval is a single timestamp, the smallest one
+   -- of the search interval, and has to be inside the coalesce_range. We
+   -- still need to unnest this one as we may have to remove some of the
+   -- underlying records
    SELECT (unnested1.records).*
    FROM (
      SELECT dbh.coalesce_range, unnest(records) AS records
+     FROM powa_statements_history_db dbh
+     WHERE coalesce_range && tstzrange(:from, :from, '[]')
+     AND dbh.dbid = ranges.dbid
+     AND dbh.srvid = :server
+   ) AS unnested1
+   WHERE (unnested1.records).ts <@ tstzrange(:from, :to, '[]')
+
+   -- Right bound: the search interval is a single timestamp, the largest one
+   -- of the search interval, and has to be inside the coalesce_range. We
+   -- still need to unnest this one as we may have to remove some of the
+   -- underlying records
+   UNION ALL
+   SELECT (unnested2.records).*
+   FROM (
+     SELECT dbh.coalesce_range, unnest(records) AS records
+     FROM powa_statements_history_db dbh
+     WHERE coalesce_range && tstzrange(:to, :to, '[]')
+     AND dbh.dbid = ranges.dbid
+     AND dbh.srvid = :server
+   ) AS unnested2
+   WHERE  (unnested2.records).ts <@ tstzrange(:from, :to, '[]')
+
+   UNION ALL
+
+   -- These entries have their coalesce_range ENTIRELY inside the search range
+   -- so we don't need to unnest them.  We just retrieve the mins_in_range,
+   -- maxs_in_range from the record, build an array of this and return it as
+   -- if it was the full record
+   SELECT (unnested1.records).*
+   FROM (
+     SELECT dbh.coalesce_range,
+       unnest(ARRAY[mins_in_range,maxs_in_range]) AS records
      FROM powa_statements_history_db dbh
      WHERE coalesce_range && tstzrange(:from, :to, '[]')
      AND dbh.dbid = ranges.dbid
@@ -120,7 +231,10 @@ def powa_base_statdata_db():
      AND dbh.srvid = :server
    ) AS unnested2
    WHERE  (unnested2.records).ts <@ tstzrange(:from, :to, '[]')
+
    UNION ALL
+
+   -- The "current" records are simply returned after filtering
    SELECT (dbc.record).*
    FROM powa_statements_history_current_db dbc
    WHERE  (dbc.record).ts <@ tstzrange(:from, :to, '[]')
@@ -746,19 +860,27 @@ def powa_base_waitdata_detailed_db():
 
     This is based on the "detailed" version of the tables, with queryid
     information.
+
+    This uses the same optimization as powa_base_statdata_detailed_db.
     """
     base_query = text("""
   powa_databases,
   LATERAL
   (
+    -- Left bound: the search interval is a single timestamp, the smallest one
+    -- of the search interval, and has to be inside the coalesce_range. We
+    -- still need to unnest this one as we may have to remove some of the
+    -- underlying records
     SELECT unnested.dbid, unnested.queryid,
       unnested.event_type, unnested.event, (unnested.records).*
     FROM (
       SELECT wsh.dbid, wsh.queryid, wsh.event_type, wsh.event,
         wsh.coalesce_range, unnest(records) AS records
       FROM powa_wait_sampling_history wsh
-      WHERE coalesce_range && tstzrange(:from, :to, '[]')
+      WHERE coalesce_range && tstzrange(:from, :from, '[]')
       AND wsh.dbid = powa_databases.oid
+      -- we can't simply join powa_statements as there's no userid in
+      -- powa_wait_sampling_* tables
       AND wsh.queryid IN (
         SELECT ps.queryid
         FROM powa_statements ps
@@ -768,11 +890,69 @@ def powa_base_waitdata_detailed_db():
       AND wsh.srvid = :server
     ) AS unnested
     WHERE  (records).ts <@ tstzrange(:from, :to, '[]')
+
     UNION ALL
+
+    -- Right bound: the search interval is a single timestamp, the largest one
+    -- of the search interval, and has to be inside the coalesce_range. We
+    -- still need to unnest this one as we may have to remove some of the
+    -- underlying records
+    SELECT unnested.dbid, unnested.queryid,
+      unnested.event_type, unnested.event, (unnested.records).*
+    FROM (
+      SELECT wsh.dbid, wsh.queryid, wsh.event_type, wsh.event,
+        wsh.coalesce_range, unnest(records) AS records
+      FROM powa_wait_sampling_history wsh
+      WHERE coalesce_range && tstzrange(:to, :to, '[]')
+      AND wsh.dbid = powa_databases.oid
+      -- we can't simply join powa_statements as there's no userid in
+      -- powa_wait_sampling_* tables
+      AND wsh.queryid IN (
+        SELECT ps.queryid
+        FROM powa_statements ps
+        WHERE ps.dbid = powa_databases.oid
+          AND ps.srvid = :server
+      )
+      AND wsh.srvid = :server
+    ) AS unnested
+    WHERE  (records).ts <@ tstzrange(:from, :to, '[]')
+
+    UNION ALL
+
+    -- These entries have their coalesce_range ENTIRELY inside the search range
+    -- so we don't need to unnest them.  We just retrieve the mins_in_range,
+    -- maxs_in_range from the record, build an array of this and return it as
+    -- if it was the full record
+    SELECT unnested.dbid, unnested.queryid,
+      unnested.event_type, unnested.event, (unnested.records).*
+    FROM (
+      SELECT wsh.dbid, wsh.queryid, wsh.event_type, wsh.event,
+        wsh.coalesce_range,
+        unnest(ARRAY[mins_in_range,maxs_in_range]) AS records
+      FROM powa_wait_sampling_history wsh
+      WHERE coalesce_range && tstzrange(:from, :to, '[]')
+      AND wsh.dbid = powa_databases.oid
+      -- we can't simply join powa_statements as there's no userid in
+      -- powa_wait_sampling_* tables
+      AND wsh.queryid IN (
+        SELECT ps.queryid
+        FROM powa_statements ps
+        WHERE ps.dbid = powa_databases.oid
+          AND ps.srvid = :server
+      )
+      AND wsh.srvid = :server
+    ) AS unnested
+    WHERE  (records).ts <@ tstzrange(:from, :to, '[]')
+
+    UNION ALL
+
+    -- The "current" records are simply returned after filtering
     SELECT wsc.dbid, wsc.queryid, wsc.event_type, wsc.event, (wsc.record).*
     FROM powa_wait_sampling_history_current wsc
     WHERE (record).ts <@ tstzrange(:from,:to,'[]')
     AND wsc.dbid = powa_databases.oid
+    -- we can't simply join powa_statements as there's no userid in
+    -- powa_wait_sampling_* tables
     AND wsc.queryid IN (
       SELECT ps.queryid
       FROM powa_statements ps
@@ -792,6 +972,8 @@ def powa_base_waitdata_db():
 
     This is based on the db-aggregated version of the tables, without queryid
     information.
+
+    This uses the same optimization as powa_base_statdata_detailed_db.
     """
     base_query = text("""(
   SELECT powa_databases.srvid, powa_databases.oid as dbid, h.*
@@ -805,16 +987,56 @@ def powa_base_waitdata_db():
     GROUP BY dbid
   ) ranges ON powa_databases.oid = ranges.dbid,
   LATERAL (
+    -- Left bound: the search interval is a single timestamp, the smallest one
+    -- of the search interval, and has to be inside the coalesce_range. We
+    -- still need to unnest this one as we may have to remove some of the
+    -- underlying records
     SELECT event_type, event, (unnested1.records).*
     FROM (
       SELECT wsh.event_type, wsh.event, unnest(records) AS records
+      FROM powa_wait_sampling_history_db wsh
+      WHERE coalesce_range && tstzrange(:from, :from, '[]')
+      AND wsh.dbid = ranges.dbid
+      AND wsh.srvid = :server
+    ) AS unnested1
+    WHERE (unnested1.records).ts <@ tstzrange(:from, :to, '[]')
+
+    UNION ALL
+
+    -- Right bound: the search interval is a single timestamp, the largest one
+    -- of the search interval, and has to be inside the coalesce_range. We
+    -- still need to unnest this one as we may have to remove some of the
+    -- underlying records
+    SELECT event_type, event, (unnested1.records).*
+    FROM (
+      SELECT wsh.event_type, wsh.event, unnest(records) AS records
+      FROM powa_wait_sampling_history_db wsh
+      WHERE coalesce_range && tstzrange(:to, :to, '[]')
+      AND wsh.dbid = ranges.dbid
+      AND wsh.srvid = :server
+    ) AS unnested1
+    WHERE (unnested1.records).ts <@ tstzrange(:from, :to, '[]')
+
+    UNION ALL
+
+    -- These entries have their coalesce_range ENTIRELY inside the search range
+    -- so we don't need to unnest them.  We just retrieve the mins_in_range,
+    -- maxs_in_range from the record, build an array of this and return it as
+    -- if it was the full record
+    SELECT event_type, event, (unnested1.records).*
+    FROM (
+      SELECT wsh.event_type, wsh.event,
+        unnest(ARRAY[mins_in_range,maxs_in_range]) AS records
       FROM powa_wait_sampling_history_db wsh
       WHERE coalesce_range && tstzrange(:from, :to, '[]')
       AND wsh.dbid = ranges.dbid
       AND wsh.srvid = :server
     ) AS unnested1
     WHERE (unnested1.records).ts <@ tstzrange(:from, :to, '[]')
+
     UNION ALL
+
+    -- The "current" records are simply returned after filtering
     SELECT event_type, event, (wsc.record).*
     FROM powa_wait_sampling_history_current_db wsc
     WHERE (wsc.record).ts <@ tstzrange(:from, :to, '[]')
