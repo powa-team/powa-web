@@ -1,3 +1,18 @@
+4.1.4:
+  New features:
+  - Add support for HTTPS (Julien Rouhaud, per initial request from github user
+    hrawulwa, then further requests from github users banlex73  and
+    guruguruguru.  Thanks also to github user guruguruguru for testing the
+    feature)
+  Bug fixes:
+  - Fix explain plan css (Julien Rouhaud, per report from github user
+    Ravi160492)
+  - Fix detection of nodes with the same qualid in the global index suggestion
+    wizard (Pierre Giraud)
+  - Fix detection of powa bgworker in the config page (Julien Rouhaud)
+  Misc:
+  - Improve grid queries performance (Marc Cousin and Julien Rouhaud)
+  - Improve login form serverlist (Uwe Simon)
 4.1.3:
   New features:
   - Add a new cookie_expires_days option (Julien Rouhaud, per request from
