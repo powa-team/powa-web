@@ -71,11 +71,11 @@ def powa_base_statdata_detailed_db():
     -- of the search interval, and has to be inside the coalesce_range. We
     -- still need to unnest this one as we may have to remove some of the
     -- underlying records
-    SELECT unnested.dbid, unnested.userid, unnested.queryid,
+    SELECT unnested.dbid, unnested.toplevel, unnested.userid, unnested.queryid,
       (unnested.records).*
     FROM (
-      SELECT psh.dbid, psh.userid, psh.queryid, psh.coalesce_range,
-        unnest(records) AS records
+      SELECT psh.dbid, psh.toplevel, psh.userid, psh.queryid,
+        psh.coalesce_range, unnest(records) AS records
       FROM powa_statements_history psh
       WHERE coalesce_range && tstzrange(:from, :from, '[]')
       AND psh.dbid = powa_databases.oid
@@ -95,11 +95,11 @@ def powa_base_statdata_detailed_db():
     -- of the search interval, and has to be inside the coalesce_range. We
     -- still need to unnest this one as we may have to remove some of the
     -- underlying records
-    SELECT unnested.dbid, unnested.userid, unnested.queryid,
+    SELECT unnested.dbid, unnested.toplevel, unnested.userid, unnested.queryid,
       (unnested.records).*
     FROM (
-      SELECT psh.dbid, psh.userid, psh.queryid, psh.coalesce_range,
-        unnest(records) AS records
+      SELECT psh.dbid, psh.toplevel, psh.userid, psh.queryid,
+        psh.coalesce_range, unnest(records) AS records
       FROM powa_statements_history psh
       WHERE coalesce_range && tstzrange(:to, :to, '[]')
       AND psh.dbid = powa_databases.oid
@@ -119,10 +119,11 @@ def powa_base_statdata_detailed_db():
     -- so we don't need to unnest them.  We just retrieve the mins_in_range,
     -- maxs_in_range from the record, build an array of this and return it as
     -- if it was the full record
-    SELECT unnested.dbid, unnested.userid, unnested.queryid,
+    SELECT unnested.dbid, unnested.toplevel, unnested.userid, unnested.queryid,
       (unnested.records).*
     FROM (
-      SELECT psh.dbid, psh.userid, psh.queryid, psh.coalesce_range,
+      SELECT psh.dbid, psh.toplevel, psh.userid, psh.queryid,
+        psh.coalesce_range,
         unnest(ARRAY[mins_in_range,maxs_in_range]) AS records
       FROM powa_statements_history psh
       WHERE coalesce_range && tstzrange(:from, :to, '[]')
@@ -140,7 +141,7 @@ def powa_base_statdata_detailed_db():
     UNION ALL
 
     -- The "current" records are simply returned after filtering
-    SELECT psc.dbid, psc.userid, psc.queryid,(psc.record).*
+    SELECT psc.dbid, psc.toplevel, psc.userid, psc.queryid,(psc.record).*
     FROM powa_statements_history_current psc
     WHERE (record).ts <@ tstzrange(:from,:to,'[]')
     AND psc.dbid = powa_databases.oid
@@ -311,13 +312,14 @@ def powa_getstatdata_detailed_db(srvid):
         column("srvid"),
         column("queryid"),
         column("dbid"),
+        column("toplevel"),
         column("userid"),
         column("datname"),
     ] + diffs)
             .select_from(base_query)
             .where(column("srvid") == srvid)
             .group_by(column("srvid"), column("queryid"), column("dbid"),
-                      column("userid"), column("datname"))
+                      column("toplevel"), column("userid"), column("datname"))
             .having(max(column("calls")) - min(column("calls")) > 0))
 
 
