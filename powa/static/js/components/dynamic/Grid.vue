@@ -94,7 +94,6 @@ import { computed, onMounted, ref, watch } from "vue";
 import store from "@/store";
 import _ from "lodash";
 import size from "@/utils/size";
-import "highlight.js/styles/default.css";
 import { mdiMagnify, mdiLinkVariant } from "@mdi/js";
 import { formatDuration } from "@/utils/duration";
 import { formatPercentage } from "@/utils/percentage";
