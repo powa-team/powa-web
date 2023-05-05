@@ -69,21 +69,11 @@
                   :style="`background: ${getColor(metric)}`"
                   class="mr-2"
                 ></div>
-                <div
-                  style="color: #666; font-weight: 400; margin-left: 2px"
-                  class="mr-4"
-                >
+                <div style="font-weight: 400; margin-left: 2px" class="mr-4">
                   {{ getLabel(metric) }}
                 </div>
               </div>
-              <div
-                style="
-                  float: right;
-                  margin-left: 20px;
-                  color: #666;
-                  font-weight: 900;
-                "
-              >
+              <div style="float: right; margin-left: 20px; font-weight: 900">
                 {{ tooltip.content[metric] }}
               </div>
             </div>
@@ -611,11 +601,7 @@ function drawOrUpdateChart() {
       .clone(true)
       .lower()
       .attr("aria-hidden", "true")
-      .attr("fill", "none")
-      .attr("stroke", "white")
-      .attr("stroke-width", 2)
-      .attr("stroke-linecap", "round")
-      .attr("stroke-linejoin", "round");
+      .attr("class", "clone");
 
     axisIndex++;
   });
@@ -826,14 +812,22 @@ svg.chart {
 .axis-grid line {
   fill: none;
   shape-rendering: crispEdges;
-  stroke: lightgrey;
+  stroke: var(--v-axisgridlinestroke-base);
   stroke-width: 1px;
+}
+
+.tick text.clone {
+  fill: none;
+  stroke: var(--v-tickstroke-base);
+  stroke-width: 2px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .chart-tooltip {
   position: absolute;
   top: -10px;
-  background-color: rgb(255, 255, 255);
+  background-color: var(--v-tooltipbg-base);
   padding: 0.3rem 0.5rem;
   border-radius: 3px;
   box-shadow: rgba(0, 0, 0, 0.3) 0px 0px 3px 0px;
