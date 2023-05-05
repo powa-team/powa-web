@@ -36,6 +36,12 @@
           <noscript>
             Javascript is required to display this page.
           </noscript>
+          <script type="text/javascript">
+            if (Boolean(JSON.parse(localStorage.getItem("dark_theme")))) {
+              document.getElementById('mask').style.background = "#333333";
+              document.getElementById('mask').style.color = "#ffffff";
+            }
+         </script>
           <span id="waiter">Loading…</span>
         </div>
       </div>
