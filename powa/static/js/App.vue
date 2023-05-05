@@ -71,6 +71,14 @@
           </v-icon>
           Logout
         </v-btn>
+        <v-switch :input-value="darkTheme" class="mt-10" @change="toggleTheme">
+          <template #label>
+            <v-icon v-if="!darkTheme" color="primary">{{
+              icons.mdiWhiteBalanceSunny
+            }}</v-icon>
+            <v-icon v-else color="primary">{{ icons.mdiWeatherNight }}</v-icon>
+          </template>
+        </v-switch>
       </template>
       <template v-if="handler.currentUser" #extension>
         <bread-crumbs :bread-crumb-items="breadCrumbItems"></bread-crumbs>
@@ -78,7 +86,7 @@
         <date-range-picker ml-auto></date-range-picker>
       </template>
     </v-app-bar>
-    <v-main class="grey lighten-3">
+    <v-main>
       <v-container fluid>
         <v-row>
           <v-col>
@@ -151,14 +159,18 @@
 </template>
 
 <script setup>
+import { computed, getCurrentInstance, ref } from "vue";
+import { onMounted } from "vue";
 import { icons } from "@/plugins/vuetify.js";
 import store from "@/store";
+import _ from "lodash";
 import * as d3 from "d3";
 import BreadCrumbs from "@/components/BreadCrumbs.vue";
 import DateRangePicker from "@/components/DateRangePicker/DateRangePicker.vue";
 import LoginView from "@/components/LoginView.vue";
 
 let handler;
+const instance = getCurrentInstance();
 document.querySelectorAll('script[type="text/handler"]').forEach(function (el) {
   handler = JSON.parse(el.innerText);
 });
@@ -180,6 +192,11 @@ document
 let servers;
 document.querySelectorAll('script[type="text/servers"]').forEach(function (el) {
   servers = JSON.parse(el.innerText);
+});
+
+onMounted(() => {
+  instance.value = getCurrentInstance();
+  checkTheme();
 });
 
 function reloadCollector() {
@@ -288,5 +305,33 @@ function onSnackbarChanged(id, isShown) {
 function closeSnackBar(message) {
   message.shown = false;
   store.removeAlertMessage(message.id);
+}
+
+function toggleTheme() {
+  instance.proxy.$vuetify.theme.dark = !instance.proxy.$vuetify.theme.dark;
+  localStorage.setItem(
+    "dark_theme",
+    instance.proxy.$vuetify.theme.dark.toString()
+  );
+}
+
+const darkTheme = computed(() => {
+  return instance.proxy.$vuetify.theme.dark;
+});
+
+function checkTheme() {
+  const theme = localStorage.getItem("dark_theme");
+  if (!_.isNull(theme)) {
+    instance.proxy.$vuetify.theme.dark = Boolean(JSON.parse(theme));
+  } else if (
+    window.matchMedia &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  ) {
+    instance.proxy.$vuetify.theme.dark = true;
+    localStorage.setItem(
+      "dark_theme",
+      instance.proxy.$vuetify.theme.dark.toString()
+    );
+  }
 }
 </script>
