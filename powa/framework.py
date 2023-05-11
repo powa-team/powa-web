@@ -423,8 +423,7 @@ class BaseHandler(RequestHandler):
                 SELECT COUNT(*) != 0 AS res
                 FROM {powa}.powa_functions
                 WHERE srvid = %(srvid)s
-                AND module = %(extname)s
-                AND operation = 'snapshot'
+                AND name = %(extname)s
                 AND enabled
                 """, params={"srvid": srvid, "extname": extname})[0]['res']
             except Exception:
@@ -448,7 +447,7 @@ class BaseHandler(RequestHandler):
                 remver = self.execute(
                     """
                     SELECT version
-                    FROM {powa}.powa_extensions
+                    FROM {powa}.powa_extension_config
                     WHERE srvid = %(srvid)s
                     AND extname = %(extname)s
                     """, params={'srvid': srvid, 'extname': extname}
