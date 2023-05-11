@@ -345,7 +345,7 @@ class PgExtensionsMetricGroup(MetricGroupDef):
             ) s
             LEFT JOIN pg_available_extensions avail on s.extname = avail.name
             LEFT JOIN pg_extension ins on s.extname = ins.extname
-            LEFT JOIN {powa}.powa_functions f ON s.extname = f.module
+            LEFT JOIN {powa}.powa_functions f ON s.extname = f.name
                 AND f.srvid = 0
             ORDER BY 1
              """
@@ -356,7 +356,7 @@ class PgExtensionsMetricGroup(MetricGroupDef):
               CASE WHEN s.extname IN ('hypopg', 'powa') THEN
                 NULL
               ELSE
-                CASE WHEN f.module IS NULL then false ELSE true END
+                CASE WHEN f.name IS NULL then false ELSE true END
               END AS handled
             FROM (
                  SELECT 'pg_stat_statements' AS extname
@@ -367,7 +367,7 @@ class PgExtensionsMetricGroup(MetricGroupDef):
                  UNION SELECT 'powa'
                  UNION SELECT 'pg_wait_sampling'
             ) s
-            LEFT JOIN {powa}.powa_functions f ON s.extname = f.module
+            LEFT JOIN {powa}.powa_functions f ON s.extname = f.name
                 AND f.srvid = %(server)s
             ORDER BY 1
              """
