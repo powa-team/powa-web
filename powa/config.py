@@ -328,7 +328,11 @@ class PgExtensionsMetricGroup(MetricGroupDef):
             SELECT DISTINCT s.extname,
               CASE WHEN avail.name IS NULL then false ELSE true END AS available,
               CASE WHEN ins.extname IS NULL then false ELSE true END AS installed,
-              CASE WHEN f.module IS NULL then false ELSE true END AS handled,
+              CASE WHEN s.extname IN ('hypopg', 'powa') THEN
+                NULL::bool
+              ELSE
+                CASE WHEN f.name IS NULL then false ELSE true END
+              END AS handled,
               COALESCE(ins.extversion, '-') AS extversion
             FROM (
                  SELECT 'pg_stat_statements' AS extname
