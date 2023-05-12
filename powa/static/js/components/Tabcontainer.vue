@@ -14,7 +14,7 @@
         <v-card>
           <v-card-text>
             <component
-              :is="widgetComponent(tab.type)"
+              :is="widgetComponent(tab)"
               v-if="activeTab == index"
               :config="tab"
             />
