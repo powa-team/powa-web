@@ -97,6 +97,7 @@ import size from "../utils/size";
 import "highlight.js/styles/default.css";
 import { mdiMagnify, mdiLinkVariant } from "@mdi/js";
 import { formatDuration } from "../utils/duration";
+import { formatPercentage } from "../utils/percentage";
 
 const props = defineProps({
   config: {
@@ -203,7 +204,7 @@ function getFormatter(type) {
     case "duration":
       return (value) => formatDuration(value, true);
     case "percent":
-      return (value) => Math.round(value * 100) / 100 + "%";
+      return (value) => formatPercentage(value);
     case "size":
       return formatSize;
     case "integer":
