@@ -18,7 +18,7 @@ class QualConstantsMetricGroup(MetricGroupDef):
     name = "QualConstants"
     data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)/qual/(\d+)/constants"
     xaxis = "rownumber"
-    occurences = MetricDef(label="<%=group%>")
+    occurences = MetricDef(label="Occurences")
     grouper = "constants"
 
     @property
@@ -166,9 +166,9 @@ class QualOverview(DashboardPage):
              [Grid("Other queries",
                    metrics=OtherQueriesMetricGroup.all(),
                    columns=[])],
-             [Graph("Most executed values",
-                    metrics=[QualConstantsMetricGroup.occurences],
-                    x_label_attr="constants",
-                    renderer="pie")]])
+             [Grid("Most executed values",
+                   metrics=[QualConstantsMetricGroup.occurences],
+                   x_label_attr="constants",
+                   renderer="distribution")]])
 
         return self._dashboard
