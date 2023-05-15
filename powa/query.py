@@ -521,7 +521,7 @@ class QualList(MetricGroupDef):
     axis_type = "category"
     data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)/quals"
     filter_ratio = MetricDef(label="Avg filter_ratio (excluding index)", type="percent")
-    execution_count = MetricDef(label="Execution count (excluding index)")
+    execution_count = MetricDef(label="Execution count (excluding index)", type="integer")
 
     def prepare(self):
         if not self.has_extension(self.path_args[0], "pg_qualstats"):
