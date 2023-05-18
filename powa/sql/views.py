@@ -1173,7 +1173,7 @@ def powa_base_waitdata_db():
     return base_query
 
 
-BASE_QUERY_ALL_RELS_SAMPLE_DB = """(
+BASE_QUERY_ALL_TBLS_SAMPLE_DB = """(
   SELECT d.srvid, d.datname, base.*
   FROM {powa}.powa_databases d,
   LATERAL (
@@ -1187,7 +1187,7 @@ BASE_QUERY_ALL_RELS_SAMPLE_DB = """(
         SELECT dbid, (unnested.records).*
         FROM (
           SELECT arh.dbid, unnest(records) AS records
-          FROM {powa}.powa_all_relations_history_db arh
+          FROM {powa}.powa_all_tables_history_db arh
           WHERE arh.dbid = d.oid
           AND arh.srvid = d.srvid
           AND arh.srvid = %(server)s
@@ -1195,7 +1195,7 @@ BASE_QUERY_ALL_RELS_SAMPLE_DB = """(
         WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
         UNION ALL
         SELECT dbid, (record).*
-        FROM {powa}.powa_all_relations_history_current_db arhc
+        FROM {powa}.powa_all_tables_history_current_db arhc
         WHERE (record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
         AND arhc.dbid = d.oid
         AND arhc.srvid = d.srvid
@@ -1209,26 +1209,8 @@ BASE_QUERY_ALL_RELS_SAMPLE_DB = """(
 """
 
 
-BASE_QUERY_ALL_RELS_SAMPLE = """(
+BASE_QUERY_ALL_TBLS_SAMPLE = """(
   SELECT d.srvid, d.datname,
-  CASE WHEN
-    (n_tup_ins + n_tup_upd + n_tup_del + n_tup_hot_upd +
-     n_liv_tup + n_dead_tup + n_mod_since_analyze) = 0
-  THEN 'i'
-  ELSE 'r'
-  END AS relkind,
-  CASE WHEN
-    (n_tup_ins + n_tup_upd + n_tup_del + n_tup_hot_upd +
-     n_liv_tup + n_dead_tup + n_mod_since_analyze) = 0
-  THEN numscan
-  ELSE 0
-  END AS idx_scan,
-  CASE WHEN
-    (n_tup_ins + n_tup_upd + n_tup_del + n_tup_hot_upd +
-     n_liv_tup + n_dead_tup + n_mod_since_analyze) = 0
-  THEN 0
-  ELSE numscan
-  END AS seq_scan,
   base.*
   FROM
   {powa}.powa_databases d,
@@ -1243,7 +1225,7 @@ BASE_QUERY_ALL_RELS_SAMPLE = """(
         SELECT dbid, relid, (unnested.records).*
         FROM (
           SELECT arh.dbid, relid, unnest(records) AS records
-          FROM {powa}.powa_all_relations_history_db arh
+          FROM {powa}.powa_all_tables_history_db arh
           WHERE arh.dbid = d.oid
           AND arh.srvid = d.srvid
           AND arh.srvid = %(server)s
@@ -1251,7 +1233,7 @@ BASE_QUERY_ALL_RELS_SAMPLE = """(
         WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
         UNION ALL
         SELECT dbid, relid, (record).*
-        FROM {powa}.powa_all_relations_history_current_db arhc
+        FROM {powa}.powa_all_tables_history_current_db arhc
         WHERE (record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
         AND arhc.dbid = d.oid
         AND arhc.srvid = d.srvid
@@ -1384,10 +1366,10 @@ def powa_get_bgwriter_sample():
 def powa_get_all_tbl_sample(mode):
 
     if mode == "db":
-        base_query = BASE_QUERY_ALL_RELS_SAMPLE_DB
+        base_query = BASE_QUERY_ALL_TBLS_SAMPLE_DB
         base_columns = ["srvid", "dbid", "datname"]
     else:
-        base_query = BASE_QUERY_ALL_RELS_SAMPLE
+        base_query = BASE_QUERY_ALL_TBLS_SAMPLE
         base_columns = ["srvid", "dbid", "datname", "relid"]
 
     biggest = Biggest(base_columns, 'ts')
@@ -1398,8 +1380,6 @@ def powa_get_all_tbl_sample(mode):
         biggest("ts", "'0 s'", "mesure_interval"),
         biggestsum("seq_scan"),
         biggestsum("idx_scan"),
-        biggestsum("tup_returned"),
-        biggestsum("tup_fetched"),
         biggestsum("n_tup_ins"),
         biggestsum("n_tup_upd"),
         biggestsum("n_tup_del"),
