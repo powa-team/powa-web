@@ -1,5 +1,9 @@
 5.0.0 (WIP):
   New features:
+  - Complete rewrite of the UI using (currently) modern frameworks and
+    libraries. It is now built with ViteJS, VueJS, Vuetify and d3. (Marion
+    Giusti, Pierre-Louis Gonon and Pierre Giraud. Thanks to Dalibo for
+    sponsoring this work).
 4.2.0:
   New feature:
   - Add support for pg_stat_statements.toplevel, added in pg_stat_statements
