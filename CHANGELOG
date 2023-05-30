@@ -1,5 +1,8 @@
 5.0.0 (WIP):
-  New features:
+  - Complete rewrite of the UI using (currently) modern frameworks and
+    libraries. It is now built with ViteJS, VueJS, Vuetify and d3. (Marion
+    Giusti, Pierre-Louis Gonon and Pierre Giraud. Thanks to Dalibo for
+    sponsoring this work).
 4.2.1:
   Misc
   - salqlchemy > 1.4 is not supported (thanks to David Mödinger for the report)
