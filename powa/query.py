@@ -290,7 +290,7 @@ class QueryIndexes(ContentWidget):
     """
 
     data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)/indexes"
-    title = "Query Indexes"
+    title = "Index Suggestions"
 
     def get(self, srvid, database, query):
         if not self.has_extension(srvid, "pg_qualstats"):
@@ -365,7 +365,7 @@ class QueryExplains(ContentWidget):
     """
     Content widget showing explain plans for various const values.
     """
-    title = "Query Explains"
+    title = "Example Values"
     data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)/explains"
 
     def get(self, server, database, query):
