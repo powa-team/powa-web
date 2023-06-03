@@ -8,12 +8,12 @@ from powa.dashboards import (
     MetricGroupDef, MetricDef,
     DashboardPage, TabContainer)
 
-from powa.sql.views import (powa_getstatdata_detailed_db,
-                            powa_getwaitdata_detailed_db,
-                            powa_getstatdata_sample,
-                            kcache_getstatdata_sample,
-                            powa_getwaitdata_sample,
-                            powa_get_all_tbl_sample)
+from powa.sql.views_graph import (powa_getstatdata_sample,
+                                  kcache_getstatdata_sample,
+                                  powa_getwaitdata_sample,
+                                  powa_get_all_tbl_sample)
+from powa.sql.views_grid import (powa_getstatdata_detailed_db,
+                                 powa_getwaitdata_detailed_db)
 from powa.wizard import WizardMetricGroup, Wizard
 from powa.server import ServerOverview
 from powa.sql.utils import (block_size, sum_per_sec, byte_per_sec, wps,
