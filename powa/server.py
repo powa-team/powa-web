@@ -10,14 +10,13 @@ from powa.dashboards import (
     DashboardPage, TabContainer)
 from powa.config import ConfigChangesGlobal
 
-from powa.sql.views import (
-    powa_getstatdata_db,
-    powa_getwaitdata_db,
-    powa_getstatdata_sample,
-    kcache_getstatdata_sample,
-    powa_getwaitdata_sample,
-    powa_get_bgwriter_sample,
-    powa_get_all_tbl_sample)
+from powa.sql.views_graph import (powa_getstatdata_sample,
+                                  kcache_getstatdata_sample,
+                                  powa_getwaitdata_sample,
+                                  powa_get_bgwriter_sample,
+                                  powa_get_all_tbl_sample)
+from powa.sql.views_grid import (powa_getstatdata_db,
+                                 powa_getwaitdata_db)
 from powa.sql.utils import (sum_per_sec, byte_per_sec, wps, total_read,
                             total_hit, block_size, to_epoch, get_ts, mulblock)
 
