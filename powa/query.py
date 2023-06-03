@@ -14,13 +14,13 @@ from powa.database import DatabaseOverview
 from powa.sql import (Plan, format_jumbled_query, resolve_quals,
                       qualstat_get_figures, get_hypoplans, get_plans,
                       get_any_sample_query, possible_indexes)
-from powa.sql.views import (powa_getstatdata_sample,
-                            powa_getwaitdata_sample,
-                            kcache_getstatdata_sample,
-                            powa_getstatdata_detailed_db,
-                            powa_getwaitdata_detailed_db,
-                            qualstat_getstatdata,
+from powa.sql.views import (qualstat_getstatdata,
                             QUALSTAT_FILTER_RATIO)
+from powa.sql.views_graph import (powa_getstatdata_sample,
+                                  powa_getwaitdata_sample,
+                                  kcache_getstatdata_sample)
+from powa.sql.views_grid import (powa_getstatdata_detailed_db,
+                                 powa_getwaitdata_detailed_db)
 from powa.sql.utils import (to_epoch, sum_per_sec, byte_per_sec, wps,
                             block_size)
 from powa.config import ConfigChangesQuery
