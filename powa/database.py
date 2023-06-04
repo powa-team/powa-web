@@ -11,9 +11,11 @@ from powa.dashboards import (
 from powa.sql.views_graph import (powa_getstatdata_sample,
                                   kcache_getstatdata_sample,
                                   powa_getwaitdata_sample,
-                                  powa_get_all_tbl_sample)
+                                  powa_get_all_tbl_sample,
+                                  powa_get_user_fct_sample)
 from powa.sql.views_grid import (powa_getstatdata_detailed_db,
-                                 powa_getwaitdata_detailed_db)
+                                 powa_getwaitdata_detailed_db,
+                                 powa_getuserfuncdata_detailed_db)
 from powa.wizard import WizardMetricGroup, Wizard
 from powa.server import ServerOverview
 from powa.sql.utils import (block_size, sum_per_sec, byte_per_sec, wps,
@@ -307,6 +309,45 @@ class DatabaseAllRelMetricGroup(MetricGroupDef):
         )
 
 
+class DatabaseUserFuncMetricGroup(MetricGroupDef):
+    """
+    Metric group used by "pg_stat_user_functions" graph.
+    """
+    name = "user_functions"
+    xaxis = "ts"
+    data_url = r"/server/(\d+)/metrics/database_user_functions/([^\/]+)/"
+    calls = MetricDef(label="# of calls", type="number",
+                          desc="Number of function calls per second")
+    total_load = MetricDef(label="Total time per sec", type="number",
+                         desc="Total execution time duration")
+    self_load = MetricDef(label="Self time per sec", type="number",
+                         desc="Self execution time duration")
+
+    @property
+    def query(self):
+        query = powa_get_user_fct_sample("db")
+
+        from_clause = query
+
+        cols = ["sub.srvid",
+                "extract(epoch FROM sub.ts) AS ts",
+                sum_per_sec("calls"),
+                sum_per_sec("total_time", alias="total_load"),
+                sum_per_sec("self_time", alias="self_load")]
+
+        return """SELECT {cols}
+        FROM (
+            {from_clause}
+        ) AS sub
+        WHERE sub.mesure_interval != '0 s'
+        AND datname = %(database)s
+        GROUP BY sub.srvid, sub.ts, sub.mesure_interval
+        ORDER BY sub.ts""".format(
+            cols=', '.join(cols),
+            from_clause=from_clause
+        )
+
+
 class ByQueryMetricGroup(MetricGroupDef):
     """Metric group for indivual query stats (displayed on the grid)."""
     name = "all_queries"
@@ -439,6 +480,35 @@ class ByQueryWaitSamplingMetricGroup(MetricGroupDef):
             "QueryOverview", val["srvid"], database, val["queryid"])
         return val
 
+
+class ByFuncUserFuncMetricGroup(MetricGroupDef):
+    """
+    Metric group for indivual function stats (displayed on the grid).
+    """
+    name = "all_functions_stats"
+    xaxis = "funcname"
+    axis_type = "category"
+    data_url = r"/server/(\d+)/metrics/database_all_functions_stats/([^\/]+)/"
+    lanname = MetricDef(label="Language", type="string")
+    calls = MetricDef(label="# of calls",
+                      type="integer", direction="descending")
+    total_time = MetricDef(label="Cumulated total execution time",
+                           type="duration")
+    self_time = MetricDef(label="Cumulated self execution time",
+                          type="duration")
+
+    @property
+    def query(self):
+        # Working from the waitdata detailed_db base query
+        inner_query = powa_getuserfuncdata_detailed_db()
+
+        return inner_query + " ORDER BY calls DESC"
+
+    def process(self, val, database=None, **kwargs):
+        val["url"] = self.reverse_url(
+            "FunctionOverview", val["srvid"], database, val["funcid"])
+        return val
+
 class WizardThisDatabase(ContentWidget):
 
     title = 'Apply wizardry to this database'
@@ -457,7 +527,9 @@ class DatabaseOverview(DashboardPage):
     datasources = [DatabaseOverviewMetricGroup, ByQueryMetricGroup,
                    ByQueryWaitSamplingMetricGroup, WizardMetricGroup,
                    DatabaseWaitOverviewMetricGroup, ConfigChangesDatabase,
-                   DatabaseAllRelMetricGroup]
+                   DatabaseAllRelMetricGroup,
+                   DatabaseUserFuncMetricGroup,
+                   ByFuncUserFuncMetricGroup]
     params = ["server", "database"]
     parent = ServerOverview
     title = '%(database)s'
@@ -516,6 +588,19 @@ class DatabaseOverview(DashboardPage):
                                    DatabaseAllRelMetricGroup.autovacuum_count,
                                    DatabaseAllRelMetricGroup.vacuum_count])]
         graphs_dash.append(Dashboard("Database Objects", [all_rel_graphs]))
+
+        # Add powa_stat_user_functions graphs
+        user_fct_graph = [Graph("User functions activity",
+                          metrics=DatabaseUserFuncMetricGroup.all(self))]
+        user_fct_grid = [Grid("User functions activity",
+                         columns=[{
+                             "name": "func_name",
+                             "label": "Function name",
+                             "url_attr": "url"
+                         }],
+                         metrics=ByFuncUserFuncMetricGroup.all(self))]
+        graphs_dash.append(Dashboard("User functions", [user_fct_graph,
+                                                        user_fct_grid]))
 
         if self.has_extension(self.path_args[0], "pg_stat_kcache"):
             block_graph.metrics.insert(0, DatabaseOverviewMetricGroup.
