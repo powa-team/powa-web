@@ -569,6 +569,80 @@ BASE_QUERY_ALL_TBLS_SAMPLE = """(
     """
 
 
+BASE_QUERY_USER_FCTS_SAMPLE_DB = """(
+  SELECT d.srvid, d.datname, base.*
+  FROM {powa}.powa_databases d,
+  LATERAL (
+    SELECT *
+    FROM (
+      SELECT
+      row_number() OVER (PARTITION BY dbid ORDER BY ts) AS number,
+      count(*) OVER (PARTITION BY dbid ) AS total,
+      af_history.*
+      FROM (
+        SELECT dbid, (unnested.records).*
+        FROM (
+          SELECT afh.dbid, unnest(records) AS records
+          FROM {powa}.powa_user_functions_history_db afh
+          WHERE afh.dbid = d.oid
+          AND afh.srvid = d.srvid
+          AND afh.srvid = %(server)s
+        ) AS unnested
+        WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        UNION ALL
+        SELECT dbid, (record).*
+        FROM {powa}.powa_user_functions_history_current_db afhc
+        WHERE (record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        AND afhc.dbid = d.oid
+        AND afhc.srvid = d.srvid
+        AND afhc.srvid = %(server)s
+      ) AS af_history
+    ) AS afh
+    WHERE number %% (int8larger(total/(%(samples)s+1),1) ) = 0
+  ) AS base
+  WHERE srvid = %(server)s
+) AS by_db
+"""
+
+
+BASE_QUERY_USER_FCTS_SAMPLE = """(
+  SELECT d.srvid, d.datname,
+  base.*
+  FROM
+  {powa}.powa_databases d,
+  LATERAL (
+    SELECT *
+    FROM (
+      SELECT
+      row_number() OVER (PARTITION BY dbid, funcid ORDER BY ts) AS number,
+      count(*) OVER (PARTITION BY dbid, funcid ) AS total,
+      af_history.*
+      FROM (
+        SELECT dbid, funcid, (unnested.records).*
+        FROM (
+          SELECT afh.dbid, funcid, unnest(records) AS records
+          FROM {powa}.powa_user_functions_history_db afh
+          WHERE afh.dbid = d.oid
+          AND afh.srvid = d.srvid
+          AND afh.srvid = %(server)s
+        ) AS unnested
+        WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        UNION ALL
+        SELECT dbid, funcid, (record).*
+        FROM {powa}.powa_user_functions_history_current_db afhc
+        WHERE (record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        AND afhc.dbid = d.oid
+        AND afhc.srvid = d.srvid
+        AND afhc.srvid = %(server)s
+      ) AS af_history
+    ) AS afh
+    WHERE number %% (int8larger(total/(%(samples)s+1),1) ) = 0
+  ) AS base
+  WHERE srvid = %(server)s
+) AS by_db
+    """
+
+
 def powa_getwaitdata_sample(mode, predicates=[]):
     """
     predicates is an optional array of plain-text predicates.
@@ -674,6 +748,36 @@ def powa_get_all_tbl_sample(mode):
         biggestsum("autovacuum_count"),
         biggestsum("analyze_count"),
         biggestsum("autoanalyze_count"),
+    ]
+
+    return """SELECT {all_cols}
+        FROM {base_query}
+        WHERE srvid = %(server)s
+        GROUP BY {base_columns}, ts""".format(
+            all_cols=', '.join(all_cols),
+            base_columns=', '.join(base_columns),
+            base_query=base_query
+    )
+
+
+def powa_get_user_fct_sample(mode):
+
+    if mode == "db":
+        base_query = BASE_QUERY_USER_FCTS_SAMPLE_DB
+        base_columns = ["srvid", "dbid", "datname"]
+    else:
+        base_query = BASE_QUERY_USER_FCTS_SAMPLE
+        base_columns = ["srvid", "dbid", "datname", "funcid"]
+
+    biggest = Biggest(base_columns, 'ts')
+    biggestsum = Biggestsum(base_columns, 'ts')
+
+    all_cols = base_columns + [
+        "ts",
+        biggest("ts", "'0 s'", "mesure_interval"),
+        biggestsum("calls"),
+        biggestsum("total_time"),
+        biggestsum("self_time"),
     ]
 
     return """SELECT {all_cols}
