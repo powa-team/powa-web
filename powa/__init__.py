@@ -23,6 +23,7 @@ from powa.server import ServerSelector, ServerOverview
 from powa.database import DatabaseSelector, DatabaseOverview
 from powa.query import QueryOverview
 from powa.qual import QualOverview
+from powa.function import FunctionOverview
 from powa.config import RepositoryConfigOverview, RemoteConfigOverview
 from powa.collector import CollectorReloadHandler
 from powa.wizard import IndexSuggestionHandler
@@ -62,6 +63,7 @@ def make_app(**kwargs):
                       DatabaseOverview,
                       QueryOverview,
                       QualOverview,
+                      FunctionOverview,
                       RepositoryConfigOverview,
                       RemoteConfigOverview):
         URLS.extend(dashboard.url_specs(options.url_prefix))
