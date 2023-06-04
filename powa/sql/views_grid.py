@@ -451,7 +451,8 @@ def powa_base_waitdata_db():
     This uses the same optimization as powa_base_statdata_detailed_db.
     """
     base_query = """(
-  SELECT powa_databases.srvid, powa_databases.oid as dbid, h.*
+  SELECT powa_databases.srvid, powa_databases.oid as dbid,
+    powa_databases.datname, h.*
   FROM
   {powa}.powa_databases LEFT JOIN
   (
@@ -556,5 +557,255 @@ def powa_getwaitdata_db():
     GROUP BY srvid, dbid, event_type, event
     HAVING max(count) - min(count) > 0""".format(
         count=diff('count'),
+        base_query=base_query
+    )
+
+
+def powa_base_userfuncdata_detailed_db():
+    """
+    Base for query used in the grids displaying info about
+    pg_stat_user_functions.
+
+    This is based on the "detailed" version of the tables, with per-function
+    information.
+
+    This uses the same optimization as powa_base_statdata_detailed_db.
+    """
+    base_query = """
+  {powa}.powa_databases d
+  JOIN LATERAL
+  (
+    -- Left bound: the search interval is a single timestamp, the smallest one
+    -- of the search interval, and has to be inside the coalesce_range. We
+    -- still need to unnest this one as we may have to remove some of the
+    -- underlying records
+    SELECT unnested.dbid, unnested.funcid,
+      (unnested.records).*
+    FROM (
+      SELECT ufh.dbid, ufh.funcid,
+        ufh.coalesce_range, unnest(records) AS records
+      FROM {powa}.powa_user_functions_history ufh
+      WHERE coalesce_range && tstzrange(%(from)s, %(from)s, '[]')
+      AND ufh.dbid = d.oid
+      AND ufh.srvid = %(server)s
+    ) AS unnested
+    WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+
+    UNION ALL
+
+    -- Right bound: the search interval is a single timestamp, the largest one
+    -- of the search interval, and has to be inside the coalesce_range. We
+    -- still need to unnest this one as we may have to remove some of the
+    -- underlying records
+    SELECT unnested.dbid, unnested.funcid,
+      (unnested.records).*
+    FROM (
+      SELECT ufh.dbid, ufh.funcid,
+        ufh.coalesce_range, unnest(records) AS records
+      FROM {powa}.powa_user_functions_history ufh
+      WHERE coalesce_range && tstzrange(%(to)s, %(to)s, '[]')
+      AND ufh.dbid = d.oid
+      AND ufh.srvid = %(server)s
+    ) AS unnested
+    WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+
+    UNION ALL
+
+    -- These entries have their coalesce_range ENTIRELY inside the search range
+    -- so we don't need to unnest them.  We just retrieve the mins_in_range,
+    -- maxs_in_range from the record, build an array of this and return it as
+    -- if it was the full record
+    SELECT unnested.dbid, unnested.funcid,
+      (unnested.records).*
+    FROM (
+      SELECT ufh.dbid, ufh.funcid,
+        ufh.coalesce_range,
+        unnest(ARRAY[mins_in_range,maxs_in_range]) AS records
+      FROM {powa}.powa_user_functions_history ufh
+      WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+      AND ufh.dbid = d.oid
+      AND ufh.srvid = %(server)s
+    ) AS unnested
+    WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+
+    UNION ALL
+
+    -- The "current" records are simply returned after filtering
+    SELECT ufc.dbid, ufc.funcid, (ufc.record).*
+    FROM {powa}.powa_user_functions_history_current ufc
+    WHERE (record).ts <@ tstzrange(%(from)s,%(to)s,'[]')
+    AND ufc.dbid = d.oid
+    AND ufc.srvid = %(server)s
+  ) h ON d.srvid = %(server)s
+  LEFT JOIN {powa}.powa_catalog_proc pcp
+    ON pcp.dbid = h.dbid AND pcp.oid = h.funcid AND pcp.srvid = d.srvid
+        AND pcp.srvid = %(server)s
+  LEFT JOIN {powa}.powa_catalog_language pcl
+    ON pcl.srvid = pcp.srvid AND pcl.dbid = pcp.dbid AND pcl.oid = pcp.prolang"""
+    return base_query
+
+
+def powa_base_userfuncdata_db():
+    """
+    Base for query used in the grids displaying info about
+    pg_stat_user_functions.
+
+    This is based on the db-aggregated version of the tables, without
+    per-function information.
+
+    This uses the same optimization as powa_base_statdata_detailed_db.
+    """
+    base_query = """
+  {powa}.powa_databases d,
+  LATERAL
+  (
+    -- Left bound: the search interval is a single timestamp, the smallest one
+    -- of the search interval, and has to be inside the coalesce_range. We
+    -- still need to unnest this one as we may have to remove some of the
+    -- underlying records
+    SELECT unnested.dbid,
+      (unnested.records).*
+    FROM (
+      SELECT ufhd.dbid,
+        ufhd.coalesce_range, unnest(records) AS records
+      FROM {powa}.powa_user_functions_history_db ufhd
+      WHERE coalesce_range && tstzrange(%(from)s, %(from)s, '[]')
+      AND ufhd.dbid = d.oid
+      AND ufhd.srvid = %(server)s
+    ) AS unnested
+    WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+
+    UNION ALL
+
+    -- Right bound: the search interval is a single timestamp, the largest one
+    -- of the search interval, and has to be inside the coalesce_range. We
+    -- still need to unnest this one as we may have to remove some of the
+    -- underlying records
+    SELECT unnested.dbid,
+      (unnested.records).*
+    FROM (
+      SELECT ufhd.dbid,
+        ufhd.coalesce_range, unnest(records) AS records
+      FROM {powa}.powa_user_functions_history_db ufhd
+      WHERE coalesce_range && tstzrange(%(to)s, %(to)s, '[]')
+      AND ufhd.dbid = d.oid
+      AND ufhd.srvid = %(server)s
+    ) AS unnested
+    WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+
+    UNION ALL
+
+    -- These entries have their coalesce_range ENTIRELY inside the search range
+    -- so we don't need to unnest them.  We just retrieve the mins_in_range,
+    -- maxs_in_range from the record, build an array of this and return it as
+    -- if it was the full record
+    SELECT unnested.dbid,
+      (unnested.records).*
+    FROM (
+      SELECT ufhd.dbid,
+        ufhd.coalesce_range,
+        unnest(ARRAY[mins_in_range,maxs_in_range]) AS records
+      FROM {powa}.powa_user_functions_history_db ufhd
+      WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+      AND ufhd.dbid = d.oid
+      AND ufhd.srvid = %(server)s
+    ) AS unnested
+    WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+
+    UNION ALL
+
+    -- The "current" records are simply returned after filtering
+    SELECT ufcd.dbid, (ufcd.record).*
+    FROM {powa}.powa_user_functions_history_current_db ufcd
+    WHERE (record).ts <@ tstzrange(%(from)s,%(to)s,'[]')
+    AND ufcd.dbid = d.oid
+    AND ufcd.srvid = %(server)s
+  ) h
+  LEFT JOIN {powa}.powa_catalog_proc pcp
+    ON pcp.dbid = h.dbid AND pcp.srvid = %(server)s
+  WHERE d.srvid = pcp.srvid"""
+    return base_query
+
+
+def powa_getuserfuncdata_detailed_db(funcid=None):
+    """
+    Query used in the grids displaying info about pg_stat_user_functions.
+
+    This is based on the "detailed" version of the tables, with per-function
+    information.
+    """
+    base_query = powa_base_userfuncdata_detailed_db()
+
+    cols = [
+            "d.srvid",
+            "h.dbid",
+            "d.datname",
+            "funcid",
+            "coalesce(regprocedure, '<' || funcid || '>') AS func_name",
+            "lanname",
+            diff("calls"),
+            diff("total_time"),
+            diff("self_time"),
+            ]
+    if (funcid):
+        cols.extend(["prosrc", "last_refresh"])
+
+    groupby = [
+               "d.srvid",
+               "h.dbid",
+               "d.datname",
+               "funcid",
+               "regprocedure",
+               "lanname"
+        ]
+    if (funcid):
+        groupby.extend(["prosrc", "last_refresh"])
+
+    if (funcid):
+        join_db = """LEFT JOIN {powa}.powa_catalog_databases pcd
+            ON pcd.srvid = d.srvid AND pcd.oid = h.dbid"""
+        and_funcid = "AND funcid = {funcid}".format(funcid=funcid)
+    else:
+        join_db = ''
+        and_funcid = ''
+
+    return """SELECT {cols}
+    FROM {base_query}
+    {join_db}
+    WHERE d.datname = %(database)s
+    {and_funcid}
+    GROUP BY {groupby}
+    HAVING max(calls) - min(calls) > 0""".format(
+        cols=', '.join(cols),
+        base_query=base_query,
+        join_db=join_db,
+        and_funcid=and_funcid,
+        groupby=', '.join(groupby)
+    )
+
+
+def powa_getuserfuncdata_db():
+    """
+    Query used in the grids displaying info about pg_stat_user_functions.
+
+    This is based on the db-aggregated version of the tables, without
+    per-function information.
+    """
+    base_query = powa_base_userfuncdata_db()
+
+    cols = [
+            "d.srvid",
+            "d.datname",
+            "h.dbid",
+            diff("calls"),
+            diff("total_time"),
+            diff("self_time"),
+            ]
+
+    return """SELECT {cols}
+    FROM {base_query}
+    GROUP BY d.srvid, d.datname, h.dbid, d.oid
+    HAVING max(calls) - min(calls) > 0""".format(
+        cols=', '.join(cols),
         base_query=base_query
     )

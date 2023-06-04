@@ -1,0 +1,31 @@
+{% extends "../xhr.html" %}
+{% block content %}
+<div class="row">
+  <div class="columns large-12">
+    <pre class="sql"><code>{{ stats['func_name'] }}</code></pre>
+  </div>
+</div>
+<div class="row">
+  <div class="columns large-4 text-center">
+    <b># of execution:</b> {{ stats['calls'] }}
+  </div>
+  <div class="columns large-4 text-center">
+    <b>Total time runtime:</b>
+    <span class="duration">{{ stats['total_time'] }}</span>
+  </div>
+  <div class="columns large-4 text-center">
+    <b>Self time runtime:</b>
+    <span class="duration">{{ stats['self_time'] }}</span>
+  </div>
+</div>
+{% if (stats['last_refresh'] is not None) %}
+Source code (refreshed at <b>{{ stats['last_refresh'] }}</b>):
+<div class="row">
+  <div class="columns large-12">
+    <pre class="sql"><code>{{ stats['prosrc'] }}</code></pre>
+  </div>
+</div>
+{% else %}
+Source code not available, please refresh the catalog.
+{% end %}
+{% end %}
