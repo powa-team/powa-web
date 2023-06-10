@@ -419,6 +419,98 @@ class PgStatExtensionsMetricGroup(MetricGroupDef):
         return data
 
 
+class PgSupportExtensionsMetricGroup(MetricGroupDef):
+    """
+    Metric group for the support extensions grid.
+    """
+
+    name = "pg_support_extensions"
+    xaxis = "extname"
+    data_url = r"/config/(\d+)/pg_support_extensions/"
+    axis_type = "category"
+    available = MetricDef(label="Available", type="bool")
+    installed = MetricDef(label="Installed", type="bool")
+    extversion = MetricDef(label="Version", type="string")
+    params = ["server"]
+
+    @property
+    def query(self):
+        if (self.path_args[0] == '0'):
+            return """SELECT pe.extname, pae.name IS NOT NULL AS available,
+                        pae.installed_version IS NOT NULL AS installed,
+                    coalesce(pae.installed_version , '-') AS extversion
+                FROM {powa}.powa_extensions pe
+                LEFT JOIN {powa}.powa_extension_functions pef USING (extname)
+                LEFT JOIN pg_catalog.pg_available_extensions pae
+                    ON pae.name = pe.extname
+                WHERE operation IS NULL
+                """
+        else:
+            return """SELECT pe.extname,
+                        NULL::bool AS available, NULL::bool AS installed,
+                        NULL::text AS extversion
+                FROM {powa}.powa_extensions pe
+                LEFT JOIN {powa}.powa_extension_functions pef USING (extname)
+                WHERE operation IS NULL
+                """
+
+    def post_process(self, data, server, **kwargs):
+        """
+        Get the missing metadata of the extensions on the remote servers
+        """
+        # We already have all the data for the local server
+        if (server == '0'):
+            return data
+
+        res = None
+        errmsg = None
+
+        extnames = []
+
+        for row in data["data"]:
+            extnames.append(row["extname"])
+
+        try:
+            res = self.execute("""
+            SELECT name AS extname, installed_version
+            FROM pg_available_extensions
+            WHERE name = ANY(%(extnames)s)""", srvid=server,params={
+                'extnames': extnames
+                })
+        except Exception as e:
+            # ignore any connection or remote execution error, but keep the
+            # error message
+            errmsg = str(e)
+            pass
+
+        # if we couldn't get any data, send what we have
+        if res is None or len(res) == 0:
+            data["messages"] = {'alert': ["Could not retrieve extensions"
+                                          + " on remote server: %s" % errmsg]}
+            return data
+
+        remote_exts = res
+
+        for ext in data["data"]:
+            found = False
+
+            for r in remote_exts:
+                if (r["extname"] == ext["extname"]):
+                    found = True
+                    break
+
+            if (not found):
+                ext["available"] = False
+                ext["installed"] = None
+                ext["extversion"] = '-'
+            else:
+                ext["available"] = True
+                ext["installed"] = r["installed_version"] is not None
+                ext["extversion"] = r["installed_version"]
+
+        return data
+
+
 class RepositoryConfigOverview(DashboardPage):
     """
     Dashboard page for configuration page.
@@ -457,7 +549,7 @@ class RemoteConfigOverview(DashboardPage):
 
     base_url = r"/config/(\d+)"
     datasources = [PgSettingsMetricGroup, PgStatExtensionsMetricGroup,
-                   CollectorServerDetail]
+                   PgSupportExtensionsMetricGroup, CollectorServerDetail]
     params = ["server"]
     parent = RepositoryConfigOverview
     # title = 'Remote server configuration'
@@ -474,15 +566,21 @@ class RemoteConfigOverview(DashboardPage):
 
         self._dashboard = Dashboard(
             "Configuration overview",
-            # [[ServerDetails],
-            #  [Grid("Extensions",
               [[Grid("Stats Extensions",
                    columns=[{
                     "name": "extname",
                     "label": "Extension",
                     }],
                    metrics=PgStatExtensionsMetricGroup.all()
-                   )],
+                   ),
+                   Grid("Support Extensions",
+                   columns=[{
+                    "name": "extname",
+                    "label": "Extension",
+                    }],
+                   metrics=PgSupportExtensionsMetricGroup.all()
+                   ),
+               ],
              [Grid("PostgreSQL settings",
                    columns=[{
                     "name": "setting_name",
