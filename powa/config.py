@@ -306,14 +306,14 @@ class PgSettingsMetricGroup(MetricGroupDef):
         return data
 
 
-class PgExtensionsMetricGroup(MetricGroupDef):
+class PgStatExtensionsMetricGroup(MetricGroupDef):
     """
-    Metric group for the pg_settings grid.
+    Metric group for the stat extensions grid.
     """
 
-    name = "pg_extensions"
+    name = "pg_stat_extensions"
     xaxis = "extname"
-    data_url = r"/config/(\d+)/pg_extensions/"
+    data_url = r"/config/(\d+)/pg_stat_extensions/"
     axis_type = "category"
     available = MetricDef(label="Available", type="bool")
     installed = MetricDef(label="Installed", type="bool")
@@ -324,130 +324,91 @@ class PgExtensionsMetricGroup(MetricGroupDef):
     @property
     def query(self):
         if (self.path_args[0] == '0'):
-            return """
-            SELECT DISTINCT s.extname,
-              CASE WHEN avail.name IS NULL then false ELSE true END AS available,
-              CASE WHEN ins.extname IS NULL then false ELSE true END AS installed,
-              CASE WHEN s.extname IN ('hypopg', 'powa') THEN
-                NULL::bool
-              ELSE
-                CASE WHEN f.name IS NULL then false ELSE true END
-              END AS handled,
-              COALESCE(ins.extversion, '-') AS extversion
-            FROM (
-                 SELECT 'pg_stat_statements' AS extname
-                 UNION SELECT 'pg_qualstats'
-                 UNION SELECT 'pg_stat_kcache'
-                 UNION SELECT 'pg_track_settings'
-                 UNION SELECT 'hypopg'
-                 UNION SELECT 'powa'
-                 UNION SELECT 'pg_wait_sampling'
-            ) s
-            LEFT JOIN pg_available_extensions avail on s.extname = avail.name
-            LEFT JOIN pg_extension ins on s.extname = ins.extname
-            LEFT JOIN {powa}.powa_functions f ON s.extname = f.name
-                AND f.srvid = 0
-            ORDER BY 1
-             """
+            return """SELECT pe.extname, pae.name IS NOT NULL AS available,
+                        pae.installed_version IS NOT NULL AS installed,
+                    pec.enabled AS handled,
+                    coalesce(pae.installed_version , '-') AS extversion
+                FROM {powa}.powa_extensions pe
+                JOIN {powa}.powa_extension_functions pef USING (extname)
+                LEFT JOIN pg_catalog.pg_available_extensions pae
+                    ON pae.name = pe.extname
+                LEFT JOIN {powa}.powa_extension_config pec
+                    ON pec.extname = pe.extname AND pec.srvid = %(server)s
+                WHERE operation = 'snapshot'
+                """
         else:
-            return """
-            SELECT DISTINCT s.extname,
-              '-' AS extversion,
-              CASE WHEN s.extname IN ('hypopg', 'powa') THEN
-                NULL
-              ELSE
-                CASE WHEN f.name IS NULL then false ELSE true END
-              END AS handled
-            FROM (
-                 SELECT 'pg_stat_statements' AS extname
-                 UNION SELECT 'pg_qualstats'
-                 UNION SELECT 'pg_stat_kcache'
-                 UNION SELECT 'pg_track_settings'
-                 UNION SELECT 'hypopg'
-                 UNION SELECT 'powa'
-                 UNION SELECT 'pg_wait_sampling'
-            ) s
-            LEFT JOIN {powa}.powa_functions f ON s.extname = f.name
-                AND f.srvid = %(server)s
-            ORDER BY 1
-             """
+            return """SELECT DISTINCT pe.extname,
+                        CASE
+                            WHEN pec.version IS NOT NULL THEN true
+                            ELSE NULL::bool
+                        END AS available,
+                        NULL::bool AS installed,
+                    pec.enabled AS handled,
+                    coalesce(pec.version, '-') AS extversion
+                FROM {powa}.powa_extensions pe
+                JOIN {powa}.powa_extension_functions pef USING (extname)
+                LEFT JOIN pg_catalog.pg_available_extensions pae
+                    ON pae.name = pe.extname
+                LEFT JOIN {powa}.powa_extension_config pec
+                    ON pec.extname = pe.extname AND pec.srvid = %(server)s
+                WHERE operation = 'snapshot'
+                """
 
     def post_process(self, data, server, **kwargs):
+        """
+        Get the missing metadata of the extensions on the remote servers if
+        needed
+        """
+        # We already have all the data for the local server
         if (server == '0'):
             return data
 
         res = None
+        errmsg = None
 
-        # Check first if the info is available locally.  Note that if an
-        # extension version has been updated by powa-collector, then the
-        # extension is available and the version reported is the version
-        # installed.
-        if (self.has_extension_version("0", "powa", "4.1.0")):
-            try:
-                res = self.execute("""
-                SELECT s.extname,
-                  CASE WHEN ins.extname IS NULL then false ELSE true END AS available,
-                  CASE WHEN ins.extname IS NULL then false ELSE true END AS installed,
-                  COALESCE(ins.version, '-') AS extversion
-                FROM (
-                     SELECT 'pg_stat_statements' AS extname
-                     UNION SELECT 'pg_qualstats'
-                     UNION SELECT 'pg_stat_kcache'
-                     UNION SELECT 'pg_track_settings'
-                     UNION SELECT 'hypopg'
-                     UNION SELECT 'powa'
-                     UNION SELECT 'pg_wait_sampling'
-                ) s
-                LEFT JOIN {powa}.powa_extensions ins on s.extname = ins.extname
-                WHERE srvid = %(srvid)s
-                ORDER BY 1
-                        """, params={'srvid': server})
-            except Exception:
-                # ignore any error, we'll just fallback on remote check
-                pass
+        extnames = []
 
-        if (res is None):
-            try:
-                res = self.execute("""
-                SELECT DISTINCT s.extname,
-                  CASE WHEN avail.name IS NULL then false ELSE true END AS available,
-                  CASE WHEN ins.extname IS NULL then false ELSE true END AS installed,
-                  COALESCE(ins.extversion, '-') AS extversion
-                FROM (
-                     SELECT 'pg_stat_statements' AS extname
-                     UNION SELECT 'pg_qualstats'
-                     UNION SELECT 'pg_stat_kcache'
-                     UNION SELECT 'pg_track_settings'
-                     UNION SELECT 'hypopg'
-                     UNION SELECT 'powa'
-                     UNION SELECT 'pg_wait_sampling'
-                ) s
-                LEFT JOIN pg_available_extensions avail on s.extname = avail.name
-                LEFT JOIN pg_extension ins on s.extname = ins.extname
-                ORDER BY 1
-                        """, srvid=server)
-            except Exception:
-                # ignore any connection or remote execution error
-                pass
+        for row in data["data"]:
+            extnames.append(row["extname"])
+
+        try:
+            res = self.execute("""
+            SELECT name AS extname, installed_version
+            FROM pg_available_extensions
+            WHERE name = ANY(%(extnames)s)""", srvid=server,params={
+                'extnames': extnames
+                })
+        except Exception as e:
+            # ignore any connection or remote execution error, but keep the
+            # error message
+            errmsg = str(e)
+            pass
 
         # if we couldn't get any data, send what we have
         if res is None or len(res) == 0:
             data["messages"] = {'alert': ["Could not retrieve extensions"
-                                          + " on remote server"]}
+                                          + " on remote server: %s" % errmsg]}
             return data
 
         remote_exts = res
 
         alerts = []
         for ext in data["data"]:
+            found = False
+
             for r in remote_exts:
                 if (r["extname"] == ext["extname"]):
-                    ext["available"] = r["available"]
-                    ext["installed"] = r["installed"]
-                    ext["extversion"] = r["extversion"]
+                    found = True
                     break
 
-            if (ext["handled"] and not ext["installed"]):
+            if (not found):
+                ext["available"] = False
+                ext["installed"] = None
+            else:
+                ext["available"] = True
+                ext["installed"] = r["installed_version"] is not None
+
+            if (ext["handled"] and ext["installed"] is None):
                 alerts.append(ext["extname"])
 
         if (len(alerts) > 0):
@@ -495,7 +456,7 @@ class RemoteConfigOverview(DashboardPage):
     """
 
     base_url = r"/config/(\d+)"
-    datasources = [PgSettingsMetricGroup, PgExtensionsMetricGroup,
+    datasources = [PgSettingsMetricGroup, PgStatExtensionsMetricGroup,
                    CollectorServerDetail]
     params = ["server"]
     parent = RepositoryConfigOverview
@@ -515,12 +476,12 @@ class RemoteConfigOverview(DashboardPage):
             "Configuration overview",
             # [[ServerDetails],
             #  [Grid("Extensions",
-              [[Grid("Extensions",
+              [[Grid("Stats Extensions",
                    columns=[{
                     "name": "extname",
                     "label": "Extension",
                     }],
-                   metrics=PgExtensionsMetricGroup.all()
+                   metrics=PgStatExtensionsMetricGroup.all()
                    )],
              [Grid("PostgreSQL settings",
                    columns=[{
