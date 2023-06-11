@@ -511,6 +511,53 @@ class PgSupportExtensionsMetricGroup(MetricGroupDef):
         return data
 
 
+class PgDbModulesMetricGroup(MetricGroupDef):
+    """
+    Metric group for the per-db modules grid.
+    """
+
+    name = "pg_db_modules"
+    xaxis = "db_module"
+    data_url = r"/config/(\d+)/pg_db_modules/"
+    axis_type = "category"
+    dbnames = MetricDef(label="Database restriction", type="string")
+    enabled = MetricDef(label="Enabled", type="bool")
+    params = ["server"]
+
+    @property
+    def query(self):
+        return """SELECT db_module, dbnames::text AS dbnames, enabled
+            FROM {powa}.powa_db_module_config
+            WHERE srvid = %(server)s
+            """
+
+
+class PgCatalogsMetricGroup(MetricGroupDef):
+    """
+    Metric group for the per-db catalogs grid.
+    """
+
+    name = "pg_catalogs"
+    xaxis = "datname"
+    data_url = r"/config/(\d+)/pg_catalogs/"
+    axis_type = "category"
+    last_refresh = MetricDef(label="Last refresh", type="string")
+    params = ["server"]
+
+    @property
+    def query(self):
+        # We combine the database list from powa_databases and
+        # powa_cat_database in case some databases are missing in one or the
+        # other.
+        return """SELECT coalesce(pd.datname, pcd.datname) AS datname,
+                last_refresh
+            FROM {powa}.powa_databases pd
+            FULL OUTER JOIN {powa}.powa_catalog_databases pcd
+                USING (srvid, oid)
+            WHERE srvid = %(server)s
+            """
+
+
 class RepositoryConfigOverview(DashboardPage):
     """
     Dashboard page for configuration page.
@@ -549,7 +596,8 @@ class RemoteConfigOverview(DashboardPage):
 
     base_url = r"/config/(\d+)"
     datasources = [PgSettingsMetricGroup, PgStatExtensionsMetricGroup,
-                   PgSupportExtensionsMetricGroup, CollectorServerDetail]
+                   PgSupportExtensionsMetricGroup, PgDbModulesMetricGroup,
+                   PgCatalogsMetricGroup, CollectorServerDetail]
     params = ["server"]
     parent = RepositoryConfigOverview
     # title = 'Remote server configuration'
@@ -564,30 +612,52 @@ class RemoteConfigOverview(DashboardPage):
         if getattr(self, '_dashboard', None) is not None:
             return self._dashboard
 
+        grids = [
+            [Grid("Stats Extensions",
+                  columns=[{
+                    "name": "extname",
+                    "label": "Extension",
+                  }],
+                  metrics=PgStatExtensionsMetricGroup.all()
+                  ),
+                  Grid("Support Extensions",
+                       columns=[{
+                         "name": "extname",
+                         "label": "Extension",
+                       }],
+                       metrics=PgSupportExtensionsMetricGroup.all()
+                  )
+             ]]
+
+        if (self.path_args[0] != '0'):
+            grids.append([
+                Grid("Database modules",
+                     columns=[{
+                      "name": "db_module",
+                      "label": "DB module",
+                      }],
+                     metrics=PgDbModulesMetricGroup.all()
+                     ),
+                Grid("Catalogs",
+                    columns=[{
+                      "name": "datname",
+                      "label": "Database",
+                    }],
+                    metrics=PgCatalogsMetricGroup.all())
+            ])
+
+        grids.append([
+            Grid("PostgreSQL settings",
+                 columns=[{
+                  "name": "setting_name",
+                  "label": "Setting",
+                  }],
+                 metrics=PgSettingsMetricGroup.all()
+                 )
+        ])
+
         self._dashboard = Dashboard(
             "Configuration overview",
-              [[Grid("Stats Extensions",
-                   columns=[{
-                    "name": "extname",
-                    "label": "Extension",
-                    }],
-                   metrics=PgStatExtensionsMetricGroup.all()
-                   ),
-                   Grid("Support Extensions",
-                   columns=[{
-                    "name": "extname",
-                    "label": "Extension",
-                    }],
-                   metrics=PgSupportExtensionsMetricGroup.all()
-                   ),
-               ],
-             [Grid("PostgreSQL settings",
-                   columns=[{
-                    "name": "setting_name",
-                    "label": "Setting",
-                    }],
-                   metrics=PgSettingsMetricGroup.all()
-                   )]
-             ]
+              grids
         )
         return self._dashboard
