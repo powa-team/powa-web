@@ -35,9 +35,9 @@ class CollectorServerDetail(MetricGroupDef):
             status = self.execute("""SELECT
                     CASE WHEN count(*) = 1 THEN 'running'
                     ELSE 'stopped'
-                    END
+                    END AS status
                     FROM pg_stat_activity
-                    WHERE application_name LIKE 'PoWA - %%'""")[0]
+                    WHERE application_name LIKE 'PoWA - %%'""")[0]["status"]
         else:
             raw = self.notify_collector('WORKERS_STATUS', [server], 2)
 
