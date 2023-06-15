@@ -79,3 +79,27 @@ class CollectorReloadHandler(AuthHandler):
                 break
 
         self.render_json(res)
+
+
+class CollectorForceSnapshotHandler(AuthHandler):
+    """Request an immediate snapshot on the given server."""
+
+    def get(self, server):
+        answers = self.notify_collector('FORCE_SNAPSHOT', [server])
+
+        self.render_json(answers)
+
+
+class CollectorDbCatRefreshHandler(AuthHandler):
+    """Refresh the catalogs for the given cadatabase(s) on the given server."""
+
+    def post(self):
+        payload = json.loads(self.request.body.decode("utf8"))
+        nb_db = len(payload['dbnames'])
+        args = [payload['srvid'], str(nb_db)]
+        if (nb_db > 0):
+            args.extend(payload['dbnames']);
+
+        answers = self.notify_collector('REFRESH_DB_CAT', args)
+
+        self.render_json(answers)

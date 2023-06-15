@@ -25,7 +25,9 @@ from powa.query import QueryOverview
 from powa.qual import QualOverview
 from powa.function import FunctionOverview
 from powa.config import RepositoryConfigOverview, RemoteConfigOverview
-from powa.collector import CollectorReloadHandler
+from powa.collector import (CollectorReloadHandler,
+                            CollectorForceSnapshotHandler,
+                            CollectorDbCatRefreshHandler)
 from powa.wizard import IndexSuggestionHandler
 
 
@@ -49,6 +51,10 @@ def make_app(**kwargs):
         U(r"%slogout/" % options.url_prefix, LogoutHandler, name="logout"),
         U(r"%sreload_collector/" % options.url_prefix, CollectorReloadHandler,
           name="reload_collector"),
+        U(r"%sforce_snapshot/(\d+)" % options.url_prefix,
+          CollectorForceSnapshotHandler, name="force_snapshot"),
+        U(r"%srefresh_db_cat/" % options.url_prefix,
+          CollectorDbCatRefreshHandler, name="refresh_db_cat"),
         U(r"%sserver/select" % options.url_prefix, ServerSelector,
           name="server_selector"),
         U(r"%sdatabase/select" % options.url_prefix, DatabaseSelector,
