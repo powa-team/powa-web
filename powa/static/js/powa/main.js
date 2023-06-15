@@ -92,7 +92,105 @@ require(['jquery',
         }).fail(function(response) {
           Message.add_message("alert", "Error while trying to reload the collector.");
         });
-      })
+      });
+
+      $("#force_snapshot").click(function() {
+        var srvid = this.dataset.srvid
+
+        $.ajax({
+          url: '/force_snapshot/' + srvid,
+          type: 'GET',
+        }).done(function(response) {
+          if (response)
+          {
+            console.log(response);
+            $.each(response, function(i) {
+              var json = response[i];
+              var k = Object.keys(json)[0];
+              var v = json[k]
+              var level;
+              var msg;
+
+              switch(k) {
+                case 'OK':
+                  level = 'success';
+                  msg = "Forced snapshot requested. Status:"
+                  break;
+                case 'WARNING':
+                case 'UNKNOWN':
+                  level = 'warning';
+                  msg = "Problem with forcing an immediate snapshot:"
+                  break;
+                default:
+                  level = 'alert';
+                  msg = "Could not force an immediate snapshot:"
+                  break;
+              }
+
+              msg += "<br/>" + v;
+
+              Message.add_message(level, msg);
+            });
+          }
+          else
+            Message.add_message("alert", "Could not force an immediate snapshot.");
+        }).fail(function(response) {
+          Message.add_message("alert", "Error while trying to force an immediate snapshot.");
+        });
+      });
+
+      $("#refresh_db_cat").click(function() {
+        var srvid = this.dataset.srvid
+        var dbnames = []
+
+        if ('dbname' in this.dataset) {
+          dbnames.push(this.dataset.dbname);
+        }
+
+        $.ajax({
+          url: '/refresh_db_cat/',
+          type: 'POST',
+          data: JSON.stringify({'srvid': srvid, 'dbnames': dbnames}),
+          contentType: "application/json; charset=utf-8",
+          datatype: 'json',
+        }).done(function(response) {
+          if (response)
+          {
+            console.log(response);
+            $.each(response, function(i) {
+              var json = response[i];
+              var k = Object.keys(json)[0];
+              var v = json[k]
+              var level;
+              var msg;
+
+              switch(k) {
+                case 'OK':
+                  level = 'success';
+                  msg = "Catalog refresh successfully registered:"
+                  break;
+                case 'WARNING':
+                case 'UNKNOWN':
+                  level = 'warning';
+                  msg = "Problem with registering the catalog refresh:"
+                  break;
+                default:
+                  level = 'alert';
+                  msg = "Could not register the catalog refresh:"
+                  break;
+              }
+
+              msg += "<br/>" + v;
+
+              Message.add_message(level, msg);
+            });
+          }
+          else
+            Message.add_message("alert", "Could not refresh the catalogs.");
+        }).fail(function(response) {
+          Message.add_message("alert", "Error while trying to refresh the catalogs.");
+        });
+      });
 
       // ensure that dropdown are taken into account
       $(document).foundation();
