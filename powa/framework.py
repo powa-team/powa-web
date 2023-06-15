@@ -214,6 +214,19 @@ class BaseHandler(RequestHandler):
         """Return the current database."""
         return None
 
+    @property
+    def server(self):
+        """Return the current database."""
+        return None
+
+    @property
+    def notify_allowed(self):
+        """
+        Returns whether the current user is allowed to use the NOTIFY-based
+        communication with powa-collector
+        """
+        return False
+
     def get_powa_version(self, **kwargs):
         version = self.execute(
             """
@@ -550,8 +563,12 @@ class BaseHandler(RequestHandler):
         random.seed()
         channel = "r%d" % random.randint(1, 99999)
         cur.execute("LISTEN %s" % channel)
-        cur.execute("NOTIFY powa_collector, '%s %s %s'" %
-                    (command, channel, ' '.join(args)))
+
+        # some commands will contain user-provided strings, so we need to
+        # properly escape the arguments.
+        payload = "%s %s %s" % (command, channel, ' '.join(args))
+        cur.execute("NOTIFY powa_collector, %s", (payload, ))
+
         cur.close()
         conn.commit()
 
