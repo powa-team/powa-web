@@ -67,6 +67,50 @@ class DashboardHandler(AuthHandler):
         return params.get("database", None)
 
     @property
+    def server(self):
+        params = dict(zip(self.params, self.path_args))
+        return params.get("server", None)
+
+    @property
+    def notify_allowed(self):
+        """
+        Returns whether the current user is allowed to use the NOTIFY-based
+        communication with powa-collector
+        """
+        conn = self.connect()
+        cur = conn.cursor()
+
+        powa_roles = ['powa_signal_backend', 'powa_write_all_data',
+                      'powa_admin']
+        roles_to_test = []
+
+        # pg 14+ introduced predefined roles
+        if conn.server_version >= 140000:
+            roles_to_test.append('pg_signal_backend')
+
+        try:
+            cur.execute("""WITH s(v) AS (
+                    SELECT unnest(%s)
+                    UNION ALL
+                    SELECT rolname
+                    FROM {powa}.powa_roles
+                    WHERE powa_role = ANY (%s)
+                )
+                SELECT bool_or(pg_has_role(current_user, v, 'USAGE'))
+                    FROM s""", (roles_to_test, powa_roles))
+        except psycopg2.Error as e:
+            conn.rollback()
+            return False
+
+        row = cur.fetchone()
+
+        # should not happen
+        if (not row):
+            return False
+
+        return (row[0] is True)
+
+    @property
     def breadcrumb(self):
         params = OrderedDict(zip(self.params, self.path_args))
         breadcrumb = self.get_breadcrumb(self, params)

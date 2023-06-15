@@ -33,11 +33,39 @@
               Configuration
             </a>
           </li>
-          <li>
-            <a id="reload_collector"href="#">
-              <i class="fi-loop"></i> Reload collector
-            </a>
-          </li>
+          {% if handler.notify_allowed %}
+            <li>
+              <a id="reload_collector" href="#">
+                <i class="fi-loop"></i> Reload collector
+              </a>
+            </li>
+            {% if handler.server is not None %}
+            <li>
+              <a id="force_snapshot"href="#"
+                data-srvid="{{ handler.server }}"
+                >
+                <i class="fi-loop"></i> Force a snapshot
+              </a>
+            </li>
+            {% end %}
+            {% if handler.server is not None %}
+            <li>
+              <a id="refresh_db_cat" href="#"
+                data-srvid="{{ handler.server }}"
+                {% if handler.database is not None %}
+                data-dbname="{{handler.database}}"
+                {% end %}
+              >
+                <i class="fi-loop"></i> Refresh catalogs
+                {% if handler.database is not None %}
+                on db {{ handler.database }}
+                {% else %}
+                on all db
+                {% end %}
+              </a>
+            </li>
+            {% end %}
+          {% end %}
         </ul>
       </section>
 
