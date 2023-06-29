@@ -116,7 +116,12 @@ class AllCollectorsDetail(ContentWidget):
             date_trunc('second', backend_start) as start,
             datname, usename,
             coalesce(host(client_addr), '<local>') AS client_addr,
-            count(datname) OVER () AS nb_found
+            count(datname) OVER () AS nb_found,
+            (
+                SELECT count(*) > 0
+                FROM pg_stat_activity
+                WHERE query = '<insufficient privilege>'
+            ) AS not_authorized
             FROM (
                 SELECT 'bgworker' AS id, 'PoWA - %%' AS val,
                     'powa' AS backend_type
@@ -131,8 +136,11 @@ class AllCollectorsDetail(ContentWidget):
 
         rows = self.execute(sql)
 
-        if (rows[0]["nb_found"] == 0):
+        self.logger.warn("%r", rows[0])
+        if (rows[0]["not_authorized"] == True):
             self.render("config/allcollectors.html", collector=None)
+        if (rows[0]["nb_found"] == 0):
+            self.render("config/allcollectors.html", collector=[])
         else:
             self.render("config/allcollectors.html", collector=rows)
 
