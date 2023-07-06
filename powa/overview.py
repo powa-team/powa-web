@@ -85,6 +85,6 @@ class Overview(DashboardPage):
             new_params = params.copy()
             new_params["server"] = s[0]
             entry = ServerOverview.get_selfmenu(handler, new_params)
-            entry.title = s[1]
+            entry.title = s[2]
             children.append(entry)
         return children
