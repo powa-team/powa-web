@@ -74,37 +74,51 @@
             Configuration
           </v-btn>
           {% if handler.notify_allowed %}
-            <v-btn text color="primary" id="reload_collector" @click="reloadCollector">
-              <v-icon left>
-                {{! icons.mdiReload  }}
-              </v-icon>
-              Reload collector
-            </v-btn>
-            {% if handler.server is not None %}
-            <v-btn text color="primary" @click="forceSnapshot({{ handler.server }})">
-              <v-icon left>
-                {{! icons.mdiReload  }}
-              </v-icon>
-              Force a snapshot 
-            </v-btn>
-            {% end %}
-            {% if handler.server is not None %}
-            <v-btn text color="primary" @click="refreshDbCat('{{ handler.server }}', $event)"
-              {% if handler.database is not None %}
-                data-dbname="{{handler.database}}"
-              {% end %}
-            >
-              <v-icon left>
-                {{! icons.mdiReload  }}
-              </v-icon>
-              Refresh catalogs
-              {% if handler.database is not None %}
-              on db {{ handler.database }}
-              {% else %}
-              on all db
-              {% end %}
-            </v-btn>
-            {% end %}
+            <v-menu offset-y>
+              <template v-slot:activator="{ on, attrs }">
+                <v-btn
+                  text
+                  color="primary"
+                  v-bind="attrs"
+                  v-on="on"
+                >
+                  <v-icon left>
+                    {{! icons.mdiReload  }}
+                  </v-icon>
+                  Actions
+                </v-btn>
+              </template>
+              <v-list>
+                <v-list-item link @click="reloadCollector">
+                  <v-list-item-title>
+                    Reload collector
+                  </v-list-item-title>
+                </v-list-item>
+                {% if handler.server is not None %}
+                <v-list-item link @click="forceSnapshot({{ handler.server }})">
+                  <v-list-item-title>
+                    Force a snapshot
+                  </v-list-item-title>
+                </v-list-item>
+                {% end %}
+                {% if handler.server is not None %}
+                <v-list-item link @click="refreshDbCat('{{ handler.server }}', $event)"
+                  {% if handler.database is not None %}
+                    data-dbname="{{handler.database}}"
+                  {% end %}
+                >
+                  <v-list-item-title>
+                    Refresh catalogs
+                    {% if handler.database is not None %}
+                    on db {{ handler.database }}
+                    {% else %}
+                    on all db
+                    {% end %}
+                  </v-list-item-title>
+                </v-list-item>
+                {% end %}
+              </v-list>
+            </v-menu>
           {% end %}
 
           <v-spacer></v-spacer>
