@@ -286,13 +286,14 @@ class BaseHandler(RequestHandler):
         """
         if self.current_user:
             if self._servers is None:
-                self._servers = [[s['id'], s['val']] for s in self.execute(
+                self._servers = [[s['id'], s['val'], s['alias']] for s in self.execute(
                     """
                     SELECT s.id, CASE WHEN s.id = 0 THEN
                         %(default)s
                     ELSE
                         s.hostname || ':' || s.port
-                    END AS val
+                    END AS val,
+                    s.alias
                     FROM {powa}.powa_servers s
                     ORDER BY hostname
                     """, params={'default': self.current_connection})]
