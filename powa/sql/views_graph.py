@@ -459,6 +459,61 @@ BASE_QUERY_WAIT_SAMPLE = """(
 """
 
 
+# Note about xid calculations: we store 32b xids and those wraparounds, so we
+# have to account for that.  At the same time, cur_txid is retrieved before
+# executing the query fetching pg_stat_activity information.  On some busy
+# system, this could take quite some time and nothing prevents xid from being
+# assigned during that time, so to avoid returning negative number we
+# arbitrarily choose 100k transactions as a cutoff point to distinguish
+# wraparound vs really negative numbers.
+# For any number less than -100k, we assume this is because cur_txid
+# wraparound and the xid didn't, in which case we compute the actual value,
+# knowing that the first 3 xid are reserved and can never be assigned, and that
+# the highest transaction id is 2^32.
+def BASE_QUERY_PGSA_SAMPLE(per_db=False):
+    if (per_db):
+        extra = """JOIN {powa}.powa_catalog_databases d
+            ON d.oid = pgsa_history.datid
+        WHERE d.datname = %(database)s"""
+    else:
+        extra = ""
+
+    # We use dense_rank() as we need ALL the records for a specific ts
+    return """
+    (SELECT pgsa_history.srvid,
+      dense_rank() OVER (ORDER BY pgsa_history.ts) AS number,
+      count(*) OVER () AS total,
+      ts,
+      datid,
+      cur_txid,
+      backend_xid,
+      backend_xmin,
+      backend_start,
+      xact_start,
+      query_start,
+      state,
+      leader_pid
+      FROM (
+        SELECT *
+        FROM (
+          SELECT srvid, (unnest(records)).*
+          FROM {{powa}}.powa_stat_activity_history pgsah
+          WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+          AND pgsah.srvid = %(server)s
+        ) AS unnested
+        WHERE ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        UNION ALL
+        SELECT srvid, (record).*
+        FROM {{powa}}.powa_stat_activity_history_current pgsac
+        WHERE (pgsac.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        AND pgsac.srvid = %(server)s
+      ) AS pgsa_history
+      {extra}
+    ) AS pgsa
+    WHERE number %% ( int8larger((total)/(%(samples)s+1),1) ) = 0
+""".format(extra=extra)
+
+
 BASE_QUERY_BGWRITER_SAMPLE = """
     (SELECT srvid,
       row_number() OVER (ORDER BY bgw_history.ts) AS number,
@@ -689,6 +744,50 @@ def powa_getwaitdata_sample(mode, predicates=[]):
         base_columns=', '.join(base_columns),
         base_query=base_query,
         where=where
+    )
+
+
+def powa_get_pgsa_sample(per_db=False):
+    base_query = BASE_QUERY_PGSA_SAMPLE(per_db)
+    base_columns = ["srvid"]
+
+    def txid_age(field):
+        ref = "cur_txid"
+        alias = field + "_age"
+
+        return """CASE
+        WHEN {ref}::text::bigint - {field}::text::bigint < -100000
+          THEN ({ref}::text::bigint - 3) +
+            ((4::bigint * 1024 * 1024 * 1024) - {field}::text::bigint)
+        WHEN {ref}::text::bigint - {field}::text::bigint <= 0
+          THEN 0
+        ELSE
+          {ref}::text::bigint - {field}::text::bigint
+      END AS {alias}""".format(field=field, ref=ref, alias=alias)
+
+    def ts_get_sec(field):
+        alias = field + "_age"
+        return """extract(epoch FROM (ts - {f})) * 1000 AS {a}""".format(
+                f=field,
+                a=alias)
+
+    all_cols = base_columns + [
+        "ts",
+        "datid",
+        txid_age("backend_xid"),     # backend_xid_age
+        txid_age("backend_xmin"),    # backend_xmin_age
+        ts_get_sec("backend_start"), # backend_start_age
+        ts_get_sec("xact_start"),    # xact_start_age
+        ts_get_sec("query_start"),   # query_start_age
+        "state",
+        "leader_pid",
+    ]
+
+    return """SELECT {all_cols}
+    FROM {base_query}""".format(
+        all_cols=', '.join(all_cols),
+        base_columns=', '.join(base_columns),
+        base_query=base_query
     )
 
 
