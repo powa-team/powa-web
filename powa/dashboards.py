@@ -592,6 +592,39 @@ class MetricGroupDef(with_metaclass(MetaMetricGroup, DataSource)):
         return sorted(cls._get_metrics(handler, **params).values(),
                       key=attrgetter("_order"))
 
+    @classmethod
+    def split(cls, handler, splits):
+        """
+        Returns a list of list containing all the metrics, split according
+        to the given list of list of metric names.  The array first element
+        contains all the metrics that don't appear in the splits.  For
+        instance:
+            split_metrics(..., [ ["b", "c"], ["d"] ])
+        called on a dict of metrics containing the key "a" to "e" would return
+        [[metric_a, metric_e], [metric_b, metric_c], [metric_d]]
+        """
+        metrics = cls._get_metrics(handler).copy()
+
+        res = []
+
+        i = 0
+        res.append({})
+
+        # Distribute the metrics according to the splits
+        for split in splits:
+            i += 1
+            res.append({})
+            for k in split:
+                res[i][k] = metrics.pop(k)
+
+        # and add what's left in the first position
+        res[0] = metrics
+
+        for i in range(0, len(res)):
+            res[i] = sorted(res[i].values(), key=attrgetter("_order"))
+
+        return res
+
     @property
     def metrics(self):
         return self._metrics
