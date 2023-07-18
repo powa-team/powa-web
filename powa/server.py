@@ -13,6 +13,7 @@ from powa.config import ConfigChangesGlobal
 from powa.sql.views_graph import (powa_getstatdata_sample,
                                   kcache_getstatdata_sample,
                                   powa_getwaitdata_sample,
+                                  powa_get_pgsa_sample,
                                   powa_get_bgwriter_sample,
                                   powa_get_all_tbl_sample,
                                   powa_get_user_fct_sample)
@@ -382,6 +383,69 @@ class GlobalWaitsMetricGroup(MetricGroupDef):
             )
 
 
+class GlobalPGSAMetricGroup(MetricGroupDef):
+    """
+    Metric group used by pg_stat_activity graphs
+    """
+    name = "pgsa"
+    xaxis = "ts"
+    data_url = r"/server/(\d+)/metrics/pgsa/"
+    backend_xid_age = MetricDef(label="Backend xid age")
+    backend_xmin_age = MetricDef(label="Backend xmin age")
+    oldest_backend = MetricDef(label="Oldest backend", type="duration",
+                               desc="Age of the oldest backend, excluding"
+                                    " replication backends")
+    oldest_xact = MetricDef(label="Oldest transaction", type="duration")
+    oldest_query = MetricDef(label="Oldest query", type="duration")
+    nb_idle = MetricDef(label="# of idle connections")
+    nb_active = MetricDef(label="# of active connections")
+    nb_idle_xact = MetricDef(label="# of idle in transaction connections")
+    nb_fastpath = MetricDef(label="# of connections in fastpath function call")
+    nb_idle_xact_abort = MetricDef(label="# of idle in transaction (aborted) connections")
+    nb_disabled = MetricDef(label="# of disabled connections")
+    nb_unknown = MetricDef(label="# of connections in unknown state")
+    nb_parallel_query = MetricDef(label="# of parallel queries")
+    nb_parallel_worker = MetricDef(label="# of parallel workers")
+
+    @classmethod
+    def _get_metrics(cls, handler, **params):
+        base = cls.metrics.copy()
+
+        remote_pg_ver = handler.get_pg_version_num(handler.path_args[0])
+        if (remote_pg_ver is not None and remote_pg_ver < 130000):
+            for key in ("nb_parallel_query", "nb_parallel_worker"):
+                base.pop(key)
+        return base
+
+    @property
+    def query(self):
+        query = powa_get_pgsa_sample()
+
+        cols = ["extract(epoch FROM ts) AS ts",
+                "max(backend_xid_age) AS backend_xid_age",
+                "max(backend_xmin_age) AS backend_xmin_age",
+                "max(backend_start_age) FILTER (WHERE datid IS NOT NULL) AS oldest_backend",
+                "max(xact_start_age) FILTER (WHERE datid IS NOT NULL) AS oldest_xact",
+                "max(query_start_age) FILTER (WHERE datid IS NOT NULL) AS oldest_query",
+                "count(*) FILTER (WHERE state = 'idle') AS nb_idle",
+                "count(*) FILTER (WHERE state = 'active') AS nb_active",
+                "count(*) FILTER (WHERE state = 'idle in transaction') AS nb_idle_xact",
+                "count(*) FILTER (WHERE state = 'fastpath function call') AS nb_fastpath",
+                "count(*) FILTER (WHERE state = 'idle in transaction (aborted)') AS nb_idle_xact_abort",
+                "count(*) FILTER (WHERE state = 'disabled') AS nb_disabled",
+                "count(*) FILTER (WHERE state IS NULL) AS nb_unknown",
+                "count(DISTINCT leader_pid) AS nb_parallel_query",
+                "count(*) FILTER (WHERE leader_pid IS NOT NULL) AS nb_parallel_worker",
+                ]
+
+        return """SELECT {cols}
+            FROM ({query}) AS sub
+            GROUP BY ts
+            """.format(
+                    cols=', '.join(cols),
+                    query=query)
+
+
 class GlobalBgwriterMetricGroup(MetricGroupDef):
     """
     Metric group used by bgwriter graphs.
@@ -585,7 +649,7 @@ class ServerOverview(DashboardPage):
                    ByDatabaseWaitSamplingMetricGroup, GlobalWaitsMetricGroup,
                    GlobalBgwriterMetricGroup, GlobalAllRelMetricGroup,
                    GlobalUserFctMetricGroup, ByDatabaseUserFuncMetricGroup,
-                   ConfigChangesGlobal]
+                   ConfigChangesGlobal, GlobalPGSAMetricGroup]
     params = ["server"]
     title = "All databases"
     timeline = ConfigChangesGlobal
@@ -610,11 +674,33 @@ class ServerOverview(DashboardPage):
                                      total_blks_hit],
                             color_scheme=None)
 
-        all_db_graphs = [Graph("Query runtime per second (all databases)",
+        all_db_graphs = [[Graph("Query runtime per second (all databases)",
                                metrics=all_db_metrics),
-                         block_graph]
+                         block_graph]]
 
-        graphs_dash = [Dashboard("General Overview", [all_db_graphs])]
+        if ("nb_parallel_query" in GlobalPGSAMetricGroup._get_metrics(self)):
+            parallel_metrics = ["nb_parallel_query", "nb_parallel_worker"]
+        else:
+            parallel_metrics = []
+
+        pgsa_metrics = GlobalPGSAMetricGroup.split(self,
+                                                   [["backend_xid_age",
+                                                     "backend_xmin_age",
+                                                     "oldest_backend",
+                                                     "oldest_xact",
+                                                     "oldest_query"],
+                                                    parallel_metrics])
+        all_db_graphs.append([Graph("Global activity (all databases)",
+                                    metrics=pgsa_metrics[0],
+                                    renderer="bar",
+                                    stack=True)])
+        if (len(pgsa_metrics[2]) > 0):
+            all_db_graphs[1].append(Graph("Parallel query (all databases)",
+                                          metrics=pgsa_metrics[2]))
+        all_db_graphs[1].append(Graph("Backend age (all databases)",
+                                      metrics=pgsa_metrics[1]))
+
+        graphs_dash = [Dashboard("General Overview", all_db_graphs)]
         graphs = [TabContainer("All databases", graphs_dash)]
 
         # Add WALs graphs
