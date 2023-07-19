@@ -550,6 +550,80 @@ BASE_QUERY_BGWRITER_SAMPLE = """
 """
 
 
+BASE_QUERY_ALL_IDXS_SAMPLE_DB = """(
+  SELECT d.srvid, d.datname, base.*
+  FROM {powa}.powa_databases d,
+  LATERAL (
+    SELECT *
+    FROM (
+      SELECT
+      row_number() OVER (PARTITION BY dbid ORDER BY ts) AS number,
+      count(*) OVER (PARTITION BY dbid ) AS total,
+      ar_history.*
+      FROM (
+        SELECT dbid, (unnested.records).*
+        FROM (
+          SELECT ari.dbid, unnest(records) AS records
+          FROM {powa}.powa_all_indexes_history_db ari
+          WHERE ari.dbid = d.oid
+          AND ari.srvid = d.srvid
+          AND ari.srvid = %(server)s
+        ) AS unnested
+        WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        UNION ALL
+        SELECT dbid, (record).*
+        FROM {powa}.powa_all_indexes_history_current_db aric
+        WHERE (record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        AND aric.dbid = d.oid
+        AND aric.srvid = d.srvid
+        AND aric.srvid = %(server)s
+      ) AS ar_history
+    ) AS ari
+    WHERE number %% (int8larger(total/(%(samples)s+1),1) ) = 0
+  ) AS base
+  WHERE srvid = %(server)s
+) AS by_db
+"""
+
+
+BASE_QUERY_ALL_IDXS_SAMPLE = """(
+  SELECT d.srvid, d.datname,
+  base.*
+  FROM
+  {powa}.powa_databases d,
+  LATERAL (
+    SELECT *
+    FROM (
+      SELECT
+      row_number() OVER (PARTITION BY dbid, relid ORDER BY ts) AS number,
+      count(*) OVER (PARTITION BY dbid, relid ) AS total,
+      ar_history.*
+      FROM (
+        SELECT dbid, relid, (unnested.records).*
+        FROM (
+          SELECT ari.dbid, relid, unnest(records) AS records
+          FROM {powa}.powa_all_indexes_history_db ari
+          WHERE ari.dbid = d.oid
+          AND ari.srvid = d.srvid
+          AND ari.srvid = %(server)s
+        ) AS unnested
+        WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        UNION ALL
+        SELECT dbid, relid, (record).*
+        FROM {powa}.powa_all_indexes_history_current_db aric
+        WHERE (record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        AND aric.dbid = d.oid
+        AND aric.srvid = d.srvid
+        AND aric.srvid = %(server)s
+      ) AS ar_history
+    ) AS ari
+    WHERE number %% (int8larger(total/(%(samples)s+1),1) ) = 0
+  ) AS base
+  WHERE srvid = %(server)s
+) AS by_db
+    """
+
+
 BASE_QUERY_ALL_TBLS_SAMPLE_DB = """(
   SELECT d.srvid, d.datname, base.*
   FROM {powa}.powa_databases d,
@@ -819,6 +893,39 @@ def powa_get_bgwriter_sample():
         all_cols=', '.join(all_cols),
         base_columns=', '.join(base_columns),
         base_query=base_query
+    )
+
+
+def powa_get_all_idx_sample(mode):
+
+    if mode == "db":
+        base_query = BASE_QUERY_ALL_IDXS_SAMPLE_DB
+        base_columns = ["srvid", "dbid", "datname"]
+    else:
+        base_query = BASE_QUERY_ALL_IDXS_SAMPLE
+        base_columns = ["srvid", "dbid", "datname", "relid"]
+
+    biggest = Biggest(base_columns, 'ts')
+    biggestsum = Biggestsum(base_columns, 'ts')
+
+    all_cols = base_columns + [
+        "ts",
+        biggest("ts", "'0 s'", "mesure_interval"),
+        "sum(idx_size) AS idx_size",
+        biggestsum("idx_scan"),
+        biggestsum("idx_tup_read"),
+        biggestsum("idx_tup_fetch"),
+        biggestsum("idx_blks_read"),
+        biggestsum("idx_blks_hit"),
+    ]
+
+    return """SELECT {all_cols}
+        FROM {base_query}
+        WHERE srvid = %(server)s
+        GROUP BY {base_columns}, ts""".format(
+            all_cols=', '.join(all_cols),
+            base_columns=', '.join(base_columns),
+            base_query=base_query
     )
 
 
