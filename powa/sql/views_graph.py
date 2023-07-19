@@ -837,6 +837,7 @@ def powa_get_all_tbl_sample(mode):
     all_cols = base_columns + [
         "ts",
         biggest("ts", "'0 s'", "mesure_interval"),
+        "sum(tbl_size) AS tbl_size",
         biggestsum("seq_scan"),
         biggestsum("idx_scan"),
         biggestsum("n_tup_ins"),
