@@ -12,6 +12,7 @@ from powa.sql.views_graph import (powa_getstatdata_sample,
                                   kcache_getstatdata_sample,
                                   powa_getwaitdata_sample,
                                   powa_get_pgsa_sample,
+                                  powa_get_all_idx_sample,
                                   powa_get_all_tbl_sample,
                                   powa_get_user_fct_sample)
 from powa.sql.views_grid import (powa_getstatdata_detailed_db,
@@ -311,6 +312,12 @@ class DatabaseAllRelMetricGroup(MetricGroupDef):
     name = "all_relations"
     xaxis = "ts"
     data_url = r"/server/(\d+)/metrics/database_all_relations/([^\/]+)/"
+    idx_size = MetricDef(label="Indexes size", type="size",
+                         desc="Size of all indexes")
+    tbl_size = MetricDef(label="Tables size", type="size",
+                         desc="Size of all tables")
+    idx_ratio = MetricDef(label="Index scans ratio", type="percent",
+                          desc="Ratio of index scan / seq scan")
     idx_ratio = MetricDef(label="Index scans ratio", type="percent",
                           desc="Ratio of index scan / seq scan")
     idx_scan = MetricDef(label="Index scans", type="number",
@@ -336,12 +343,13 @@ class DatabaseAllRelMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        query = powa_get_all_tbl_sample("db")
-
-        from_clause = query
+        query1 = powa_get_all_tbl_sample("db")
+        query2 = powa_get_all_idx_sample("db")
 
         cols = ["sub.srvid",
                 "extract(epoch FROM sub.ts) AS ts",
+                "sum(tbl_size) AS tbl_size",
+                "sum(idx_size) AS idx_size",
                 "CASE WHEN sum(sub.idx_scan + sub.seq_scan) = 0"
                 " THEN 0"
                 " ELSE sum(sub.idx_scan) * 100"
@@ -360,14 +368,17 @@ class DatabaseAllRelMetricGroup(MetricGroupDef):
 
         return """SELECT {cols}
         FROM (
-            {from_clause}
+            ({query1}) q1
+            JOIN (SELECT srvid, dbid, ts, idx_size FROM ({query2})s ) q2
+                USING (srvid, dbid, ts)
         ) AS sub
         WHERE sub.mesure_interval != '0 s'
         AND datname = %(database)s
         GROUP BY sub.srvid, sub.ts, sub.mesure_interval
         ORDER BY sub.ts""".format(
             cols=', '.join(cols),
-            from_clause=from_clause
+            query1=query1,
+            query2=query2
         )
 
 
@@ -657,21 +668,28 @@ class DatabaseOverview(DashboardPage):
             graphs_dash.append(Dashboard("WALs", wals_graphs))
 
         # Add powa_stat_all_relations graphs
-        all_rel_graphs = [Graph("Access pattern",
-                          metrics=[DatabaseAllRelMetricGroup.seq_scan,
-                                   DatabaseAllRelMetricGroup.idx_scan,
-                                   DatabaseAllRelMetricGroup.idx_ratio]),
-                          Graph("DML activity",
-                          metrics=[DatabaseAllRelMetricGroup.n_tup_del,
-                                   DatabaseAllRelMetricGroup.n_tup_hot_upd,
-                                   DatabaseAllRelMetricGroup.n_tup_upd,
-                                   DatabaseAllRelMetricGroup.n_tup_ins]),
-                          Graph("Vacuum activity",
-                          metrics=[DatabaseAllRelMetricGroup.autoanalyze_count,
-                                   DatabaseAllRelMetricGroup.analyze_count,
-                                   DatabaseAllRelMetricGroup.autovacuum_count,
-                                   DatabaseAllRelMetricGroup.vacuum_count])]
-        graphs_dash.append(Dashboard("Database Objects", [all_rel_graphs]))
+        all_rel_graphs = [[Graph("Access pattern",
+                           metrics=[DatabaseAllRelMetricGroup.seq_scan,
+                                    DatabaseAllRelMetricGroup.idx_scan,
+                                    DatabaseAllRelMetricGroup.idx_ratio]),
+                           Graph("DML activity",
+                           metrics=[DatabaseAllRelMetricGroup.n_tup_del,
+                                    DatabaseAllRelMetricGroup.n_tup_hot_upd,
+                                    DatabaseAllRelMetricGroup.n_tup_upd,
+                                    DatabaseAllRelMetricGroup.n_tup_ins])
+                          ],
+                          [Graph("Vacuum activity",
+                           metrics=[DatabaseAllRelMetricGroup.autoanalyze_count,
+                                    DatabaseAllRelMetricGroup.analyze_count,
+                                    DatabaseAllRelMetricGroup.autovacuum_count,
+                                    DatabaseAllRelMetricGroup.vacuum_count]),
+                           Graph("Object size",
+                           metrics=[DatabaseAllRelMetricGroup.tbl_size,
+                                    DatabaseAllRelMetricGroup.idx_size],
+                           renderer="bar",
+                           stack=True,
+                           color_scheme=['#73c03a','#65b9ac'])]]
+        graphs_dash.append(Dashboard("Database Objects", all_rel_graphs))
 
         # Add powa_stat_user_functions graphs
         user_fct_graph = [Graph("User functions activity",
