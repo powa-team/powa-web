@@ -1,6 +1,16 @@
 """
 Functions to generate the queries used in the various graphs components
 """
+def wal_to_num(walname):
+    """
+    Extracts the sequence number from the given WAL file name, similarly to
+    pg_split_walfile_name().  It's assuming a 16MB wal_segment_size.
+    """
+    return """(('x' || substr({walname}, 9, 8))::bit(32)::bigint
+ * '4294967296'::bigint / 16777216
+ + ('x' || substr({walname}, 17, 8))::bit(32)::bigint)""".format(
+    walname=walname)
+
 class Biggest(object):
 
     def __init__(self, base_columns, order_by):
@@ -514,6 +524,38 @@ def BASE_QUERY_PGSA_SAMPLE(per_db=False):
 """.format(extra=extra)
 
 
+BASE_QUERY_ARCHIVER_SAMPLE = """
+    (SELECT srvid,
+      row_number() OVER (ORDER BY arc_history.ts) AS number,
+      count(*) OVER () AS total,
+      ts,
+      current_wal,
+      archived_count,
+      last_archived_wal,
+      last_archived_time,
+      failed_count,
+      last_failed_wal,
+      last_failed_time
+      FROM (
+        SELECT *
+        FROM (
+          SELECT srvid, (unnest(records)).*
+          FROM {powa}.powa_stat_archiver_history arch
+          WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+          AND arch.srvid = %(server)s
+        ) AS unnested
+        WHERE ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        UNION ALL
+        SELECT srvid, (record).*
+        FROM {powa}.powa_stat_archiver_history_current arcc
+        WHERE (arcc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        AND arcc.srvid = %(server)s
+      ) AS arc_history
+    ) AS arc
+    WHERE number %% ( int8larger((total)/(%(samples)s+1),1) ) = 0
+"""
+
+
 BASE_QUERY_BGWRITER_SAMPLE = """
     (SELECT srvid,
       row_number() OVER (ORDER BY bgw_history.ts) AS number,
@@ -855,6 +897,33 @@ def powa_get_pgsa_sample(per_db=False):
         ts_get_sec("query_start"),   # query_start_age
         "state",
         "leader_pid",
+    ]
+
+    return """SELECT {all_cols}
+    FROM {base_query}""".format(
+        all_cols=', '.join(all_cols),
+        base_columns=', '.join(base_columns),
+        base_query=base_query
+    )
+
+
+def powa_get_archiver_sample():
+    base_query = BASE_QUERY_ARCHIVER_SAMPLE
+    base_columns = ["srvid"]
+
+    biggest = Biggest(base_columns, 'ts')
+    biggestsum = Biggestsum(base_columns, 'ts')
+
+    all_cols = base_columns + [
+        "ts",
+        biggest("ts", "'0 s'", "mesure_interval"),
+        "current_wal",
+        "last_archived_time",
+        biggest(wal_to_num("last_archived_wal"), label="nb_arch"),
+        "last_failed_time",
+        wal_to_num("current_wal")
+            + " - " + wal_to_num("last_archived_wal")
+            + " - 1 AS nb_to_arch",
     ]
 
     return """SELECT {all_cols}
