@@ -14,6 +14,7 @@ from powa.sql.views_graph import (powa_getstatdata_sample,
                                   kcache_getstatdata_sample,
                                   powa_getwaitdata_sample,
                                   powa_get_pgsa_sample,
+                                  powa_get_archiver_sample,
                                   powa_get_bgwriter_sample,
                                   powa_get_all_idx_sample,
                                   powa_get_all_tbl_sample,
@@ -447,6 +448,37 @@ class GlobalPGSAMetricGroup(MetricGroupDef):
                     query=query)
 
 
+class GlobalArchiverMetricGroup(MetricGroupDef):
+    """
+    Metric group used by pg_stat_archiver graphs.
+    """
+    name = "archiver"
+    xaxis = "ts"
+    data_url = r"/server/(\d+)/metrics/archiver/"
+    nb_arch = MetricDef(label="# of archived WAL per second",
+                        type="number",
+                        desc="Number of WAL archived per second")
+    nb_to_arch = MetricDef(label="# of WAL to archive",
+                           type="number",
+                           desc="Number of WAL that needs to be archived")
+
+    @property
+    def query(self):
+        query = powa_get_archiver_sample()
+
+        cols = [
+                "extract(epoch FROM ts) AS ts",
+                "round(nb_arch::numeric / " + get_ts() + ", 2) AS nb_arch",
+                "nb_to_arch"
+        ]
+
+        return """SELECT {cols}
+        FROM (
+            {from_clause}
+        ) AS sub""".format(
+                cols=', '.join(cols),
+                from_clause=query)
+
 class GlobalBgwriterMetricGroup(MetricGroupDef):
     """
     Metric group used by bgwriter graphs.
@@ -658,7 +690,8 @@ class ServerOverview(DashboardPage):
                    ByDatabaseWaitSamplingMetricGroup, GlobalWaitsMetricGroup,
                    GlobalBgwriterMetricGroup, GlobalAllRelMetricGroup,
                    GlobalUserFctMetricGroup, ByDatabaseUserFuncMetricGroup,
-                   ConfigChangesGlobal, GlobalPGSAMetricGroup]
+                   ConfigChangesGlobal, GlobalPGSAMetricGroup,
+                   GlobalArchiverMetricGroup]
     params = ["server"]
     title = "All databases"
     timeline = ConfigChangesGlobal
@@ -739,6 +772,11 @@ class ServerOverview(DashboardPage):
                                 ])
                        ]]
         graphs_dash.append(Dashboard("Background Writer", bgw_graphs))
+
+        # Add archiver graph
+        arch_graphs = [[Graph("Archiver",
+                              metrics=GlobalArchiverMetricGroup.all(self))]]
+        graphs_dash.append(Dashboard("Archiver", arch_graphs))
 
         # Add powa_stat_all_relations graphs
         all_rel_graphs = [[Graph("Access pattern",
