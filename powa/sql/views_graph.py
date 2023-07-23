@@ -592,6 +592,42 @@ BASE_QUERY_BGWRITER_SAMPLE = """
 """
 
 
+BASE_QUERY_REPLICATION_SAMPLE = """
+    (SELECT srvid,
+      row_number() OVER (ORDER BY psr_history.ts) AS number,
+      count(*) OVER () AS total,
+      ts,
+      current_lsn,
+      count(pid) AS nb_slot,
+      min(sent_lsn) AS sent_lsn,
+      min(write_lsn) AS write_lsn,
+      min(flush_lsn) AS flush_lsn,
+      min(replay_lsn) AS replay_lsn,
+      max(write_lag) AS write_lag,
+      max(flush_lag) AS flush_lag,
+      max(replay_lag) AS replay_lag,
+      count(*) FILTER (WHERE sync_state = 'async') AS nb_async
+      FROM (
+        SELECT *
+        FROM (
+          SELECT srvid, (unnest(records)).*
+          FROM {powa}.powa_stat_replication_history psrh
+          WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+          AND psrh.srvid = %(server)s
+        ) AS unnested
+        WHERE ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        UNION ALL
+        SELECT srvid, (record).*
+        FROM {powa}.powa_stat_replication_history_current psrc
+        WHERE (psrc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        AND psrc.srvid = %(server)s
+      ) AS psr_history
+      GROUP BY psr_history.srvid, psr_history.ts, psr_history.current_lsn
+    ) AS psr
+    WHERE number %% ( int8larger((total)/(%(samples)s+1),1) ) = 0
+"""
+
+
 BASE_QUERY_ALL_IDXS_SAMPLE_DB = """(
   SELECT d.srvid, d.datname, base.*
   FROM {powa}.powa_databases d,
@@ -959,6 +995,37 @@ def powa_get_bgwriter_sample():
     return """SELECT {all_cols}
     FROM {base_query}
     GROUP BY {base_columns}, ts""".format(
+        all_cols=', '.join(all_cols),
+        base_columns=', '.join(base_columns),
+        base_query=base_query
+    )
+
+
+def powa_get_replication_sample():
+    base_query = BASE_QUERY_REPLICATION_SAMPLE
+    base_columns = ["srvid"]
+
+    biggest = Biggest(base_columns, 'ts')
+    biggestsum = Biggestsum(base_columns, 'ts')
+
+    all_cols = base_columns + [
+        "ts",
+        biggest("ts", "'0 s'", "mesure_interval"),
+        "current_lsn",
+        "nb_slot",
+        "sent_lsn",
+        "write_lsn",
+        "flush_lsn",
+        "replay_lsn",
+        "write_lag",
+        "flush_lag",
+        "replay_lag",
+        "nb_async",
+        "nb_slot - nb_async AS nb_sync"
+    ]
+
+    return """SELECT {all_cols}
+    FROM {base_query}""".format(
         all_cols=', '.join(all_cols),
         base_columns=', '.join(base_columns),
         base_query=base_query
