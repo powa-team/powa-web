@@ -16,6 +16,7 @@ from powa.sql.views_graph import (powa_getstatdata_sample,
                                   powa_get_pgsa_sample,
                                   powa_get_archiver_sample,
                                   powa_get_bgwriter_sample,
+                                  powa_get_replication_sample,
                                   powa_get_all_idx_sample,
                                   powa_get_all_tbl_sample,
                                   powa_get_user_fct_sample)
@@ -568,6 +569,73 @@ class GlobalBgwriterMetricGroup(MetricGroupDef):
             bs=bs
         )
 
+class GlobalReplicationMetricGroup(MetricGroupDef):
+    """
+    Metric group used by pg_stat_replication graphs.
+    """
+    name = "replication"
+    xaxis = "ts"
+    data_url = r"/server/(\d+)/metrics/replication/"
+    sent_lsn = MetricDef(label="Sent delta",
+                         type="size",
+                         desc="Maximum amount of data not sent to the replica")
+    write_lsn = MetricDef(label="Write delta",
+                          type="size",
+                          desc="Maximum amount of data sent to the replica but"
+                               " not written locally")
+    flush_lsn = MetricDef(label="Flush delta",
+                          type="size",
+                          desc="Maximum amount of data written on the replica"
+                               " but not flushed locally")
+    replay_lsn = MetricDef(label="Replay delta",
+                           type="size",
+                           desc="Maximum amount of data flushed on the replica"
+                                " but not replayed locally")
+    write_lag = MetricDef(label="Write lag",
+                          type="duration",
+                          desc="Maximum write lag in s")
+    flush_lag = MetricDef(label="Flush lag",
+                          type="duration",
+                          desc="Maximum flush lag in s")
+    replay_lag = MetricDef(label="Replay lag",
+                           type="duration",
+                           desc="Maximum replay lag in s")
+    nb_async = MetricDef(label="# of async replication connections",
+                         type="number",
+                         desc="Number of asynchronous replication connections")
+    nb_sync = MetricDef(label="# of sync replication connections",
+                         type="number",
+                         desc="Number of synchronous replication connections")
+
+    @property
+    def query(self):
+        query = powa_get_replication_sample()
+
+        from_clause = query
+
+        cols = [
+                "extract(epoch FROM sub.ts) AS ts",
+                "current_lsn - sent_lsn AS sent_lsn",
+                "sent_lsn - write_lsn AS write_lsn",
+                "write_lsn - flush_lsn AS flush_lsn",
+                "flush_lsn - replay_lsn AS replay_lsn",
+                "coalesce(extract(epoch from write_lag), 0) AS write_lag",
+                "coalesce(extract(epoch from flush_lag - write_lag), 0) AS flush_lag",
+                "coalesce(extract(epoch from replay_lag - flush_lag), 0) AS replay_lag",
+                "nb_async",
+                "nb_slot - nb_async AS nb_sync",
+                ]
+
+        return """SELECT {cols}
+        FROM (
+            {from_clause}
+        ) AS sub
+        WHERE sub.mesure_interval != '0 s'
+        ORDER BY sub.ts""".format(
+            cols=', '.join(cols),
+            from_clause=from_clause,
+        )
+
 
 class GlobalAllRelMetricGroup(MetricGroupDef):
     """
@@ -691,7 +759,7 @@ class ServerOverview(DashboardPage):
                    GlobalBgwriterMetricGroup, GlobalAllRelMetricGroup,
                    GlobalUserFctMetricGroup, ByDatabaseUserFuncMetricGroup,
                    ConfigChangesGlobal, GlobalPGSAMetricGroup,
-                   GlobalArchiverMetricGroup]
+                   GlobalArchiverMetricGroup, GlobalReplicationMetricGroup]
     params = ["server"]
     title = "All databases"
     timeline = ConfigChangesGlobal
@@ -773,10 +841,30 @@ class ServerOverview(DashboardPage):
                        ]]
         graphs_dash.append(Dashboard("Background Writer", bgw_graphs))
 
-        # Add archiver graph
+        # Add archiver / replication graphs
         arch_graphs = [[Graph("Archiver",
-                              metrics=GlobalArchiverMetricGroup.all(self))]]
-        graphs_dash.append(Dashboard("Archiver", arch_graphs))
+                              metrics=GlobalArchiverMetricGroup.all(self)),
+                        Graph("Replication kind",
+                              metrics=[GlobalReplicationMetricGroup.nb_async,
+                                       GlobalReplicationMetricGroup.nb_sync]),
+                        ],
+                       [Graph("Replication delta in B",
+                              metrics=[GlobalReplicationMetricGroup.sent_lsn,
+                                       GlobalReplicationMetricGroup.write_lsn,
+                                       GlobalReplicationMetricGroup.flush_lsn,
+                                       GlobalReplicationMetricGroup.replay_lsn,
+                                       ],
+                              renderer="bar",
+                              stack=True),
+                        Graph("Replication lag in s",
+                              metrics=[GlobalReplicationMetricGroup.write_lag,
+                                       GlobalReplicationMetricGroup.flush_lag,
+                                       GlobalReplicationMetricGroup.replay_lag,
+                                       ],
+                              renderer="bar",
+                              stack=True)
+                        ]]
+        graphs_dash.append(Dashboard("Archiver / Replication", arch_graphs))
 
         # Add powa_stat_all_relations graphs
         all_rel_graphs = [[Graph("Access pattern",
