@@ -323,7 +323,7 @@ const valueFormats = {
   sizerate: new size.SizeFormatter({ suffix: "ps" }).fromRaw,
   duration: (value) => formatDuration(value, true),
   percent: (value) => formatPercentage(value),
-  number: d3.format(".2s"),
+  number: (value) => (!_.isNil(value) ? d3.format(".2s")(value) : "-"),
   integer: d3.format(".2s"),
 };
 
@@ -435,6 +435,7 @@ function initChart() {
       series.push(
         d3
           .line()
+          .defined((d) => !_.isNil(d[metric]))
           .x((d) => xScale(d.date))
           .y((d) => yAxisByType[type].scale(d[metric]))
       );
@@ -680,8 +681,10 @@ function pointermoved(event) {
     .selectAll("circle")
     .data(markersData)
     .attr("fill", (d) => getColor(d[0]))
-    .attr("display", null)
-    .attr("transform", (d) => `translate(${xScale(X[i])}, ${d[1]})`);
+    .attr("display", (d) => _.isNil(d[1] ? "none" : null))
+    .attr("transform", (d) =>
+      !_.isNil(d[1]) ? `translate(${xScale(X[i])}, ${d[1]})` : null
+    );
   tooltip.value = {
     x: pointerX + margin.left,
     y: pointerY + margin.top,
