@@ -1,23 +1,22 @@
 import { resolve } from "path";
 import { defineConfig } from "vite";
-import vue from "@vitejs/plugin-vue2";
-import { VuetifyResolver } from "unplugin-vue-components/resolvers";
+import vue2 from "@vitejs/plugin-vue2";
 import Components from "unplugin-vue-components/vite";
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    vue(),
-    // unplugin-vue-components
-    // https://github.com/antfu/unplugin-vue-components
+    vue2(),
     Components({
-      dirs: ["/powa/static/js/components"],
-      // auto import for directives
-      directives: true,
-      // resolvers for custom components
       resolvers: [
-        // Vuetify
-        VuetifyResolver(),
+        {
+          type: "component",
+          resolve: (name) => {
+            if (name.match(/^V[A-Z]/) && name !== "VSnackbars") {
+              return { name, from: "vuetify/lib" };
+            }
+          },
+        },
       ],
     }),
   ],
