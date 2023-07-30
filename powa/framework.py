@@ -3,6 +3,7 @@ Utilities for the basis of Powa
 """
 from collections import defaultdict
 from tornado.web import RequestHandler, authenticated, HTTPError
+from powa.json import JSONizable
 from powa import ui_methods
 from powa.json import to_json
 import psycopg2
@@ -106,7 +107,7 @@ def log_query(cls, query, params=None, exception=None):
                                             srvid=cls.connection._srvid))
 
 
-class BaseHandler(RequestHandler):
+class BaseHandler(RequestHandler, JSONizable):
     """
     Subclass of Tornado RequestHandler adding a bunch
     of utility methods.
@@ -164,14 +165,17 @@ class BaseHandler(RequestHandler):
         """
         Return the server connected to if any
         """
-        return self.get_secure_cookie('server')
+        try:
+            return self.get_secure_cookie('server').decode('utf-8')
+        except AttributeError:
+            return None
 
     @property
     def current_host(self):
         """
         Return the host connected to if any
         """
-        server = self.current_server.decode('utf8')
+        server = self.current_server
         if server is None:
             return None
         connoptions = options.servers[server].copy()
@@ -185,7 +189,7 @@ class BaseHandler(RequestHandler):
         """
         Return the port connected to if any
         """
-        server = self.current_server.decode('utf8')
+        server = self.current_server
         if server is None:
             return None
         connoptions = options.servers[server].copy()
@@ -199,7 +203,7 @@ class BaseHandler(RequestHandler):
         """
         Return the host and port connected to if any
         """
-        server = self.current_server.decode('utf8')
+        server = self.current_server
         if server is None:
             return None
         connoptions = options.servers[server].copy()
@@ -660,6 +664,22 @@ class BaseHandler(RequestHandler):
     flash = ui_methods.flash
     reverse_url_with_params = ui_methods.reverse_url_with_params
 
+    def to_json(self):
+        return {
+            "database": self.database,
+            "currentPort": self.current_port,
+            "currentServer": self.current_server,
+            "currentUser": self.current_user,
+            "currentConnection": self.current_connection,
+            "notifyAllowed": self.notify_allowed,
+            "server": self.server,
+            "version": ui_methods.version(None),
+            "year": ui_methods.year(None),
+            "configUrl": self.reverse_url('RepositoryConfigOverview'),
+            "logoUrl": self.static_url('img/favicon/favicon-32x32.png'),
+            "homeUrl": self.reverse_url('Overview'),
+        }
+
 
 class AuthHandler(BaseHandler):
     """
@@ -669,3 +689,9 @@ class AuthHandler(BaseHandler):
     @authenticated
     def prepare(self):
         super(AuthHandler, self).prepare()
+
+
+    def to_json(self):
+        return dict(**super(AuthHandler, self).to_json(), **{
+            "logoutUrl": self.reverse_url('logout')
+        })

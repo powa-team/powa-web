@@ -18,7 +18,7 @@
 
 <script setup>
 import Vue, { onMounted, ref, watch } from "vue";
-import { createVuetify, icons } from "../plugins/vuetify.js";
+import vuetify, { icons } from "../plugins/vuetify.js";
 import store from "../store";
 import hljs from "highlight.js/lib/core";
 import pgsql from "highlight.js/lib/languages/pgsql";
@@ -59,7 +59,7 @@ function loadData() {
         icons,
       }),
       template: response,
-      vuetify: createVuetify(),
+      vuetify,
     });
     const html = el.$mount().$el.outerHTML;
     content.value = html;
