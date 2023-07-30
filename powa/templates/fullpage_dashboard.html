@@ -1,7 +1,5 @@
 {% extends "layout.html" %}
-{% block content %}
-<dashboard :config="config"></dashboard>
-
+{% block data %}
 <script type="text/dashboard">
   {% raw to_json(dashboard) %}
 </script>
