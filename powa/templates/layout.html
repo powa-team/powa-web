@@ -23,30 +23,23 @@
         font-family: "Roboto", sans-serif;
         text-align: center;
       }
-      #mask > * {
-        display: block;
-      }
-
-      [v-cloak] > * { display:none }
     </style>
   </head>
   <body>
-    <div id="mask" v-cloak>
-      <div>
-        <div style="display: flex; align-items: center; justify-content: center; color: #859145;">
-          <img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;<b>PoWA</b>
+    <div id="app">
+      <div id="mask">
+        <div>
+          <div style="display: flex; align-items: center; justify-content: center; color: #859145;">
+            <img src="{{ static_url('img/favicon/favicon-32x32.png')}}"/>&nbsp;<b>PoWA</b>
+          </div>
+          <br>
+          <noscript>
+            Javascript is required to display this page.
+          </noscript>
+          <span id="waiter">Loading…</span>
         </div>
-        <br>
-        <noscript>
-          Javascript is required to display this page.
-        </noscript>
-        <script type="text/javascript">
-          document.write("Loading…<br>");
-        </script>
-        <span id="waiter"></span>
       </div>
     </div>
-    <div id="app" v-cloak></div>
     {% block data %} {% end %}
     <script type="text/handler">
     {% raw to_json(handler) %}
@@ -78,8 +71,12 @@
 </script>
     {% end %}
     {% if handler.application.settings['debug'] %}
-      <script type="text/javascript" src="{{ static_url('js/waiter.js') }}"></script>
-      <script type="module" src="http://localhost:5173/powa/static/js/main.js"></script>
+      <script>
+        function showLoadError() {
+          alert("You're runing the dev version. Please make sure ViteJS server is running.");
+        }
+      </script>
+      <script type="module" src="http://localhost:5173/powa/static/js/main.js" onerror="showLoadError()"></script>
     {% else %}
       {% raw inject_assets("powa/static/js/main.js") %}
     {% end %}
