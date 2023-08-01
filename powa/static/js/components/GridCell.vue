@@ -11,6 +11,7 @@
   ></span>
 </template>
 <script setup>
+import QueryTooltip from "@/components/QueryTooltip.vue";
 const props = defineProps({
   header: {
     type: Object,

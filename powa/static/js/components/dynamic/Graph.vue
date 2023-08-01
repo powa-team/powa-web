@@ -185,12 +185,12 @@
 import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import _ from "lodash";
 import { mdiAlert, mdiCancel, mdiInformation, mdiLinkVariant } from "@mdi/js";
-import store from "../store";
+import store from "@/store";
 import * as d3 from "d3";
-import size from "../utils/size";
-import { toISO } from "../utils/dates";
-import { formatDuration } from "../utils/duration";
-import { formatPercentage } from "../utils/percentage";
+import size from "@/utils/size";
+import { toISO } from "@/utils/dates";
+import { formatDuration } from "@/utils/duration";
+import { formatPercentage } from "@/utils/percentage";
 
 const props = defineProps({
   config: {

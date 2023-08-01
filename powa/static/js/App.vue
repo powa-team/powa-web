@@ -132,9 +132,17 @@
 </template>
 
 <script setup>
-import { icons } from "./plugins/vuetify.js";
-import store from "./store";
+import Vue from "vue";
+import { icons } from "@/plugins/vuetify.js";
+import store from "@/store";
 import * as d3 from "d3";
+import BreadCrumbs from "@/components/BreadCrumbs.vue";
+import DateRangePicker from "@/components/DateRangePicker/DateRangePicker.vue";
+import LoginView from "@/components/LoginView.vue";
+
+import VSnackbars from "v-snackbars";
+Vue.component("VSnackbars", VSnackbars);
+
 let handler;
 document.querySelectorAll('script[type="text/handler"]').forEach(function (el) {
   handler = JSON.parse(el.innerText);
