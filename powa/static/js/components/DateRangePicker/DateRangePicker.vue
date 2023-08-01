@@ -135,9 +135,9 @@ import { computed, ref, watch } from "vue";
 import { quickOptions } from "./options.ts";
 import { dateMath, rangeUtil } from "@grafana/data";
 import { DateTime } from "luxon";
-import { icons } from "../../plugins/vuetify";
-import store from "../../store";
-import { toISO } from "../../utils/dates";
+import { icons } from "@/plugins/vuetify";
+import store from "@/store";
+import { toISO } from "@/utils/dates";
 
 // The raw values (examples: 'now-24h', 'Tue Sep 01 2020 10:16:00 GMT+0200')
 // Interaction with parent component is done with from/to props which

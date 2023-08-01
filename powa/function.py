@@ -25,9 +25,9 @@ class FunctionDetail(ContentWidget):
             "to": self.get_argument("to")
         })
         if value is None or len(value) < 1:
-            self.render("xhr.html", content="No data")
+            self.render_json(None)
             return
-        self.render("database/function_detail.html", stats=value[0])
+        self.render_json(value[0])
 
 
 class FunctionOverview(DashboardPage):

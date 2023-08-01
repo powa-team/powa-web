@@ -127,13 +127,13 @@
 
 <script setup>
 import { nextTick, ref } from "vue";
-import store from "../store";
+import store from "@/store";
 import * as d3 from "d3";
-import { encodeQueryData } from "../utils/query";
+import { encodeQueryData } from "@/utils/query";
 import _ from "lodash";
-import hljs from "highlight.js/lib/core";
-import pgsql from "highlight.js/lib/languages/pgsql";
-hljs.registerLanguage("pgsql", pgsql);
+import QueryTooltip from "@/components/QueryTooltip.vue";
+import { formatSql } from "@/utils/sql";
+
 // eslint-disable-next-line no-unused-vars
 const props = defineProps({
   config: {
@@ -547,7 +547,7 @@ function qualRepr(node) {
   if (hasquals) {
     base += _.uniq(node.quals.map((qual) => qual.label)).join(" AND ");
   }
-  base = hljs.highlightAuto(base, ["pgsql"]).value;
+  base = formatSql(base);
   const unmanaged = node.trashedQuals
     .map(function (qual, idx) {
       let part = "<strike>";
@@ -558,7 +558,7 @@ function qualRepr(node) {
       if (idx < node.trashedQuals.length - 1) {
         value += " AND ";
       }
-      value = hljs.highlightAuto("WHERE " + value, ["pgsql"]).value;
+      value = formatSql("WHERE " + value);
       value = value.substring(value.indexOf("</span> ") + 8);
       part += value + "</strike>";
       return part;
