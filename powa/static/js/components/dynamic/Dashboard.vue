@@ -14,7 +14,7 @@
 </template>
 
 <script setup>
-import { widgetComponent } from "../utils/widget-component.js";
+import { widgetComponent } from "@/utils/widget-component.js";
 defineProps({
   config: {
     type: Object,

@@ -27,7 +27,7 @@
 
 <script setup>
 import { ref } from "vue";
-import { widgetComponent } from "../utils/widget-component.js";
+import { widgetComponent } from "@/utils/widget-component.js";
 
 defineProps({
   config: {
