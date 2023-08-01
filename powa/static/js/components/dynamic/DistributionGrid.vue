@@ -46,9 +46,9 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import store from "../store";
+import store from "@/store";
 import _ from "lodash";
-import { formatPercentage } from "../utils/percentage";
+import { formatPercentage } from "@/utils/percentage";
 
 const props = defineProps({
   config: {

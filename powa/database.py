@@ -684,9 +684,7 @@ class WizardThisDatabase(ContentWidget):
     data_url = r"/server/(\d+)/database/([^\/]+)/wizardthisdatabase/"
 
     def get(self, database):
-        self.render("database/wizardthisdatabase.html", database=database,
-                    url=self.reverse_url("WizardPage", database))
-        return
+        self.render_json(dict(url=self.reverse_url("WizardPage", database)))
 
 
 class DatabaseOverview(DashboardPage):
