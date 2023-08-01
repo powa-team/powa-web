@@ -23,7 +23,7 @@
 
 <script setup>
 import { toRef, watch } from "vue";
-import store from "../store";
+import store from "@/store";
 import _ from "lodash";
 const props = defineProps({
   breadCrumbItems: {

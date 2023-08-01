@@ -92,7 +92,7 @@ class ServersErrors(ContentWidget):
 
         rows = self.execute(sql)
 
-        self.render("config/serverserror.html", errors=rows)
+        self.render_json(rows)
 
 
 class AllCollectorsDetail(ContentWidget):
@@ -138,11 +138,12 @@ class AllCollectorsDetail(ContentWidget):
 
         self.logger.warn("%r", rows[0])
         if (rows[0]["not_authorized"] == True):
-            self.render("config/allcollectors.html", collector=None)
+            collector = None
         if (rows[0]["nb_found"] == 0):
-            self.render("config/allcollectors.html", collector=[])
+            collector = []
         else:
-            self.render("config/allcollectors.html", collector=rows)
+            collector = rows
+        self.render_json(collector)
 
 
 class PowaServersMetricGroup(MetricGroupDef):

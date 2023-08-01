@@ -105,13 +105,10 @@ class QualDetail(ContentWidget):
                 my_qual = resolve_quals(remote_conn, [qual])[0]
 
         if my_qual is None:
-            self.render("xhr.html", content="No data")
+            self.render_json(None)
             return
 
-        self.render("database/query/qualdetail.html",
-                    qual=my_qual,
-                    database=database,
-                    server=server)
+        self.render_json(my_qual)
 
 
 class OtherQueriesMetricGroup(MetricGroupDef):
