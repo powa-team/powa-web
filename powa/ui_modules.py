@@ -1,12 +1,6 @@
 from tornado.web import UIModule
 
 
-class Messages(UIModule):
-
-    def render(self):
-        return self.render_string("messages.html")
-
-
 class MenuEntry(object):
 
     def __init__(self, title, url_name, url_params=None, children_title=None, children=None):
