@@ -1,0 +1,90 @@
+<template>
+  <v-card :loading="loading">
+    <template #progress>
+      <v-progress-linear
+        height="2"
+        indeterminate
+        style="position: absolute; z-index: 1"
+      ></v-progress-linear>
+    </template>
+    <v-app-bar flat height="40px;">
+      <v-toolbar-title>
+        <v-card-title class="pl-0">{{ config.title }}</v-card-title>
+      </v-toolbar-title>
+    </v-app-bar>
+    <v-card-text v-if="qual !== undefined">
+      <template v-if="qual">
+        <h4>
+          <pre
+            class="sql"
+          ><code v-html="formatSql(qual.where_clause)"></code></pre>
+        </h4>
+        <dl>
+          <ul class="large-block-grid-3">
+            <li>
+              <dt>Seen:</dt>
+              <dd>{{ qual.occurences }}</dd>
+            </li>
+            <li>
+              <dt>Average evaluations by query</dt>
+              <dd>{{ qual.execution_count / qual.occurences }}</dd>
+              <dt>Average number of filtered tuples:</dt>
+              <dd>{{ qual.avg_filter }}</dd>
+            </li>
+
+            <li>
+              <dt>Filter ratio</dt>
+              <dd>
+                {{ qual.filter_ratio.toPrecision(6) }} % of tuples are removed
+                by the filter.
+              </dd>
+            </li>
+          </ul>
+        </dl>
+        <ul class="large-block-grid-3">
+          <li v-for="(q, index) in qual.quals" :key="index">
+            <h5>
+              <pre class="sql"><code v-html="formatSql(q.label)"></code></pre>
+            </h5>
+
+            <dl>
+              <ul class="large-block-grid-2">
+                <li>
+                  <dt>Table</dt>
+                  <dd>{{ q.relname }}</dd>
+                </li>
+                <li>
+                  <dt>Column</dt>
+                  <dd>{{ q.attname }}</dd>
+                </li>
+                <li>
+                  <dt>Accesstype</dt>
+                  <dd :class="'access-type-' + q.eval_type">
+                    {{ q.eval_type == "i" ? "Index" : "After Scan" }}
+                  </dd>
+                </li>
+              </ul>
+            </dl>
+          </li>
+        </ul>
+      </template>
+      <template v-else> No data </template>
+    </v-card-text>
+  </v-card>
+</template>
+
+<script setup>
+import { useFetch } from "@/utils/fetch.js";
+import { formatSql } from "@/utils/sql.js";
+
+const props = defineProps({
+  config: {
+    type: Object,
+    default() {
+      return {};
+    },
+  },
+});
+
+const { loading, data: qual } = useFetch(props.config.name);
+</script>

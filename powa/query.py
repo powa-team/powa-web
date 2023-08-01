@@ -357,8 +357,7 @@ class QueryIndexes(ContentWidget):
                            "because some parameters are missing: %s" %
                            str(e))
 
-        self.render("database/query/indexes.html", indexes=indexes,
-                    hypoplan=hypoplan)
+        self.render_json(dict(indexes=indexes, hypoplan=hypoplan))
 
 
 class QueryExplains(ContentWidget):
@@ -381,11 +380,10 @@ class QueryExplains(ContentWidget):
             plans = get_plans(self, server, database, row['query'], row)
 
         if len(plans) == 0:
-            self.flash("No quals found for this query", "warning")
-            self.render("xhrm.html", content="")
+            self.render_json(None)
             return
 
-        self.render("database/query/explains.html", plans=plans)
+        self.render_json([plan._asdict() for plan in plans])
 
 
 class WaitsQueryOverviewMetricGroup(MetricGroupDef):
@@ -595,9 +593,9 @@ class QueryDetail(ContentWidget):
             "to": self.get_argument("to")
         })
         if value is None or len(value) < 1:
-            self.render("xhr.html", content="No data")
+            self.render_json(None)
             return
-        self.render("database/query/detail.html", stats=value[0])
+        self.render_json(value[0])
 
 
 class QueryOverview(DashboardPage):

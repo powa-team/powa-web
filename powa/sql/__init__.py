@@ -138,6 +138,7 @@ class ResolvedQual(JSONizable):
     def to_json(self):
         base = super(ResolvedQual, self).to_json()
         base["label"] = str(self)
+        base["distinct_values"] = self.distinct_values
         return base
 
 
