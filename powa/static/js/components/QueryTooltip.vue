@@ -6,9 +6,13 @@
     bottom
   >
     <template #activator="{ on, attrs }">
-      <pre v-bind="attrs" v-on="on" v-html="formatSql(props.value)" />
+      <pre
+        class="sql"
+        v-bind="attrs"
+        v-on="on"
+      ><code v-html="formatSql(props.value)"/></pre>
     </template>
-    <pre v-html="formatSql(props.value)" />
+    <pre class="sql"><code v-html="formatSql(props.value)" /></pre>
   </v-tooltip>
 </template>
 
