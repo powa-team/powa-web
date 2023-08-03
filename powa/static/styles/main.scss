@@ -1,6 +1,14 @@
 pre.sql {
   max-height: 400px;
   overflow: auto;
+  background-color: rgba(0, 0, 0, 0.05);
+  white-space: pre-wrap;
+  code {
+    display: block;
+    background-color: initial !important;
+    font-size: 90%;
+    overflow: initial !important;
+  }
 }
 
 .v-btn, .v-tab {
@@ -31,12 +39,15 @@ td {
   &.query {
     overflow: hidden;
     max-width: 0;
-    pre,
-    code {
+    pre {
       overflow: hidden;
-      text-overflow: ellipsis;
+      text-overflow: ellipsis !important;
       white-space: nowrap;
       margin-bottom: 0;
+      background-color: initial !important;
+      code {
+        display: initial;
+      }
     }
   }
 }
@@ -76,10 +87,13 @@ dt {
 
 .v-tooltip__content.sql {
   line-height: 1.3;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   opacity: 1;
-  background: white;
+  background-color: white !important;
   color: inherit;
+  pre {
+    background-color: initial;
+  }
 }
 
 .v-data-table-header th {
