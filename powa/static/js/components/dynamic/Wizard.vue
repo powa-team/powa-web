@@ -51,7 +51,7 @@
               disable-pagination
             >
               <template #item.quals="{ item }">
-                <pre v-html="qualRepr(item)" />
+                <div v-html="qualRepr(item)" />
               </template>
             </v-data-table>
           </v-col>
@@ -72,7 +72,7 @@
                 <query-tooltip :value="indexDdl(item)"></query-tooltip>
               </template>
               <template #item.quals="{ item }">
-                <pre v-html="qualRepr(item.node)" />
+                <div v-html="qualRepr(item.node)" />
               </template>
               <template #item.nbqueries="{ item }">
                 {{ item.queryids.length }}
@@ -564,7 +564,7 @@ function qualRepr(node) {
       return part;
     }, node)
     .join(" AND ");
-  base = "<pre>• " + base + unmanaged + "</pre>";
+  base = "<pre class='sql'><code>• " + base + unmanaged + "</code></pre>";
   base = base + node.contained.map((node) => qualRepr(node)).join("");
   return base;
 }

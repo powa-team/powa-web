@@ -22,7 +22,7 @@
             <b>Average filter ratio:</b>
             {{ Math.round(plan.filter_ratio * 100, 2) }}%
             <h6 class="subheader">Example plan:</h6>
-            <pre class="sql"><code v-html="formatSql(plan.query)"></code></pre>
+            <pre class="sql mb-4"><code v-html="formatSql(plan.query)"/></pre>
             <pre class="sql"><code>{{plan.plan}}</code></pre>
           </v-col>
         </v-row>
