@@ -25,7 +25,7 @@
           </v-col>
           <v-col cols="4" align="center">
             <b>Total runtime:</b>
-            <span class="duration">{{ stats.runtime }}</span>
+            <span class="duration">{{ formatDuration(stats.runtime) }}</span>
           </v-col>
           <v-col cols="4" align="center">
             <b>Hit ratio:</b>
@@ -49,6 +49,7 @@
 <script setup>
 import { useFetch } from "@/utils/fetch.js";
 import { formatSql } from "@/utils/sql.js";
+import { formatDuration } from "@/utils/duration.js";
 
 const props = defineProps({
   config: {
