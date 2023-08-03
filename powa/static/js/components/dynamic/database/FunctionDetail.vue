@@ -27,11 +27,11 @@
           </v-col>
           <v-col cols="4" align="center">
             <b>Total time runtime:</b>
-            <span class="duration">{{ stats.total_time }}</span>
+            <span class="duration">{{ formatDuration(stats.total_time) }}</span>
           </v-col>
           <v-col cols="4" align="center">
             <b>Self time runtime:</b>
-            <span class="duration">{{ stats.self_time }}</span>
+            <span class="duration">{{ formatDuration(stats.self_time) }}</span>
           </v-col>
         </v-row>
         <template v-if="stats.last_refresh">
@@ -55,6 +55,7 @@
 <script setup>
 import { useFetch } from "@/utils/fetch.js";
 import { formatSql } from "@/utils/sql.js";
+import { formatDuration } from "@/utils/duration.js";
 
 const props = defineProps({
   config: {
