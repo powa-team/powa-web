@@ -31,7 +31,6 @@
     "highlight.js": "^11.6.0",
     "lodash": "^4.17.21",
     "luxon": "^3.3.0",
-    "v-snackbars": "^3.2.8",
     "vue": "^2.7.12",
     "vuetify": "^2.6.11"
   }
