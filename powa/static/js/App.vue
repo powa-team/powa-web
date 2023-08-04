@@ -120,28 +120,43 @@
         </v-row>
       </v-container>
     </v-footer>
-    <v-snackbars :objects.sync="store.alertMessages">
-      <template #default="{ message }">
-        <span v-html="message"></span>
-      </template>
-      <template #action="{ close }">
-        <v-icon text @click="close()">{{ icons.mdiClose }}</v-icon>
-      </template>
-    </v-snackbars>
+    <div
+      class="d-flex flex-column-reverse"
+      style="position: fixed; bottom: 0; width: 100%; align-items: center"
+    >
+      <div
+        style="position: absolute"
+        class="d-flex flex-column flex-column-reverse"
+      >
+        <v-snackbar
+          v-for="message in store.alertMessages"
+          :key="message.id"
+          v-model="message.shown"
+          :color="message.color"
+          timeout="5000"
+          absolute
+          style="position: initial !important"
+          @input="onSnackbarChanged(message.id, $event)"
+        >
+          <span v-html="message.message"></span>
+          <template #action>
+            <v-icon text @click="closeSnackBar(message)">
+              {{ icons.mdiClose }}
+            </v-icon>
+          </template>
+        </v-snackbar>
+      </div>
+    </div>
   </v-app>
 </template>
 
 <script setup>
-import Vue from "vue";
 import { icons } from "@/plugins/vuetify.js";
 import store from "@/store";
 import * as d3 from "d3";
 import BreadCrumbs from "@/components/BreadCrumbs.vue";
 import DateRangePicker from "@/components/DateRangePicker/DateRangePicker.vue";
 import LoginView from "@/components/LoginView.vue";
-
-import VSnackbars from "v-snackbars";
-Vue.component("VSnackbars", VSnackbars);
 
 let handler;
 document.querySelectorAll('script[type="text/handler"]').forEach(function (el) {
@@ -264,5 +279,14 @@ function handleResponse(response, messages) {
   } else {
     store.addAlertMessage("alert", messages.error);
   }
+}
+
+function onSnackbarChanged(id, isShown) {
+  !isShown && store.removeAlertMessage(id);
+}
+
+function closeSnackBar(message) {
+  message.shown = false;
+  store.removeAlertMessage(message.id);
 }
 </script>
