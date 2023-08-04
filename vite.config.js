@@ -51,7 +51,6 @@ export default defineConfig({
       sass: {
         additionalData: [
           '@import "./powa/static/styles/variables"',
-          '@import "./powa/static/styles/main"',
           "", // end with new line
         ].join("\n"),
       },
