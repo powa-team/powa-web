@@ -1,10 +1,11 @@
-import { reactive } from "vue";
+import { nextTick, reactive } from "vue";
 import _ from "lodash";
 import * as d3 from "d3";
 import { encodeQueryData } from "./utils/query";
 import { dateMath } from "@grafana/data";
 
 const initialQuery = parseQuery(window.location.search);
+let messageId = 1;
 
 const store = reactive({
   dataSources: {},
@@ -65,10 +66,12 @@ const store = reactive({
       success: "green",
     };
     this.alertMessages.push({
+      id: ++messageId,
       color: colors[level],
       message: message,
-      timeout: 5000,
+      shown: false,
     });
+    nextTick(() => (_.last(this.alertMessages).shown = true));
   },
   addAlertMessages(messages) {
     _.forEach(messages, function (value, key) {
@@ -76,6 +79,14 @@ const store = reactive({
         store.addAlertMessage(key, message);
       }
     });
+  },
+  removeAlertMessage(id) {
+    // Remove message from list with delay to make sure transition is finished
+    window.setTimeout(() => {
+      _.remove(this.alertMessages, (n) => n.id == id);
+      // workaround to force an update of components
+      this.alertMessages = [].concat(this.alertMessages);
+    }, 500);
   },
   serialize() {
     return [
