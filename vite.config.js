@@ -2,6 +2,7 @@ import { resolve } from "path";
 import { defineConfig } from "vite";
 import { fileURLToPath, URL } from "node:url";
 import vue2 from "@vitejs/plugin-vue2";
+import { VuetifyResolver } from "unplugin-vue-components/resolvers";
 import Components from "unplugin-vue-components/vite";
 
 // https://vitejs.dev/config/
@@ -9,16 +10,7 @@ export default defineConfig({
   plugins: [
     vue2(),
     Components({
-      resolvers: [
-        {
-          type: "component",
-          resolve: (name) => {
-            if (name.match(/^V[A-Z]/) && name !== "VSnackbars") {
-              return { name, from: "vuetify/lib" };
-            }
-          },
-        },
-      ],
+      resolvers: [VuetifyResolver()],
     }),
   ],
   resolve: {
