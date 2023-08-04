@@ -5,6 +5,8 @@ import vuetify from "@/plugins/vuetify";
 import App from "@/App.vue";
 import dynamicComponents from "@/plugins/powa";
 
+import "@/../styles/main.scss";
+
 document
   .querySelectorAll('script[type="text/datasources"]')
   .forEach(function (el) {
