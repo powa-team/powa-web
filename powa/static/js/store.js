@@ -8,9 +8,11 @@ const initialQuery = parseQuery(window.location.search);
 let messageId = 1;
 
 const store = reactive({
+  dashboardConfig: null,
   dataSources: {},
   changesUrl: "",
   changes: [],
+  breadcrumbs: [],
   rawFrom: initialQuery.from || "now-1h",
   rawTo: initialQuery.to || "now",
   from: null,
@@ -27,6 +29,25 @@ const store = reactive({
       );
     }
     this.loadData();
+  },
+  configure(config) {
+    store.dataSources = {};
+    store.dashboardConfig = config.dashboard;
+    _.each(config.datasources, function (dataSource) {
+      try {
+        if (dataSource.type == "metric_group") {
+          dataSource.metrics = _.keyBy(dataSource.metrics, "name");
+        }
+      } catch (e) {
+        console.error(
+          "Could not instantiate metric group. Check the metric group definition"
+        );
+      }
+      store.dataSources[dataSource.name] = dataSource;
+    });
+    store.changesUrl = config.timeline;
+    store.breadcrumbs = config.breadcrumbs;
+    store.loadData();
   },
   loadData() {
     this.from = dateMath.parse(this.rawFrom);

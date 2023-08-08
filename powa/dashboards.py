@@ -32,41 +32,66 @@ class DashboardHandler(AuthHandler):
         # Compatibility for tornado < 3:
         if not hasattr(self, "path_args"):
             self.path_args = args
-        params = OrderedDict(zip(self.params,
-                                 args))
-        param_dashboard = self.dashboard().parameterized_json(self, **params)
-        param_datasource = []
-        for datasource in self.datasources:
-            # ugly hack to avoid calling the datasource twice per
-            # DashboardPage (once because it's declared in the datasources,
-            # used to automatically register the URLSpecs, and once by the
-            # javascript facility that will look for configuration changes)
-            if datasource.url_name.startswith("datasource_ConfigChanges"):
-                continue
 
-            value = datasource.parameterized_json(self, **params)
-            value['data_url'] = self.reverse_url(datasource.url_name,
-                                                 *args)
-            param_datasource.append(value)
+        params = OrderedDict(zip(self.params, args))
+        title = self.dashboard().title % params
 
-        # tell the frontend how to get the configuration changes, if the
-        # DashboardPage provided it
-        param_timeline = None
-        if (self.timeline):
-            # Dashboards can specify a subset of arguments to use for the
-            # timeline.
-            if (self.timeline_params):
-                tl_args = [params[prm] for prm in self.params
-                                               if prm in self.timeline_params]
-            else:
-                tl_args = args
-            param_timeline = self.reverse_url(self.timeline.url_name, *tl_args)
+        if self.request.headers.get("Content-Type") == "application/json":
+            param_dashboard = self.dashboard().parameterized_json(self, **params)
+            param_datasource = []
+            for datasource in self.datasources:
+                # ugly hack to avoid calling the datasource twice per
+                # DashboardPage (once because it's declared in the datasources,
+                # used to automatically register the URLSpecs, and once by the
+                # javascript facility that will look for configuration changes)
+                if datasource.url_name.startswith("datasource_ConfigChanges"):
+                    continue
 
-        return self.render(self.template,
-                           dashboard=param_dashboard,
-                           datasources=param_datasource,
-                           timeline=param_timeline,
-                           title=self.dashboard().title % params)
+                value = datasource.parameterized_json(self, **params)
+                value['data_url'] = self.reverse_url(datasource.url_name,
+                                                     *args)
+                param_datasource.append(value)
+
+            # tell the frontend how to get the configuration changes, if the
+            # DashboardPage provided it
+            param_timeline = None
+            if (self.timeline):
+                # Dashboards can specify a subset of arguments to use for the
+                # timeline.
+                if (self.timeline_params):
+                    tl_args = [params[prm] for prm in self.params
+                                                   if prm in self.timeline_params]
+                else:
+                    tl_args = args
+                param_timeline = self.reverse_url(self.timeline.url_name, *tl_args)
+
+            last = len(self.breadcrumb) - 1
+            breadcrumbs = [
+                {
+                    "text": item.title,
+                    "href": self.reverse_url_with_params(item.url_name, url_args=item.url_params.values()),
+                    "disabled": i == last,
+                } for i, item in enumerate(reversed(self.breadcrumb))
+            ] + [{
+                "text": item.children_title,
+                "children": [{
+                    "url": self.reverse_url_with_params(child.url_name, url_args=child.url_params.values()),
+                    "title": child.title
+                    } for child in item.children] if item.children and i == last else None
+                } for i, item in enumerate(reversed(self.breadcrumb)) if i == last and item.children
+            ]
+
+            return self.render_json(
+                dict(
+                    dashboard=param_dashboard,
+                    datasources=param_datasource,
+                    timeline=param_timeline,
+                    title=title,
+                    breadcrumbs=breadcrumbs,
+                )
+            )
+
+        return self.render(self.template, title=title)
 
     @property
     def database(self):
