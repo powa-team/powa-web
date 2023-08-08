@@ -19,7 +19,8 @@ from powa.sql.views_graph import (powa_getstatdata_sample,
                                   powa_get_replication_sample,
                                   powa_get_all_idx_sample,
                                   powa_get_all_tbl_sample,
-                                  powa_get_user_fct_sample)
+                                  powa_get_user_fct_sample,
+                                  powa_get_database_sample)
 from powa.sql.views_grid import (powa_getstatdata_db,
                                  powa_getwaitdata_db,
                                  powa_getuserfuncdata_db)
@@ -637,6 +638,95 @@ class GlobalReplicationMetricGroup(MetricGroupDef):
         )
 
 
+class GlobalDbActivityMetricGroup(MetricGroupDef):
+    """
+    Metric group used by "Database Activity" graphs.
+    """
+    name = "all_db_activity"
+    xaxis = "ts"
+    data_url = r"/server/(\d+)/metrics/all_db_activity/"
+    numbackends = MetricDef(label="# of connections",
+                            desc="Total number of connections")
+    xact_commit = MetricDef(label="# of commits",
+                            desc="Total number of commits per second")
+    xact_rollback = MetricDef(label="# of rollbacks",
+                               desc="Total number of rollbacks per second")
+    conflicts = MetricDef(label="# of conflicts",
+                          desc="Total number of conflicts per second")
+    deadlocks = MetricDef(label="# of deadlocks",
+                          desc="Total number of deadlocks")
+    checksum_failures = MetricDef(label="# of checkum_failures",
+                                  desc="Total number of checkum_failures")
+    session_time = MetricDef(label="Session time",
+                             type="duration",
+                             desc="Total time spent by database sessions per "
+                                  "second")
+    active_time = MetricDef(label="Active time",
+                            type="duration",
+                            desc="Total time spent executing SQL statements "
+                                 "per second")
+    idle_in_transaction_time = MetricDef(label="idle in xact time",
+                                         type="duration",
+                                         desc="Total time spent idling while "
+                                              "in a transaction per second")
+    sessions = MetricDef(label="# sessions",
+                         desc="Total number of sessions established per second")
+    sessions_abandoned = MetricDef(label="# sessions abandoned",
+                                  desc="Number of database sessions that "
+                                       "were terminated because connection to "
+                                       "the client was lost per second")
+    sessions_fatal = MetricDef(label="# sessions fatal",
+                               desc="Number of database sessions that "
+                                    "were terminated by fatal errors")
+    sessions_killed = MetricDef(label="# sessions killed per second",
+                                desc="Number of database sessions that "
+                                     "were terminated by operator intervention "
+                                     "per second")
+
+    @classmethod
+    def _get_metrics(cls, handler, **params):
+        base = cls.metrics.copy()
+
+        pg_version_num = handler.get_pg_version_num(handler.path_args[0])
+        # if we can't connect to the remote server, assume pg14 or above
+        if pg_version_num is not None and pg_version_num < 140000:
+            for key in ("session_time", "active_time",
+                    "idle_in_transaction_time", "sessions",
+                    "sessions_abandoned", "sessions_fatal", "sessions_killed"
+            ):
+                base.pop(key)
+        return base
+
+    @property
+    def query(self):
+        query = powa_get_database_sample()
+
+        cols = ["sub.srvid",
+                "extract(epoch FROM sub.ts) AS ts",
+                "numbackends",
+                wps("xact_commit", do_sum=False),
+                wps("xact_rollback", do_sum=False),
+                "conflicts",
+                "deadlocks",
+                "checksum_failures",
+                wps("session_time", do_sum=False),
+                wps("active_time", do_sum=False),
+                wps("idle_in_transaction_time", do_sum=False),
+                wps("sessions", do_sum=False),
+                wps("sessions_abandoned", do_sum=False),
+                wps("sessions_fatal", do_sum=False),
+                wps("sessions_killed", do_sum=False),
+        ]
+
+        return """SELECT {cols}
+        FROM ({query}) sub
+        WHERE sub.mesure_interval != '0 s'
+        ORDER BY sub.ts""".format(
+            cols=', '.join(cols),
+            query=query,
+        )
+
+
 class GlobalAllRelMetricGroup(MetricGroupDef):
     """
     Metric group used by "Database objects" graphs.
@@ -759,7 +849,8 @@ class ServerOverview(DashboardPage):
                    GlobalBgwriterMetricGroup, GlobalAllRelMetricGroup,
                    GlobalUserFctMetricGroup, ByDatabaseUserFuncMetricGroup,
                    ConfigChangesGlobal, GlobalPGSAMetricGroup,
-                   GlobalArchiverMetricGroup, GlobalReplicationMetricGroup]
+                   GlobalArchiverMetricGroup, GlobalReplicationMetricGroup,
+                   GlobalDbActivityMetricGroup]
     params = ["server"]
     title = "All databases"
     timeline = ConfigChangesGlobal
@@ -865,6 +956,28 @@ class ServerOverview(DashboardPage):
                               stack=True)
                         ]]
         graphs_dash.append(Dashboard("Archiver / Replication", arch_graphs))
+
+        # Add pg_stat_database graphs
+        global_db_graphs = [[Graph("Transactions per second",
+                             metrics=[GlobalDbActivityMetricGroup.xact_commit,
+                                      GlobalDbActivityMetricGroup.xact_rollback],
+                             renderer="bar",
+                             stack=True),
+                             Graph("Conflicts & deadlocks",
+                                   metrics=[GlobalDbActivityMetricGroup.conflicts,
+                                            GlobalDbActivityMetricGroup.deadlocks])]]
+        if ("sessions" in GlobalDbActivityMetricGroup._get_metrics(self)):
+            global_db_graphs.append([Graph("Cumulated time per second",
+                                     metrics=[GlobalDbActivityMetricGroup.session_time,
+                                              GlobalDbActivityMetricGroup.active_time,
+                                              GlobalDbActivityMetricGroup.idle_in_transaction_time]),
+                                     Graph("Sessions per second",
+                                     metrics=[GlobalDbActivityMetricGroup.sessions,
+                                              GlobalDbActivityMetricGroup.sessions_abandoned,
+                                              GlobalDbActivityMetricGroup.sessions_fatal,
+                                              GlobalDbActivityMetricGroup.sessions_killed])
+                                    ])
+        graphs_dash.append(Dashboard("Database activity", global_db_graphs))
 
         # Add powa_stat_all_relations graphs
         all_rel_graphs = [[Graph("Access pattern",
