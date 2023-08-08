@@ -58,24 +58,6 @@
     {% raw to_json(dict(sanitycheck_messages().items())) %}
     </script>
     {% end %}
-    {% if current_user %}
-<script type="text/breadcrumb">
-  {% set last = len(handler.breadcrumb) - 1 %}
-  {%
-    raw to_json([{
-      "text": item.title,
-      "href": reverse_url_with_params(item.url_name, url_args=item.url_params.values()),
-      "disabled": i == last,
-    } for i, item in enumerate(reversed(handler.breadcrumb))] + [{
-      "text": item.children_title,
-      "children": [{
-        "url": reverse_url_with_params(child.url_name, url_args=child.url_params.values()),
-        "title": child.title
-      } for child in item.children] if item.children and i == last else None
-    } for i, item in enumerate(reversed(handler.breadcrumb)) if i == last and item.children])
-  %}
-</script>
-    {% end %}
     {% if handler.application.settings['debug'] %}
       <script>
         function showLoadError() {
