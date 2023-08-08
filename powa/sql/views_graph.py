@@ -592,6 +592,67 @@ BASE_QUERY_BGWRITER_SAMPLE = """
 """
 
 
+def BASE_QUERY_DATABASE_SAMPLE(per_db=False):
+    if (per_db):
+        extra = """JOIN {powa}.powa_catalog_databases d
+            ON d.oid = psd_history.datid
+        WHERE d.datname = %(database)s"""
+    else:
+        extra = ""
+
+    return """
+    (SELECT psd_history.srvid,
+      row_number() OVER (ORDER BY psd_history.ts) AS number,
+      count(*) OVER () AS total,
+      ts,
+      sum(numbackends) AS numbackends,
+      sum(xact_commit) AS xact_commit,
+      sum(xact_rollback) AS xact_rollback,
+      sum(blks_read) AS blks_read,
+      sum(blks_hit) AS blks_hit,
+      sum(tup_returned) AS tup_returned,
+      sum(tup_fetched) AS tup_fetched,
+      sum(tup_inserted) AS tup_inserted,
+      sum(tup_updated) AS tup_updated,
+      sum(tup_deleted) AS tup_deleted,
+      sum(conflicts) AS conflicts,
+      sum(temp_files) AS temp_files,
+      sum(temp_bytes) AS temp_bytes,
+      sum(deadlocks) AS deadlocks,
+      sum(checksum_failures) AS checksum_failures,
+      max(checksum_last_failure) AS checksum_last_failure,
+      sum(blk_read_time) AS blk_read_time,
+      sum(blk_write_time) AS blk_write_time,
+      sum(session_time) AS session_time,
+      sum(active_time) AS active_time,
+      sum(idle_in_transaction_time) AS idle_in_transaction_time,
+      sum(sessions) AS sessions,
+      sum(sessions_abandoned) AS sessions_abandoned,
+      sum(sessions_fatal) AS sessions_fatal,
+      sum(sessions_killed) AS sessions_killed,
+      max(stats_reset) AS stats_reset
+      FROM (
+        SELECT *
+        FROM (
+          SELECT srvid, (unnest(records)).*
+          FROM {{powa}}.powa_stat_database_history psdh
+          WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+          AND psdh.srvid = %(server)s
+        ) AS unnested
+        WHERE ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        UNION ALL
+        SELECT srvid, (record).*
+        FROM {{powa}}.powa_stat_database_history_current psdc
+        WHERE (psdc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        AND psdc.srvid = %(server)s
+      ) AS psd_history
+      {extra}
+      GROUP BY psd_history.srvid, psd_history.ts
+    ) AS psd
+    WHERE number %% ( int8larger((total)/(%(samples)s+1),1) ) = 0
+""".format(extra=extra)
+
+
 BASE_QUERY_REPLICATION_SAMPLE = """
     (SELECT srvid,
       row_number() OVER (ORDER BY psr_history.ts) AS number,
@@ -999,6 +1060,50 @@ def powa_get_bgwriter_sample():
         base_columns=', '.join(base_columns),
         base_query=base_query
     )
+
+
+def powa_get_database_sample(per_db=False):
+    base_query = BASE_QUERY_DATABASE_SAMPLE(per_db)
+    base_columns = ["srvid"]
+
+    biggest = Biggest(base_columns, 'ts')
+
+    all_cols = base_columns + [
+            "ts",
+            biggest("ts", "'0 s'", "mesure_interval"),
+            biggest("numbackends"),
+            biggest("xact_commit"),
+            biggest("xact_rollback"),
+            biggest("blks_read"),
+            biggest("blks_hit"),
+            biggest("tup_returned"),
+            biggest("tup_fetched"),
+            biggest("tup_inserted"),
+            biggest("tup_updated"),
+            biggest("tup_deleted"),
+            "conflicts",
+            biggest("temp_files"),
+            biggest("temp_bytes"),
+            "deadlocks",
+            "checksum_failures",
+            "checksum_last_failure",
+            biggest("blk_read_time"),
+            biggest("blk_write_time"),
+            biggest("session_time"),
+            biggest("active_time"),
+            biggest("idle_in_transaction_time"),
+            biggest("sessions"),
+            biggest("sessions_abandoned"),
+            biggest("sessions_fatal"),
+            biggest("sessions_killed"),
+            "stats_reset",
+            ]
+
+    return """SELECT {all_cols}
+    FROM {base_query}""".format(
+            all_cols=', '.join(all_cols),
+            base_query=base_query
+            )
 
 
 def powa_get_replication_sample():
