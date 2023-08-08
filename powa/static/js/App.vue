@@ -81,7 +81,7 @@
         </v-switch>
       </template>
       <template v-if="handler.currentUser" #extension>
-        <bread-crumbs :bread-crumb-items="breadCrumbItems"></bread-crumbs>
+        <bread-crumbs :bread-crumb-items="store.breadcrumbs"></bread-crumbs>
         <v-spacer></v-spacer>
         <date-range-picker ml-auto></date-range-picker>
       </template>
@@ -91,10 +91,10 @@
         <v-row>
           <v-col>
             <dashboard
-              v-if="dashboardConfig"
-              :config="dashboardConfig"
+              v-if="store.dashboardConfig"
+              :config="store.dashboardConfig"
             ></dashboard>
-            <login-view v-else :servers="servers"></login-view>
+            <login-view v-else-if="servers" :servers="servers"></login-view>
           </v-col>
         </v-row>
       </v-container>
@@ -159,7 +159,7 @@
 </template>
 
 <script setup>
-import { computed, getCurrentInstance, ref } from "vue";
+import { computed, getCurrentInstance } from "vue";
 import { onMounted } from "vue";
 import { icons } from "@/plugins/vuetify.js";
 import store from "@/store";
@@ -175,20 +175,6 @@ document.querySelectorAll('script[type="text/handler"]').forEach(function (el) {
   handler = JSON.parse(el.innerText);
 });
 
-let breadCrumbItems;
-document
-  .querySelectorAll('script[type="text/breadcrumb"]')
-  .forEach(function (el) {
-    breadCrumbItems = JSON.parse(el.innerText);
-  });
-
-let dashboardConfig;
-document
-  .querySelectorAll('script[type="text/dashboard"]')
-  .forEach(function (el) {
-    dashboardConfig = JSON.parse(el.innerText);
-  });
-
 let servers;
 document.querySelectorAll('script[type="text/servers"]').forEach(function (el) {
   servers = JSON.parse(el.innerText);
@@ -197,7 +183,17 @@ document.querySelectorAll('script[type="text/servers"]').forEach(function (el) {
 onMounted(() => {
   instance.value = getCurrentInstance();
   checkTheme();
+  initDashboard();
 });
+
+function initDashboard() {
+  // Load dahsboard config from same url but asking for JSON instead of HTML
+  d3.json(window.location.href, {
+    headers: {
+      "Content-type": "application/json",
+    },
+  }).then(store.configure);
+}
 
 function reloadCollector() {
   d3.json("/reload_collector/").then(
