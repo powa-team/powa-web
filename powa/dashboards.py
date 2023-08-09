@@ -70,7 +70,6 @@ class DashboardHandler(AuthHandler):
                 {
                     "text": item.title,
                     "href": self.reverse_url_with_params(item.url_name, url_args=item.url_params.values()),
-                    "disabled": i == last,
                 } for i, item in enumerate(reversed(self.breadcrumb))
             ] + [{
                 "text": item.children_title,

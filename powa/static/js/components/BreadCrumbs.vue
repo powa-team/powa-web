@@ -13,7 +13,7 @@
             @change="onSelect"
           ></v-select>
         </v-breadcrumbs-item>
-        <v-breadcrumbs-item v-else :href="item.href" :disabled="item.disabled">
+        <v-breadcrumbs-item v-else :to="item.href" exact-path>
           {{ item.text }}
         </v-breadcrumbs-item>
       </template>
@@ -22,6 +22,7 @@
 </template>
 
 <script setup>
+import { getCurrentInstance } from "vue";
 import { toRef, watch } from "vue";
 import store from "@/store";
 import _ from "lodash";
@@ -34,6 +35,7 @@ const props = defineProps({
   },
 });
 
+const instance = getCurrentInstance();
 const items = toRef(props, "breadCrumbItems");
 
 watch(
@@ -53,6 +55,6 @@ watch(
 );
 
 function onSelect(url) {
-  window.location.href = url;
+  instance.proxy.$router.push(url);
 }
 </script>
