@@ -2,10 +2,11 @@
   <v-app>
     <v-app-bar app elevation="2" height="40px;">
       <v-btn
-        :href="handler.homeUrl"
+        :to="handler.homeUrl"
         class="mr-2"
         text
         color="primary"
+        exact-path
         elevation="0"
       >
         <img :src="handler.logoUrl" />&nbsp;<b>PoWA</b>
@@ -19,7 +20,7 @@
         <v-btn
           text
           color="primary"
-          :href="handler.configUrl"
+          :to="handler.configUrl"
           title="Configuration"
         >
           <v-icon left>
@@ -159,7 +160,7 @@
 </template>
 
 <script setup>
-import { computed, getCurrentInstance } from "vue";
+import { computed, getCurrentInstance, watch } from "vue";
 import { onMounted } from "vue";
 import { icons } from "@/plugins/vuetify.js";
 import store from "@/store";
@@ -181,12 +182,12 @@ document.querySelectorAll('script[type="text/servers"]').forEach(function (el) {
 });
 
 onMounted(() => {
-  instance.value = getCurrentInstance();
   checkTheme();
   initDashboard();
 });
 
 function initDashboard() {
+  store.dashboardConfig = null;
   // Load dahsboard config from same url but asking for JSON instead of HTML
   d3.json(window.location.href, {
     headers: {
@@ -330,4 +331,11 @@ function checkTheme() {
     );
   }
 }
+
+watch(
+  () => instance && instance.proxy.$route,
+  () => {
+    initDashboard();
+  }
+);
 </script>
