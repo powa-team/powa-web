@@ -31,6 +31,7 @@ const store = reactive({
     this.loadData();
   },
   configure(config) {
+    document.title = config.dashboard.title;
     store.dataSources = {};
     store.dashboardConfig = config.dashboard;
     _.each(config.datasources, function (dataSource) {
