@@ -658,8 +658,8 @@ BASE_QUERY_REPLICATION_SAMPLE = """
       row_number() OVER (ORDER BY psr_history.ts) AS number,
       count(*) OVER () AS total,
       ts,
-      current_lsn,
-      count(pid) AS nb_slot,
+      rep_current_lsn,
+      count(DISTINCT pid) AS nb_repl,
       min(sent_lsn) AS sent_lsn,
       min(write_lsn) AS write_lsn,
       min(flush_lsn) AS flush_lsn,
@@ -667,23 +667,76 @@ BASE_QUERY_REPLICATION_SAMPLE = """
       max(write_lag) AS write_lag,
       max(flush_lag) AS flush_lag,
       max(replay_lag) AS replay_lag,
-      count(*) FILTER (WHERE sync_state = 'async') AS nb_async
+      count(DISTINCT pid) FILTER (WHERE sync_state = 'async') AS nb_async,
+      count(*) FILTER (WHERE slot_type = 'physical' AND active) AS nb_physical_act,
+      count(*) FILTER (WHERE slot_type = 'physical' AND NOT active) AS nb_physical_not_act,
+      count(*) FILTER (WHERE slot_type = 'logical' AND active) AS nb_logical_act,
+      count(*) FILTER (WHERE slot_type = 'logical' AND NOT active) AS nb_logical_not_act
       FROM (
-        SELECT *
+        SELECT statrep.srvid,
+          statrep.ts,
+          statrep.current_lsn AS rep_current_lsn, statrep.pid, statrep.usename,
+          statrep.application_name, statrep.client_addr, statrep.backend_start,
+          statrep.backend_xmin, statrep.state, statrep.sent_lsn,
+          statrep.write_lsn, statrep.flush_lsn, statrep.replay_lsn,
+          statrep.write_lag, statrep.flush_lag, statrep.replay_lag,
+          statrep.sync_priority, statrep.sync_state, statrep.reply_time,
+
+          replslot.cur_txid, replslot.current_lsn AS slot_current_lsn,
+          replslot.slot_name, replslot.plugin, replslot.slot_type,
+          replslot.datoid, replslot.temporary, replslot.active,
+          replslot.active_pid, replslot.slot_xmin, replslot.catalog_xmin,
+          replslot.restart_lsn, replslot.confirmed_flush_lsn,
+          replslot.wal_status, replslot.safe_wal_size, replslot.two_phase,
+          replslot.conflicting
         FROM (
           SELECT srvid, (unnest(records)).*
           FROM {powa}.powa_stat_replication_history psrh
           WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
           AND psrh.srvid = %(server)s
-        ) AS unnested
-        WHERE ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        ) AS statrep
+        FULL OUTER JOIN (
+          SELECT srvid, slot_name, plugin, slot_type, datoid, temporary,
+            (unnest(records)).*
+          FROM {powa}.powa_replication_slots_history prsh
+          WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+          AND prsh.srvid = %(server)s
+        ) AS replslot
+          ON replslot.srvid = statrep.srvid
+          AND replslot.ts = statrep.ts
+          AND replslot.active_pid = statrep.pid
+        WHERE statrep.ts <@ tstzrange(%(from)s, %(to)s, '[]')
         UNION ALL
-        SELECT srvid, (record).*
+        SELECT %(server)s AS srvid,
+          (psrc.record).ts,
+          (psrc.record).current_lsn AS rep_current_lsn, (psrc.record).pid,
+          (psrc.record).usename, (psrc.record).application_name,
+          (psrc.record).client_addr, (psrc.record).backend_start,
+          (psrc.record).backend_xmin, (psrc.record).state,
+          (psrc.record).sent_lsn, (psrc.record).write_lsn,
+          (psrc.record).flush_lsn, (psrc.record).replay_lsn,
+          (psrc.record).write_lag, (psrc.record).flush_lag,
+          (psrc.record).replay_lag, (psrc.record).sync_priority,
+          (psrc.record).sync_state, (psrc.record).reply_time,
+
+          (prsc.record).cur_txid,
+          (prsc.record).current_lsn AS slot_current_lsn,
+          prsc.slot_name, prsc.plugin,
+          prsc.slot_type, prsc.datoid,
+          prsc.temporary, (prsc.record).active,
+          (prsc.record).active_pid, (prsc.record).slot_xmin,
+          (prsc.record).catalog_xmin, (prsc.record).restart_lsn,
+          (prsc.record).confirmed_flush_lsn, (prsc.record).wal_status,
+          (prsc.record).safe_wal_size, (prsc.record).two_phase,
+          (prsc.record).conflicting
         FROM {powa}.powa_stat_replication_history_current psrc
+        FULL OUTER JOIN {powa}.powa_replication_slots_history_current prsc
+          ON psrc.srvid = prsc.srvid AND (psrc.record).ts = (prsc.record).ts
+            AND  (psrc.record).pid = (prsc.record).active_pid
         WHERE (psrc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
         AND psrc.srvid = %(server)s
       ) AS psr_history
-      GROUP BY psr_history.srvid, psr_history.ts, psr_history.current_lsn
+      GROUP BY psr_history.srvid, psr_history.ts, psr_history.rep_current_lsn
     ) AS psr
     WHERE number %% ( int8larger((total)/(%(samples)s+1),1) ) = 0
 """
@@ -1116,8 +1169,8 @@ def powa_get_replication_sample():
     all_cols = base_columns + [
         "ts",
         biggest("ts", "'0 s'", "mesure_interval"),
-        "current_lsn",
-        "nb_slot",
+        "rep_current_lsn",
+        "nb_repl",
         "sent_lsn",
         "write_lsn",
         "flush_lsn",
@@ -1126,7 +1179,11 @@ def powa_get_replication_sample():
         "flush_lag",
         "replay_lag",
         "nb_async",
-        "nb_slot - nb_async AS nb_sync"
+        "nb_repl - nb_async AS nb_sync",
+        "nb_physical_act",
+        "nb_physical_not_act",
+        "nb_logical_act",
+        "nb_logical_not_act",
     ]
 
     return """SELECT {all_cols}

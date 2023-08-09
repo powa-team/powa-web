@@ -605,8 +605,20 @@ class GlobalReplicationMetricGroup(MetricGroupDef):
                          type="number",
                          desc="Number of asynchronous replication connections")
     nb_sync = MetricDef(label="# of sync replication connections",
-                         type="number",
-                         desc="Number of synchronous replication connections")
+                        type="number",
+                        desc="Number of synchronous replication connections")
+    nb_physical_act = MetricDef(label="# physical slots (active)",
+                                type="number",
+                                desc="Number of active physical replication slots")
+    nb_physical_not_act = MetricDef(label="# physical slots (disconnected)",
+                                    type="number",
+                                    desc="Number of disconnected physical replication slots")
+    nb_logical_act = MetricDef(label="# logical slots (active)",
+                               type="number",
+                               desc="Number of active logical replication slots")
+    nb_logical_not_act = MetricDef(label="# logical slots (disconnected)",
+                                   type="number",
+                                   desc="Number of inactive logical replication slots")
 
     @property
     def query(self):
@@ -616,7 +628,7 @@ class GlobalReplicationMetricGroup(MetricGroupDef):
 
         cols = [
                 "extract(epoch FROM sub.ts) AS ts",
-                "current_lsn - sent_lsn AS sent_lsn",
+                "rep_current_lsn - sent_lsn AS sent_lsn",
                 "sent_lsn - write_lsn AS write_lsn",
                 "write_lsn - flush_lsn AS flush_lsn",
                 "flush_lsn - replay_lsn AS replay_lsn",
@@ -624,7 +636,11 @@ class GlobalReplicationMetricGroup(MetricGroupDef):
                 "coalesce(extract(epoch from flush_lag - write_lag), 0) AS flush_lag",
                 "coalesce(extract(epoch from replay_lag - flush_lag), 0) AS replay_lag",
                 "nb_async",
-                "nb_slot - nb_async AS nb_sync",
+                "nb_repl - nb_async AS nb_sync",
+                "nb_physical_act",
+                "nb_physical_not_act",
+                "nb_logical_act",
+                "nb_logical_not_act",
                 ]
 
         return """SELECT {cols}
@@ -935,9 +951,18 @@ class ServerOverview(DashboardPage):
         # Add archiver / replication graphs
         arch_graphs = [[Graph("Archiver",
                               metrics=GlobalArchiverMetricGroup.all(self)),
-                        Graph("Replication kind",
+                        Graph("Replication connections",
                               metrics=[GlobalReplicationMetricGroup.nb_async,
-                                       GlobalReplicationMetricGroup.nb_sync]),
+                                       GlobalReplicationMetricGroup.nb_sync],
+                              renderer="bar",
+                              stack=True),
+                        Graph("Replication slots",
+                              metrics=[GlobalReplicationMetricGroup.nb_physical_act,
+                                       GlobalReplicationMetricGroup.nb_physical_not_act,
+                                       GlobalReplicationMetricGroup.nb_logical_act,
+                                       GlobalReplicationMetricGroup.nb_logical_not_act],
+                              renderer="bar",
+                              stack=True),
                         ],
                        [Graph("Replication delta in B",
                               metrics=[GlobalReplicationMetricGroup.sent_lsn,
