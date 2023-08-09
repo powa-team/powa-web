@@ -74,14 +74,19 @@
           )"
           #[`item.${header.value}`]="{ value, item }"
         >
-          <a
+          <router-link
             v-if="header.urlAttr"
-            :key="header.value"
-            :href="[item[header.urlAttr], store.serialize()].join('?')"
+            :key="header.value + 'link'"
+            :to="[item[header.urlAttr], store.serialize()].join('?')"
           >
             <grid-cell :value="value" :header="header"> </grid-cell>
-          </a>
-          <grid-cell v-else :key="header.value" :value="value" :header="header">
+          </router-link>
+          <grid-cell
+            v-else
+            :key="header.value + 'cell'"
+            :value="value"
+            :header="header"
+          >
           </grid-cell>
         </template>
       </v-data-table>
