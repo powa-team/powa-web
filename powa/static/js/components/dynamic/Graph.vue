@@ -140,15 +140,18 @@
       </div>
       <div v-if="!noData" class="d-flex justify-space-between">
         <div
-          v-for="(axis, type) in yAxisByType"
+          v-for="(axis, type, index) in yAxisByType"
           :key="type"
-          class="d-flex flex-wrap"
+          class="d-flex flex-wrap align-content-start"
         >
           <div
             v-for="metric in metricsByAxis(axis).reverse()"
             :key="metric"
             class="d-flex align-center pointer"
-            :class="{ 'text--disabled': !chosenMetrics.includes(metric) }"
+            :class="{
+              'text--disabled': !chosenMetrics.includes(metric),
+              'ml-auto': index == 1,
+            }"
             @click="selectSerie(metric, $event)"
           >
             <div
