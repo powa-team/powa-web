@@ -1,19 +1,25 @@
 // Globals
 $font-size-root: 14px;
-$card-text-font-size: 14px;
-$data-table-regular-row-font-size: 14px;
 
+$btn-text-transform: none !default;
+$tab-text-transform: none !default;
+$btn-letter-spacing: inherit;
+$tabs-item-letter-spacing: inherit;
 
 $spacer: 2px !default;
+
+$btn-font-sizes: (
+  'default': 1rem
+);
 
 $headings: (
   // Apply to table headers, pagination
   'caption': (
-    'size': 0.9rem,
+    'size': 1rem,
   ),
   // Apply to data tables rows
   'subtitle-2': (
-    'size': 0.9rem,
+    'size': 1rem,
   )
 );
 
