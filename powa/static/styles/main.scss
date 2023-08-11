@@ -13,10 +13,6 @@ pre.sql {
   }
 }
 
-.v-btn, .v-tab {
-  text-transform:none !important;
-}
-
 .v-data-table.superdense > .v-data-table__wrapper > table {
   tbody,
   thead,
@@ -88,6 +84,10 @@ h6 {
 
 dt {
   font-weight: bold;
+}
+
+.text-small {
+  font-size: 90%;
 }
 
 .v-tooltip__content.sql {
