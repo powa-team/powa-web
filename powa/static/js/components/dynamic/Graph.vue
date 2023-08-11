@@ -147,7 +147,7 @@
           <div
             v-for="metric in metricsByAxis(axis).reverse()"
             :key="metric"
-            class="d-flex align-center pointer"
+            class="d-flex align-center pointer text-small"
             :class="{
               'text--disabled': !chosenMetrics.includes(metric),
               'ml-auto': index == 1,
