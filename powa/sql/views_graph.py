@@ -653,6 +653,44 @@ def BASE_QUERY_DATABASE_SAMPLE(per_db=False):
 """.format(extra=extra)
 
 
+# We use dense_rank() as we need ALL the records for a specific ts.  Caller
+# will group the data per backend_type, object or other as needed
+BASE_QUERY_IO_SAMPLE = """
+    (SELECT srvid,
+      --dense_rank() OVER (ORDER BY ts, backend_type, object, context) AS number,
+      dense_rank() OVER (ORDER BY ts) AS number,
+      count(*) OVER (PARTITION BY ts) AS num_per_window,
+      count(*) OVER () AS total,
+      ts,
+      backend_type, object, context,
+      reads * op_bytes AS reads, read_time,
+      writes * op_bytes AS writes, write_time,
+      writebacks * op_bytes AS writebacks, writeback_time,
+      extends * op_bytes AS extends, extend_time,
+      hits * op_bytes AS hits,
+      evictions * op_bytes AS evictions,
+      reuses * op_bytes AS reuses,
+      fsyncs * op_bytes AS fsyncs, fsync_time AS fsync_time
+      FROM (
+        SELECT *
+        FROM (
+          SELECT srvid, (unnest(records)).*
+          FROM {powa}.powa_stat_io_history ioh
+          WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+          AND ioh.srvid = %(server)s
+        ) AS unnested
+        WHERE ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        UNION ALL
+        SELECT srvid, (record).*
+        FROM {powa}.powa_stat_io_history_current ioc
+        WHERE (ioc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        AND ioc.srvid = %(server)s
+      ) AS io_history
+    ) AS io
+    WHERE number %% ( int8larger((total / num_per_window)/(%(samples)s+1),1) ) = 0
+"""
+
+
 BASE_QUERY_REPLICATION_SAMPLE = """
     (SELECT srvid,
       row_number() OVER (ORDER BY psr_history.ts) AS number,
@@ -1190,6 +1228,41 @@ def powa_get_replication_sample():
     FROM {base_query}""".format(
         all_cols=', '.join(all_cols),
         base_columns=', '.join(base_columns),
+        base_query=base_query
+    )
+
+
+def powa_get_io_sample():
+    base_query = BASE_QUERY_IO_SAMPLE
+    base_columns = ["srvid", "backend_type", "object", "context"]
+
+    biggest = Biggest(base_columns, 'ts')
+    biggestsum = Biggestsum(base_columns, 'ts')
+
+    all_cols = base_columns + [
+        "ts",
+        #"backend_type",
+        #"object",
+        #"context",
+        biggest("ts", "'0 s'", "mesure_interval"),
+        biggest("reads"),
+        biggest("read_time"),
+        biggest("writes"),
+        biggest("write_time"),
+        biggest("writebacks"),
+        biggest("writeback_time"),
+        biggest("extends"),
+        biggest("extend_time"),
+        biggest("hits"),
+        biggest("evictions"),
+        biggest("reuses"),
+        biggest("fsyncs"),
+        biggest("fsync_time"),
+    ]
+
+    return """SELECT {all_cols}
+    FROM {base_query}""".format(
+        all_cols=', '.join(all_cols),
         base_query=base_query
     )
 
