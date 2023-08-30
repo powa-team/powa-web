@@ -30,6 +30,13 @@ def diff(var, alias=None):
         var=var,
         alias=alias)
 
+def diffblk(var, blksize=8192, alias=None):
+    alias = alias or var
+    return "(max({var}) - min({var})) * {blksize} AS {alias}".format(
+        var=var,
+        blksize=blksize,
+        alias=alias)
+
 
 def get_ts():
     return "extract(epoch FROM greatest(mesure_interval, '1 second'))"
