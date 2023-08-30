@@ -24,7 +24,8 @@ from powa.sql.views_graph import (powa_getstatdata_sample,
                                   powa_get_io_sample)
 from powa.sql.views_grid import (powa_getstatdata_db,
                                  powa_getwaitdata_db,
-                                 powa_getuserfuncdata_db)
+                                 powa_getuserfuncdata_db,
+                                 powa_getiodata)
 from powa.sql.utils import (sum_per_sec, byte_per_sec, wps, total_read,
                             total_hit, block_size, to_epoch, get_ts, mulblock)
 
@@ -663,6 +664,64 @@ class GlobalIoMetricGroup(MetricGroupDef):
             from_clause=from_clause,
         )
 
+class ByAllIoMetricGroup(MetricGroupDef):
+    """
+    Metric group used by the pg_stat_io grid, with full detail (by
+    backend_type, object and context).
+    """
+    name = "io_by_all"
+    xaxis = "backend_type"
+    data_url = r"/server/(\d+)/metrics/io_by_all/"
+    axis_type = "category"
+    backend_type = MetricDef(label="Backend type", type="string")
+    obj = MetricDef(label="Object", type="string")
+    context = MetricDef(label="Context", type="string")
+    reads = MetricDef(label="Reads",
+                      type="size",
+                      desc="Total amount of data read")
+    read_time = MetricDef(label="Read time",
+                          type="duration",
+                          desc="Total amount of time reading data")
+    writes = MetricDef(label="Writes",
+                      type="size",
+                      desc="Total amount of data write")
+    write_time = MetricDef(label="Write time",
+                           type="duration",
+                           desc="Total amount of time writing data")
+    writebacks = MetricDef(label="Writebacks",
+                           type="size",
+                           desc="Total amount of data writeback")
+    writeback_time = MetricDef(label="Writeback time",
+                               type="duration",
+                               desc="Total amount of time doing data writeback")
+    extends = MetricDef(label="Extends",
+                        type="size",
+                        desc="Total amount of data extension")
+    extend_time = MetricDef(label="Extend time",
+                            type="duration",
+                            desc="Total amount of time extending data")
+    hits = MetricDef(label="Hits",
+                     type="size",
+                     desc="Total amount of data hit")
+    evictions = MetricDef(label="Evictions",
+                          type="size",
+                          desc="Total amount of data evicted")
+    reuses = MetricDef(label="Reuses",
+                       type="size",
+                       desc="Total amount of data reused")
+    fsyncs = MetricDef(label="Fsyncs",
+                       type="size",
+                       desc="Total amount of data flushed")
+    fsync_time = MetricDef(label="Fsync time",
+                           type="duration",
+                           desc="Total amount of time flushing data")
+
+    @property
+    def query(self):
+        query = powa_getiodata()
+
+        return query
+
 class GlobalReplicationMetricGroup(MetricGroupDef):
     """
     Metric group used by pg_stat_replication graphs.
@@ -959,7 +1018,8 @@ class ServerOverview(DashboardPage):
                    GlobalUserFctMetricGroup, ByDatabaseUserFuncMetricGroup,
                    ConfigChangesGlobal, GlobalPGSAMetricGroup,
                    GlobalArchiverMetricGroup, GlobalReplicationMetricGroup,
-                   GlobalDbActivityMetricGroup, GlobalIoMetricGroup]
+                   GlobalDbActivityMetricGroup, GlobalIoMetricGroup,
+                   ByAllIoMetricGroup]
     params = ["server"]
     title = "All databases"
     timeline = ConfigChangesGlobal
@@ -1174,6 +1234,11 @@ class ServerOverview(DashboardPage):
                 Graph("IO misc",
                       metrics=io_metrics[2],
                       ),
+                ])
+
+            sys_graphs.append([
+                Grid("IO summary",
+                     metrics=ByAllIoMetricGroup.all())
                 ])
 
         if (len(sys_graphs) != 0):

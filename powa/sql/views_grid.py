@@ -1,7 +1,7 @@
 """
 Functions to generate the queries used in the various grid components
 """
-from powa.sql.utils import diff
+from powa.sql.utils import diff, diffblk
 
 
 def powa_base_statdata_detailed_db():
@@ -244,6 +244,75 @@ def powa_base_bgwriter():
 ) AS bgw_history
     """
     return base_query
+
+
+def powa_base_io():
+    base_query = """(
+ SELECT ranges.srvid, h.*
+ FROM
+ (
+   SELECT srvid
+   FROM {powa}.powa_stat_io_history ioh
+   WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+   AND ioh.srvid = %(server)s
+   GROUP BY srvid
+ ) ranges,
+ LATERAL (
+   SELECT (unnested1.records).*
+   FROM (
+     SELECT ioh.coalesce_range, unnest(records) AS records
+     FROM {powa}.powa_stat_io_history ioh
+     WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+     AND ioh.srvid = %(server)s
+   ) AS unnested1
+   WHERE  (unnested1.records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+   UNION ALL
+   SELECT (ioc.record).*
+   FROM {powa}.powa_stat_io_history_current ioc
+   WHERE  (ioc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+   AND ioc.srvid = %(server)s
+    ) AS h
+) AS io_history
+    """
+    return base_query
+
+
+def powa_getiodata():
+    """
+    Query used in the grid displaying info about pg_stat_io.
+    """
+    base_query = powa_base_io()
+
+    base_cols = [
+        "backend_type",
+        "object",
+        "context",
+    ]
+
+    cols = [
+        "object AS obj",
+        diffblk("reads", "op_bytes"),
+        diff("read_time"),
+        diffblk("writes", "op_bytes"),
+        diff("write_time"),
+        diffblk("writebacks", "op_bytes"),
+        diff("writeback_time"),
+        diffblk("extends", "op_bytes"),
+        diff("extend_time"),
+        diffblk("hits", "op_bytes"),
+        diffblk("evictions", "op_bytes"),
+        diffblk("reuses", "op_bytes"),
+        diffblk("fsyncs", "op_bytes"),
+        diff("fsync_time"),
+    ]
+
+    return """SELECT {base_cols}, {cols}
+    FROM {base_query}
+    GROUP BY srvid, {base_cols}, op_bytes""".format(
+        cols=', '.join(cols),
+        base_cols=', '.join(base_cols),
+        base_query=base_query,
+    )
 
 
 def get_diffs_forstatdata():
