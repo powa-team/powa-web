@@ -578,7 +578,7 @@ class MetricGroupDef(with_metaclass(MetaMetricGroup, DataSource)):
         values['type'] = 'metric_group'
         values.setdefault("xaxis", "ts")
         values['metrics'] = list(cls.metrics.values())
-        values.pop("query")
+        values.pop("query", None)
         return values
 
     @classmethod
