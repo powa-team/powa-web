@@ -53,7 +53,14 @@ class DashboardHandler(AuthHandler):
         # DashboardPage provided it
         param_timeline = None
         if (self.timeline):
-            param_timeline = self.reverse_url(self.timeline.url_name, *args)
+            # Dashboards can specify a subset of arguments to use for the
+            # timeline.
+            if (self.timeline_params):
+                tl_args = [params[prm] for prm in self.params
+                                               if prm in self.timeline_params]
+            else:
+                tl_args = args
+            param_timeline = self.reverse_url(self.timeline.url_name, *tl_args)
 
         return self.render(self.template,
                            dashboard=param_dashboard,
@@ -654,6 +661,7 @@ class DashboardPage(object):
     datasources = []
     parent = None
     timeline = None
+    timeline_params = None
     docs_stats_url = 'https://powa.readthedocs.io/en/latest/components/stats_extensions/'
 
     @classmethod
