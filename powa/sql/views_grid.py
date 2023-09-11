@@ -277,13 +277,19 @@ def powa_base_io():
     return base_query
 
 
-def powa_getiodata():
+def powa_getiodata(qual=None):
     """
     Query used in the grid displaying info about pg_stat_io.
     """
     base_query = powa_base_io()
 
+    if (qual is not None):
+        qual = ' WHERE %s' % qual
+    else:
+        qual = ''
+
     base_cols = [
+        "srvid",
         "backend_type",
         "object",
         "context",
@@ -308,10 +314,12 @@ def powa_getiodata():
 
     return """SELECT {base_cols}, {cols}
     FROM {base_query}
+    {qual}
     GROUP BY srvid, {base_cols}, op_bytes""".format(
         cols=', '.join(cols),
         base_cols=', '.join(base_cols),
         base_query=base_query,
+        qual=qual,
     )
 
 
