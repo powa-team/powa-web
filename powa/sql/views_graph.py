@@ -1228,18 +1228,20 @@ def powa_get_replication_sample():
     )
 
 
-def powa_get_io_sample():
+def powa_get_io_sample(qual=None):
     base_query = BASE_QUERY_IO_SAMPLE
     base_columns = ["srvid", "backend_type", "object", "context"]
 
     biggest = Biggest(base_columns, 'ts')
     biggestsum = Biggestsum(base_columns, 'ts')
 
+    if (qual is not None):
+        qual = ' AND %s' % qual
+    else:
+        qual = ''
+
     all_cols = base_columns + [
         "ts",
-        #"backend_type",
-        #"object",
-        #"context",
         biggest("ts", "'0 s'", "mesure_interval"),
         biggest("reads"),
         biggest("read_time"),
@@ -1257,9 +1259,11 @@ def powa_get_io_sample():
     ]
 
     return """SELECT {all_cols}
-    FROM {base_query}""".format(
+    FROM {base_query}
+    {qual}""".format(
         all_cols=', '.join(all_cols),
-        base_query=base_query
+        base_query=base_query,
+        qual=qual
     )
 
 
