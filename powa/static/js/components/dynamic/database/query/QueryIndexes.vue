@@ -23,27 +23,25 @@
                   <br />
                   <b><code v-html="formatSql(clause)"></code></b>:
                 </h5>
-                <ul v-for="(index, i) in inds" :key="i">
-                  <h6>
-                    With access method <em>{{ index.amname }}</em>
-                  </h6>
-                  <li>
-                    <ul>
-                      <li v-for="(qual, j) in index.qual" :key="j">
-                        <dl>
-                          <dt>Attribute</dt>
-                          <dd>{{ qual.relname }}.{{ qual.attname }}</dd>
-                          <dt>Data distribution</dt>
-                          <dd v-if="!qual.distinct_values">Unknown</dd>
-                          <dd v-else>
-                            approximately
-                            <b>{{ qual.distinct_values }}</b> distinct values
-                          </dd>
-                        </dl>
-                      </li>
-                    </ul>
-                  </li>
-                </ul>
+                <div v-for="(index, i) in inds" :key="i">
+                  <ul>
+                    <li v-for="(qual, j) in index.qual" :key="j">
+                      <h6>
+                        With access method <em>{{ index.amname }}</em>
+                      </h6>
+                      <dl>
+                        <dt>Attribute</dt>
+                        <dd>{{ qual.relname }}.{{ qual.attname }}</dd>
+                        <dt>Data distribution</dt>
+                        <dd v-if="!qual.distinct_values">Unknown</dd>
+                        <dd v-else>
+                          approximately
+                          <b>{{ qual.distinct_values }}</b> distinct values
+                        </dd>
+                      </dl>
+                    </li>
+                  </ul>
+                </div>
               </li>
             </ul>
             <template v-else> No suitable index to suggest. </template>
