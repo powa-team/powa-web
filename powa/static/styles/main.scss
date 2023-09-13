@@ -86,6 +86,10 @@ dt {
   font-weight: bold;
 }
 
+dd {
+  margin: revert;
+}
+
 .text-small {
   font-size: 90%;
 }
