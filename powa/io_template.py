@@ -63,7 +63,7 @@ class TemplateIoGraph(MetricGroupDef):
         pg_version_num = handler.get_pg_version_num(handler.path_args[0])
         # if we can't connect to the remote server, assume pg15 or less
         if pg_version_num is None or pg_version_num < 160000:
-            return []
+            return {}
         return base
 
     @property
