@@ -56,6 +56,7 @@ const opts = {
         tooltipbg: "#ffffff",
         tickstroke: "#ffffff",
         axisgridlinestroke: "#d3d3d3",
+        eventmarkerfill: "#000000",
       },
       dark: {
         primary: "#859145",
@@ -63,6 +64,7 @@ const opts = {
         tooltipbg: "#313131",
         tickstroke: "#333333",
         axisgridlinestroke: "#4f4f4f",
+        eventmarkerfill: "#ffffff",
       },
     },
   },
