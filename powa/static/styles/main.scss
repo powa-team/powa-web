@@ -109,6 +109,10 @@ dd {
   vertical-align: top;
 }
 
+.event:hover .marker {
+  fill: var(--v-eventmarkerfill-base);
+}
+
 .theme--light {
   @include highlight.light;
 }
