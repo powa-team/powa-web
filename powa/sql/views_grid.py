@@ -248,7 +248,7 @@ def powa_base_bgwriter():
 
 def powa_base_io():
     base_query = """(
- SELECT ranges.srvid, h.*
+ SELECT *
  FROM
  (
    SELECT srvid
@@ -266,12 +266,12 @@ def powa_base_io():
      AND ioh.srvid = %(server)s
    ) AS unnested1
    WHERE  (unnested1.records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
-   UNION ALL
-   SELECT (ioc.record).*
-   FROM {powa}.powa_stat_io_history_current ioc
-   WHERE  (ioc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
-   AND ioc.srvid = %(server)s
-    ) AS h
+ ) AS h
+ UNION ALL
+ SELECT srvid, (ioc.record).*
+ FROM {powa}.powa_stat_io_history_current ioc
+ WHERE  (ioc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+ AND ioc.srvid = %(server)s
 ) AS io_history
     """
     return base_query
