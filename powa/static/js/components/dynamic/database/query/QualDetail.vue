@@ -19,51 +19,35 @@
             class="sql"
           ><code v-html="formatSql(qual.where_clause)"></code></pre>
         </h4>
-        <dl>
-          <ul class="large-block-grid-3">
-            <li>
-              <dt>Seen:</dt>
-              <dd>{{ qual.occurences }}</dd>
-            </li>
-            <li>
-              <dt>Average evaluations by query</dt>
-              <dd>{{ qual.execution_count / qual.occurences }}</dd>
-              <dt>Average number of filtered tuples:</dt>
-              <dd>{{ qual.avg_filter }}</dd>
-            </li>
-
-            <li>
-              <dt>Filter ratio</dt>
-              <dd>
-                {{ qual.filter_ratio.toPrecision(6) }} % of tuples are removed
-                by the filter.
-              </dd>
-            </li>
-          </ul>
-        </dl>
-        <ul class="large-block-grid-3">
+        <div>
+          <dl>
+            <dt>Seen:</dt>
+            <dd>{{ qual.occurences }}</dd>
+            <dt>Average evaluations by query</dt>
+            <dd>{{ qual.execution_count / qual.occurences }}</dd>
+            <dt>Average number of filtered tuples:</dt>
+            <dd>{{ qual.avg_filter }}</dd>
+            <dt>Filter ratio</dt>
+            <dd>
+              {{ qual.filter_ratio.toPrecision(4) }} % of tuples are removed by
+              the filter.
+            </dd>
+          </dl>
+        </div>
+        <ul>
           <li v-for="(q, index) in qual.quals" :key="index">
             <h5>
               <pre class="sql"><code v-html="formatSql(q.label)"></code></pre>
             </h5>
-
             <dl>
-              <ul class="large-block-grid-2">
-                <li>
-                  <dt>Table</dt>
-                  <dd>{{ q.relname }}</dd>
-                </li>
-                <li>
-                  <dt>Column</dt>
-                  <dd>{{ q.attname }}</dd>
-                </li>
-                <li>
-                  <dt>Accesstype</dt>
-                  <dd :class="'access-type-' + q.eval_type">
-                    {{ q.eval_type == "i" ? "Index" : "After Scan" }}
-                  </dd>
-                </li>
-              </ul>
+              <dt>Table</dt>
+              <dd>{{ q.relname }}</dd>
+              <dt>Column</dt>
+              <dd>{{ q.attname }}</dd>
+              <dt>Accesstype</dt>
+              <dd :class="'access-type-' + q.eval_type">
+                {{ q.eval_type == "i" ? "Index" : "After Scan" }}
+              </dd>
             </dl>
           </li>
         </ul>
