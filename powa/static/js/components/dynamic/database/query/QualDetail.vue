@@ -19,38 +19,42 @@
             class="sql"
           ><code v-html="formatSql(qual.where_clause)"></code></pre>
         </h4>
-        <div>
-          <dl>
-            <dt>Seen:</dt>
-            <dd>{{ qual.occurences }}</dd>
-            <dt>Average evaluations by query</dt>
-            <dd>{{ qual.execution_count / qual.occurences }}</dd>
-            <dt>Average number of filtered tuples:</dt>
-            <dd>{{ qual.avg_filter }}</dd>
-            <dt>Filter ratio</dt>
-            <dd>
-              {{ qual.filter_ratio.toPrecision(4) }} % of tuples are removed by
-              the filter.
-            </dd>
-          </dl>
+        <v-row class="ma-4">
+          <v-col>
+            <b>Seen:</b><br />
+            {{ qual.occurences }}
+          </v-col>
+          <v-col>
+            <b>Average evaluations by query:</b><br />
+            {{ qual.execution_count / qual.occurences }}<br />
+            <b>Average number of filtered tuples:</b><br />
+            {{ qual.avg_filter }}
+          </v-col>
+          <v-col>
+            <b>Filter ratio:</b><br />
+            {{ qual.filter_ratio.toPrecision(4) }} % of tuples are removed by
+            the filter.
+          </v-col>
+        </v-row>
+        <div v-for="(q, index) in qual.quals" :key="index">
+          <h5>
+            <pre class="sql"><code v-html="formatSql(q.label)"></code></pre>
+          </h5>
+          <v-row class="ma-4">
+            <v-col>
+              <b>Table:</b><br />
+              {{ q.relname }}
+            </v-col>
+            <v-col>
+              <b>Column:</b><br />
+              {{ q.attname }}
+            </v-col>
+            <v-col>
+              <b>Accesstype:</b><br />
+              {{ q.eval_type == "i" ? "Index" : "After Scan" }}
+            </v-col>
+          </v-row>
         </div>
-        <ul>
-          <li v-for="(q, index) in qual.quals" :key="index">
-            <h5>
-              <pre class="sql"><code v-html="formatSql(q.label)"></code></pre>
-            </h5>
-            <dl>
-              <dt>Table</dt>
-              <dd>{{ q.relname }}</dd>
-              <dt>Column</dt>
-              <dd>{{ q.attname }}</dd>
-              <dt>Accesstype</dt>
-              <dd :class="'access-type-' + q.eval_type">
-                {{ q.eval_type == "i" ? "Index" : "After Scan" }}
-              </dd>
-            </dl>
-          </li>
-        </ul>
       </template>
       <template v-else> No data </template>
     </v-card-text>
