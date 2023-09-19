@@ -31,6 +31,7 @@
     "highlight.js": "^11.6.0",
     "lodash": "^4.17.21",
     "luxon": "^3.3.0",
+    "sql-formatter": "^13.0.0",
     "vue": "^2.7.12",
     "vue-router": "^3.6.5",
     "vuetify": "^2.7.1"
