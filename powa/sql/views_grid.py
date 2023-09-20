@@ -247,6 +247,11 @@ def powa_base_bgwriter():
 
 
 def powa_base_io():
+    """
+    Query used in the grids displaying info about pg_stat_io.
+
+    This uses the same optimization as powa_base_statdata_detailed_db.
+    """
     base_query = """(
  SELECT *
  FROM
@@ -258,14 +263,49 @@ def powa_base_io():
    GROUP BY srvid
  ) ranges,
  LATERAL (
-   SELECT (unnested1.records).*
+   -- Left bound: the search interval is a single timestamp, the smallest one
+   -- of the search interval, and has to be inside the coalesce_range. We
+   -- still need to unnest this one as we may have to remove some of the
+   -- underlying records
+   SELECT (unnested.records).*
    FROM (
      SELECT ioh.coalesce_range, unnest(records) AS records
      FROM {powa}.powa_stat_io_history ioh
+     WHERE coalesce_range && tstzrange(%(from)s, %(from)s, '[]')
+     AND ioh.srvid = %(server)s
+   ) AS unnested
+   WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+
+   UNION ALL
+
+   -- Right bound: the search interval is a single timestamp, the largest one
+   -- of the search interval, and has to be inside the coalesce_range. We
+   -- still need to unnest this one as we may have to remove some of the
+   -- underlying records
+   SELECT (unnested.records).*
+   FROM (
+     SELECT ioh.coalesce_range, unnest(records) AS records
+     FROM {powa}.powa_stat_io_history ioh
+     WHERE coalesce_range && tstzrange(%(to)s, %(to)s, '[]')
+     AND ioh.srvid = %(server)s
+   ) AS unnested
+   WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+
+   UNION ALL
+
+   -- These entries have their coalesce_range ENTIRELY inside the search range
+   -- so we don't need to unnest them.  We just retrieve the mins_in_range,
+   -- maxs_in_range from the record, build an array of this and return it as
+   -- if it was the full record
+   SELECT (unnested.records).*
+   FROM (
+     SELECT ioh.coalesce_range,
+       unnest(ARRAY[mins_in_range,maxs_in_range]) AS records
+     FROM {powa}.powa_stat_io_history ioh
      WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
      AND ioh.srvid = %(server)s
-   ) AS unnested1
-   WHERE  (unnested1.records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+   ) AS unnested
+   WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
  ) AS h
  UNION ALL
  SELECT srvid, (ioc.record).*
