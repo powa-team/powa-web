@@ -188,16 +188,6 @@ def powa_base_statdata_db():
      AND dbh.srvid = %(server)s
    ) AS unnested1
    WHERE (unnested1.records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
-   UNION ALL
-   SELECT (unnested2.records).*
-   FROM (
-     SELECT dbh.coalesce_range, unnest(records) AS records
-     FROM {powa}.powa_statements_history_db dbh
-     WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
-     AND dbh.dbid = ranges.dbid
-     AND dbh.srvid = %(server)s
-   ) AS unnested2
-   WHERE  (unnested2.records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
 
    UNION ALL
 
