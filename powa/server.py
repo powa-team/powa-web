@@ -95,7 +95,10 @@ class ByDatabaseMetricGroup(MetricGroupDef):
             mulblock('shared_blks_dirtied', fn="sum"),
             mulblock('shared_blks_written', fn="sum"),
             mulblock('temp_blks_written', fn="sum"),
-            "round(cast(sum(blk_read_time + blk_write_time) AS numeric), 2) AS io_time"
+            "round(cast(sum(shared_blk_read_time + shared_blk_write_time"
+                + " + local_blk_read_time + local_blk_write_time"
+                + " + temp_blk_read_time + temp_blk_write_time"
+            + ") AS numeric), 2) AS io_time"
             ]
 
         if self.has_extension_version(self.path_args[0], 'pg_stat_statements',
