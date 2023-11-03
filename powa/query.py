@@ -654,7 +654,7 @@ class QueryOverview(DashboardPage):
         iodash = Dashboard("IO",
             [[hit_ratio_graph,
               Graph("Read / Write time",
-                    url=self.docs_stats_url + "pg_stat_kcache.html",
+                    url=self.docs_stats_url + "pg_stat_statements.html",
                     metrics=[QueryOverviewMetricGroup.blk_read_time,
                              QueryOverviewMetricGroup.blk_write_time])]])
         dashes.append(iodash)
