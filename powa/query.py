@@ -67,10 +67,18 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     temp_blks_written = MetricDef(label="Temp written", type="sizerate",
                                   desc="Amount of data written to temporary"
                                        " file")
-    blk_read_time = MetricDef(label="Read time", type="duration",
-                              desc="Time spent reading data")
-    blk_write_time = MetricDef(label="Write time", type="duration",
-                               desc="Time spent writing data")
+    shared_blk_read_time = MetricDef(label="Shared Read time", type="duration",
+                                     desc="Time spent reading shared blocks")
+    shared_blk_write_time = MetricDef(label="Shared Write time", type="duration",
+                                      desc="Time spent shared blocks")
+    local_blk_read_time = MetricDef(label="Local Read time", type="duration",
+                                     desc="Time spent reading temp table blocks")
+    local_blk_write_time = MetricDef(label="Local Write time", type="duration",
+                                      desc="Time spent temp table blocks")
+    temp_blk_read_time = MetricDef(label="Temp Read time", type="duration",
+                                     desc="Time spent reading temp file blocks")
+    temp_blk_write_time = MetricDef(label="Temp Write time", type="duration",
+                                      desc="Time spent temp file blocks")
     avg_plantime = MetricDef(label="Avg plantime", type="duration",
                              desc="Average query planning duration")
     avg_runtime = MetricDef(label="Avg runtime", type="duration",
@@ -162,8 +170,12 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                 byte_per_sec("local_blks_written"),
                 byte_per_sec("temp_blks_read"),
                 byte_per_sec("temp_blks_written"),
-                sum_per_sec("blk_read_time"),
-                sum_per_sec("blk_write_time"),
+                sum_per_sec("shared_blk_read_time"),
+                sum_per_sec("shared_blk_write_time"),
+                sum_per_sec("local_blk_read_time"),
+                sum_per_sec("local_blk_write_time"),
+                sum_per_sec("temp_blk_read_time"),
+                sum_per_sec("temp_blk_write_time"),
                 "sum(runtime) / greatest(sum(calls), 1) AS avg_runtime"
                 ]
 
@@ -609,6 +621,8 @@ class QueryOverview(DashboardPage):
 
         pgss18 = self.has_extension_version(self.path_args[0],
                                             'pg_stat_statements', '1.8')
+        pgss111 = self.has_extension_version(self.path_args[0],
+                                             'pg_stat_statements', '1.11')
 
         hit_ratio_graph = Graph("Hit ratio",
                                 metrics=[QueryOverviewMetricGroup.hit_ratio],
@@ -651,12 +665,25 @@ class QueryOverview(DashboardPage):
               Graph("Temp block (in Bps)",
                     metrics=[QueryOverviewMetricGroup.temp_blks_read,
                              QueryOverviewMetricGroup.temp_blks_written])]]))
+
+        io_time_metrics=[QueryOverviewMetricGroup.shared_blk_read_time,
+                         QueryOverviewMetricGroup.shared_blk_write_time,
+                        ]
+
+        # if we can't connect to the remote server, assume pg16 or below
+        if pgss111:
+            io_time_metrics.extend([
+                         QueryOverviewMetricGroup.local_blk_read_time,
+                         QueryOverviewMetricGroup.local_blk_write_time,
+                         QueryOverviewMetricGroup.temp_blk_read_time,
+                         QueryOverviewMetricGroup.temp_blk_write_time,
+                         ])
         iodash = Dashboard("IO",
             [[hit_ratio_graph,
               Graph("Read / Write time",
                     url=self.docs_stats_url + "pg_stat_statements.html",
-                    metrics=[QueryOverviewMetricGroup.blk_read_time,
-                             QueryOverviewMetricGroup.blk_write_time])]])
+                    metrics=io_time_metrics
+                    )]])
         dashes.append(iodash)
 
         if self.has_extension(self.path_args[0], "pg_stat_kcache"):

@@ -522,8 +522,8 @@ class ByQueryMetricGroup(MetricGroupDef):
     plantime = MetricDef(label="Plantime", type="duration")
     runtime = MetricDef(label="Time", type="duration", direction="descending")
     avg_runtime = MetricDef(label="Avg time", type="duration")
-    blks_read_time = MetricDef(label="Read", type="duration")
-    blks_write_time = MetricDef(label="Write", type="duration")
+    blks_read_time = MetricDef(label="Total Read", type="duration")
+    blks_write_time = MetricDef(label="Total Write", type="duration")
     shared_blks_read = MetricDef(label="Read", type="size")
     shared_blks_hit = MetricDef(label="Hit", type="size")
     shared_blks_dirtied = MetricDef(label="Dirtied", type="size")
@@ -563,8 +563,12 @@ class ByQueryMetricGroup(MetricGroupDef):
                 mulblock("temp_blks_read", fn="sum"),
                 mulblock("temp_blks_written", fn="sum"),
                 "sum(sub.runtime) / greatest(sum(sub.calls), 1) AS avg_runtime",
-                "sum(sub.blk_read_time) AS blks_read_time",
-                "sum(sub.blk_write_time) AS blks_write_time"
+                "sum(sub.shared_blk_read_time "
+                + "+ sub.local_blk_read_time "
+                + "+ sub.temp_blk_read_time) AS blks_read_time",
+                "sum(sub.shared_blk_write_time "
+                + "+ sub.local_blk_write_time "
+                + "+ sub.temp_blk_write_time) AS blks_write_time",
                 ]
 
         if self.has_extension_version(self.path_args[0], 'pg_stat_statements',
