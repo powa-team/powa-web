@@ -1,6 +1,7 @@
 """
 Utilities for the basis of Powa
 """
+from collections import defaultdict
 from tornado.web import RequestHandler, authenticated, HTTPError
 from powa import ui_methods
 from powa.json import to_json
@@ -117,6 +118,7 @@ class BaseHandler(RequestHandler):
         self._databases = None
         self._servers = None
         self._connections = {}
+        self._ext_versions = defaultdict(lambda : defaultdict(dict))
         self.url_prefix = options.url_prefix
         self.logger = logging.getLogger("tornado.application")
         if self.application.settings['debug']:
@@ -411,6 +413,72 @@ class BaseHandler(RequestHandler):
         self._connections[url] = conn
         return self._connections[url]
 
+    def __get_extension_version(self, srvid, extname, database=None,
+                                remote_access=True):
+        """
+        Returns a tuple with all digits of the version of the specific
+        extension on the specific server and database, or None if the extension
+        isn't install (or if we fail trying to retrieve the information).
+        """
+        remver = None
+
+        # make sure we have a consistent type for the server id
+        srvid = str(srvid)
+
+        # Check for a cached version first.  Note that we do cache the lack of
+        # extension (storing None), so we use an empty string to detect that no
+        # caching happened yet.
+        remver = self._ext_versions[srvid][database].get(extname, '')
+
+        if remver != '':
+            return remver
+
+        # For remote server, check first if powa-collector reported a version
+        # for that extension, but only for default database.
+        if (srvid != "0" and database is None):
+            try:
+                remver = self.execute(
+                    """
+                    SELECT version
+                    FROM {powa}.powa_extension_config
+                    WHERE srvid = %(srvid)s
+                    AND extname = %(extname)s
+                    """, params={'srvid': srvid, 'extname': extname}
+                    )[0]['version']
+
+            except Exception:
+                return None
+        else:
+            # Otherwise, fall back to querying on the target database.
+            try:
+                remver = self.execute(
+                    """
+                    SELECT extversion
+                    FROM pg_catalog.pg_extension
+                    WHERE extname = %(extname)s
+                    LIMIT 1
+                    """, srvid=srvid, database=database,
+                    params={"extname": extname}, remote_access=remote_access
+                )[0]['extversion']
+            except Exception:
+                return None
+
+        if remver is None:
+            self._ext_versions[srvid][database][extname] = None
+            return None
+
+        # Clean up any extraneous characters
+        remver = re.search(r'[0-9\.]*[0-9]', remver)
+
+        if remver is None:
+            self._ext_versions[srvid][database][extname] = None
+            return None
+
+        remver = tuple(map(int, remver.group(0).split('.')))
+        self._ext_versions[srvid][database][extname] = remver
+
+        return remver
+
     def has_extension(self, srvid, extname):
         """
         Returns whether the specific extensions is supposed to be installed, in
@@ -452,48 +520,11 @@ class BaseHandler(RequestHandler):
         if version is None:
             raise Exception("No version provided!")
 
-        remver = None
-
-        # For remote server, check first if powa-collector reported a version
-        # for that extension, but only for default database.
-        if (srvid != "0" and database is None):
-            try:
-                remver = self.execute(
-                    """
-                    SELECT version
-                    FROM {powa}.powa_extension_config
-                    WHERE srvid = %(srvid)s
-                    AND extname = %(extname)s
-                    """, params={'srvid': srvid, 'extname': extname}
-                    )[0]['version']
-
-            except Exception:
-                return False
-        else:
-            # Otherwise, fall back to querying on the target database.
-            try:
-                remver = self.execute(
-                    """
-                    SELECT extversion
-                    FROM pg_catalog.pg_extension
-                    WHERE extname = %(extname)s
-                    LIMIT 1
-                    """, srvid=srvid, database=database,
-                    params={"extname": extname}, remote_access=remote_access
-                )[0]['extversion']
-            except Exception:
-                return False
+        remver = self.__get_extension_version(srvid, extname,
+                                              remote_access=remote_access)
 
         if remver is None:
             return False
-
-        # Clean up any extraneous characters
-        remver = re.search(r'[0-9\.]*[0-9]', remver)
-
-        if remver is None:
-            return False
-
-        remver = tuple(map(int, remver.group(0).split('.')))
 
         wanted = tuple(map(int, version.split('.')))
 
