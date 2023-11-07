@@ -565,11 +565,6 @@ BASE_QUERY_BGWRITER_SAMPLE = """
       row_number() OVER (ORDER BY bgw_history.ts) AS number,
       count(*) OVER () AS total,
       ts,
-      sum(checkpoints_timed) AS checkpoints_timed,
-      sum(checkpoints_req) AS checkpoints_req,
-      sum(checkpoint_write_time) AS checkpoint_write_time,
-      sum(checkpoint_sync_time) AS checkpoint_sync_time,
-      sum(buffers_checkpoint) AS buffers_checkpoint,
       sum(buffers_clean) AS buffers_clean,
       sum(maxwritten_clean) AS maxwritten_clean,
       sum(buffers_backend) AS buffers_backend,
@@ -592,6 +587,36 @@ BASE_QUERY_BGWRITER_SAMPLE = """
       ) AS bgw_history
       GROUP BY bgw_history.srvid, bgw_history.ts
     ) AS bgw
+    WHERE number %% ( int8larger((total)/(%(samples)s+1),1) ) = 0
+"""
+
+
+BASE_QUERY_CHECKPOINTER_SAMPLE = """
+    (SELECT srvid,
+      row_number() OVER (ORDER BY cpt_history.ts) AS number,
+      count(*) OVER () AS total,
+      ts,
+      num_timed,
+      num_requested,
+      write_time,
+      sync_time,
+      buffers_written
+      FROM (
+        SELECT *
+        FROM (
+          SELECT srvid, (unnest(records)).*
+          FROM {powa}.powa_stat_checkpointer_history cpth
+          WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+          AND cpth.srvid = %(server)s
+        ) AS unnested
+        WHERE ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        UNION ALL
+        SELECT srvid, (record).*
+        FROM {powa}.powa_stat_checkpointer_history_current cptc
+        WHERE (cptc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        AND cptc.srvid = %(server)s
+      ) AS cpt_history
+    ) AS cpt
     WHERE number %% ( int8larger((total)/(%(samples)s+1),1) ) = 0
 """
 
@@ -1132,16 +1157,37 @@ def powa_get_bgwriter_sample():
     all_cols = base_columns + [
         "ts",
         biggest("ts", "'0 s'", "mesure_interval"),
-        biggestsum("checkpoints_timed"),
-        biggestsum("checkpoints_req"),
-        biggestsum("checkpoint_write_time"),
-        biggestsum("checkpoint_sync_time"),
-        biggestsum("buffers_checkpoint"),
         biggestsum("buffers_clean"),
         biggestsum("maxwritten_clean"),
         biggestsum("buffers_backend"),
         biggestsum("buffers_backend_fsync"),
         biggestsum("buffers_alloc"),
+    ]
+
+    return """SELECT {all_cols}
+    FROM {base_query}
+    GROUP BY {base_columns}, ts""".format(
+        all_cols=', '.join(all_cols),
+        base_columns=', '.join(base_columns),
+        base_query=base_query
+    )
+
+
+def powa_get_checkpointer_sample():
+    base_query = BASE_QUERY_CHECKPOINTER_SAMPLE
+    base_columns = ["srvid"]
+
+    biggest = Biggest(base_columns, 'ts')
+    biggestsum = Biggestsum(base_columns, 'ts')
+
+    all_cols = base_columns + [
+        "ts",
+        biggest("ts", "'0 s'", "mesure_interval"),
+        biggestsum("num_timed"),
+        biggestsum("num_requested"),
+        biggestsum("write_time"),
+        biggestsum("sync_time"),
+        biggestsum("buffers_written"),
     ]
 
     return """SELECT {all_cols}

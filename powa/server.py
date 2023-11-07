@@ -16,6 +16,7 @@ from powa.sql.views_graph import (powa_getstatdata_sample,
                                   powa_get_pgsa_sample,
                                   powa_get_archiver_sample,
                                   powa_get_bgwriter_sample,
+                                  powa_get_checkpointer_sample,
                                   powa_get_replication_sample,
                                   powa_get_all_idx_sample,
                                   powa_get_all_tbl_sample,
@@ -495,30 +496,6 @@ class GlobalBgwriterMetricGroup(MetricGroupDef):
     name = "bgwriter"
     xaxis = "ts"
     data_url = r"/server/(\d+)/metrics/bgwriter/"
-    checkpoints_timed = MetricDef(label="# of scheduled checkpoints",
-                                  type="number",
-                                  desc="Number of scheduled checkpoints that"
-                                       " have been performed")
-    checkpoints_req = MetricDef(label="# of requested checkpoints",
-                                type="number",
-                                desc="Number of requested checkpoints that"
-                                     " have been performed")
-    checkpoint_write_time = MetricDef(label="Write time",
-                                      type="duration",
-                                      desc="Total amount of time that has been"
-                                      " spent in the portion of checkpoint"
-                                      " processing where files are written to"
-                                      " disk, in milliseconds")
-    checkpoint_sync_time = MetricDef(label="Sync time",
-                                     type="duration",
-                                     desc="Total amount of time that has been"
-                                     " spent in the portion of checkpoint"
-                                     " processing where files are synchronized"
-                                     " to disk, in milliseconds")
-    buffers_checkpoint = MetricDef(label="Buffers checkpoint",
-                                   type="sizerate",
-                                   desc="Number of buffers written during"
-                                   " checkpoints")
     buffers_clean = MetricDef(label="Buffers clean",
                               type="sizerate",
                               desc="Number of buffers written by the"
@@ -552,16 +529,72 @@ class GlobalBgwriterMetricGroup(MetricGroupDef):
 
         cols = ["sub.srvid",
                 "extract(epoch FROM sub.ts) AS ts",
-                "sum(sub.checkpoints_timed) AS checkpoints_timed",
-                "sum(sub.checkpoints_req) AS checkpoints_req",
-                sum_per_sec("checkpoint_write_time", prefix="sub"),
-                sum_per_sec("checkpoint_sync_time", prefix="sub"),
-                byte_per_sec("buffers_checkpoint", prefix="sub"),
                 byte_per_sec("buffers_clean", prefix="sub"),
                 sum_per_sec("maxwritten_clean", prefix="sub"),
                 byte_per_sec("buffers_backend", prefix="sub"),
                 sum_per_sec("buffers_backend_fsync", prefix="sub"),
                 byte_per_sec("buffers_alloc", prefix="sub")
+                ]
+
+        return """SELECT {cols}
+        FROM (
+            {from_clause}
+        ) AS sub
+        CROSS JOIN {bs}
+        WHERE sub.mesure_interval != '0 s'
+        GROUP BY sub.srvid, sub.ts, block_size, sub.mesure_interval
+        ORDER BY sub.ts""".format(
+            cols=', '.join(cols),
+            from_clause=from_clause,
+            bs=bs
+        )
+
+class GlobalCheckpointerMetricGroup(MetricGroupDef):
+    """
+    Metric group used by bgwriter graphs.
+    """
+    name = "checkpointer"
+    xaxis = "ts"
+    data_url = r"/server/(\d+)/metrics/checkpointer/"
+    num_timed = MetricDef(label="# of scheduled checkpoints",
+                          type="number",
+                          desc="Number of scheduled checkpoints that"
+                               " have been performed")
+    num_requested = MetricDef(label="# of requested checkpoints",
+                              type="number",
+                              desc="Number of requested checkpoints that"
+                                   " have been performed")
+    write_time = MetricDef(label="Write time",
+                           type="duration",
+                           desc="Total amount of time that has been"
+                           " spent in the portion of checkpoint"
+                           " processing where files are written to"
+                           " disk, in milliseconds")
+    sync_time = MetricDef(label="Sync time",
+                          type="duration",
+                          desc="Total amount of time that has been"
+                          " spent in the portion of checkpoint"
+                          " processing where files are synchronized"
+                          " to disk, in milliseconds")
+    buffers_written = MetricDef(label="Buffers checkpoint",
+                                type="sizerate",
+                                desc="Number of buffers written during"
+                                " checkpoints")
+
+    @property
+    def query(self):
+        bs = block_size
+        query = powa_get_checkpointer_sample()
+
+        from_clause = query
+
+        cols = ["sub.srvid",
+                "extract(epoch FROM sub.ts) AS ts",
+                "sum(sub.num_timed) AS num_timed",
+                "sum(sub.num_requested) AS num_requested",
+                sum_per_sec("write_time", prefix="sub"),
+                sum_per_sec("sync_time", prefix="sub"),
+                byte_per_sec("buffers_written", prefix="sub"),
                 ]
 
         return """SELECT {cols}
@@ -891,7 +924,8 @@ class ServerOverview(DashboardPage):
     base_url = r"/server/(\d+)/overview/"
     datasources = [GlobalDatabasesMetricGroup, ByDatabaseMetricGroup,
                    ByDatabaseWaitSamplingMetricGroup, GlobalWaitsMetricGroup,
-                   GlobalBgwriterMetricGroup, GlobalAllRelMetricGroup,
+                   GlobalBgwriterMetricGroup, GlobalCheckpointerMetricGroup,
+                   GlobalAllRelMetricGroup,
                    GlobalUserFctMetricGroup, ByDatabaseUserFuncMetricGroup,
                    ConfigChangesGlobal, GlobalPGSAMetricGroup,
                    GlobalArchiverMetricGroup, GlobalReplicationMetricGroup,
@@ -959,14 +993,14 @@ class ServerOverview(DashboardPage):
                             ]]
             graphs_dash.append(Dashboard("WALs", wals_graphs))
 
-        # Add pg_stat_bgwriter graphs
+        # Add pg_stat_bgwriter / pg_stat_checkpointer graphs
         bgw_graphs = [[Graph("Checkpointer scheduling",
-                      metrics=[GlobalBgwriterMetricGroup.checkpoints_timed,
-                               GlobalBgwriterMetricGroup.checkpoints_req]),
+                      metrics=[GlobalCheckpointerMetricGroup.num_timed,
+                               GlobalCheckpointerMetricGroup.num_requested]),
                       Graph("Checkpointer activity",
-                      metrics=[GlobalBgwriterMetricGroup.checkpoint_write_time,
-                               GlobalBgwriterMetricGroup.checkpoint_sync_time,
-                               GlobalBgwriterMetricGroup.buffers_checkpoint,
+                      metrics=[GlobalCheckpointerMetricGroup.write_time,
+                               GlobalCheckpointerMetricGroup.sync_time,
+                               GlobalCheckpointerMetricGroup.buffers_written,
                                GlobalBgwriterMetricGroup.buffers_alloc])],
                       [Graph("Background writer",
                        metrics=[GlobalBgwriterMetricGroup.buffers_clean,
@@ -976,7 +1010,7 @@ class ServerOverview(DashboardPage):
                                 GlobalBgwriterMetricGroup.buffers_backend_fsync
                                 ])
                        ]]
-        graphs_dash.append(Dashboard("Background Writer", bgw_graphs))
+        graphs_dash.append(Dashboard("Background Writer / Checkpointer", bgw_graphs))
 
         # Add archiver / replication graphs
         arch_graphs = [[Graph("Archiver",
