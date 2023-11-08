@@ -337,7 +337,7 @@ onMounted(async () => {
   watch(
     () => store.dataSources,
     () => {
-      loadData();
+      sourceConfig && loadData();
     },
     { immediate: true }
   );
@@ -378,6 +378,13 @@ function initChart() {
       return metric.split(".")[0];
     })
   );
+  if (metricGroup.length > 1) {
+    console.error(
+      "metrics from different datasources on a single widget are not supported"
+    );
+    return;
+  }
+
   sourceConfig = store.dataSources[metricGroup];
 
   stacked = props.config.stack;
@@ -634,11 +641,11 @@ function drawOrUpdateChart() {
 }
 
 function getLabel(metric) {
-  return sourceConfig.metrics[metric].label;
+  return sourceConfig && sourceConfig.metrics[metric].label;
 }
 
 function getDesc(metric) {
-  return sourceConfig.metrics[metric].desc;
+  return sourceConfig && sourceConfig.metrics[metric].desc;
 }
 
 function pointermoved(event) {
