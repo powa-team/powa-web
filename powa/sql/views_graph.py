@@ -565,11 +565,11 @@ BASE_QUERY_BGWRITER_SAMPLE = """
       row_number() OVER (ORDER BY bgw_history.ts) AS number,
       count(*) OVER () AS total,
       ts,
-      sum(buffers_clean) AS buffers_clean,
-      sum(maxwritten_clean) AS maxwritten_clean,
-      sum(buffers_backend) AS buffers_backend,
-      sum(buffers_backend_fsync) AS buffers_backend_fsync,
-      sum(buffers_alloc) AS buffers_alloc
+      buffers_clean,
+      maxwritten_clean,
+      buffers_backend,
+      buffers_backend_fsync,
+      buffers_alloc
       FROM (
         SELECT *
         FROM (
@@ -585,7 +585,6 @@ BASE_QUERY_BGWRITER_SAMPLE = """
         WHERE (bgwc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
         AND bgwc.srvid = %(server)s
       ) AS bgw_history
-      GROUP BY bgw_history.srvid, bgw_history.ts
     ) AS bgw
     WHERE number %% ( int8larger((total)/(%(samples)s+1),1) ) = 0
 """
