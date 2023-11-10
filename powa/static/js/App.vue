@@ -2,25 +2,25 @@
   <v-app>
     <v-app-bar app elevation="2" height="40px;">
       <v-btn
-        :to="handler.homeUrl"
+        :to="store.handlerConfig.homeUrl"
         class="mr-2"
         text
         color="primary"
         exact-path
         elevation="0"
       >
-        <img :src="handler.logoUrl" />&nbsp;<b>PoWA</b>
+        <img :src="store.handlerConfig.logoUrl" />&nbsp;<b>PoWA</b>
       </v-btn>
-      <template v-if="handler.currentUser">
+      <template v-if="store.handlerConfig.currentUser">
         <v-toolbar-title text class="mr-2 text-body-1">
-          Server <b>{{ handler.currentServer }}</b> ({{
-            handler.currentConnection
+          Server <b>{{ store.handlerConfig.currentServer }}</b> ({{
+            store.handlerConfig.currentConnection
           }})
         </v-toolbar-title>
         <v-btn
           text
           color="primary"
-          :to="handler.configUrl"
+          :to="store.handlerConfig.configUrl"
           title="Configuration"
         >
           <v-icon left>
@@ -28,7 +28,7 @@
           </v-icon>
           Configuration
         </v-btn>
-        <v-menu v-if="handler.notifyAllowed" offset-y>
+        <v-menu v-if="store.handlerConfig.notifyAllowed" offset-y>
           <template #activator="{ on, attrs }">
             <v-btn text color="primary" v-bind="attrs" v-on="on">
               <v-icon left>
@@ -42,22 +42,22 @@
               <v-list-item-title> Reload collector </v-list-item-title>
             </v-list-item>
             <v-list-item
-              v-if="handler.server"
+              v-if="store.handlerConfig.server"
               link
-              @click="forceSnapshot(handler.server)"
+              @click="forceSnapshot(store.handlerConfig.server)"
             >
               <v-list-item-title> Force a snapshot </v-list-item-title>
             </v-list-item>
             <v-list-item
-              v-if="handler.server"
+              v-if="store.handlerConfig.server"
               link
-              :data-dbname="handler.database"
-              @click="refreshDbCat(handler.server, $event)"
+              :data-dbname="store.handlerConfig.database"
+              @click="refreshDbCat(store.handlerConfig.server, $event)"
             >
               <v-list-item-title>
                 Refresh catalogs
-                <span v-if="handler.database">
-                  on db {{ handler.database }}</span
+                <span v-if="store.handlerConfig.database">
+                  on db {{ store.handlerConfig.database }}</span
                 >
                 <span v-else> on all db</span>
               </v-list-item-title>
@@ -66,7 +66,7 @@
         </v-menu>
 
         <v-spacer></v-spacer>
-        <v-btn text color="primary" :href="handler.logoutUrl">
+        <v-btn text color="primary" :href="store.handlerConfig.logoutUrl">
           <v-icon left>
             {{ icons.mdiPower }}
           </v-icon>
@@ -81,7 +81,7 @@
           </template>
         </v-switch>
       </template>
-      <template v-if="handler.currentUser" #extension>
+      <template v-if="store.handlerConfig.currentUser" #extension>
         <bread-crumbs :bread-crumb-items="store.breadcrumbs"></bread-crumbs>
         <v-spacer></v-spacer>
         <date-range-picker ml-auto></date-range-picker>
@@ -106,13 +106,13 @@
           <v-flex>
             <ul style="margin-bottom: 0; padding-left: 0">
               <li style="display: inline-block">
-                Version {{ handler.version }}
+                Version {{ store.handlerConfig.version }}
               </li>
               <li style="display: inline-block" class="ml-5">
                 &copy; 2014-2017 Dalibo
               </li>
               <li style="display: inline-block" class="ml-5">
-                &copy; 2018-{{ handler.year }} The PoWA-team
+                &copy; 2018-{{ store.handlerConfig.year }} The PoWA-team
               </li>
               <li style="display: inline-block" class="ml-5">
                 <a href="https://powa.readthedocs.io"
@@ -170,11 +170,7 @@ import BreadCrumbs from "@/components/BreadCrumbs.vue";
 import DateRangePicker from "@/components/DateRangePicker/DateRangePicker.vue";
 import LoginView from "@/components/LoginView.vue";
 
-let handler;
 const instance = getCurrentInstance();
-document.querySelectorAll('script[type="text/handler"]').forEach(function (el) {
-  handler = JSON.parse(el.innerText);
-});
 
 let servers;
 document.querySelectorAll('script[type="text/servers"]').forEach(function (el) {
@@ -187,6 +183,7 @@ onMounted(() => {
 });
 
 function initDashboard() {
+  store.handlerConfig = {};
   store.dashboardConfig = null;
   // Load dahsboard config from same url but asking for JSON instead of HTML
   d3.json(window.location.href, {
