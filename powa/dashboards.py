@@ -87,6 +87,7 @@ class DashboardHandler(AuthHandler):
                     timeline=param_timeline,
                     title=title,
                     breadcrumbs=breadcrumbs,
+                    handler=self.to_json(),
                 )
             )
 
