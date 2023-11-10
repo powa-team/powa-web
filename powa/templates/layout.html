@@ -47,9 +47,6 @@
       </div>
     </div>
     {% block data %} {% end %}
-    <script type="text/handler">
-    {% raw to_json(handler) %}
-    </script>
     <script type="text/messages">
     {% raw to_json(dict(flashed_messages().items())) %}
     </script>
