@@ -551,7 +551,7 @@ function drawOrUpdateChart() {
         if (chosenMetrics.value.includes(metric)) {
           max = Math.max(
             max,
-            d3.max(data, (d) => d[metric])
+            d3.max(data, (d) => d[metric] || 0)
           );
         }
       });
