@@ -9,6 +9,7 @@ let messageId = 1;
 
 const store = reactive({
   dashboardConfig: null,
+  handlerConfig: {},
   dataSources: {},
   changesUrl: "",
   changes: [],
@@ -34,6 +35,7 @@ const store = reactive({
     document.title = config.dashboard.title;
     store.dataSources = {};
     store.dashboardConfig = config.dashboard;
+    store.handlerConfig = config.handler;
     _.each(config.datasources, function (dataSource) {
       try {
         if (dataSource.type == "metric_group") {
