@@ -190,7 +190,17 @@ def powa_getstatdata_sample(mode, predicates=[]):
         biggestsum("temp_blk_write_time"),
         biggestsum("wal_records"),
         biggestsum("wal_fpi"),
-        biggestsum("wal_bytes")
+        biggestsum("wal_bytes"),
+        biggestsum("jit_functions"),
+        biggestsum("jit_generation_time"),
+        biggestsum("jit_inlining_count"),
+        biggestsum("jit_inlining_time"),
+        biggestsum("jit_optimization_count"),
+        biggestsum("jit_optimization_time"),
+        biggestsum("jit_emission_count"),
+        biggestsum("jit_emission_time"),
+        biggestsum("jit_deform_count"),
+        biggestsum("jit_deform_time"),
     ]
 
     return """SELECT {cols}
