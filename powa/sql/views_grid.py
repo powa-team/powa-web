@@ -372,7 +372,17 @@ def get_diffs_forstatdata():
         diff("temp_blk_write_time"),
         diff("wal_records"),
         diff("wal_fpi"),
-        diff("wal_bytes")
+        diff("wal_bytes"),
+        diff("jit_functions"),
+        diff("jit_generation_time"),
+        diff("jit_inlining_count"),
+        diff("jit_inlining_time"),
+        diff("jit_optimization_count"),
+        diff("jit_optimization_time"),
+        diff("jit_emission_count"),
+        diff("jit_emission_time"),
+        diff("jit_deform_count"),
+        diff("jit_deform_time"),
     ]
 
 
