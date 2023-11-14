@@ -82,6 +82,38 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
                        desc="Number of voluntary context switches")
     nivcsws = MetricDef(label="Involuntary context switches", type="number",
                         desc="Number of involuntary context switches")
+    jit_functions = MetricDef(label="# of JIT functions", type="integer",
+                              desc="Total number of emitted functions")
+    jit_generation_time = MetricDef(label="JIT generation time",
+                                    type="duration",
+                                    desc="Total time spent generating code")
+    jit_inlining_count = MetricDef(label="# of JIT inlining", type="integer",
+                                   desc="Number of queries where inlining was"
+                                   " done")
+    jit_inlining_time = MetricDef(label="JIT inlining time", type="duration",
+                                   desc="Total time spent inlining code")
+    jit_optimization_count = MetricDef(label="# of JIT optimization",
+                                       type="integer",
+                                       desc="Number of queries where"
+                                            " optimization was done")
+    jit_optimization_time = MetricDef(label="JIT optimization time",
+                                      type="duration",
+                                      desc="Total time spent optimizing code")
+    jit_emission_count = MetricDef(label="# of JIT emission", type="integer",
+                                   desc="Number of queries where emission was"
+                                        " done")
+    jit_emission_time = MetricDef(label="JIT emission time", type="duration",
+                                  desc="Total time spent emitting code")
+    jit_deform_count = MetricDef(label="# of JIT tuple deforming",
+                                 type="integer",
+                                 desc="Number of queries where tuple deforming"
+                                      " was done")
+    jit_deform_time = MetricDef(label="JIT tuple deforming time",
+                                type="duration",
+                                desc="Total time spent deforming tuple")
+    jit_expr_time = MetricDef(label="JIT expression generation time",
+                              type="duration",
+                              desc="Total time spent generating expressions")
 
     @classmethod
     def _get_metrics(cls, handler, **params):
@@ -99,6 +131,20 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
                                              'pg_stat_statements', '1.8'):
             for key in ("planload", "wal_records", "wal_fpi", "wal_bytes"):
                 base.pop(key)
+
+        if not handler.has_extension_version(handler.path_args[0],
+                                             'pg_stat_statements', '1.10'):
+            for key in ("jit_functions", "jit_generation_time",
+                        "jit_inlining_count", "jit_inlining_time",
+                        "jit_optimization_count", "jit_optimization_time",
+                        "jit_emission_count", "jit_emission_time"):
+                base.pop(key)
+
+        if not handler.has_extension_version(handler.path_args[0],
+                                             'pg_stat_statements', '1.11'):
+            for key in ("jit_deform_count", "jit_deform_time", "jit_expr_time"):
+                base.pop(key)
+
         return base
 
     @property
@@ -123,6 +169,27 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
                 sum_per_sec('wal_fpi', prefix='sub'),
                 sum_per_sec('wal_bytes', prefix='sub'),
                 ])
+
+        if self.has_extension_version(self.path_args[0],
+                                      'pg_stat_statements', '1.10'):
+            cols.extend([
+                sum_per_sec('jit_functions'),
+                sum_per_sec('jit_generation_time'),
+                sum_per_sec('jit_inlining_count'),
+                sum_per_sec('jit_inlining_time'),
+                sum_per_sec('jit_optimization_count'),
+                sum_per_sec('jit_optimization_time'),
+                sum_per_sec('jit_emission_count'),
+                sum_per_sec('jit_emission_time'),
+            ])
+
+        if self.has_extension_version(self.path_args[0],
+                                      'pg_stat_statements', '1.11'):
+            cols.extend([
+                sum_per_sec('jit_deform_count'),
+                sum_per_sec('jit_deform_time'),
+                sum_per_sec('jit_generation_time - jit_deform_time', alias='jit_expr_time'),
+            ])
 
         from_clause = query
 
@@ -533,6 +600,8 @@ class ByQueryMetricGroup(MetricGroupDef):
     wal_records = MetricDef(label="#Wal records", type="integer")
     wal_fpi = MetricDef(label="#Wal FPI", type="integer")
     wal_bytes = MetricDef(label="Wal bytes", type="size")
+    jit_functions = MetricDef(label="#Functions", type="integer")
+    jit_time = MetricDef(label="Time", type="duration")
 
     @classmethod
     def _get_metrics(cls, handler, **params):
@@ -542,6 +611,12 @@ class ByQueryMetricGroup(MetricGroupDef):
                                              'pg_stat_statements', '1.8'):
             for key in ("plantime", "wal_records", "wal_fpi", "wal_bytes"):
                 base.pop(key)
+
+        if not handler.has_extension_version(handler.path_args[0],
+                                             'pg_stat_statements', '1.10'):
+            base.pop("jit_functions")
+            base.pop("jit_time")
+
         return base
 
     # TODO: refactor with GlobalDatabasesMetricGroup
@@ -579,6 +654,15 @@ class ByQueryMetricGroup(MetricGroupDef):
                 "sum(sub.wal_fpi) AS wal_fpi",
                 "sum(sub.wal_bytes) AS wal_bytes"
                 ])
+
+        if self.has_extension_version(self.path_args[0], 'pg_stat_statements',
+                                      '1.10'):
+            cols.extend([
+                    "sum(jit_functions) AS jit_functions",
+                    "sum(jit_generation_time + jit_inlining_time"
+                    + " + jit_optimization_time + jit_emission_time)"
+                    + " AS jit_time"
+                    ])
 
         from_clause = """(
                 {inner_query}
@@ -710,6 +794,10 @@ class DatabaseOverview(DashboardPage):
 
         pgss18 = self.has_extension_version(self.path_args[0],
                                             'pg_stat_statements', '1.8')
+        pgss110 = self.has_extension_version(self.path_args[0],
+                                             'pg_stat_statements', '1.10')
+        pgss111 = self.has_extension_version(self.path_args[0],
+                                             'pg_stat_statements', '1.11')
 
         self._dashboard = Dashboard("Database overview for %(database)s")
 
@@ -760,6 +848,34 @@ class DatabaseOverview(DashboardPage):
                                      DatabaseOverviewMetricGroup.wal_bytes]),
                             ]]
             graphs_dash.append(Dashboard("WALs", wals_graphs))
+
+        # Add JIT graphs
+        if pgss110:
+            jit_tim = [DatabaseOverviewMetricGroup.jit_inlining_time,
+                       DatabaseOverviewMetricGroup.jit_optimization_time,
+                       DatabaseOverviewMetricGroup.jit_emission_time,
+                      ]
+
+            if pgss111:
+                jit_tim.extend([DatabaseOverviewMetricGroup.jit_deform_time,
+                                DatabaseOverviewMetricGroup.jit_expr_time])
+            else:
+                jit_tim.append(DatabaseOverviewMetricGroup.jit_generation_time)
+
+            jit_cnt = [DatabaseOverviewMetricGroup.jit_functions,
+                       DatabaseOverviewMetricGroup.jit_inlining_count,
+                       DatabaseOverviewMetricGroup.jit_optimization_count,
+                       DatabaseOverviewMetricGroup.jit_emission_count,
+                      ]
+
+            if pgss111:
+                jit_cnt.append(DatabaseOverviewMetricGroup.jit_deform_count)
+
+            jit_graphs = [[Graph("JIT timing", metrics=jit_tim,
+                                 stack=True)],
+                          [Graph("JIT scheduling", metrics=jit_cnt)]]
+
+            graphs_dash.append(Dashboard("JIT", jit_graphs))
 
         # Add pg_stat_database graphs
         global_db_graphs = [[Graph("Transactions per second",
@@ -893,6 +1009,13 @@ class DatabaseOverview(DashboardPage):
                        'name': 'WALs',
                        'merge': False,
                        'colspan': 3
+                       }])
+
+        if pgss110:
+            toprow.extend([{
+                       'name': 'JIT',
+                       'merge': False,
+                       'colspan': 2
                        }])
         self._dashboard.widgets.extend(
             [graphs,
