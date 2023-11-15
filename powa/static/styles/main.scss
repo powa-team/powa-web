@@ -54,6 +54,11 @@ td {
     color: inherit !important;
 }
 
+.v-icon.v-icon::after {
+    font-size: 1.5em;
+    transform: none;
+}
+
 .v-application{
   background: var(--v-mainbg-base);
 }
