@@ -585,18 +585,18 @@ class ByQueryMetricGroup(MetricGroupDef):
     xaxis = "queryid"
     axis_type = "category"
     data_url = r"/server/(\d+)/metrics/database_all_queries/([^\/]+)/"
-    calls = MetricDef(label="#", type="integer")
     plantime = MetricDef(label="Plantime", type="duration")
+    calls = MetricDef(label="#", type="integer")
     runtime = MetricDef(label="Time", type="duration", direction="descending")
     avg_runtime = MetricDef(label="Avg time", type="duration")
-    blks_read_time = MetricDef(label="Total Read", type="duration")
-    blks_write_time = MetricDef(label="Total Write", type="duration")
     shared_blks_read = MetricDef(label="Read", type="size")
     shared_blks_hit = MetricDef(label="Hit", type="size")
     shared_blks_dirtied = MetricDef(label="Dirtied", type="size")
     shared_blks_written = MetricDef(label="Written", type="size")
     temp_blks_read = MetricDef(label="Read", type="size")
     temp_blks_written = MetricDef(label="Written", type="size")
+    blks_read_time = MetricDef(label="Total Read", type="duration")
+    blks_write_time = MetricDef(label="Total Write", type="duration")
     wal_records = MetricDef(label="#Wal records", type="integer")
     wal_fpi = MetricDef(label="#Wal FPI", type="integer")
     wal_bytes = MetricDef(label="Wal bytes", type="size")
@@ -992,15 +992,15 @@ class DatabaseOverview(DashboardPage):
                        'merge': False,
                        'colspan': 3
                    }, {
-                       'name': 'I/O Time',
-                       'merge': False,
-                       'colspan': 2
-                   }, {
                        'name': 'Blocks',
                        'merge': False,
                        'colspan': 4,
                    }, {
                        'name': 'Temp blocks',
+                       'merge': False,
+                       'colspan': 2
+                   }, {
+                       'name': 'I/O Time',
                        'merge': False,
                        'colspan': 2
                    }]
