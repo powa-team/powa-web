@@ -51,21 +51,22 @@ class ByDatabaseMetricGroup(MetricGroupDef):
     xaxis = "datname"
     data_url = r"/server/(\d+)/metrics/by_databases/"
     axis_type = "category"
-    calls = MetricDef(label="#Calls", type="integer", direction="descending")
     plantime = MetricDef(label="Plantime", type="duration")
+    calls = MetricDef(label="#Calls", type="integer", direction="descending")
     runtime = MetricDef(label="Runtime", type="duration")
     avg_runtime = MetricDef(label="Avg runtime", type="duration")
-    shared_blks_read = MetricDef(label="Blocks read", type="size")
-    shared_blks_hit = MetricDef(label="Blocks hit", type="size")
-    shared_blks_dirtied = MetricDef(label="Blocks dirtied", type="size")
-    shared_blks_written = MetricDef(label="Blocks written", type="size")
-    temp_blks_written = MetricDef(label="Temp Blocks written", type="size")
-    io_time = MetricDef(label="I/O time", type="duration")
-    wal_records = MetricDef(label="#Wal records", type="integer")
-    wal_fpi = MetricDef(label="#Wal FPI", type="integer")
-    wal_bytes = MetricDef(label="Wal bytes", type="size")
-    jit_functions = MetricDef(label="JIT functions", type="integer")
-    jit_time = MetricDef(label="JIT time", type="duration")
+    shared_blks_read = MetricDef(label="Read", type="size")
+    shared_blks_hit = MetricDef(label="Hit", type="size")
+    shared_blks_dirtied = MetricDef(label="Dirtied", type="size")
+    shared_blks_written = MetricDef(label="Written", type="size")
+    temp_blks_read = MetricDef(label="Read", type="size")
+    temp_blks_written = MetricDef(label="Written", type="size")
+    io_time = MetricDef(label="Time", type="duration")
+    wal_records = MetricDef(label="#records", type="integer")
+    wal_fpi = MetricDef(label="#FPI", type="integer")
+    wal_bytes = MetricDef(label="Bytes", type="size")
+    jit_functions = MetricDef(label="Functions", type="integer")
+    jit_time = MetricDef(label="Time", type="duration")
     params = ["server"]
 
     @classmethod
@@ -104,6 +105,7 @@ class ByDatabaseMetricGroup(MetricGroupDef):
             mulblock('shared_blks_hit', fn="sum"),
             mulblock('shared_blks_dirtied', fn="sum"),
             mulblock('shared_blks_written', fn="sum"),
+            mulblock('temp_blks_read', fn="sum"),
             mulblock('temp_blks_written', fn="sum"),
             "round(cast(sum(shared_blk_read_time + shared_blk_write_time"
                 + " + local_blk_read_time + local_blk_write_time"
@@ -1311,8 +1313,35 @@ class ServerOverview(DashboardPage):
                         url=self.docs_stats_url + "pg_wait_sampling.html",
                         metrics=metrics)]]))
 
+        toprow = [{
+                       'merge': True
+                   }, {
+                       'name': 'Execution',
+                       'merge': False,
+                       'colspan': 3
+                   }, {
+                       'name': 'Blocks',
+                       'merge': False,
+                       'colspan': 4,
+                   }, {
+                       'name': 'Temp blocks',
+                       'merge': False,
+                       'colspan': 2
+                   }, {
+                       'name': 'I/O',
+                       'merge': False,
+                   }, {
+                       'name': 'WAL',
+                       'merge': False,
+                       'colspan': 3
+                   }, {
+                       'name': 'JIT',
+                       'merge': False,
+                       'colspan': 2
+                   }]
         dashes = [graphs,
                   [Grid("Details for all databases",
+                        toprow=toprow,
                         columns=[{
                             "name": "datname",
                             "label": "Database",
