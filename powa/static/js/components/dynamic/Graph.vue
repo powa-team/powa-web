@@ -86,7 +86,7 @@
             changesTooltip.y
           }px) translateX(${tooltipTranslateX(
             changesTooltip
-          )}) translateY(-50%)`"
+          )}) translateY(${tooltipTranslateY(changesTooltip)})`"
         >
           <b>{{ timeFormat(changesTooltip.event.date) }}</b>
           <br />
@@ -769,6 +769,10 @@ function changesLoaded() {
 
 function tooltipTranslateX(tooltip) {
   return tooltip.clientX > window.innerWidth / 2 ? "-120%" : "20%";
+}
+
+function tooltipTranslateY(tooltip) {
+  return tooltip.clientY > window.innerHeight / 2 ? "-100%" : "0";
 }
 
 function metricsByAxis(axis) {
