@@ -96,35 +96,40 @@
               changesTooltip.event.kind == 'rds'
             "
           >
-            <v-icon small>{{ mdiInformation }}</v-icon>
-            <b
-              ><u>{{ changesTooltip.event.data.name }}</u></b
+            <ul>
+              <template v-for="(eventData, index) in changesTooltip.event.data">
+                <li v-if="index <= 5" :key="eventData.name">
+                  <b>{{ eventData.name }}</b>
+                  changed:<br />
+                  <v-chip label class="ma-2 pa-2" small>
+                    <v-icon v-if="eventData.prev_is_dropped" small>{{
+                      mdiCancel
+                    }}</v-icon>
+                    <span v-else>{{ eventData.prev_val }}</span>
+                  </v-chip>
+                  →
+                  <v-chip label class="ma-2 pa-2" small>
+                    <v-icon v-if="eventData.is_dropped" small>{{
+                      mdiCancel
+                    }}</v-icon>
+                    <span v-else>{{ eventData.new_val || "&emsp;" }}</span>
+                  </v-chip>
+                  <template v-if="eventData.datname">
+                    <br />on database <b>{{ eventData.datname }}</b>
+                  </template>
+                  <template v-if="eventData.setrole && eventData.setrole != 0">
+                    <br />for role <b>{{ eventData.setrole }}</b>
+                  </template>
+                </li>
+              </template>
+            </ul>
+            <div
+              v-if="changesTooltip.event.data.length > 5"
+              class="font-weight-light font-italic"
             >
-            changed:<br />
-            <b>
-              <v-icon v-if="changesTooltip.event.data.prev_is_dropped" small>{{
-                mdiCancel
-              }}</v-icon>
-              <span v-else>{{ changesTooltip.event.data.prev_val }}</span>
-            </b>
-            ➡
-            <b>
-              <v-icon v-if="changesTooltip.event.data.is_dropped" small>{{
-                mdiCancel
-              }}</v-icon>
-              <span v-else>{{ changesTooltip.event.data.new_val }}</span>
-            </b>
-            <template v-if="changesTooltip.event.data.datname">
-              <br />on database <b>{{ changesTooltip.event.data.datname }}</b>
-            </template>
-            <template
-              v-if="
-                changesTooltip.event.data.setrole &&
-                changesTooltip.event.data.setrole != 0
-              "
-            >
-              <br />for role <b>{{ changesTooltip.event.data.setrole }}</b>
-            </template>
+              + {{ changesTooltip.event.data.length - 5 }} other settings
+              changed
+            </div>
           </template>
           <template v-else-if="changesTooltip.event.kind == 'reboot'">
             <v-icon small>{{ mdiAlert }}</v-icon>
@@ -492,7 +497,27 @@ function loadData() {
     data = JSON.parse(response[0]).data;
     dataLoaded();
     drawOrUpdateChart();
-    changesData = response[1].data;
+
+    // make sure we group changes by ts in order to have one tooltip for each
+    // change date
+    const grouped = _.groupBy(_.cloneDeep(response[1].data), "ts");
+    _.forEach(grouped, (a, key) => {
+      if (_.uniq(_.map(a, "kind")).length > 1) {
+        console.error("Multiple 'kind' values for the same 'ts'");
+      }
+      grouped[key] = Object.assign(a[0], {
+        data: _.reduce(
+          a,
+          (result, n) => {
+            result.push(n.data);
+            return result;
+          },
+          []
+        ),
+      });
+    });
+
+    changesData = _.values(grouped);
     changesLoaded();
     loading.value = false;
   });
