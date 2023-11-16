@@ -42,14 +42,18 @@
               <v-list-item-title> Reload collector </v-list-item-title>
             </v-list-item>
             <v-list-item
-              v-if="store.handlerConfig.server"
+              v-if="
+                store.handlerConfig.server && store.handlerConfig.server != 0
+              "
               link
               @click="forceSnapshot(store.handlerConfig.server)"
             >
               <v-list-item-title> Force a snapshot </v-list-item-title>
             </v-list-item>
             <v-list-item
-              v-if="store.handlerConfig.server"
+              v-if="
+                store.handlerConfig.server && store.handlerConfig.server != 0
+              "
               link
               :data-dbname="store.handlerConfig.database"
               @click="refreshDbCat(store.handlerConfig.server, $event)"
