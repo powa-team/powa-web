@@ -6,6 +6,7 @@ import dynamicComponents from "@/plugins/powa";
 import VueRouter from "vue-router";
 
 import "@/../styles/main.scss";
+import "@/fonts/Roboto/roboto.css";
 
 document
   .querySelectorAll('script[type="text/messages"]')
