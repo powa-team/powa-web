@@ -1,2 +1,2 @@
-psycopg
+psycopg2
 tornado>=2.0
