@@ -780,7 +780,12 @@ class GlobalReplicationMetricGroup(MetricGroupDef):
 
         cols = [
                 "extract(epoch FROM sub.ts) AS ts",
-                "rep_current_lsn - sent_lsn AS sent_lsn",
+                # the datasource retrieves the current lsn first and then the
+                # rest of the counters, so it's entirely possible to get a
+                # slightly negative number here.  If that happens it just means
+                # that there was some activity happening and everything is
+                # working as expected.
+                "greatest(rep_current_lsn - sent_lsn, 0) AS sent_lsn",
                 "sent_lsn - write_lsn AS write_lsn",
                 "write_lsn - flush_lsn AS flush_lsn",
                 "flush_lsn - replay_lsn AS replay_lsn",
