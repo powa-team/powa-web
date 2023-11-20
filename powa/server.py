@@ -23,6 +23,7 @@ from powa.sql.views_graph import (powa_getstatdata_sample,
                                   powa_get_all_tbl_sample,
                                   powa_get_user_fct_sample,
                                   powa_get_database_sample,
+                                  powa_get_database_conflicts_sample,
                                   powa_get_io_sample)
 from powa.sql.views_grid import (powa_getstatdata_db,
                                  powa_getwaitdata_db,
@@ -892,6 +893,66 @@ class GlobalDbActivityMetricGroup(MetricGroupDef):
         )
 
 
+class GlobalDbActivityConflMetricGroup(MetricGroupDef):
+    """
+    Metric group used by the "Recovery conflicts" graph.
+    """
+    name = "all_db_activity_conf"
+    xaxis = "ts"
+    data_url = r"/server/(\d+)/metrics/all_db_activity_conf/"
+    confl_tablespace = MetricDef(label="Tablespaces",
+                                 desc="Total number of queries that have been"
+                                      " been canceled due to drop tablespaces")
+    confl_lock = MetricDef(label="Locks",
+                           desc="Total number of queries that have been "
+                                "canceled due to lock timeouts")
+    confl_snapshot = MetricDef(label="Snapshots",
+                               desc="Total number of queries that have been"
+                                    " canceled due to old snapshots")
+    confl_bufferpin = MetricDef(label="Pinned buffers",
+                                desc="Total number of queries that have been"
+                                     " canceled due to pinned buffers")
+    confl_deadlock = MetricDef(label="Deadlocks",
+                               desc="Total number of queries that have been"
+                                    " canceled due to deadlocks")
+    confl_active_logicalslot = MetricDef(label="Logical slots",
+                            desc="Total number of uses of logical slots that"
+                                 " have canceled due to old snapshots or too"
+                                 " low wal_level on the primary")
+
+    @classmethod
+    def _get_metrics(cls, handler, **params):
+        base = cls.metrics.copy()
+
+        pg_version_num = handler.get_pg_version_num(handler.path_args[0])
+        # if we can't connect to the remote server, assume pg15 or below
+        if pg_version_num is None or pg_version_num < 160000:
+            base.pop('confl_active_logicalslot')
+        return base
+
+    @property
+    def query(self):
+        query = powa_get_database_conflicts_sample()
+
+        cols = ["sub.srvid",
+                "extract(epoch FROM sub.ts) AS ts",
+                "confl_tablespace",
+                "confl_lock",
+                "confl_snapshot",
+                "confl_bufferpin",
+                "confl_deadlock",
+                "confl_active_logicalslot",
+        ]
+
+        return """SELECT {cols}
+        FROM ({query}) sub
+        WHERE sub.mesure_interval != '0 s'
+        ORDER BY sub.ts""".format(
+            cols=', '.join(cols),
+            query=query,
+        )
+
+
 class GlobalAllRelMetricGroup(MetricGroupDef):
     """
     Metric group used by "Database objects" graphs.
@@ -1016,7 +1077,8 @@ class ServerOverview(DashboardPage):
                    GlobalUserFctMetricGroup, ByDatabaseUserFuncMetricGroup,
                    ConfigChangesGlobal, GlobalPGSAMetricGroup,
                    GlobalArchiverMetricGroup, GlobalReplicationMetricGroup,
-                   GlobalDbActivityMetricGroup, GlobalIoMetricGroup,
+                   GlobalDbActivityMetricGroup,
+                   GlobalDbActivityConflMetricGroup, GlobalIoMetricGroup,
                    ByAllIoMetricGroup]
     params = ["server"]
     parent = Overview
@@ -1162,7 +1224,12 @@ class ServerOverview(DashboardPage):
                                        GlobalReplicationMetricGroup.replay_lag,
                                        ],
                               renderer="bar",
-                              stack=True)
+                              stack=True),
+                        Graph("Recovery conflicts",
+                              stack=True,
+                              metrics=GlobalDbActivityConflMetricGroup.all(self)
+                              # metrics=[GlobalDbActivityConflMetricGroup.confl_tablespace]
+                                  )
                         ]]
         graphs_dash.append(Dashboard("Archiver / Replication", arch_graphs))
 
