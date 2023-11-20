@@ -691,6 +691,47 @@ def BASE_QUERY_DATABASE_SAMPLE(per_db=False):
 """.format(extra=extra)
 
 
+def BASE_QUERY_DATABASE_CONFLICTS_SAMPLE(per_db=False):
+    if (per_db):
+        extra = """JOIN {powa}.powa_catalog_databases d
+            ON d.oid = psd_history.datid
+        WHERE d.datname = %(database)s"""
+    else:
+        extra = ""
+
+    return """
+    (SELECT psdc_history.srvid,
+      row_number() OVER (ORDER BY psdc_history.ts) AS number,
+      count(*) OVER () AS total,
+      ts,
+      sum(confl_tablespace) AS confl_tablespace,
+      sum(confl_lock) AS confl_lock,
+      sum(confl_snapshot) AS confl_snapshot,
+      sum(confl_bufferpin) AS confl_bufferpin,
+      sum(confl_deadlock) AS confl_deadlock,
+      sum(confl_active_logicalslot) AS confl_active_logicalslot
+      FROM (
+        SELECT *
+        FROM (
+          SELECT srvid, (unnest(records)).*
+          FROM {{powa}}.powa_stat_database_conflicts_history psdch
+          WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+          AND psdch.srvid = %(server)s
+        ) AS unnested
+        WHERE ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        UNION ALL
+        SELECT srvid, (record).*
+        FROM {{powa}}.powa_stat_database_conflicts_history_current psdcc
+        WHERE (psdcc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        AND psdcc.srvid = %(server)s
+      ) AS psdc_history
+      {extra}
+      GROUP BY psdc_history.srvid, psdc_history.ts
+    ) AS psdc
+    WHERE number %% ( int8larger((total)/(%(samples)s+1),1) ) = 0
+""".format(extra=extra)
+
+
 # We use dense_rank() as we need ALL the records for a specific ts.  Caller
 # will group the data per backend_type, object or other as needed
 BASE_QUERY_IO_SAMPLE = """
@@ -1247,6 +1288,30 @@ def powa_get_database_sample(per_db=False):
             biggest("sessions_fatal"),
             biggest("sessions_killed"),
             "stats_reset",
+            ]
+
+    return """SELECT {all_cols}
+    FROM {base_query}""".format(
+            all_cols=', '.join(all_cols),
+            base_query=base_query
+            )
+
+
+def powa_get_database_conflicts_sample(per_db=False):
+    base_query = BASE_QUERY_DATABASE_CONFLICTS_SAMPLE(per_db)
+    base_columns = ["srvid"]
+
+    biggest = Biggest(base_columns, 'ts')
+
+    all_cols = base_columns + [
+            "ts",
+            biggest("ts", "'0 s'", "mesure_interval"),
+            biggest("confl_tablespace"),
+            biggest("confl_lock"),
+            biggest("confl_snapshot"),
+            biggest("confl_bufferpin"),
+            biggest("confl_deadlock"),
+            biggest("confl_active_logicalslot"),
             ]
 
     return """SELECT {all_cols}
