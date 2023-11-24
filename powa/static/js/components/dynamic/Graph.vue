@@ -1,20 +1,28 @@
 <template>
-  <v-card :loading="loading" outlined>
-    <template #progress>
+  <v-card
+    :loading="loading"
+    variant="flat"
+    border
+    style="overflow: initial; z-index: initial"
+  >
+    <template #loader="{ isActive }">
       <v-progress-linear
         height="2"
+        :active="isActive"
         indeterminate
         style="position: absolute; z-index: 1"
       ></v-progress-linear>
     </template>
-    <v-app-bar flat height="40px;">
-      <v-toolbar-title class="mx-auto">
+    <v-card-item class="bg-surface">
+      <v-card-title>
         {{ config.title }}
-        <v-tooltip bottom transition="fade">
-          <template #activator="{ on, attrs }">
-            <v-icon class="pl-2 text--secondary" v-bind="attrs" v-on="on">
-              {{ mdiInformation }}
-            </v-icon>
+        <v-tooltip location="bottom" content-class="elevation-2">
+          <template #activator="{ props: tooltipProps }">
+            <v-icon
+              class="pl-2 text--secondary"
+              v-bind="tooltipProps"
+              :icon="icons.mdiInformation"
+            ></v-icon>
           </template>
           <div>
             <dl>
@@ -34,11 +42,11 @@
           title="See the documentation"
         >
           <v-icon class="pl-2">
-            {{ mdiLinkVariant }}
+            {{ icons.mdiLinkVariant }}
           </v-icon>
         </a>
-      </v-toolbar-title>
-    </v-app-bar>
+      </v-card-title>
+    </v-card-item>
     <v-card-text>
       <div
         ref="container"
@@ -101,16 +109,16 @@
                 <li v-if="index <= 5" :key="eventData.name">
                   <b>{{ eventData.name }}</b>
                   changed:<br />
-                  <v-chip label class="ma-2 pa-2" small>
-                    <v-icon v-if="eventData.prev_is_dropped" small>{{
-                      mdiCancel
+                  <v-chip label class="ma-2 pa-2" size="small">
+                    <v-icon v-if="eventData.prev_is_dropped" size="small">{{
+                      icons.mdiCancel
                     }}</v-icon>
                     <span v-else>{{ eventData.prev_val }}</span>
                   </v-chip>
                   →
-                  <v-chip label class="ma-2 pa-2" small>
-                    <v-icon v-if="eventData.is_dropped" small>{{
-                      mdiCancel
+                  <v-chip label class="ma-2 pa-2" size="small">
+                    <v-icon v-if="eventData.is_dropped" size="small">{{
+                      icons.mdiCancel
                     }}</v-icon>
                     <span v-else>{{ eventData.new_val || "&emsp;" }}</span>
                   </v-chip>
@@ -132,11 +140,11 @@
             </div>
           </template>
           <template v-else-if="changesTooltip.event.kind == 'reboot'">
-            <v-icon small>{{ mdiAlert }}</v-icon>
+            <v-icon size="small">{{ icons.mdiAlert }}</v-icon>
             <b>Instance restarted!</b>
           </template>
           <template v-else>
-            <v-icon small>{{ mdiAlert }}</v-icon>
+            <v-icon size="small">{{ icons.mdiAlert }}</v-icon>
             Unknown configChanges
             {{ changesTooltip.event.kind }}:<br />
             {{ changesTooltip.event.data }}
@@ -152,9 +160,9 @@
           <div
             v-for="metric in metricsByAxis(axis).reverse()"
             :key="metric"
-            class="d-flex align-center pointer text-small"
+            class="d-flex align-center pointer"
             :class="{
-              'text--disabled': !chosenMetrics.includes(metric),
+              'text-disabled': !chosenMetrics.includes(metric),
               'ml-auto': index == 1,
             }"
             @click="selectSerie(metric, $event)"
@@ -172,7 +180,7 @@
           </div>
         </div>
       </div>
-      <div v-if="noData" class="text-center text--disabled">
+      <div v-if="noData" class="text-center text-disabled">
         No data available
       </div>
     </v-card-text>
@@ -182,7 +190,7 @@
 <script setup>
 import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import _ from "lodash";
-import { mdiAlert, mdiCancel, mdiInformation, mdiLinkVariant } from "@mdi/js";
+import { icons } from "@/plugins/vuetify";
 import store from "@/store";
 import * as d3 from "d3";
 import size from "@/utils/size";
@@ -831,7 +839,7 @@ function selectSerie(metric, event) {
   drawOrUpdateChart();
 }
 </script>
-<style lang="scss">
+<style lang="scss" scope>
 svg.chart {
   display: block;
   margin: auto;
@@ -851,13 +859,13 @@ svg.chart {
 .axis-grid line {
   fill: none;
   shape-rendering: crispEdges;
-  stroke: var(--v-axisgridlinestroke-base);
+  stroke: rgb(var(--v-theme-axisgridlinestroke));
   stroke-width: 1px;
 }
 
 .tick text.clone {
   fill: none;
-  stroke: var(--v-tickstroke-base);
+  stroke: rgb(var(--v-theme-tickstroke));
   stroke-width: 2px;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -866,7 +874,7 @@ svg.chart {
 .chart-tooltip {
   position: absolute;
   top: -10px;
-  background-color: var(--v-tooltipbg-base);
+  background-color: rgb(var(--v-theme-background));
   padding: 0.3rem 0.5rem;
   border-radius: 3px;
   box-shadow: rgba(0, 0, 0, 0.3) 0px 0px 3px 0px;

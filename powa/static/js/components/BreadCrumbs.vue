@@ -1,19 +1,26 @@
 <template>
   <div>
     <v-breadcrumbs :items="items">
-      <template #item="{ item }">
+      <template #item="{ item, index }">
         <v-breadcrumbs-item v-if="item.children">
           <v-select
             :items="item.children"
             :label="item.text"
-            item-text="title"
+            item-title="title"
             item-value="url"
             hide-details
             hide-selected
-            @change="onSelect"
+            density="compact"
+            style="min-width: 200px"
+            @update:model-value="onSelect"
           ></v-select>
         </v-breadcrumbs-item>
-        <v-breadcrumbs-item v-else :to="item.href" exact-path>
+        <v-breadcrumbs-item
+          v-else
+          :to="item.href"
+          exact
+          :disabled="index == items.length - 1"
+        >
           {{ item.text }}
         </v-breadcrumbs-item>
       </template>
@@ -22,10 +29,10 @@
 </template>
 
 <script setup>
-import { getCurrentInstance } from "vue";
 import { toRef, watch } from "vue";
 import store from "@/store";
 import _ from "lodash";
+import { useRouter } from "vue-router";
 const props = defineProps({
   breadCrumbItems: {
     type: Array,
@@ -35,8 +42,8 @@ const props = defineProps({
   },
 });
 
-const instance = getCurrentInstance();
 const items = toRef(props, "breadCrumbItems");
+const router = useRouter();
 
 watch(
   () => store.rawFrom + store.rawTo,
@@ -55,6 +62,6 @@ watch(
 );
 
 function onSelect(url) {
-  instance.proxy.$router.push(url);
+  router.push(url);
 }
 </script>

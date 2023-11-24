@@ -1,43 +1,43 @@
 <template>
   <v-card :loading="loading">
-    <template #progress>
+    <template #loader="{ isActive }">
       <v-progress-linear
         height="2"
+        :active="isActive"
         indeterminate
         style="position: absolute; z-index: 1"
       ></v-progress-linear>
     </template>
-    <v-app-bar flat height="40px;">
-      <v-toolbar-title>
-        <v-card-title class="pl-0">
-          {{ config.title }}
-          <a
-            v-if="config.url"
-            :href="config.url"
-            target="_blank"
-            title="See the documentation"
-          >
-            <v-icon class="pl-2">
-              {{ mdiLinkVariant }}
-            </v-icon>
-          </a>
-        </v-card-title>
-      </v-toolbar-title>
-    </v-app-bar>
+    <v-card-item class="bg-surface">
+      <v-card-title>
+        {{ config.title }}
+        <a
+          v-if="config.url"
+          :href="config.url"
+          target="_blank"
+          title="See the documentation"
+        >
+          <v-icon class="pl-2">
+            {{ mdiLinkVariant }}
+          </v-icon>
+        </a>
+      </v-card-title>
+    </v-card-item>
     <v-card-text class="pb-0">
       <v-row class="mb-4" justify="space-between">
         <v-col sm="6" md="4" xl="2">
           <v-text-field
             v-model="search"
             label="Search"
-            :append-icon="mdiMagnify"
+            :append-inner-icon="mdiMagnify"
+            density="compact"
             single-line
             hide-details
             class="pt-0 mt-0"
           ></v-text-field>
         </v-col>
         <v-col class="text-right">
-          <v-btn small @click="exportAsCsv">Export CSV</v-btn>
+          <v-btn size="small" @click="exportAsCsv">Export CSV</v-btn>
         </v-col>
       </v-row>
       <v-data-table
@@ -48,43 +48,31 @@
         }"
         :items-per-page="25"
         :search="search"
-        :dense="true"
+        density="compact"
+        :cell-props="getCellProps"
         class="superdense"
+        hover
       >
-        <template v-if="props.config.toprow" #header>
-          <thead>
-            <tr>
-              <th
-                v-for="group in props.config.toprow"
-                :key="group.name"
-                :colspan="group.colspan"
-                class="text-center"
-                style="border-right: 1px solid #dfdfdf"
-              >
-                {{ group.name }}
-              </th>
-            </tr>
-          </thead>
-        </template>
-        <!-- This template looks for headers with formatters and executes them -->
+        <!-- This template looks for columns with formatters and executes them -->
         <template
-          v-for="header in headers.filter((header) =>
-            header.hasOwnProperty('formatter')
+          v-for="column in columns.filter((column) =>
+            column.hasOwnProperty('formatter')
           )"
-          #[`item.${header.value}`]="{ value, item }"
+          #[`item.${column.key}`]="{ item }"
         >
           <router-link
-            v-if="header.urlAttr"
-            :key="header.value + 'link'"
-            :to="[item[header.urlAttr], store.serialize()].join('?')"
+            v-if="column.urlAttr"
+            :key="column.key"
+            :to="[item[column.urlAttr], store.serialize()].join('?')"
+            exact-match
           >
-            <grid-cell :value="value" :header="header"> </grid-cell>
+            <grid-cell :value="item[column.key]" :column="column"></grid-cell>
           </router-link>
           <grid-cell
             v-else
-            :key="header.value + 'cell'"
-            :value="value"
-            :header="header"
+            :key="column.key"
+            :value="item[column.key]"
+            :column="column"
           >
           </grid-cell>
         </template>
@@ -98,6 +86,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import store from "@/store";
 import _ from "lodash";
 import size from "@/utils/size";
+import "highlight.js/styles/default.css";
 import { mdiMagnify, mdiLinkVariant } from "@mdi/js";
 import { formatDuration } from "@/utils/duration";
 import { formatPercentage } from "@/utils/percentage";
@@ -150,12 +139,12 @@ const fields = computed(() => {
   return columns;
 });
 
-const headers = computed(() => {
+const columns = computed(() => {
   return _.uniqBy(
     _.map(fields.value, function headerize(n) {
       return {
-        text: n.label,
-        value: n.key,
+        title: n.label,
+        key: n.key,
         class: n.type,
         cellClass: n.type || "",
         formatter: getFormatter(n.type),
@@ -164,9 +153,35 @@ const headers = computed(() => {
         urlAttr: n.url_attr,
       };
     }),
-    "value"
+    "key"
   );
 });
+
+const headers = computed(() => {
+  if (!props.config.toprow) {
+    return columns.value;
+  }
+  const h = [];
+  let index = 0;
+  _.each(props.config.toprow, (group) => {
+    if (group.name) {
+      h.push({
+        title: group.name,
+        align: "center",
+        children: columns.value.slice(index, index + (group.colspan || 1)),
+      });
+      index += group.colspan || 1;
+    } else {
+      h.push(columns.value[index]);
+      index++;
+    }
+  });
+  return h;
+});
+
+function getCellProps(data) {
+  return { class: data.column.cellClass };
+}
 
 function loadData() {
   loading.value = true;
@@ -189,11 +204,11 @@ function dataLoaded(data) {
 function formatBool(value) {
   switch (value) {
     case true:
-      return '<span class="success--text">✓</span>';
+      return '<span class="text-success">✓</span>';
     case false:
-      return '<span class="error--text">✗</span>';
+      return '<span class="text-error">✗</span>';
     default:
-      return '<span class="text--disabled">∅</span>';
+      return '<span class="text-disabled">∅</span>';
   }
 }
 
@@ -226,7 +241,7 @@ function getAlign(type) {
     case "percent":
     case "size":
     case "integer":
-      return "right";
+      return "end";
   }
 }
 
