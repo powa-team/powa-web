@@ -1,29 +1,11 @@
-// Globals
-$font-size-root: 14px;
-
-$btn-text-transform: none !default;
-$tab-text-transform: none !default;
-$btn-letter-spacing: inherit;
-$tabs-item-letter-spacing: inherit;
-
-$spacer: 2px !default;
-
-$btn-font-sizes: (
-  'default': 1rem
+@use 'vuetify/settings' with (
+  $spacer: 2px,
+  $color-pack: false,
+  $button-text-transform: none,
+  $button-text-letter-spacing: inherit,
+  $card-background: rgb(var(--v-theme-background)),
+  $table-background: rgb(var(--v-theme-background)),
+  $progress-linear-background: rgb(var(--v-theme-primary)),
+  $tooltip-background-color: rgb(var(--v-theme-background)),
+  $tooltip-text-color: rgb(var(--v-theme-surface-variant))
 );
-
-$headings: (
-  // Apply to table headers, pagination
-  'caption': (
-    'size': 1rem,
-  ),
-  // Apply to data tables rows
-  'subtitle-2': (
-    'size': 1rem,
-  )
-);
-
-$snackbar-font-size: 1rem;
-$snackbar-content-font-size: 1rem;
-$breadcrumbs-item-font-size: 1rem;
-$label-font-size: 1rem;

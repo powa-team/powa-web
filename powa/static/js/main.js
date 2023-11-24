@@ -1,9 +1,9 @@
-import Vue from "vue";
+import { createApp } from "vue";
 import store from "@/store";
 import vuetify from "@/plugins/vuetify";
 import App from "@/App.vue";
 import dynamicComponents from "@/plugins/powa";
-import VueRouter from "vue-router";
+import { createWebHistory, createRouter } from "vue-router";
 
 import "@/../styles/main.scss";
 import "@/fonts/Roboto/roboto.css";
@@ -15,16 +15,14 @@ document
     store.addAlertMessages(messages);
   });
 
-dynamicComponents.install();
-
-Vue.use(VueRouter);
-
-const router = new VueRouter({
-  mode: "history",
+const NotFound = { template: "" };
+const routerPlugin = createRouter({
+  history: createWebHistory(),
+  routes: [{ path: "/:pathMatch(.*)", name: "NotFound", component: NotFound }],
 });
 
-new Vue({
-  render: (h) => h(App),
-  vuetify,
-  router,
-}).$mount("#app");
+createApp(App)
+  .use(vuetify)
+  .use(routerPlugin)
+  .use(dynamicComponents)
+  .mount("#app");

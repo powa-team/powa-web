@@ -7,19 +7,15 @@
         style="position: absolute; z-index: 1"
       ></v-progress-linear>
     </template>
-    <v-app-bar flat height="40px;">
-      <v-toolbar-title>
-        <v-card-title class="pl-0">{{ config.title }}</v-card-title>
-      </v-toolbar-title>
-    </v-app-bar>
+    <v-card-item class="bg-surface">
+      <v-card-title class="pl-0">{{ config.title }}</v-card-title>
+    </v-card-item>
     <v-card-text v-if="qual !== undefined">
       <template v-if="qual">
-        <h4>
-          <pre
-            class="sql"
-          ><code v-html="formatSql(qual.where_clause)"></code></pre>
-        </h4>
-        <v-row class="ma-4">
+        <pre
+          class="sql"
+        ><code v-html="formatSql(qual.where_clause)"></code></pre>
+        <v-row>
           <v-col>
             <b>Seen:</b><br />
             {{ qual.occurences }}
@@ -37,10 +33,8 @@
           </v-col>
         </v-row>
         <div v-for="(q, index) in qual.quals" :key="index">
-          <h5>
-            <pre class="sql"><code v-html="formatSql(q.label)"></code></pre>
-          </h5>
-          <v-row class="ma-4">
+          <pre class="sql"><code v-html="formatSql(q.label)"></code></pre>
+          <v-row>
             <v-col>
               <b>Table:</b><br />
               {{ q.relname }}

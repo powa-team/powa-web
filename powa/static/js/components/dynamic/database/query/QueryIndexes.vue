@@ -7,54 +7,59 @@
         style="position: absolute; z-index: 1"
       ></v-progress-linear>
     </template>
-    <v-app-bar flat height="40px;">
-      <v-toolbar-title>
-        <v-card-title class="pl-0">{{ config.title }}</v-card-title>
-      </v-toolbar-title>
-    </v-app-bar>
+    <v-card-item class="bg-surface">
+      <v-card-title class="pl-0">{{ config.title }}</v-card-title>
+    </v-card-item>
     <v-card-text v-if="data !== undefined">
       <template v-if="data">
         <v-row data-equalizer>
-          <v-col cols="4">
-            <ul v-if="data.indexes">
-              <li v-for="(inds, clause) in data.indexes" :key="clause">
-                <h5>
-                  Possible indexes for attributes present in
-                  <br />
-                  <b><code v-html="formatSql(clause)"></code></b>:
-                </h5>
+          <v-col cols="4" class="pt-8">
+            <template v-if="data.indexes">
+              <template v-for="(inds, clause) in data.indexes" :key="clause">
+                Possible indexes for attributes present in
+                <pre
+                  class="bg-surface sql"
+                ><code v-html="formatSql(clause)"></code></pre>
                 <div v-for="(index, i) in inds" :key="i">
-                  <ul>
-                    <li v-for="(qual, j) in index.qual" :key="j">
-                      <h6>
-                        With access method <em>{{ index.amname }}</em>
-                      </h6>
-                      <dl>
-                        <dt>Attribute</dt>
-                        <dd>{{ qual.relname }}.{{ qual.attname }}</dd>
-                        <dt>Data distribution</dt>
-                        <dd v-if="!qual.distinct_values">Unknown</dd>
-                        <dd v-else>
-                          approximately
-                          <b>{{ qual.distinct_values }}</b> distinct values
-                        </dd>
-                      </dl>
-                    </li>
-                  </ul>
+                  <v-list>
+                    <v-list-item
+                      v-for="(qual, j) in index.qual"
+                      :key="j"
+                      density="compact"
+                    >
+                      <v-list-item-title>
+                        • With access method <em>{{ index.amname }}</em> :
+                      </v-list-item-title>
+                      <pre
+                        class="sql"
+                      ><code>{{ qual.relname }}.{{ qual.attname }}</code></pre>
+                      <template v-if="!qual.distinct_values">Unknown</template>
+                      <template v-else>
+                        approximately
+                        <b>{{ qual.distinct_values }}</b> distinct values
+                      </template>
+                    </v-list-item>
+                  </v-list>
                 </div>
-              </li>
-            </ul>
+              </template>
+            </template>
             <template v-else> No suitable index to suggest. </template>
           </v-col>
-          <v-col cols="8">
+          <v-col cols="8" class="pt-8">
             <template v-if="data.hypoplan">
               <v-row>
                 <v-col cols="12">
                   <template v-if="data.hypoplan.indexes">
                     The following indexes would be
-                    <v-chip class="my-4" small color="#12cd21" label
+                    <v-chip
+                      size="small"
+                      variant="flat"
+                      color="#4CAF50"
+                      label
+                      density="compact"
                       >used</v-chip
-                    >:
+                    >
+                    :
                     <pre
                       class="sql"
                     ><code v-for="(ind, i) in data.hypoplan.indexes" :key="i" v-html="formatSql(ind.ddl)"></code></pre>
