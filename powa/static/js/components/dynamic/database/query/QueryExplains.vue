@@ -1,5 +1,5 @@
 <template>
-  <v-card :loading="loading">
+  <v-card :loading="loading" class="border">
     <template #progress>
       <v-progress-linear
         height="2"
@@ -7,21 +7,24 @@
         style="position: absolute; z-index: 1"
       ></v-progress-linear>
     </template>
-    <v-app-bar flat height="40px;">
-      <v-toolbar-title>
-        <v-card-title class="pl-0">{{ config.title }}</v-card-title>
-      </v-toolbar-title>
-    </v-app-bar>
+    <v-card-item class="bg-surface">
+      <v-card-title class="pl-0">{{ config.title }}</v-card-title>
+    </v-card-item>
     <v-card-text v-if="plans !== undefined">
       <template v-if="plans">
         <v-row>
           <v-col v-for="(plan, i) in plans" :key="i" cols="6">
-            <h5>{{ _.startCase(plan.title) }} values</h5>
-            <b>Executed:</b> {{ plan.exec_count }} times
+            <v-chip label variant="outlined" density="compact" class="px-2"
+              >{{ _.startCase(plan.title) }} values</v-chip
+            >
+            <br />
+            <b>Executed:</b>
+            {{ plan.exec_count }} times
             <br />
             <b>Average filter ratio:</b>
             {{ Math.round(plan.filter_ratio * 100, 2) }}%
-            <h6 class="subheader">Example plan:</h6>
+            <br />
+            Example plan:
             <pre class="sql mb-4"><code v-html="formatSql(plan.query)"/></pre>
             <pre class="sql"><code>{{plan.plan}}</code></pre>
           </v-col>
