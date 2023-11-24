@@ -1,13 +1,11 @@
 <template>
   <v-app>
-    <v-app-bar app elevation="2" height="40px;">
+    <v-app-bar elevation="2" height="40" style="overflow: initial; z-index: 2">
       <v-btn
-        :to="store.handlerConfig.homeUrl"
+        :to="{ path: store.handlerConfig.homeUrl }"
         class="mr-2"
-        text
-        color="primary"
-        exact-path
-        elevation="0"
+        title="Home page"
+        exact
       >
         <img :src="store.handlerConfig.logoUrl" />&nbsp;<b>PoWA</b>
       </v-btn>
@@ -18,22 +16,17 @@
           }})
         </v-toolbar-title>
         <v-btn
-          text
-          color="primary"
+          variant="text"
           :to="store.handlerConfig.configUrl"
           title="Configuration"
         >
-          <v-icon left>
-            {{ icons.mdiCog }}
-          </v-icon>
+          <v-icon start :icon="icons.mdiCog" class="me-2" />
           Configuration
         </v-btn>
-        <v-menu v-if="store.handlerConfig.notifyAllowed" offset-y>
-          <template #activator="{ on, attrs }">
-            <v-btn text color="primary" v-bind="attrs" v-on="on">
-              <v-icon left>
-                {{ icons.mdiReload }}
-              </v-icon>
+        <v-menu v-if="store.handlerConfig.notifyAllowed">
+          <template #activator="{ props }">
+            <v-btn variant="text" color="primary" v-bind="props">
+              <v-icon start :icon="icons.mdiReload" class="me-2"></v-icon>
               Actions
             </v-btn>
           </template>
@@ -70,20 +63,23 @@
         </v-menu>
 
         <v-spacer></v-spacer>
-        <v-btn text color="primary" :href="store.handlerConfig.logoutUrl">
-          <v-icon left>
-            {{ icons.mdiPower }}
-          </v-icon>
+        <v-switch
+          :model-value="darkTheme"
+          hide-details
+          :false-icon="icons.mdiWhiteBalanceSunny"
+          :true-icon="icons.mdiWeatherNight"
+          class="flex-grow-0"
+          @update:model-value="toggleTheme"
+        >
+        </v-switch>
+        <v-btn
+          variant="text"
+          color="primary"
+          :href="store.handlerConfig.logoutUrl"
+        >
+          <v-icon start :icon="icons.mdiPower" class="me-2"></v-icon>
           Logout
         </v-btn>
-        <v-switch :input-value="darkTheme" class="mt-10" @change="toggleTheme">
-          <template #label>
-            <v-icon v-if="!darkTheme" color="primary">{{
-              icons.mdiWhiteBalanceSunny
-            }}</v-icon>
-            <v-icon v-else color="primary">{{ icons.mdiWeatherNight }}</v-icon>
-          </template>
-        </v-switch>
       </template>
       <template v-if="store.handlerConfig.currentUser" #extension>
         <bread-crumbs :bread-crumb-items="store.breadcrumbs"></bread-crumbs>
@@ -93,21 +89,17 @@
     </v-app-bar>
     <v-main>
       <v-container fluid>
-        <v-row>
-          <v-col>
-            <dashboard
-              v-if="store.dashboardConfig"
-              :config="store.dashboardConfig"
-            ></dashboard>
-            <login-view v-else-if="servers" :servers="servers"></login-view>
-          </v-col>
-        </v-row>
+        <dashboard
+          v-if="store.dashboardConfig"
+          :config="store.dashboardConfig"
+        ></dashboard>
+        <login-view v-else-if="servers" :servers="servers"></login-view>
       </v-container>
     </v-main>
-    <v-footer>
+    <v-footer app absolute elevation="2">
       <v-container fluid>
-        <v-row>
-          <v-flex>
+        <v-sheet class="d-flex">
+          <v-sheet>
             <ul style="margin-bottom: 0; padding-left: 0">
               <li style="display: inline-block">
                 Version {{ store.handlerConfig.version }}
@@ -124,38 +116,36 @@
                 >
               </li>
             </ul>
-          </v-flex>
-          <v-flex ml-auto class="text-right">
+          </v-sheet>
+          <v-sheet class="text-right ms-auto">
             <a href="https://github.com/powa-team/powa-web/issues"
               >Report a bug</a
             >
-          </v-flex>
-        </v-row>
+          </v-sheet>
+        </v-sheet>
       </v-container>
     </v-footer>
     <div
-      class="d-flex flex-column-reverse"
-      style="position: fixed; bottom: 0; width: 100%; align-items: center"
+      class="d-flex flex-column-reverse powa-snackbars align-center"
+      style="position: fixed; bottom: 0; width: 100%"
     >
-      <div
-        style="position: absolute"
-        class="d-flex flex-column flex-column-reverse"
-      >
+      <div class="d-flex flex-column flex-column-reverse align-center">
         <v-snackbar
           v-for="message in store.alertMessages"
           :key="message.id"
           v-model="message.shown"
           :color="message.color"
           timeout="5000"
-          absolute
-          style="position: initial !important"
-          @input="onSnackbarChanged(message.id, $event)"
+          :attach="true"
+          @update:model-value="onSnackbarChanged(message.id, $event)"
         >
           <span v-html="message.message"></span>
-          <template #action>
-            <v-icon text @click="closeSnackBar(message)">
-              {{ icons.mdiClose }}
-            </v-icon>
+          <template #actions>
+            <v-icon
+              text
+              :icon="icons.mdiClose"
+              @click="closeSnackBar(message)"
+            ></v-icon>
           </template>
         </v-snackbar>
       </div>
@@ -166,6 +156,7 @@
 <script setup>
 import { computed, getCurrentInstance, watch } from "vue";
 import { onMounted } from "vue";
+import { useTheme } from "vuetify";
 import { icons } from "@/plugins/vuetify.js";
 import store from "@/store";
 import _ from "lodash";
@@ -173,8 +164,11 @@ import * as d3 from "d3";
 import BreadCrumbs from "@/components/BreadCrumbs.vue";
 import DateRangePicker from "@/components/DateRangePicker/DateRangePicker.vue";
 import LoginView from "@/components/LoginView.vue";
+import { useRoute } from "vue-router";
 
 const instance = getCurrentInstance();
+const theme = useTheme();
+const route = useRoute();
 
 let servers;
 document.querySelectorAll('script[type="text/servers"]').forEach(function (el) {
@@ -305,11 +299,8 @@ function closeSnackBar(message) {
 }
 
 function toggleTheme() {
-  instance.proxy.$vuetify.theme.dark = !instance.proxy.$vuetify.theme.dark;
-  localStorage.setItem(
-    "dark_theme",
-    instance.proxy.$vuetify.theme.dark.toString()
-  );
+  theme.global.name.value = theme.global.current.value.dark ? "light" : "dark";
+  localStorage.setItem("dark_theme", theme.global.name.value.toString());
 }
 
 const darkTheme = computed(() => {
@@ -332,10 +323,5 @@ function checkTheme() {
   }
 }
 
-watch(
-  () => instance && instance.proxy.$route,
-  () => {
-    initDashboard();
-  }
-);
+watch(() => route.params, initDashboard);
 </script>

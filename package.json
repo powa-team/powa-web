@@ -2,6 +2,7 @@
   "name": "powa",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -11,29 +12,30 @@
     "prepare": "husky install"
   },
   "devDependencies": {
-    "@mdi/js": "^7.0.96",
-    "@types/d3": "^7.4.0",
-    "@types/lodash": "^4.14.186",
-    "@types/luxon": "^3.0.2",
-    "@vitejs/plugin-vue2": "^2.0.0",
-    "eslint": "^8.25.0",
-    "eslint-config-prettier": "^8.5.0",
-    "eslint-plugin-vue": "^9.6.0",
-    "husky": "^8.0.1",
-    "prettier": "2.7.1",
-    "sass": "~1.32",
-    "unplugin-vue-components": "^0.22.9",
-    "vite": "^3.2.7"
+    "@mdi/js": "^7.3.67",
+    "@types/d3": "^7.4.3",
+    "@types/lodash": "^4.14.202",
+    "@types/luxon": "^3.3.7",
+    "eslint": "^8.55.0",
+    "eslint-config-prettier": "^8.10.0",
+    "eslint-plugin-vue": "^9.19.2",
+    "eslint-plugin-vuetify": "^2.1.1",
+    "husky": "^8.0.3",
+    "prettier": "^2.7.1",
+    "sass": "^1.69.5",
+    "vite": "^5.0.9"
   },
   "dependencies": {
-    "@grafana/data": "^9.4.7",
-    "d3": "^7.6.1",
-    "highlight.js": "^11.6.0",
+    "@grafana/data": "^10.2.2",
+    "@vitejs/plugin-vue": "^4.5.2",
+    "d3": "^7.8.5",
+    "highlight.js": "^11.9.0",
     "lodash": "^4.17.21",
-    "luxon": "^3.3.0",
-    "sql-formatter": "^13.0.0",
-    "vue": "^2.7.12",
-    "vue-router": "^3.6.5",
-    "vuetify": "^2.7.1"
+    "luxon": "^3.4.4",
+    "sql-formatter": "^13.1.0",
+    "vite-plugin-vuetify": "^2.0.1",
+    "vue": "^3.3.11",
+    "vue-router": "^4.2.5",
+    "vuetify": "^3.4.7"
   }
 }
