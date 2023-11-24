@@ -1,16 +1,16 @@
 import { resolve } from "path";
 import { defineConfig } from "vite";
 import { fileURLToPath, URL } from "node:url";
-import vue2 from "@vitejs/plugin-vue2";
-import { VuetifyResolver } from "unplugin-vue-components/resolvers";
-import Components from "unplugin-vue-components/vite";
+import vue from "@vitejs/plugin-vue";
+import vuetify from "vite-plugin-vuetify";
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    vue2(),
-    Components({
-      resolvers: [VuetifyResolver()],
+    vue(),
+    vuetify({
+      autoImport: true,
+      styles: { configFile: "./powa/static/styles/variables.scss" },
     }),
   ],
   resolve: {
@@ -34,16 +34,6 @@ export default defineConfig({
           luxon: ["luxon"],
           highlight: ["highlight.js"],
         },
-      },
-    },
-  },
-  css: {
-    preprocessorOptions: {
-      sass: {
-        additionalData: [
-          '@import "./powa/static/styles/variables"',
-          "", // end with new line
-        ].join("\n"),
       },
     },
   },

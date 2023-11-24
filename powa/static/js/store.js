@@ -9,7 +9,9 @@ let messageId = 1;
 
 const store = reactive({
   dashboardConfig: null,
-  handlerConfig: {},
+  handlerConfig: {
+    homeUrl: "",
+  },
   dataSources: {},
   changesUrl: "",
   changes: [],
@@ -36,6 +38,7 @@ const store = reactive({
     store.dataSources = {};
     store.dashboardConfig = config.dashboard;
     store.handlerConfig = config.handler;
+    store.homeUrl = config.handler.homeUrl;
     _.each(config.datasources, function (dataSource) {
       try {
         if (dataSource.type == "metric_group") {
@@ -83,11 +86,11 @@ const store = reactive({
   alertMessages: [],
   addAlertMessage(level, message) {
     const colors = {
-      alert: "red",
-      error: "red",
-      warning: "orange",
-      info: "blue",
-      success: "green",
+      alert: "error",
+      error: "error",
+      warning: "warning",
+      info: "info",
+      success: "success",
     };
     this.alertMessages.push({
       id: ++messageId,

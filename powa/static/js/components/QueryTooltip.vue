@@ -3,13 +3,12 @@
     content-class="sql elevation-2"
     transition="fade"
     open-delay="200"
-    bottom
+    location="bottom"
   >
-    <template #activator="{ on, attrs }">
+    <template #activator="{ props: activatorProps }">
       <pre
         class="sql"
-        v-bind="attrs"
-        v-on="on"
+        v-bind="activatorProps"
       ><code v-html="formatSql(props.value)"/></pre>
     </template>
     <pre class="sql"><code v-html="formatSql(props.value)" /></pre>

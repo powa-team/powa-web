@@ -7,12 +7,10 @@
         style="position: absolute; z-index: 1"
       ></v-progress-linear>
     </template>
-    <v-app-bar flat height="40px;">
-      <v-toolbar-title>
-        <v-card-title class="pl-0">{{ config.title }}</v-card-title>
-      </v-toolbar-title>
-    </v-app-bar>
-    <v-simple-table :dense="true" class="superdense">
+    <v-card-item class="bg-surface">
+      <v-card-title class="pl-0">{{ config.title }}</v-card-title>
+    </v-card-item>
+    <v-table density="compact" class="superdense">
       <template #default>
         <thead>
           <tr>
@@ -28,7 +26,7 @@
             <td>
               <div class="d-flex align-center">
                 <div
-                  class="d-inline-block primary border"
+                  class="d-inline-block bg-primary border"
                   style="height: 15px; min-width: 1px"
                   :style="{ width: (item.value / total) * 100 + '%' }"
                 ></div>
@@ -40,7 +38,7 @@
           </tr>
         </tbody>
       </template>
-    </v-simple-table>
+    </v-table>
   </v-card>
 </template>
 

@@ -1,15 +1,13 @@
 <template>
   <v-card>
     <v-progress-linear
-      :value="progress"
+      :model-value="progress"
       height="2"
       style="position: absolute; z-index: 1"
     ></v-progress-linear>
-    <v-app-bar flat height="40px;">
-      <v-toolbar-title>
-        <v-card-title class="pl-0">{{ config.title }}</v-card-title>
-      </v-toolbar-title>
-    </v-app-bar>
+    <v-card-item class="bg-surface">
+      <v-card-title class="pl-0">{{ config.title }}</v-card-title>
+    </v-card-item>
     <v-card-text>
       <v-row>
         <v-col>
@@ -44,15 +42,16 @@
               v-if="unoptimizableItems"
               :headers="unoptimizableHeaders"
               :items="unoptimizableItems"
-              :dense="true"
+              :cell-props="getCellProps"
+              density="compact"
               class="superdense elevation-1"
               no-data-text="All quals could be optimized."
-              hide-default-footer
-              disable-pagination
+              items-per-page="-1"
             >
               <template #item.quals="{ item }">
                 <div v-html="qualRepr(item)" />
               </template>
+              <template #bottom></template>
             </v-data-table>
           </v-col>
         </v-row>
@@ -62,11 +61,11 @@
               v-if="indexItems"
               :headers="indexHeaders"
               :items="indexItems"
-              :dense="true"
+              :cell-props="getCellProps"
+              density="compact"
               class="superdense elevation-1"
               no-data-text="No qual to optimize !"
-              hide-default-footer
-              disable-pagination
+              items-per-page="-1"
             >
               <template #item.ddl="{ item }">
                 <query-tooltip :value="indexDdl(item)"></query-tooltip>
@@ -77,6 +76,7 @@
               <template #item.nbqueries="{ item }">
                 {{ item.queryids.length }}
               </template>
+              <template #bottom></template>
             </v-data-table>
           </v-col>
         </v-row>
@@ -86,15 +86,16 @@
               v-if="indexCheckErrorItems"
               :headers="indexCheckErrorHeaders"
               :items="indexCheckErrorItems"
-              :dense="true"
+              :cell-props="getCellProps"
+              density="compact"
               class="superdense elevation-1"
               no-data-text="No hypothetical index creation error."
-              hide-default-footer
-              disable-pagination
+              items-per-page="-1"
             >
               <template #item.ddl="{ item }">
                 <query-tooltip :value="item.ddl"></query-tooltip>
               </template>
+              <template #bottom></template>
             </v-data-table>
           </v-col>
         </v-row>
@@ -104,19 +105,20 @@
               v-if="indexCheckItems"
               :headers="indexCheckHeaders"
               :items="indexCheckItems"
-              :dense="true"
+              :cell-props="getCellProps"
+              density="compact"
               class="superdense elevation-1"
               no-data-text="No index validation done."
-              hide-default-footer
-              disable-pagination
+              items-per-page="-1"
             >
               <template #item.query="{ item }">
                 <query-tooltip :value="item.query"></query-tooltip>
               </template>
               <template #item.used="{ item }">
-                <b v-if="item.gain > 0" class="green--text">✓</b>
+                <b v-if="item.gain > 0" class="text-green">✓</b>
               </template>
               <template #item.gain="{ item }"> {{ item.gain }}% </template>
+              <template #bottom></template>
             </v-data-table>
           </v-col>
         </v-row>
@@ -152,18 +154,18 @@ const progress = ref(0);
 const indexHeaders = ref([
   {
     value: "ddl",
-    text: "Index",
+    title: "Index",
     cellClass: "query",
   },
   {
     value: "quals",
-    text: "Used by",
+    title: "Used by",
     cellClass: "query",
   },
   {
     value: "nbqueries",
-    text: "# Queries boosted",
-    align: "right",
+    title: "# Queries boosted",
+    align: "end",
   },
 ]);
 const indexItems = ref([]);
@@ -171,12 +173,12 @@ const indexItems = ref([]);
 const indexCheckErrorHeaders = ref([
   {
     value: "ddl",
-    text: "Hypothetical index creation error",
+    title: "Hypothetical index creation error",
     cellClass: "query",
   },
   {
     value: "error",
-    text: "Reason",
+    title: "Reason",
   },
 ]);
 const indexCheckErrorItems = ref([]);
@@ -184,18 +186,18 @@ const indexCheckErrorItems = ref([]);
 const indexCheckHeaders = ref([
   {
     value: "query",
-    text: "Query",
+    title: "Query",
     cellClass: "query",
   },
   {
     value: "used",
-    text: "Index used",
+    title: "Index used",
     align: "center",
   },
   {
     value: "gain",
-    text: "Gain",
-    align: "right",
+    title: "Gain",
+    align: "end",
   },
 ]);
 const indexCheckItems = ref([]);
@@ -203,7 +205,8 @@ const indexCheckItems = ref([]);
 const unoptimizableHeaders = ref([
   {
     value: "quals",
-    text: "Unoptimized quals",
+    title: "Unoptimized quals",
+    cellClass: "query",
   },
 ]);
 const unoptimizableItems = ref([]);
@@ -669,5 +672,9 @@ async function updateProgress(text, value) {
   progressLabel.value = text;
   progress.value = value;
   await nextTick();
+}
+
+function getCellProps(data) {
+  return { class: data.column.cellClass };
 }
 </script>
