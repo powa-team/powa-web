@@ -5,8 +5,8 @@
         {{ tab.title }}
       </v-tab>
     </v-tabs>
-    <v-tabs-items v-model="activeTab">
-      <v-tab-item
+    <v-window v-model="activeTab">
+      <v-window-item
         v-for="(tab, index) in config.tabs"
         :key="'tab_content' + index"
         :transition="false"
@@ -20,8 +20,8 @@
             />
           </v-card-text>
         </v-card>
-      </v-tab-item>
-    </v-tabs-items>
+      </v-window-item>
+    </v-window>
   </v-card>
 </template>
 

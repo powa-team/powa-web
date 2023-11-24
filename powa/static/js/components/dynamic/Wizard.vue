@@ -5,11 +5,9 @@
       height="2"
       style="position: absolute; z-index: 1"
     ></v-progress-linear>
-    <v-app-bar flat height="40px;">
-      <v-toolbar-title>
-        <v-card-title class="pl-0">{{ config.title }}</v-card-title>
-      </v-toolbar-title>
-    </v-app-bar>
+    <v-card-item flat height="40">
+      <v-card-title class="pl-0">{{ config.title }}</v-card-title>
+    </v-card-item>
     <v-card-text>
       <v-row>
         <v-col>

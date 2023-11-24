@@ -1,9 +1,8 @@
 // inspired from https://zerotomastery.io/blog/how-to-auto-register-components-for-vue-with-vite/
 import _ from "lodash";
-import Vue from "vue";
 
 export default {
-  install() {
+  install(app) {
     const componentFiles = import.meta.globEager(
       "@/components/dynamic/**/*.vue"
     );
@@ -18,7 +17,7 @@ export default {
         )
       );
 
-      Vue.component(`${componentName}`, m.default);
+      app.component(`${componentName}`, m.default);
     });
   },
 };

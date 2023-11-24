@@ -7,11 +7,9 @@
         style="position: absolute; z-index: 1"
       ></v-progress-linear>
     </template>
-    <v-app-bar flat height="40px;">
-      <v-toolbar-title>
-        <v-card-title class="pl-0">{{ config.title }}</v-card-title>
-      </v-toolbar-title>
-    </v-app-bar>
+    <v-card-item flat height="40px;">
+      <v-card-title class="pl-0">{{ config.title }}</v-card-title>
+    </v-card-item>
     <v-card-text v-if="collector !== undefined">
       <v-row>
         <v-col>
@@ -22,13 +20,13 @@
             <v-row>
               <v-col cols="12"
                 ><b>Background worker status:</b>
-                <span class="text--disabled">∅</span></v-col
+                <span class="text-disabled">∅</span></v-col
               >
             </v-row>
             <v-row>
               <v-col cols="12"
                 ><b>Remote Collector status:</b>
-                <span class="text--disabled">∅</span></v-col
+                <span class="text-disabled">∅</span></v-col
               >
             </v-row>
           </template>
@@ -39,22 +37,22 @@
             <v-row>
               <v-col cols="12"
                 ><b>Background worker status:</b>
-                <span class="red--text">✗</span></v-col
+                <span class="text-error">✗</span></v-col
               >
             </v-row>
             <v-row>
               <v-col cols="12"
                 ><b>Remote Collector status:</b>
-                <span class="red--text">✗</span></v-col
+                <span class="text-error">✗</span></v-col
               >
             </v-row>
           </template>
           <template v-else>
-            <v-row v-for="(c, index) in collector" :key="index">
+            <v-row v-for="(c, index) in collector" :key="index" dense>
               <template v-if="c.start">
                 <v-col cols="3"
                   ><b>{{ c.powa_kind }}:</b>
-                  <span class="green--text">✓</span></v-col
+                  <span class="text-success">✓</span></v-col
                 >
                 <v-col cols="3"><b>Connected as:</b> {{ c.usename }}</v-col>
                 <v-col cols="3"
@@ -65,7 +63,7 @@
               <template v-else>
                 <v-col cols="12"
                   ><b>{{ c.powa_kind }}:</b>
-                  <span class="red--text">✗</span></v-col
+                  <span class="text-error">✗</span></v-col
                 >
               </template>
             </v-row>

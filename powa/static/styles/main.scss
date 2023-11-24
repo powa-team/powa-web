@@ -13,13 +13,22 @@ pre.sql {
   }
 }
 
-.v-data-table.superdense > .v-data-table__wrapper > table {
+.v-application a {
+  color: rgb(var(--v-theme-primary));
+}
+
+.v-breadcrumbs-item--disabled .v-breadcrumbs-item--link {
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.v-data-table.superdense > .v-table__wrapper > table {
   tbody,
   thead,
   tfoot {
     th,
     td {
       padding: 0 0.3rem;
+      font-size: 0.9em;
     }
   }
 }
@@ -28,6 +37,10 @@ pre.sql {
   td {
     white-space: nowrap;
   }
+}
+
+.text-small {
+  font-size: 0.85em;
 }
 
 td {
@@ -50,43 +63,6 @@ td {
   }
 }
 
-.v-icon {
-    color: inherit !important;
-}
-
-.v-icon.v-icon::after {
-    font-size: 1.5em;
-    transform: none;
-}
-
-.v-application{
-  background: var(--v-mainbg-base);
-}
-
-h1 {
-  font-size: 2.75rem;
-}
-
-h2 {
-  font-size: 2.313rem;
-}
-
-h3 {
-  font-size: 1.688rem;
-}
-
-h4 {
-  font-size: 1.4375rem;
-}
-
-h5 {
-  font-size: 1.125rem;
-}
-
-h6 {
-  font-size: 1rem;
-}
-
 dt {
   font-weight: bold;
 }
@@ -95,27 +71,20 @@ dd {
   margin: revert;
 }
 
-.text-small {
-  font-size: 90%;
-}
-
 .v-tooltip__content.sql {
   line-height: 1.3;
   font-size: 0.8rem;
   opacity: 1;
-  background: var(--v-tooltipbg-base);
+  background-color: red;
+  //background: rgb(var(--v-theme-background));
   color: inherit;
   pre {
     background-color: initial;
   }
 }
 
-.v-data-table-header th {
-  vertical-align: top;
-}
-
 .event:hover .marker {
-  fill: var(--v-eventmarkerfill-base);
+  fill: rgb(var(--v-theme-eventmarkerfill));
 }
 
 .theme--light {

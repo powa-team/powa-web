@@ -7,11 +7,9 @@
         style="position: absolute; z-index: 1"
       ></v-progress-linear>
     </template>
-    <v-app-bar flat height="40px;">
-      <v-toolbar-title>
-        <v-card-title class="pl-0">{{ config.title }}</v-card-title>
-      </v-toolbar-title>
-    </v-app-bar>
+    <v-card-item flat height="40px;">
+      <v-card-title class="pl-0">{{ config.title }}</v-card-title>
+    </v-card-item>
     <v-card-text v-if="plans !== undefined">
       <template v-if="plans">
         <v-row>

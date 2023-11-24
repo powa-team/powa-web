@@ -6,12 +6,12 @@
       </v-icon>
       <span>{{ rangeString }}</span>
     </v-btn>
-    <v-btn class="ml-4" @click="applyTimeRange">
+    <v-btn @click="applyTimeRange">
       <v-icon class="text--secondary">
         {{ icons.mdiReload }}
       </v-icon>
     </v-btn>
-    <v-btn class="ml-4" @click="zoomOut">
+    <v-btn class="me-4" @click="zoomOut">
       <v-icon class="text--secondary">
         {{ icons.mdiMagnifyMinusOutline }}
       </v-icon>
@@ -98,9 +98,7 @@
                   link
                   @click.prevent="loadRangeShortcut(range)"
                 >
-                  <v-list-item-content>
-                    {{ range.display }}
-                  </v-list-item-content>
+                  {{ range.display }}
                 </v-list-item>
               </v-list>
             </v-col>
