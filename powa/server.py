@@ -24,11 +24,13 @@ from powa.sql.views_graph import (powa_getstatdata_sample,
                                   powa_get_user_fct_sample,
                                   powa_get_database_sample,
                                   powa_get_database_conflicts_sample,
-                                  powa_get_io_sample)
+                                  powa_get_io_sample,
+                                  powa_get_slru_sample)
 from powa.sql.views_grid import (powa_getstatdata_db,
                                  powa_getwaitdata_db,
                                  powa_getuserfuncdata_db,
-                                 powa_getiodata)
+                                 powa_getiodata,
+                                 powa_getslrudata)
 from powa.sql.utils import (sum_per_sec, byte_per_sec, wps, total_read,
                             total_hit, block_size, to_epoch, get_ts, mulblock)
 
@@ -715,6 +717,113 @@ class ByAllIoMetricGroup(TemplateIoGrid):
     xaxis = "backend_type"
     data_url = r"/server/(\d+)/metrics/io_by_all/"
 
+class GlobalSlruMetricGroup(MetricGroupDef):
+    """
+    Metric group used by pg_stat_slru graph.
+    """
+    pass
+    name = "slru"
+    xaxis = "name"
+    data_url = r"/server/(\d+)/metrics/slru/"
+    blks_zeroed = MetricDef(label="Zeroed", type="sizerate",
+                            desc="Number of blocks zeroed during"
+                                 " initializations")
+    blks_hit = MetricDef(label="Hit", type="sizerate",
+                         desc="Number of times disk blocks were found already"
+                              " in the SLRU, so that a read was not necessary"
+                              " (this only includes hits in the SLRU, not the"
+                              " operating system's file system cache)")
+    blks_read = MetricDef(label="Read", type="sizerate",
+                          desc="Number of disk blocks read for this SLRU")
+    blks_written = MetricDef(label="Written", type="sizerate",
+                             desc="Number of disk blocks written for this SLRU")
+    blks_exists = MetricDef(label="Exists", type="sizerate",
+                            desc="Number of blocks checked for existence for"
+                                 " this SLRU")
+    flushes = MetricDef(label="Flushes", type="number",
+                        desc="Number of flushes of dirty data for this SLRU")
+    truncates = MetricDef(label="Truncates", type="number",
+                          desc="Number of truncates for this SLRU")
+
+    @classmethod
+    def _get_metrics(cls, handler, **params):
+        base = cls.metrics.copy()
+
+        pg_version_num = handler.get_pg_version_num(handler.path_args[0])
+        # if we can't connect to the remote server, assume pg13 or more
+        if pg_version_num is not None and pg_version_num < 130000:
+            return {}
+        return base
+
+    @property
+    def query(self):
+        query = powa_get_slru_sample()
+
+        from_clause = query
+
+        cols = ["sub.srvid",
+                "extract(epoch FROM sub.ts) AS ts",
+                sum_per_sec('blks_zeroed'),
+                sum_per_sec('blks_hit'),
+                sum_per_sec('blks_read'),
+                sum_per_sec('blks_written'),
+                sum_per_sec('blks_exists'),
+                sum_per_sec('flushes'),
+                sum_per_sec('truncates'),
+                ]
+
+        return """SELECT {cols}
+        FROM (
+            {from_clause}
+        ) AS sub
+        WHERE sub.mesure_interval != '0 s'
+        GROUP BY sub.srvid, sub.ts, sub.mesure_interval
+        ORDER BY sub.ts""".format(
+            cols=', '.join(cols),
+            from_clause=from_clause,
+        )
+
+class ByAllSlruMetricGroup(MetricGroupDef):
+    """
+    Metric group used by pg_stat_slru grid.
+    """
+    name = "slru_by_all"
+    xaxis = "ts"
+    data_url = r"/server/(\d+)/metrics/slru_by_all/"
+    blks_zeroed = MetricDef(label="Zeroed", type="size",
+                            desc="Total number of blocks zeroed during"
+                                 " initializations")
+    blks_hit = MetricDef(label="Hit", type="size",
+                         desc="Total number of times disk blocks were found"
+                              " already in the SLRU, so that a read was not"
+                              " necessary (this only includes hits in the SLRU,"
+                              " not the operating system's file system cache)")
+    blks_read = MetricDef(label="Read", type="size",
+                          desc="Total number of disk blocks read for this SLRU")
+    blks_written = MetricDef(label="Written", type="size",
+                             desc="Total number of disk blocks written for this"
+                                  " SLRU")
+    blks_exists = MetricDef(label="Exists", type="size",
+                            desc="Total number of blocks checked for existence"
+                                 " for this SLRU")
+    flushes = MetricDef(label="Flushes", type="number",
+                        desc="Total number of flushes of dirty data for this"
+                             " SLRU")
+    truncates = MetricDef(label="Truncates", type="number",
+                          desc="Total number of truncates for this SLRU")
+
+    @property
+    def query(self):
+        query = powa_getslrudata()
+
+        return query
+
+    def process(self, val, **kwargs):
+        val["url"] = self.reverse_url("ByNameSlruOverview", val["srvid"],
+                                      val["name"])
+
+        return val
+
 class GlobalReplicationMetricGroup(MetricGroupDef):
     """
     Metric group used by pg_stat_replication graphs.
@@ -1079,7 +1188,8 @@ class ServerOverview(DashboardPage):
                    GlobalArchiverMetricGroup, GlobalReplicationMetricGroup,
                    GlobalDbActivityMetricGroup,
                    GlobalDbActivityConflMetricGroup, GlobalIoMetricGroup,
-                   ByAllIoMetricGroup]
+                   ByAllIoMetricGroup,
+                   GlobalSlruMetricGroup, ByAllSlruMetricGroup]
     params = ["server"]
     parent = Overview
     title = "All databases"
@@ -1091,6 +1201,7 @@ class ServerOverview(DashboardPage):
         if getattr(self, '_dashboard', None) is not None:
             return self._dashboard
 
+        pg_version_num = self.get_pg_version_num(self.path_args[0])
         pgss18 = self.has_extension_version(self.path_args[0],
                                             'pg_stat_statements', '1.8')
         pgss110 = self.has_extension_version(self.path_args[0],
@@ -1355,9 +1466,21 @@ class ServerOverview(DashboardPage):
         if (len(sys_graphs) != 0):
             graphs_dash.append(Dashboard("System resources", sys_graphs))
 
+        # if we can't connect to the remote server, assume pg13 or above
+        if (pg_version_num is None or pg_version_num >= 130000):
+            graphs_dash.append(Dashboard("SLRU",
+                [[Graph("All SLRUs (per second)",
+                        metrics=GlobalSlruMetricGroup.all(self))],
+                 [Grid("All SLRUs",
+                       columns=[{
+                            "name": "name",
+                            "label": "SLRU name",
+                            "url_attr": "url"
+                           }],
+                       metrics=ByAllSlruMetricGroup.all(self))]]))
+
         if (self.has_extension(self.path_args[0], "pg_wait_sampling")):
             metrics=None
-            pg_version_num = self.get_pg_version_num(self.path_args[0])
             # if we can't connect to the remote server, assume pg10 or above
             if pg_version_num is not None and pg_version_num < 100000:
                 metrics = [GlobalWaitsMetricGroup.count_lwlocknamed,
