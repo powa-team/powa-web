@@ -31,6 +31,7 @@ from powa.collector import (CollectorReloadHandler,
 from powa.wizard import IndexSuggestionHandler
 from powa.io import (ByBackendTypeIoOverview, ByObjIoOverview,
                      ByContextIoOverview)
+from powa.slru import ByNameSlruOverview
 
 
 class IndexHandler(AuthHandler):
@@ -76,7 +77,8 @@ def make_app(**kwargs):
                       RemoteConfigOverview,
                       ByBackendTypeIoOverview,
                       ByObjIoOverview,
-                      ByContextIoOverview):
+                      ByContextIoOverview,
+                      ByNameSlruOverview):
         URLS.extend(dashboard.url_specs(options.url_prefix))
 
     _cls = Application

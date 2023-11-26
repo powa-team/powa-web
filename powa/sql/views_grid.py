@@ -1,7 +1,7 @@
 """
 Functions to generate the queries used in the various grid components
 """
-from powa.sql.utils import diff, diffblk
+from powa.sql.utils import block_size, diff, diffblk
 
 
 def powa_base_statdata_detailed_db():
@@ -351,6 +351,116 @@ def powa_getiodata(qual=None):
         cols=', '.join(cols),
         base_cols=', '.join(base_cols),
         base_query=base_query,
+        qual=qual,
+    )
+
+
+def powa_base_slru():
+    """
+    Query used in the grids displaying info about pg_stat_slru.
+
+    This uses the same optimization as powa_base_statdata_detailed_db.
+    """
+    base_query = """(
+ SELECT *
+ FROM
+ (
+   SELECT srvid
+   FROM {powa}.powa_stat_slru_history slru
+   WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+   AND slru.srvid = %(server)s
+   GROUP BY srvid
+ ) ranges,
+ LATERAL (
+   -- Left bound: the search interval is a single timestamp, the smallest one
+   -- of the search interval, and has to be inside the coalesce_range. We
+   -- still need to unnest this one as we may have to remove some of the
+   -- underlying records
+   SELECT name, (unnested.records).*
+   FROM (
+     SELECT slru.name, slru.coalesce_range, unnest(records) AS records
+     FROM {powa}.powa_stat_slru_history slru
+     WHERE coalesce_range && tstzrange(%(from)s, %(from)s, '[]')
+     AND slru.srvid = %(server)s
+   ) AS unnested
+   WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+
+   UNION ALL
+
+   -- Right bound: the search interval is a single timestamp, the largest one
+   -- of the search interval, and has to be inside the coalesce_range. We
+   -- still need to unnest this one as we may have to remove some of the
+   -- underlying records
+   SELECT name, (unnested.records).*
+   FROM (
+     SELECT slru.name, slru.coalesce_range, unnest(records) AS records
+     FROM {powa}.powa_stat_slru_history slru
+     WHERE coalesce_range && tstzrange(%(to)s, %(to)s, '[]')
+     AND slru.srvid = %(server)s
+   ) AS unnested
+   WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+
+   UNION ALL
+
+   -- These entries have their coalesce_range ENTIRELY inside the search range
+   -- so we don't need to unnest them.  We just retrieve the mins_in_range,
+   -- maxs_in_range from the record, build an array of this and return it as
+   -- if it was the full record
+   SELECT name, (unnested.records).*
+   FROM (
+     SELECT slru.name, slru.coalesce_range,
+       unnest(ARRAY[mins_in_range,maxs_in_range]) AS records
+     FROM {powa}.powa_stat_slru_history slru
+     WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+     AND slru.srvid = %(server)s
+   ) AS unnested
+   WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+ ) AS h
+ UNION ALL
+ SELECT srvid, name, (ioc.record).*
+ FROM {powa}.powa_stat_slru_history_current ioc
+ WHERE  (ioc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+ AND ioc.srvid = %(server)s
+) AS io_history
+    """
+    return base_query
+
+
+def powa_getslrudata(qual=None):
+    """
+    Query used in the grid displaying info about pg_stat_slru.
+    """
+    base_query = powa_base_slru()
+
+    if (qual is not None):
+        qual = ' WHERE %s' % qual
+    else:
+        qual = ''
+
+    base_cols = [
+        "srvid",
+        "name",
+    ]
+
+    cols = [
+        diffblk("blks_zeroed", "block_size"),
+        diffblk("blks_hit", "block_size"),
+        diffblk("blks_read", "block_size"),
+        diffblk("blks_written", "block_size"),
+        diffblk("blks_exists", "block_size"),
+        diff("flushes"),
+        diff("truncates"),
+    ]
+
+    return """SELECT {base_cols}, {cols}
+    FROM {base_query}
+    CROSS JOIN {block_size}
+    {qual}
+    GROUP BY {base_cols}, block_size""".format(
+        cols=', '.join(cols),
+        base_cols=', '.join(base_cols),
+        base_query=base_query,
+        block_size=block_size,
         qual=qual,
     )
 

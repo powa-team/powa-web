@@ -859,6 +859,37 @@ BASE_QUERY_REPLICATION_SAMPLE = """
 """
 
 
+# We use dense_rank() as we need ALL the records for a specific ts.  Caller
+# will group the data as needed
+BASE_QUERY_SLRU_SAMPLE = """
+    (SELECT srvid,
+      dense_rank() OVER (ORDER BY slru_history.ts) AS number,
+      count(*) OVER (PARTITION BY ts) AS num_per_window,
+      count(*) OVER () AS total,
+      ts,
+      name,
+      blks_zeroed, blks_hit, blks_read, blks_written,
+      blks_exists, flushes, truncates
+      FROM (
+        SELECT *
+        FROM (
+          SELECT srvid, name, (unnest(records)).*
+          FROM {powa}.powa_stat_slru_history slruh
+          WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+          AND slruh.srvid = %(server)s
+        ) AS unnested
+        WHERE ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        UNION ALL
+        SELECT srvid, name, (record).*
+        FROM {powa}.powa_stat_slru_history_current slruc
+        WHERE (slruc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        AND slruc.srvid = %(server)s
+      ) AS slru_history
+    ) AS slru
+    WHERE number %% ( int8larger((total / num_per_window)/(%(samples)s+1),1) ) = 0
+"""
+
+
 BASE_QUERY_ALL_IDXS_SAMPLE_DB = """(
   SELECT d.srvid, d.datname, base.*
   FROM {powa}.powa_databases d,
@@ -1392,6 +1423,39 @@ def powa_get_io_sample(qual=None):
         all_cols=', '.join(all_cols),
         base_query=base_query,
         qual=qual
+    )
+
+
+def powa_get_slru_sample(qual=None):
+    base_query = BASE_QUERY_SLRU_SAMPLE
+    base_columns = ["srvid", "name"]
+
+    biggest =Biggest(base_columns, 'ts')
+    biggestsum = Biggestsum(base_columns, 'ts')
+
+    if (qual is not None):
+        qual = ' AND %s' % qual
+    else:
+        qual = ''
+
+    all_cols = base_columns + [
+        "ts",
+        biggest("ts", "'0 s'", "mesure_interval"),
+        biggest("blks_zeroed"),
+        biggest("blks_hit"),
+        biggest("blks_read"),
+        biggest("blks_written"),
+        biggest("blks_exists"),
+        biggest("flushes"),
+        biggest("truncates"),
+    ]
+
+    return """SELECT {all_cols}
+    FROM {base_query}
+    {qual}""".format(
+        all_cols=', '.join(all_cols),
+        base_query=base_query,
+        qual=qual,
     )
 
 
