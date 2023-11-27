@@ -161,7 +161,7 @@ class TemplateIoGrid(MetricGroupDef):
 
         val["obj_url"] = self.reverse_url("ByObjIoOverview",
                                           val["srvid"],
-                                          val["obj"])
+                                          val["object"])
 
         val["context_url"] = self.reverse_url("ByContextIoOverview",
                                               val["srvid"],
