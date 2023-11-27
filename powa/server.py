@@ -1117,7 +1117,7 @@ class ServerOverview(DashboardPage):
                         "label": "Backend Type",
                         "url_attr": "backend_type_url"
                         }, {
-                        "name": "obj",
+                        "name": "object",
                         "label": "Object Type",
                         "url_attr": "obj_url"
                         }, {
