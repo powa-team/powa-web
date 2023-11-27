@@ -267,9 +267,10 @@ def powa_base_io():
    -- of the search interval, and has to be inside the coalesce_range. We
    -- still need to unnest this one as we may have to remove some of the
    -- underlying records
-   SELECT (unnested.records).*
+   SELECT backend_type, object, context, (unnested.records).*
    FROM (
-     SELECT ioh.coalesce_range, unnest(records) AS records
+     SELECT ioh.backend_type, ioh.object, ioh.context,
+       ioh.coalesce_range, unnest(records) AS records
      FROM {powa}.powa_stat_io_history ioh
      WHERE coalesce_range && tstzrange(%(from)s, %(from)s, '[]')
      AND ioh.srvid = %(server)s
@@ -282,9 +283,10 @@ def powa_base_io():
    -- of the search interval, and has to be inside the coalesce_range. We
    -- still need to unnest this one as we may have to remove some of the
    -- underlying records
-   SELECT (unnested.records).*
+   SELECT backend_type, object, context, (unnested.records).*
    FROM (
-     SELECT ioh.coalesce_range, unnest(records) AS records
+     SELECT ioh.backend_type, ioh.object, ioh.context,
+       ioh.coalesce_range, unnest(records) AS records
      FROM {powa}.powa_stat_io_history ioh
      WHERE coalesce_range && tstzrange(%(to)s, %(to)s, '[]')
      AND ioh.srvid = %(server)s
@@ -297,9 +299,10 @@ def powa_base_io():
    -- so we don't need to unnest them.  We just retrieve the mins_in_range,
    -- maxs_in_range from the record, build an array of this and return it as
    -- if it was the full record
-   SELECT (unnested.records).*
+   SELECT backend_type, object, context, (unnested.records).*
    FROM (
-     SELECT ioh.coalesce_range,
+     SELECT ioh.backend_type, ioh.object, ioh.context,
+       ioh.coalesce_range,
        unnest(ARRAY[mins_in_range,maxs_in_range]) AS records
      FROM {powa}.powa_stat_io_history ioh
      WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
@@ -308,9 +311,9 @@ def powa_base_io():
    WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
  ) AS h
  UNION ALL
- SELECT srvid, (ioc.record).*
+ SELECT srvid, backend_type, object, context, (ioc.record).*
  FROM {powa}.powa_stat_io_history_current ioc
- WHERE  (ioc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+ WHERE (ioc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
  AND ioc.srvid = %(server)s
 ) AS io_history
     """
@@ -336,7 +339,6 @@ def powa_getiodata(qual=None):
     ]
 
     cols = [
-        "object AS obj",
         diffblk("reads", "op_bytes"),
         diff("read_time"),
         diffblk("writes", "op_bytes"),
