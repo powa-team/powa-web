@@ -674,14 +674,14 @@ BASE_QUERY_IO_SAMPLE = """
       FROM (
         SELECT *
         FROM (
-          SELECT srvid, (unnest(records)).*
+          SELECT srvid, backend_type, object, context, (unnest(records)).*
           FROM {powa}.powa_stat_io_history ioh
           WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
           AND ioh.srvid = %(server)s
         ) AS unnested
         WHERE ts <@ tstzrange(%(from)s, %(to)s, '[]')
         UNION ALL
-        SELECT srvid, (record).*
+        SELECT srvid, backend_type, object, context, (record).*
         FROM {powa}.powa_stat_io_history_current ioc
         WHERE (ioc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
         AND ioc.srvid = %(server)s
