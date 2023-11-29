@@ -890,6 +890,39 @@ BASE_QUERY_SLRU_SAMPLE = """
 """
 
 
+BASE_QUERY_WAL_SAMPLE = """
+    (SELECT srvid,
+      row_number() OVER (ORDER BY wal_history.ts) AS number,
+      count(*) OVER () AS total,
+      ts,
+      wal_records,
+      wal_fpi,
+      wal_bytes,
+      wal_buffers_full,
+      wal_write,
+      wal_sync,
+      wal_write_time,
+      wal_sync_time
+      FROM (
+        SELECT *
+        FROM (
+          SELECT srvid, (unnest(records)).*
+          FROM {powa}.powa_stat_wal_history walh
+          WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+          AND walh.srvid = %(server)s
+        ) AS unnested
+        WHERE ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        UNION ALL
+        SELECT srvid, (record).*
+        FROM {powa}.powa_stat_wal_history_current walc
+        WHERE (walc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        AND walc.srvid = %(server)s
+      ) AS wal_history
+    ) AS wal
+    WHERE number %% ( int8larger((total)/(%(samples)s+1),1) ) = 0
+"""
+
+
 BASE_QUERY_ALL_IDXS_SAMPLE_DB = """(
   SELECT d.srvid, d.datname, base.*
   FROM {powa}.powa_databases d,
@@ -1456,6 +1489,35 @@ def powa_get_slru_sample(qual=None):
         all_cols=', '.join(all_cols),
         base_query=base_query,
         qual=qual,
+    )
+
+
+def powa_get_wal_sample():
+    base_query = BASE_QUERY_WAL_SAMPLE
+    base_columns = ["srvid"]
+
+    biggest = Biggest(base_columns, 'ts')
+    biggestsum = Biggestsum(base_columns, 'ts')
+
+    all_cols = base_columns + [
+        "ts",
+        biggest("ts", "'0 s'", "mesure_interval"),
+        biggestsum("wal_records"),
+        biggestsum("wal_fpi"),
+        biggestsum("wal_bytes"),
+        biggestsum("wal_buffers_full"),
+        biggestsum("wal_write"),
+        biggestsum("wal_sync"),
+        biggestsum("wal_write_time"),
+        biggestsum("wal_sync_time"),
+    ]
+
+    return """SELECT {all_cols}
+    FROM {base_query}
+    GROUP BY {base_columns}, ts""".format(
+        all_cols=', '.join(all_cols),
+        base_columns=', '.join(base_columns),
+        base_query=base_query
     )
 
 
