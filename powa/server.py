@@ -26,7 +26,8 @@ from powa.sql.views_graph import (powa_getstatdata_sample,
                                   powa_get_database_conflicts_sample,
                                   powa_get_io_sample,
                                   powa_get_slru_sample,
-                                  powa_get_wal_sample)
+                                  powa_get_wal_sample,
+                                  powa_get_wal_receiver_sample)
 from powa.sql.views_grid import (powa_getstatdata_db,
                                  powa_getwaitdata_db,
                                  powa_getuserfuncdata_db,
@@ -893,6 +894,70 @@ class GlobalWalMetricGroup(MetricGroupDef):
             from_clause=from_clause,
         )
 
+
+class GlobalWalReceiverMetricGroup(MetricGroupDef):
+    """
+    Metric group used by pg_stat_wal_receiver graphs.
+    """
+    name = "wal_receiver"
+    xaxis = "ts"
+    data_url = r"/server/(\d+)/metrics/wal_receiver/"
+    write_delta = MetricDef(label="Write delta", type="size",
+                            desc="Total amount of data received from the"
+                                 " primary but not written yet")
+    flush_delta = MetricDef(label="Flush delta", type="size",
+                            desc="Total amount of data received and written"
+                                 " but not flushed yet")
+    last_msg_lag = MetricDef(label="Last message latency", type="duration",
+                              desc="Time spent transmitting the last message"
+                                   " received from origin WAL sender")
+    report_delta = MetricDef(label="Report delta", type="size",
+                             desc="Total amount of data not yet reported to"
+                                   " origin WAL sender")
+    report_lag = MetricDef(label="Report lag", type="duration",
+                           desc="Time elapsed since since last reporting of"
+                                 " WAL location to origin WAL sender")
+    received_bytes = MetricDef(label="WAL receiver bandwidth", type="sizerate",
+                               desc="Amount of data received from original WAL"
+                                    " sender")
+
+    @classmethod
+    def _get_metrics(cls, handler, **params):
+        base = cls.metrics.copy()
+
+        pg_version_num = handler.get_pg_version_num(handler.path_args[0])
+        # if we can't connect to the remote server, assume pg9.6 or more
+        if pg_version_num is not None and pg_version_num < 90600:
+            return {}
+        return base
+
+    @property
+    def query(self):
+        query = powa_get_wal_receiver_sample()
+
+        from_clause = query
+
+        cols = ["sub.srvid",
+                "extract(epoch FROM sub.ts) AS ts",
+                "last_received_lsn - written_lsn AS write_delta",
+                "written_lsn - flushed_lsn AS flush_delta",
+                "extract(epoch FROM ((last_msg_receipt_time - last_msg_send_time) * 1000)) AS last_msg_lag",
+                "last_received_lsn - latest_end_lsn AS report_delta",
+                "greatest(extract(epoch FROM ((ts - latest_end_time) * 1000)), 0) AS report_lag",
+                "received_bytes",
+                ]
+
+        return """SELECT {cols}
+        FROM (
+            {from_clause}
+        ) AS sub
+        WHERE sub.mesure_interval != '0 s'
+        --GROUP BY sub.srvid, sub.ts, sub.mesure_interval
+        ORDER BY sub.ts""".format(
+            cols=', '.join(cols),
+            from_clause=from_clause,
+        )
+
 class GlobalReplicationMetricGroup(MetricGroupDef):
     """
     Metric group used by pg_stat_replication graphs.
@@ -1259,7 +1324,7 @@ class ServerOverview(DashboardPage):
                    GlobalDbActivityConflMetricGroup, GlobalIoMetricGroup,
                    ByAllIoMetricGroup,
                    GlobalSlruMetricGroup, ByAllSlruMetricGroup,
-                   GlobalWalMetricGroup]
+                   GlobalWalMetricGroup, GlobalWalReceiverMetricGroup]
     params = ["server"]
     parent = Overview
     title = "All databases"
@@ -1425,7 +1490,29 @@ class ServerOverview(DashboardPage):
                               metrics=GlobalDbActivityConflMetricGroup.all(self)
                               # metrics=[GlobalDbActivityConflMetricGroup.confl_tablespace]
                                   )
-                        ]]
+                        ],
+                       [Graph("WAL receiver bandwidth",
+                              metrics=[GlobalWalReceiverMetricGroup.received_bytes]),
+                        Graph("WAL receiver Delta",
+                              url="https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-WAL-RECEIVER-VIEW",
+                              metrics=[GlobalWalReceiverMetricGroup.write_delta,
+                                       GlobalWalReceiverMetricGroup.flush_delta],
+                              renderer="bar",
+                              stack=True),
+                        ],
+                       [
+                        Graph("WAL receiver message",
+                              url="https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-WAL-RECEIVER-VIEW",
+                              metrics=[GlobalWalReceiverMetricGroup.last_msg_lag],
+                              renderer="bar",
+                              stack=True),
+                        Graph("WAL receiver report",
+                              url="https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-WAL-RECEIVER-VIEW",
+                              metrics=[GlobalWalReceiverMetricGroup.report_delta,
+                                       GlobalWalReceiverMetricGroup.report_lag],
+                              renderer="bar",
+                              stack=True),
+                       ]]
         graphs_dash.append(Dashboard("Archiver / Replication", arch_graphs))
 
         # Add pg_stat_database graphs
