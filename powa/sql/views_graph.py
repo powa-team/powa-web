@@ -923,6 +923,43 @@ BASE_QUERY_WAL_SAMPLE = """
 """
 
 
+BASE_QUERY_WAL_RECEIVER_SAMPLE = """
+    (SELECT srvid,
+      row_number() OVER (ORDER BY wr_history.ts) AS number,
+      count(*) OVER () AS total,
+      ts,
+      slot_name,
+      sender_host, sender_port,
+      pid, status,
+      receive_start_lsn, receive_start_tli,
+      last_received_lsn,
+      written_lsn, flushed_lsn,
+      received_tli,
+      last_msg_send_time,
+      last_msg_receipt_time,
+      latest_end_lsn,
+      latest_end_time,
+      conninfo
+      FROM (
+        SELECT *
+        FROM (
+          SELECT srvid, slot_name, sender_host, sender_port, (unnest(records)).*
+          FROM {powa}.powa_stat_wal_receiver_history walh
+          WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+          AND walh.srvid = %(server)s
+        ) AS unnested
+        WHERE ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        UNION ALL
+        SELECT srvid, slot_name, sender_host, sender_port, (record).*
+        FROM {powa}.powa_stat_wal_receiver_history_current walc
+        WHERE (walc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        AND walc.srvid = %(server)s
+      ) AS wr_history
+    ) AS wr
+    WHERE number %% ( int8larger((total)/(%(samples)s+1),1) ) = 0
+"""
+
+
 BASE_QUERY_ALL_IDXS_SAMPLE_DB = """(
   SELECT d.srvid, d.datname, base.*
   FROM {powa}.powa_databases d,
@@ -1515,6 +1552,42 @@ def powa_get_wal_sample():
     return """SELECT {all_cols}
     FROM {base_query}
     GROUP BY {base_columns}, ts""".format(
+        all_cols=', '.join(all_cols),
+        base_columns=', '.join(base_columns),
+        base_query=base_query
+    )
+
+
+def powa_get_wal_receiver_sample():
+    base_query = BASE_QUERY_WAL_RECEIVER_SAMPLE
+    base_columns = ["srvid", "slot_name", "sender_host", "sender_port"]
+
+    biggest = Biggest(base_columns, 'ts')
+
+    all_cols = base_columns + [
+        "ts",
+        biggest("ts", "'0 s'", "mesure_interval"),
+        "slot_name",
+        "sender_host",
+        "sender_port",
+        "pid",
+        "status",
+        "receive_start_lsn",
+        "receive_start_tli",
+        "last_received_lsn",
+        biggest("last_received_lsn", label="received_bytes"),
+        "written_lsn",
+        "flushed_lsn",
+        "received_tli",
+        "last_msg_send_time",
+        "last_msg_receipt_time",
+        "latest_end_lsn",
+        "latest_end_time",
+        "conninfo",
+    ]
+
+    return """SELECT {all_cols}
+    FROM {base_query}""".format(
         all_cols=', '.join(all_cols),
         base_columns=', '.join(base_columns),
         base_query=base_query
