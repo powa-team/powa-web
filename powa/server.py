@@ -25,7 +25,8 @@ from powa.sql.views_graph import (powa_getstatdata_sample,
                                   powa_get_database_sample,
                                   powa_get_database_conflicts_sample,
                                   powa_get_io_sample,
-                                  powa_get_slru_sample)
+                                  powa_get_slru_sample,
+                                  powa_get_wal_sample)
 from powa.sql.views_grid import (powa_getstatdata_db,
                                  powa_getwaitdata_db,
                                  powa_getuserfuncdata_db,
@@ -824,6 +825,74 @@ class ByAllSlruMetricGroup(MetricGroupDef):
 
         return val
 
+class GlobalWalMetricGroup(MetricGroupDef):
+    """
+    Metric group used by pg_stat_wal graph.
+    """
+    name = "wal"
+    xaxis = "name"
+    data_url = r"/server/(\d+)/metrics/wal/"
+    wal_records = MetricDef(label="# records", type="number",
+                            desc="Total number of WAL records generated")
+    wal_fpi = MetricDef(label="# fpi", type="number",
+                         desc="Total number of WAL full page images generated")
+    wal_bytes = MetricDef(label="Generated", type="sizerate",
+                          desc="Total amount of WAL generated in bytes")
+    wal_buffers_full = MetricDef(label="# buffers full", type="number",
+                                 desc="Number of times WAL data was written to"
+                                      " disk because WAL buffers became full")
+    wal_write = MetricDef(label="# writes", type="number",
+                            desc="Number of times WAL buffers were written out"
+                                 " to disk via XLogWrite request")
+    wal_sync = MetricDef(label="# sync", type="number",
+                        desc="Number of times WAL files were synced to disk"
+                             " via issue_xlog_fsync request")
+    wal_write_time = MetricDef(label="Write time", type="duration",
+                          desc="Total amount of time spent writing WAL buffers"
+                               " to disk via XLogWrite request")
+    wal_sync_time = MetricDef(label="Sync time", type="duration",
+                         desc="Total amount of time spent syncing WAL files to"
+                              " disk via issue_xlog_fsync request")
+
+    @classmethod
+    def _get_metrics(cls, handler, **params):
+        base = cls.metrics.copy()
+
+        pg_version_num = handler.get_pg_version_num(handler.path_args[0])
+        # if we can't connect to the remote server, assume pg14 or more
+        if pg_version_num is not None and pg_version_num < 140000:
+            return {}
+        return base
+
+    @property
+    def query(self):
+        query = powa_get_wal_sample()
+
+        from_clause = query
+
+        cols = ["sub.srvid",
+                "extract(epoch FROM sub.ts) AS ts",
+                sum_per_sec('wal_records'),
+                sum_per_sec('wal_fpi'),
+                sum_per_sec('wal_bytes'),
+                sum_per_sec('wal_buffers_full'),
+                sum_per_sec('wal_write'),
+                sum_per_sec('wal_sync'),
+                sum_per_sec('wal_write_time'),
+                sum_per_sec('wal_sync_time'),
+                ]
+
+        return """SELECT {cols}
+        FROM (
+            {from_clause}
+        ) AS sub
+        WHERE sub.mesure_interval != '0 s'
+        GROUP BY sub.srvid, sub.ts, sub.mesure_interval
+        ORDER BY sub.ts""".format(
+            cols=', '.join(cols),
+            from_clause=from_clause,
+        )
+
 class GlobalReplicationMetricGroup(MetricGroupDef):
     """
     Metric group used by pg_stat_replication graphs.
@@ -1189,7 +1258,8 @@ class ServerOverview(DashboardPage):
                    GlobalDbActivityMetricGroup,
                    GlobalDbActivityConflMetricGroup, GlobalIoMetricGroup,
                    ByAllIoMetricGroup,
-                   GlobalSlruMetricGroup, ByAllSlruMetricGroup]
+                   GlobalSlruMetricGroup, ByAllSlruMetricGroup,
+                   GlobalWalMetricGroup]
     params = ["server"]
     parent = Overview
     title = "All databases"
@@ -1250,7 +1320,21 @@ class ServerOverview(DashboardPage):
         graphs = [TabContainer("All databases", graphs_dash)]
 
         # Add WALs graphs
-        if pgss18:
+
+        # if we can't connect to the remote server, assume pg14 or above
+        if (pg_version_num is None or pg_version_num >= 140000):
+            wal_metrics = GlobalWalMetricGroup.split(self,
+                                                     [["wal_write_time",
+                                                       "wal_sync_time"]])
+            wals_graphs = [[Graph("WAL activity",
+                            url="https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-WAL-VIEW",
+                            metrics=wal_metrics[0]),
+                            Graph("WAL timing",
+                            url="https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-WAL-VIEW",
+                            metrics=wal_metrics[1]),
+                            ]]
+            graphs_dash.append(Dashboard("WALs", wals_graphs))
+        elif pgss18:
             wals_graphs = [[Graph("WAL activity",
                             metrics=[GlobalDatabasesMetricGroup.wal_records,
                                      GlobalDatabasesMetricGroup.wal_fpi,
