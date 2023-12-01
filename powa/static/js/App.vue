@@ -187,7 +187,6 @@ onMounted(() => {
 });
 
 function initDashboard() {
-  store.handlerConfig = {};
   store.dashboardConfig = null;
   // Load dahsboard config from same url but asking for JSON instead of HTML
   d3.json(window.location.href, {
