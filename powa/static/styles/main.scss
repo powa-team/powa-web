@@ -94,3 +94,15 @@ dd {
 .theme--dark {
   @include highlight.dark;
 }
+
+.powa-snackbars .v-overlay {
+  top: initial;
+  left: initial;
+  bottom: 0;
+  right: 0;
+  position: relative;
+
+  .v-overlay__content {
+    position: relative;
+  }
+}

@@ -86,11 +86,11 @@ const store = reactive({
   alertMessages: [],
   addAlertMessage(level, message) {
     const colors = {
-      alert: "red",
-      error: "red",
-      warning: "orange",
-      info: "blue",
-      success: "green",
+      alert: "error",
+      error: "error",
+      warning: "warning",
+      info: "info",
+      success: "success",
     };
     this.alertMessages.push({
       id: ++messageId,

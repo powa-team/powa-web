@@ -123,25 +123,21 @@
       </v-container>
     </v-footer>
     <div
-      class="d-flex flex-column-reverse"
-      style="position: fixed; bottom: 0; width: 100%; align-items: center"
+      class="d-flex flex-column-reverse powa-snackbars align-center"
+      style="position: fixed; bottom: 0; width: 100%"
     >
-      <div
-        style="position: absolute"
-        class="d-flex flex-column flex-column-reverse"
-      >
+      <div class="d-flex flex-column flex-column-reverse align-center">
         <v-snackbar
           v-for="message in store.alertMessages"
           :key="message.id"
           v-model="message.shown"
           :color="message.color"
           timeout="5000"
-          absolute
-          style="position: initial !important"
+          :attach="true"
           @input="onSnackbarChanged(message.id, $event)"
         >
           <span v-html="message.message"></span>
-          <template #action>
+          <template #actions>
             <v-icon
               text
               :icon="icons.mdiClose"
