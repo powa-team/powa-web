@@ -44,9 +44,9 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import store from "@/store";
 import _ from "lodash";
 import { formatPercentage } from "@/utils/percentage";
+import { useStoreService } from "@/composables/useStoreService";
 
 const props = defineProps({
   config: {
@@ -61,10 +61,10 @@ const loading = ref(false);
 
 const items = ref([]);
 const metric = ref([]);
-
+const { dataSources } = useStoreService();
 onMounted(() => {
   watch(
-    () => store.dataSources,
+    () => dataSources.value,
     () => {
       loadData();
     },
@@ -78,7 +78,7 @@ const metricGroup = _.uniq(
   })
 );
 metric.value = props.config.metrics[0].split(".")[1];
-const sourceConfig = store.dataSources[metricGroup];
+const sourceConfig = dataSources.value[metricGroup];
 
 function loadData() {
   loading.value = true;

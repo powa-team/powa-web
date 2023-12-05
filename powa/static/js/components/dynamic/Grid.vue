@@ -63,7 +63,7 @@
           <router-link
             v-if="column.urlAttr"
             :key="column.key"
-            :to="[item[column.urlAttr], store.serialize()].join('?')"
+            :to="getUrl(item[column.urlAttr])"
             exact-match
           >
             <grid-cell :value="item[column.key]" :column="column"></grid-cell>
@@ -83,7 +83,7 @@
 
 <script setup>
 import { computed, ref } from "vue";
-import store from "@/store";
+import { useStoreService } from "@/composables/useStoreService.js";
 import _ from "lodash";
 import size from "@/utils/size";
 import "highlight.js/styles/default.css";
@@ -108,6 +108,7 @@ const metricGroup = _.uniq(
   })
 );
 const { loading, data: data } = useFetch(metricGroup);
+const { dataSources, getUrl } = useStoreService();
 const search = ref("");
 
 const fields = computed(() => {
@@ -119,7 +120,7 @@ const fields = computed(() => {
   const metrics = _.map(props.config.metrics, (metric) => {
     return metric.split(".")[1];
   });
-  const sourceConfig = store.dataSources[metricGroup];
+  const sourceConfig = dataSources.value[metricGroup];
 
   const columns = props.config.columns;
   _.each(metrics, function (metric) {
