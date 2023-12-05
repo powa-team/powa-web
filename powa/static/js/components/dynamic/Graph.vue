@@ -191,7 +191,8 @@
 import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import _ from "lodash";
 import { icons } from "@/plugins/vuetify";
-import store from "@/store";
+/*import store from "@/store";*/
+import { useStoreService } from "@/composables/useStoreService";
 import * as d3 from "d3";
 import size from "@/utils/size";
 import { toISO } from "@/utils/dates";
@@ -206,6 +207,8 @@ const props = defineProps({
     },
   },
 });
+
+const { changes, dataSources, from, to, setFromTo } = useStoreService();
 
 const loading = ref(false);
 const noData = ref(false);
@@ -238,7 +241,7 @@ let series = [];
 // The SVG <g> in which we display the dots appearing on hover
 let markers;
 // The SVG <g> containing the config changes markers
-let changes;
+let changesEl;
 
 // The D3 brushX used for drag zoom
 let brush;
@@ -348,7 +351,7 @@ onMounted(async () => {
   initChart();
 
   watch(
-    () => store.dataSources,
+    () => dataSources.value,
     () => {
       sourceConfig && loadData();
     },
@@ -398,12 +401,12 @@ function initChart() {
     return;
   }
 
-  sourceConfig = store.dataSources[metricGroup];
+  sourceConfig = dataSources.value[metricGroup];
 
   stacked = props.config.stack;
 
   // Create the group for the changes
-  changes = svg
+  changesEl = svg
     .append("g")
     .attr("class", "changes")
     .attr("transform", `translate(0, ${height})`)
@@ -500,7 +503,7 @@ function initChart() {
 function loadData() {
   loading.value = true;
 
-  const promises = [sourceConfig.promise, store.changes];
+  const promises = [sourceConfig.promise, changes.value];
   Promise.all(promises).then((response) => {
     data = JSON.parse(response[0]).data;
     dataLoaded();
@@ -546,7 +549,7 @@ function dataLoaded() {
 
 function drawOrUpdateChart() {
   // Draw X Axis
-  xScale = d3.scaleTime().range([0, width]).domain([store.from, store.to]);
+  xScale = d3.scaleTime().range([0, width]).domain([from.value, to.value]);
 
   const ticksCount = 5;
   const xAxis = d3
@@ -752,7 +755,7 @@ function brushended({ selection }) {
   if (selection) {
     const from = toISO(xScale.invert(selection[0]));
     const to = toISO(xScale.invert(selection[1]));
-    store.setFromTo(from, to);
+    setFromTo(from, to);
     gb.call(brush);
     gb.call(brush.move, null);
   }
@@ -763,7 +766,7 @@ function changesLoaded() {
     d.date = new Date(d.ts * 1000);
   });
 
-  const events = changes.selectAll(".event").data(changesData);
+  const events = changesEl.selectAll(".event").data(changesData);
 
   // Create markers for new changes
   const g = events

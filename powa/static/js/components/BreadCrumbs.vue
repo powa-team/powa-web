@@ -1,7 +1,7 @@
 <template>
   <div>
     <v-breadcrumbs :items="items">
-      <template #item="{ item, index }">
+      <template #item="{ item }">
         <v-breadcrumbs-item v-if="item.children">
           <v-select
             :items="item.children"
@@ -19,7 +19,7 @@
           v-else
           :to="item.href"
           exact
-          :disabled="index == items.length - 1"
+          :disabled="item.href == route.path"
         >
           {{ item.text }}
         </v-breadcrumbs-item>
@@ -29,10 +29,9 @@
 </template>
 
 <script setup>
-import { toRef, watch } from "vue";
-import store from "@/store";
-import _ from "lodash";
-import { useRouter } from "vue-router";
+import { toRef } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useStoreService } from "@/composables/useStoreService.js";
 const props = defineProps({
   breadCrumbItems: {
     type: Array,
@@ -44,24 +43,10 @@ const props = defineProps({
 
 const items = toRef(props, "breadCrumbItems");
 const router = useRouter();
-
-watch(
-  () => store.rawFrom + store.rawTo,
-  () => {
-    _.each(items.value, (item) => {
-      if (item.text == "Home") {
-        return;
-      }
-      const baseUrl = new URL(window.location.href);
-      const url = new URL(item.href, baseUrl.origin);
-      url.searchParams.set("to", store.rawTo);
-      url.searchParams.set("from", store.rawFrom);
-      item.href = url.pathname + url.search;
-    });
-  }
-);
+const route = useRoute();
+const { getUrl } = useStoreService();
 
 function onSelect(url) {
-  router.push(url);
+  router.push(getUrl(url));
 }
 </script>
