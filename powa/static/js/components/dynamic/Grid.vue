@@ -78,7 +78,7 @@
           <router-link
             v-if="header.urlAttr"
             :key="header.key"
-            :to="[item[header.urlAttr], store.serialize()].join('?')"
+            :to="getUrl(item[header.urlAttr])"
             exact-match
           >
             <grid-cell :value="item[header.key]" :header="header"></grid-cell>
@@ -98,7 +98,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import store from "@/store";
+import { useStoreService } from "@/composables/useStoreService.js";
 import _ from "lodash";
 import size from "@/utils/size";
 import "highlight.js/styles/default.css";
@@ -119,10 +119,11 @@ const props = defineProps({
 const loading = ref(false);
 const search = ref("");
 const items = ref([]);
+const { dataSources, getUrl } = useStoreService();
 
 onMounted(() => {
   watch(
-    () => store.dataSources,
+    () => dataSources.value,
     () => {
       loadData();
     },
@@ -139,7 +140,7 @@ const fields = computed(() => {
   const metrics = _.map(props.config.metrics, (metric) => {
     return metric.split(".")[1];
   });
-  const sourceConfig = store.dataSources[metricGroup];
+  const sourceConfig = dataSources.value[metricGroup];
 
   const columns = props.config.columns;
   _.each(metrics, function (metric) {
@@ -183,7 +184,7 @@ function loadData() {
       return metric.split(".")[0];
     })
   );
-  const sourceConfig = store.dataSources[metricGroup];
+  const sourceConfig = dataSources.value[metricGroup];
   sourceConfig.promise.then((response) => {
     dataLoaded(JSON.parse(response).data);
     loading.value = false;

@@ -7,24 +7,24 @@
       style="overflow: initial; z-index: 2"
     >
       <v-btn
-        :to="{ path: store.handlerConfig.homeUrl }"
+        :to="{ path: handlerConfig.homeUrl }"
         class="mr-2"
         title="Home page"
         exact
       >
-        <img :src="store.handlerConfig.logoUrl" />&nbsp;<b>PoWA</b>
+        <img :src="handlerConfig.logoUrl" />&nbsp;<b>PoWA</b>
       </v-btn>
-      <template v-if="store.handlerConfig.currentUser">
+      <template v-if="handlerConfig.currentUser">
         <v-toolbar-title text class="mr-2 text-body-1">
-          Server <b>{{ store.handlerConfig.currentServer }}</b> ({{
-            store.handlerConfig.currentConnection
+          Server <b>{{ handlerConfig.currentServer }}</b> ({{
+            handlerConfig.currentConnection
           }})
         </v-toolbar-title>
-        <v-btn text :to="store.handlerConfig.configUrl" title="Configuration">
+        <v-btn text :to="handlerConfig.configUrl" title="Configuration">
           <v-icon left :icon="icons.mdiCog" class="me-2" />
           Configuration
         </v-btn>
-        <v-menu v-if="store.handlerConfig.notifyAllowed" offset-y>
+        <v-menu v-if="handlerConfig.notifyAllowed" offset-y>
           <template #activator="{ props }">
             <v-btn text color="primary" v-bind="props">
               <v-icon left :icon="icons.mdiReload" class="me-2"></v-icon>
@@ -36,26 +36,22 @@
               <v-list-item-title> Reload collector </v-list-item-title>
             </v-list-item>
             <v-list-item
-              v-if="
-                store.handlerConfig.server && store.handlerConfig.server != 0
-              "
+              v-if="handlerConfig.server && handlerConfig.server != 0"
               link
-              @click="forceSnapshot(store.handlerConfig.server)"
+              @click="forceSnapshot(handlerConfig.server)"
             >
               <v-list-item-title> Force a snapshot </v-list-item-title>
             </v-list-item>
             <v-list-item
-              v-if="
-                store.handlerConfig.server && store.handlerConfig.server != 0
-              "
+              v-if="handlerConfig.server && handlerConfig.server != 0"
               link
-              :data-dbname="store.handlerConfig.database"
-              @click="refreshDbCat(store.handlerConfig.server, $event)"
+              :data-dbname="handlerConfig.database"
+              @click="refreshDbCat(handlerConfig.server, $event)"
             >
               <v-list-item-title>
                 Refresh catalogs
-                <span v-if="store.handlerConfig.database">
-                  on db {{ store.handlerConfig.database }}</span
+                <span v-if="handlerConfig.database">
+                  on db {{ handlerConfig.database }}</span
                 >
                 <span v-else> on all db</span>
               </v-list-item-title>
@@ -75,23 +71,20 @@
           @change="toggleTheme"
         >
         </v-switch>
-        <v-btn text color="primary" :href="store.handlerConfig.logoutUrl">
+        <v-btn text color="primary" :href="handlerConfig.logoutUrl">
           <v-icon left :icon="icons.mdiPower" class="me-2"></v-icon>
           Logout
         </v-btn>
       </template>
-      <template v-if="store.handlerConfig.currentUser" #extension>
-        <bread-crumbs :bread-crumb-items="store.breadcrumbs"></bread-crumbs>
+      <template v-if="handlerConfig.currentUser" #extension>
+        <bread-crumbs :bread-crumb-items="breadcrumbs"></bread-crumbs>
         <v-spacer></v-spacer>
         <date-range-picker ml-auto></date-range-picker>
       </template>
     </v-app-bar>
     <v-main>
       <v-container fluid>
-        <dashboard
-          v-if="store.dashboardConfig"
-          :config="store.dashboardConfig"
-        ></dashboard>
+        <dashboard v-if="dashboardConfig" :config="dashboardConfig"></dashboard>
         <login-view v-else-if="servers" :servers="servers"></login-view>
       </v-container>
     </v-main>
@@ -101,13 +94,13 @@
           <v-sheet>
             <ul style="margin-bottom: 0; padding-left: 0">
               <li style="display: inline-block">
-                Version {{ store.handlerConfig.version }}
+                Version {{ handlerConfig.version }}
               </li>
               <li style="display: inline-block" class="ml-5">
                 &copy; 2014-2017 Dalibo
               </li>
               <li style="display: inline-block" class="ml-5">
-                &copy; 2018-{{ store.handlerConfig.year }} The PoWA-team
+                &copy; 2018-{{ handlerConfig.year }} The PoWA-team
               </li>
               <li style="display: inline-block" class="ml-5">
                 <a href="https://powa.readthedocs.io"
@@ -153,19 +146,33 @@
 </template>
 
 <script setup>
-import { watch } from "vue";
-import { onMounted } from "vue";
+import { onMounted, watch } from "vue";
 import { useTheme } from "vuetify";
 import { icons } from "@/plugins/vuetify.js";
-import store from "@/store";
+import store from "@/store.js";
+import { useStoreService } from "@/composables/useStoreService.js";
+import { useRoute } from "vue-router";
 import _ from "lodash";
 import * as d3 from "d3";
 import BreadCrumbs from "@/components/BreadCrumbs.vue";
 import DateRangePicker from "@/components/DateRangePicker/DateRangePicker.vue";
 import LoginView from "@/components/LoginView.vue";
-import { useRoute } from "vue-router";
+import { dateMath } from "@grafana/data";
+import { encodeQueryData } from "@/utils/query";
 
 const theme = useTheme();
+const {
+  breadcrumbs,
+  dataSources,
+  dashboardConfig,
+  from,
+  to,
+  handlerConfig,
+  changesUrl,
+  changes,
+  defaultFrom,
+  defaultTo,
+} = useStoreService();
 const route = useRoute();
 
 let servers;
@@ -175,18 +182,7 @@ document.querySelectorAll('script[type="text/servers"]').forEach(function (el) {
 
 onMounted(() => {
   checkTheme();
-  initDashboard();
 });
-
-function initDashboard() {
-  store.dashboardConfig = null;
-  // Load dahsboard config from same url but asking for JSON instead of HTML
-  d3.json(window.location.href, {
-    headers: {
-      "Content-type": "application/json",
-    },
-  }).then(store.configure);
-}
 
 function reloadCollector() {
   d3.json("/reload_collector/").then(
@@ -313,5 +309,75 @@ function checkTheme() {
   }
 }
 
-watch(() => route.params, initDashboard);
+function initDashboard() {
+  dashboardConfig.value = null;
+  // Load dahsboard config from same url but asking for JSON instead of HTML
+  d3.json(window.location.href, {
+    headers: {
+      "Content-type": "application/json",
+    },
+  }).then(configure);
+}
+
+function configure(config) {
+  document.title = config.dashboard.title;
+  dataSources.value = {};
+  dashboardConfig.value = config.dashboard;
+  handlerConfig.value = config.handler;
+  _.each(config.datasources, function (dataSource) {
+    try {
+      if (dataSource.type == "metric_group") {
+        dataSource.metrics = _.keyBy(dataSource.metrics, "name");
+      }
+    } catch (e) {
+      console.error(
+        "Could not instantiate metric group. Check the metric group definition"
+      );
+    }
+    dataSources.value[dataSource.name] = dataSource;
+  });
+  changesUrl.value = config.timeline;
+  breadcrumbs.value = config.breadcrumbs;
+  loadData();
+}
+
+function loadData() {
+  const params = {
+    from: dateMath.parse(from.value).format("YYYY-MM-DD HH:mm:ssZZ"),
+    to: dateMath.parse(to.value, true).format("YYYY-MM-DD HH:mm:ssZZ"),
+  };
+
+  const copy = Object.assign({}, dataSources.value);
+  _.forEach(copy, (source) => {
+    source.promise = d3.text(source.data_url + "?" + encodeQueryData(params));
+    source.promise.then((response) => {
+      try {
+        const data = JSON.parse(response);
+        if (data) {
+          this.addAlertMessages(data.messages);
+        }
+      } catch (error) {
+        // pass
+        // this may correspond to content widgets for example
+      }
+    });
+  });
+  dataSources.value = copy;
+  if (changesUrl.value) {
+    changes.value = d3.json(changesUrl.value + "?" + encodeQueryData(params));
+  }
+}
+
+watch(
+  () => route.params,
+  function (newVal, oldVal) {
+    from.value = route.query.from || defaultFrom;
+    to.value = route.query.to || defaultTo;
+    if (newVal.pathMatch != oldVal.pathMatch) {
+      initDashboard();
+    } else {
+      loadData();
+    }
+  }
+);
 </script>

@@ -125,12 +125,15 @@
 
 <script setup>
 import { nextTick, ref } from "vue";
-import store from "@/store";
 import * as d3 from "d3";
 import { encodeQueryData } from "@/utils/query";
 import _ from "lodash";
 import QueryTooltip from "@/components/QueryTooltip.vue";
 import { formatSql } from "@/utils/sql";
+import { useStoreService } from "@/composables/useStoreService.js";
+import { dateMath } from "@grafana/data";
+
+const { dataSources, from, to } = useStoreService();
 
 // eslint-disable-next-line no-unused-vars
 const props = defineProps({
@@ -141,7 +144,7 @@ const props = defineProps({
     },
   },
 });
-const sourceConfig = store.dataSources[props.config.type];
+const sourceConfig = dataSources.value[props.config.type];
 
 const optimized = ref(false);
 const progressLabel = ref("");
@@ -213,8 +216,8 @@ async function optimize() {
   unoptimizableItems.value = [];
   await updateProgress("Fetching most executed quals…", 0);
   const params = {
-    from: store.from.format("YYYY-MM-DD HH:mm:ssZZ"),
-    to: store.to.format("YYYY-MM-DD HH:mm:ssZZ"),
+    from: dateMath.parse(from.value).format("YYYY-MM-DD HH:mm:ssZZ"),
+    to: dateMath.parse(to.value).format("YYYY-MM-DD HH:mm:ssZZ"),
   };
   d3.json(sourceConfig.data_url + "?" + encodeQueryData(params)).then(
     async (response) => {
@@ -629,8 +632,8 @@ async function checkSolution() {
     queryids = _.uniq(queryids.concat(index.queryids));
   });
   const params = {
-    from: store.from.format("YYYY-MM-DD HH:mm:ssZZ"),
-    to: store.to.format("YYYY-MM-DD HH:mm:ssZZ"),
+    from: dateMath.parse(from.value).format("YYYY-MM-DD HH:mm:ssZZ"),
+    to: dateMath.parse(to.value).format("YYYY-MM-DD HH:mm:ssZZ"),
   };
   d3.json(
     `/server/${props.config.server}/database/${props.config.database}/suggest/`,

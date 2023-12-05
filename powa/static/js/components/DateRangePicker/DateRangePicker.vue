@@ -149,16 +149,17 @@ import { computed, ref, watch } from "vue";
 import { quickOptions } from "./options.ts";
 import { dateMath, rangeUtil } from "@grafana/data";
 import { icons } from "@/plugins/vuetify";
-import store from "@/store";
 import { toISO } from "@/utils/dates";
+import { useStoreService } from "@/composables/useStoreService.js";
 
 const menu = ref(false);
+const { from, to, setFromTo } = useStoreService();
 
 // The raw values (examples: 'now-24h', 'Tue Sep 01 2020 10:16:00 GMT+0200')
 // Interaction with parent component is done with from/to props which
 // are unix timestamps
-const rawFrom = ref(store.rawFrom);
-const rawTo = ref(store.rawTo);
+const rawFrom = ref(from.value);
+const rawTo = ref(to.value);
 // The values to display in the custom range from and to fields
 // we don't use raw values because we may want to pick/change from and
 // to in the form before applying changes
@@ -175,10 +176,10 @@ const form = ref(null);
 const valid = ref(true);
 
 const rangeString = computed(() => {
-  if (!rawFrom.value || !rawTo.value) {
+  if (!from.value || !to.value) {
     return;
   }
-  return rangeUtil.describeTimeRange({ from: rawFrom.value, to: rawTo.value });
+  return rangeUtil.describeTimeRange({ from: from.value, to: to.value });
 });
 
 const requiredMsg = `Please enter a past date or "now"`;
@@ -202,30 +203,35 @@ const fromRules = ref(
 const toRules = ref(commonRules);
 
 function loadRangeShortcut(shortcut) {
-  rawFrom.value = shortcut.from;
-  rawTo.value = shortcut.to;
-  store.setFromTo(rawFrom.value, rawTo.value);
   menu.value = false;
+  setFromTo(shortcut.from, shortcut.to);
 }
 
 watch(
-  () => rawFrom.value + rawTo.value,
+  () => from.value,
   () => {
-    inputFrom.value = rawFrom.value;
-    inputTo.value = rawTo.value;
-    synchronizePicker();
+    inputFrom.value = from.value;
+    synchronizeFromPicker();
+  }
+);
+watch(
+  () => to.value,
+  () => {
+    inputTo.value = to.value;
+    synchronizeToPicker();
   }
 );
 
 function applyTimeRange() {
   rawFrom.value = inputFrom.value;
   rawTo.value = inputTo.value;
-  store.setFromTo(rawFrom.value, rawTo.value);
+  setFromTo(rawFrom.value, rawTo.value);
   menu.value = false;
 }
 
 function cancelPicker() {
-  synchronizePicker();
+  synchronizeFromPicker();
+  synchronizeToPicker();
   fromDialog.value = false;
   toDialog.value = false;
 }
@@ -240,25 +246,20 @@ function applyPickerToDate() {
   toDialog.value = false;
 }
 
-function synchronizePicker() {
-  pickerFrom.value = dateMath.parse(rawFrom.value).toDate();
-  pickerTo.value = dateMath.parse(rawTo.value, true).toDate();
+function synchronizeFromPicker() {
+  pickerFrom.value = dateMath.parse(from.value).toDate();
+}
+
+function synchronizeToPicker() {
+  pickerTo.value = dateMath.parse(to.value, true).toDate();
 }
 
 function zoomOut() {
-  const from = store.from.toDate();
-  const to = store.to.toDate();
-  const diff = to - from;
-  const newFrom = toISO(new Date(from.getTime() - diff / 2));
-  const newTo = toISO(new Date(to.getTime() + diff / 2));
-  store.setFromTo(newFrom, newTo);
+  const from_ = dateMath.parse(from.value);
+  const to_ = dateMath.parse(to.value);
+  const diff = to_ - from_;
+  const newFrom = toISO(new Date(from_.toDate().getTime() - diff / 2));
+  const newTo = toISO(new Date(to_.toDate().getTime() + diff / 2));
+  setFromTo(newFrom, newTo);
 }
-
-watch(
-  () => store.rawFrom + store.rawTo,
-  () => {
-    rawFrom.value = store.rawFrom;
-    rawTo.value = store.rawTo;
-  }
-);
 </script>
