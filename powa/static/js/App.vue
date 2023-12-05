@@ -64,10 +64,12 @@
 
         <v-spacer></v-spacer>
         <v-switch
-          :model-value="darkTheme"
+          v-model="theme.global.name.value"
           hide-details
           :false-icon="icons.mdiWhiteBalanceSunny"
           :true-icon="icons.mdiWeatherNight"
+          true-value="dark"
+          false-value="light"
           class="flex-grow-0"
           @update:model-value="toggleTheme"
         >
@@ -154,7 +156,7 @@
 </template>
 
 <script setup>
-import { computed, getCurrentInstance, watch } from "vue";
+import { watch } from "vue";
 import { onMounted } from "vue";
 import { useTheme } from "vuetify";
 import { icons } from "@/plugins/vuetify.js";
@@ -166,7 +168,6 @@ import DateRangePicker from "@/components/DateRangePicker/DateRangePicker.vue";
 import LoginView from "@/components/LoginView.vue";
 import { useRoute } from "vue-router";
 
-const instance = getCurrentInstance();
 const theme = useTheme();
 const route = useRoute();
 
@@ -299,27 +300,19 @@ function closeSnackBar(message) {
 }
 
 function toggleTheme() {
-  theme.global.name.value = theme.global.current.value.dark ? "light" : "dark";
-  localStorage.setItem("dark_theme", theme.global.name.value.toString());
+  localStorage.setItem("theme", theme.global.name.value);
 }
 
-const darkTheme = computed(() => {
-  return instance.proxy.$vuetify.theme.dark;
-});
-
 function checkTheme() {
-  const theme = localStorage.getItem("dark_theme");
-  if (!_.isNull(theme)) {
-    instance.proxy.$vuetify.theme.dark = Boolean(JSON.parse(theme));
+  const savedTheme = localStorage.getItem("theme");
+  if (!_.isNull(savedTheme)) {
+    theme.global.name.value = savedTheme;
   } else if (
     window.matchMedia &&
     window.matchMedia("(prefers-color-scheme: dark)").matches
   ) {
-    instance.proxy.$vuetify.theme.dark = true;
-    localStorage.setItem(
-      "dark_theme",
-      instance.proxy.$vuetify.theme.dark.toString()
-    );
+    theme.global.name.value = "dark";
+    localStorage.setItem("theme", "dark");
   }
 }
 
