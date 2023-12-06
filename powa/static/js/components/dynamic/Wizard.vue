@@ -593,7 +593,10 @@ function trashQuals(node) {
       accessMethods[am] = (accessMethods[am] || 0) + 1;
     });
   });
-  const mostCommonAm = _.maxBy(_.toPairs(accessMethods), (pair) => pair[1])[0];
+  const maxCommonAm = _.maxBy(_.toPairs(accessMethods), (pair) => pair[1]);
+  // In some cases, a predicate contains an operator that is not optimizable by
+  // any access method
+  const mostCommonAm = maxCommonAm ? maxCommonAm[0] : "";
   const grouped = _.groupBy(quals, (qual) =>
     qual.amops[mostCommonAm] ? "keep" : "trash"
   );
