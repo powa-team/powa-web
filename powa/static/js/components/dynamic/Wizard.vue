@@ -555,16 +555,12 @@ function qualRepr(node) {
       if (idx == 0 && hasquals) {
         value = " AND " + value;
       }
-      if (idx < node.trashedQuals.length - 1) {
-        value += " AND ";
-      }
-      value = formatSql("WHERE " + value);
-      value = value.substring(value.indexOf("</span> ") + 8);
+      value = formatSql(value);
       part += value + "</strike>";
       return part;
     }, node)
     .join(" AND ");
-  base = "<pre class='sql'><code>• " + base + unmanaged + "</code></pre>";
+  base = "<pre class='sql'><code>• " + base + " " + unmanaged + "</code></pre>";
   base = base + node.contained.map((node) => qualRepr(node)).join("");
   return base;
 }
