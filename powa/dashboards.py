@@ -69,12 +69,12 @@ class DashboardHandler(AuthHandler):
             breadcrumbs = [
                 {
                     "text": item.title,
-                    "href": self.reverse_url_with_params(item.url_name, url_args=item.url_params.values()),
+                    "href": self.reverse_url(item.url_name, *item.url_params.values()),
                 } for i, item in enumerate(reversed(self.breadcrumb))
             ] + [{
                 "text": item.children_title,
                 "children": [{
-                    "url": self.reverse_url_with_params(child.url_name, url_args=child.url_params.values()),
+                    "url": self.reverse_url(child.url_name, *child.url_params.values()),
                     "title": child.title
                     } for child in item.children] if item.children and i == last else None
                 } for i, item in enumerate(reversed(self.breadcrumb)) if i == last and item.children
