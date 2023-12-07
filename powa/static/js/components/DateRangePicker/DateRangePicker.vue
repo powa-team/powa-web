@@ -127,7 +127,7 @@
         </v-sheet>
       </v-menu>
     </v-btn>
-    <v-btn @click="applyTimeRange">
+    <v-btn @click="refresh">
       <v-icon>
         {{ icons.mdiReload }}
       </v-icon>
@@ -170,6 +170,10 @@ const toDialog = ref(false);
 
 const form = ref(null);
 const valid = ref(true);
+
+const emit = defineEmits({
+  refresh: () => true,
+});
 
 const rangeString = computed(() => {
   if (!from.value || !to.value) {
@@ -217,6 +221,10 @@ watch(
     synchronizeToPicker();
   }
 );
+
+function refresh() {
+  emit("refresh");
+}
 
 function applyTimeRange() {
   rawFrom.value = inputFrom.value;

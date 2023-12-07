@@ -79,7 +79,7 @@
       <template v-if="handlerConfig.currentUser" #extension>
         <bread-crumbs :bread-crumb-items="breadcrumbs"></bread-crumbs>
         <v-spacer></v-spacer>
-        <date-range-picker ml-auto></date-range-picker>
+        <date-range-picker ml-auto @refresh="loadData"></date-range-picker>
       </template>
     </v-app-bar>
     <v-main>
