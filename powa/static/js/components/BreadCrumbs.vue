@@ -17,8 +17,7 @@
         </v-breadcrumbs-item>
         <v-breadcrumbs-item
           v-else
-          :to="item.href"
-          exact
+          :to="getUrl(item.href)"
           :disabled="item.href == route.path"
         >
           {{ item.text }}
