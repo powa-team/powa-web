@@ -662,7 +662,6 @@ class BaseHandler(RequestHandler, JSONizable):
         self.set_secure_cookie(name, pickle.dumps(value))
 
     flash = ui_methods.flash
-    reverse_url_with_params = ui_methods.reverse_url_with_params
 
     def to_json(self):
         return {
