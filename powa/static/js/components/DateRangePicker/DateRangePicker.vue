@@ -6,7 +6,7 @@
       </v-icon>
       <span>{{ rangeString }}</span>
       <v-menu v-model="menu" activator="parent" :close-on-content-click="false">
-        <v-sheet class="d-flex" height="350" width="500" no-gutters>
+        <v-sheet class="d-flex" height="350" width="540" no-gutters>
           <v-sheet
             class="pa-6 flex-grow-1"
             style="border-right: 1px solid #dfdfdf"
@@ -19,11 +19,7 @@
               <br />
               <v-row>
                 <v-col cols="auto">
-                  <v-dialog
-                    v-model="fromDialog"
-                    activator="parent"
-                    max-width="400"
-                  >
+                  <v-dialog v-model="fromDialog" activator="parent">
                     <template #activator="{ props }">
                       <v-btn
                         size="small"
@@ -52,7 +48,7 @@
                     </v-date-picker>
                   </v-dialog>
                 </v-col>
-                <v-col cols="9">
+                <v-col>
                   <v-text-field
                     v-model="inputFrom"
                     :rules="fromRules"
@@ -97,7 +93,7 @@
                     </v-date-picker>
                   </v-dialog>
                 </v-col>
-                <v-col cols="9">
+                <v-col>
                   <v-text-field
                     v-model="inputTo"
                     :rules="toRules"
