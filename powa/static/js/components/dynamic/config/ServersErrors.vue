@@ -29,7 +29,7 @@
 </template>
 
 <script setup>
-import { useFetch } from "@/utils/fetch.js";
+import { useDataLoader } from "@/composables/DataLoaderService.js";
 
 const props = defineProps({
   config: {
@@ -40,5 +40,5 @@ const props = defineProps({
   },
 });
 
-const { loading, data: errors } = useFetch(props.config.name);
+const { loading, data: errors } = useDataLoader(props.config.name);
 </script>
