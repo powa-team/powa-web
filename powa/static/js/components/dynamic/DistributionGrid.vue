@@ -43,10 +43,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, ref } from "vue";
 import _ from "lodash";
 import { formatPercentage } from "@/utils/percentage";
 import { useStoreService } from "@/composables/useStoreService";
+import { useDataLoader } from "@/composables/DataLoaderService.js";
 
 const props = defineProps({
   config: {
@@ -57,52 +58,34 @@ const props = defineProps({
   },
 });
 
-const loading = ref(false);
-
-const items = ref([]);
 const metric = ref([]);
 const { dataSources } = useStoreService();
-onMounted(() => {
-  watch(
-    () => dataSources.value,
-    () => {
-      loadData();
-    },
-    { immediate: true }
-  );
-});
-
 const metricGroup = _.uniq(
   _.map(props.config.metrics, (metric) => {
     return metric.split(".")[0];
   })
 );
-metric.value = props.config.metrics[0].split(".")[1];
 const sourceConfig = dataSources.value[metricGroup];
+metric.value = props.config.metrics[0].split(".")[1];
+const { loading, data } = useDataLoader(metricGroup);
 
-function loadData() {
-  loading.value = true;
-  sourceConfig.promise.then((response) => {
-    dataLoaded(JSON.parse(response).data);
-    loading.value = false;
-  });
-}
+const items = computed(() => {
+  return data.value
+    ? _.map(data.value.data, (datum) => {
+        const names = datum[props.config.x_label_attr];
+        let name;
+        if (_.isArray(names)) {
+          name = _.map(names, (n) => String(n)).join(", ");
+        } else {
+          name = names;
+        }
 
-function dataLoaded(data) {
-  items.value = _.map(data, (datum) => {
-    const names = datum[props.config.x_label_attr];
-    let name;
-    if (_.isArray(names)) {
-      name = _.map(names, (n) => String(n)).join(", ");
-    } else {
-      name = names;
-    }
-
-    return {
-      name: name,
-      value: datum[metric.value],
-    };
-  });
-}
+        return {
+          name: name,
+          value: datum[metric.value],
+        };
+      })
+    : [];
+});
 const total = computed(() => _.sumBy(items.value, "value"));
 </script>
