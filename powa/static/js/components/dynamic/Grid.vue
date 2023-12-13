@@ -23,7 +23,7 @@
         </a>
       </v-card-title>
     </v-card-item>
-    <v-card-text class="pb-0">
+    <v-card-text v-if="data" class="pb-0">
       <v-row class="mb-4" justify="space-between">
         <v-col sm="6" md="4" xl="2">
           <v-text-field
@@ -42,7 +42,7 @@
       </v-row>
       <v-data-table
         :headers="headers"
-        :items="items"
+        :items="data.data"
         :footer-props="{
           'items-per-page-options': [25, 50, -1],
         }"
@@ -82,7 +82,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, ref } from "vue";
 import store from "@/store";
 import _ from "lodash";
 import size from "@/utils/size";
@@ -91,6 +91,7 @@ import { mdiMagnify, mdiLinkVariant } from "@mdi/js";
 import { formatDuration } from "@/utils/duration";
 import { formatPercentage } from "@/utils/percentage";
 import GridCell from "@/components/GridCell.vue";
+import { useFetch } from "@/utils/fetch.js";
 
 const props = defineProps({
   config: {
@@ -101,19 +102,13 @@ const props = defineProps({
   },
 });
 
-const loading = ref(false);
+const metricGroup = _.uniq(
+  _.map(props.config.metrics, (metric) => {
+    return metric.split(".")[0];
+  })
+);
+const { loading, data: data } = useFetch(metricGroup);
 const search = ref("");
-const items = ref([]);
-
-onMounted(() => {
-  watch(
-    () => store.dataSources,
-    () => {
-      loadData();
-    },
-    { immediate: true }
-  );
-});
 
 const fields = computed(() => {
   const metricGroup = _.uniq(
@@ -183,24 +178,6 @@ function getCellProps(data) {
   return { class: data.column.cellClass };
 }
 
-function loadData() {
-  loading.value = true;
-  const metricGroup = _.uniq(
-    _.map(props.config.metrics, (metric) => {
-      return metric.split(".")[0];
-    })
-  );
-  const sourceConfig = store.dataSources[metricGroup];
-  sourceConfig.promise.then((response) => {
-    dataLoaded(JSON.parse(response).data);
-    loading.value = false;
-  });
-}
-
-function dataLoaded(data) {
-  items.value = data;
-}
-
 function formatBool(value) {
   switch (value) {
     case true:
@@ -249,7 +226,7 @@ function exportAsCsv() {
   const labels = _.map(fields.value, "label");
   const keys = _.map(fields.value, "name");
   let csv = labels.join(",") + "\n";
-  csv += _.map(items.value, (item) => {
+  csv += _.map(data.value.data, (item) => {
     return _.map(keys, (key) => {
       let value = item[key];
       if (_.includes(value, ",") || _.includes(value, "\n")) {
