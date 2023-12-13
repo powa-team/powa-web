@@ -45,7 +45,7 @@
 </template>
 
 <script setup>
-import { useFetch } from "@/utils/fetch.js";
+import { useDataLoader } from "@/composables/DataLoaderService.js";
 import { formatSql } from "@/utils/sql.js";
 import { formatDuration } from "@/utils/duration.js";
 
@@ -58,5 +58,5 @@ const props = defineProps({
   },
 });
 
-const { loading, data: stats } = useFetch(props.config.name);
+const { loading, data: stats } = useDataLoader(props.config.name);
 </script>
