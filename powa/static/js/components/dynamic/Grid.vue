@@ -91,7 +91,7 @@ import { mdiMagnify, mdiLinkVariant } from "@mdi/js";
 import { formatDuration } from "@/utils/duration";
 import { formatPercentage } from "@/utils/percentage";
 import GridCell from "@/components/GridCell.vue";
-import { useFetch } from "@/utils/fetch.js";
+import { useDataLoader } from "@/composables/DataLoaderService.js";
 
 const props = defineProps({
   config: {
@@ -107,7 +107,7 @@ const metricGroup = _.uniq(
     return metric.split(".")[0];
   })
 );
-const { loading, data: data } = useFetch(metricGroup);
+const { loading, data: data } = useDataLoader(metricGroup);
 const { dataSources, getUrl } = useStoreService();
 const search = ref("");
 
