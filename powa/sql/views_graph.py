@@ -890,6 +890,68 @@ BASE_QUERY_SLRU_SAMPLE = """
 """
 
 
+def BASE_QUERY_SUBSCRIPTION_SAMPLE(subname=None):
+    if (subname is not None):
+        extra = "AND subname = %(subscription)s"
+    else:
+        extra = ""
+
+    # We use dense_rank() as we need ALL the records for a specific ts.  Caller
+    # will group the data as needed.
+    return """
+    (SELECT srvid,
+      dense_rank() OVER (ORDER BY ts) AS number,
+      count(*) OVER (PARTITION BY ts) AS num_per_window,
+      count(*) OVER () AS total,
+      ts,
+      subname,
+      extract(epoch FROM ((last_msg_receipt_time - last_msg_send_time) * 1000)) AS last_msg_lag,
+      latest_end_lsn,
+      extract(epoch FROM ((ts - latest_end_time) * 1000)) AS report_lag,
+      apply_error_count,
+      sync_error_count
+      FROM (
+        SELECT *
+        FROM (
+          SELECT *
+          FROM (
+            SELECT srvid, sh.subid, sh.subname, (unnest(records)).*
+            FROM {{powa}}.powa_stat_subscription_history sh
+            WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+            AND sh.srvid = %(server)s
+            {extra}
+            ) AS sub1
+          LEFT JOIN (
+            SELECT srvid, ssh.subid, (unnest(records)).*
+            FROM {{powa}}.powa_stat_subscription_stats_history ssh
+            WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+            AND ssh.srvid = %(server)s
+            {extra}
+          ) AS sub2 USING (srvid, subid, ts)
+        ) AS unnested
+        WHERE ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        UNION ALL
+        SELECT *
+        FROM (
+            SELECT srvid, shc.subid, shc.subname, (record).*
+            FROM {{powa}}.powa_stat_subscription_history_current shc
+            WHERE (shc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+            AND shc.srvid = %(server)s
+            {extra}
+        ) AS sub1
+        LEFT JOIN (
+            SELECT srvid, sshc.subid, (record).*
+            FROM {{powa}}.powa_stat_subscription_stats_history_current sshc
+            WHERE (sshc.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
+            AND sshc.srvid = %(server)s
+            {extra}
+        ) AS sub2 USING (srvid, subid, ts)
+      ) AS subscription_history
+    ) AS io
+    WHERE number %% ( int8larger((total / num_per_window)/(%(samples)s+1),1) ) = 0
+""".format(extra=extra)
+
+
 BASE_QUERY_WAL_SAMPLE = """
     (SELECT srvid,
       row_number() OVER (ORDER BY wal_history.ts) AS number,
@@ -1526,6 +1588,29 @@ def powa_get_slru_sample(qual=None):
         all_cols=', '.join(all_cols),
         base_query=base_query,
         qual=qual,
+    )
+
+
+def powa_get_subscription_sample(subname=None):
+    base_query = BASE_QUERY_SUBSCRIPTION_SAMPLE(subname)
+    base_columns = ["srvid", "subname"]
+
+    biggest =Biggest(base_columns, 'ts')
+    biggestsum = Biggestsum(base_columns, 'ts')
+
+    all_cols = base_columns + [
+        "ts",
+        biggest("ts", "'0 s'", "mesure_interval"),
+        biggest("last_msg_lag"),
+        biggest("report_lag"),
+        biggest("apply_error_count"),
+        biggest("sync_error_count"),
+    ]
+
+    return """SELECT {all_cols}
+    FROM {base_query}""".format(
+        all_cols=', '.join(all_cols),
+        base_query=base_query,
     )
 
 
