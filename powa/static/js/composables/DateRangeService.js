@@ -27,7 +27,7 @@ function getUrl(url) {
   return { path: url, query };
 }
 
-export function useStoreService() {
+export function useDateRangeService() {
   const route = useRoute();
   const router = useRouter();
 

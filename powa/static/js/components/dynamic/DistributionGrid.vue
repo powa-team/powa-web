@@ -46,8 +46,8 @@
 import { computed, ref } from "vue";
 import _ from "lodash";
 import { formatPercentage } from "@/utils/percentage";
-import { useStoreService } from "@/composables/useStoreService";
 import { useDataLoader } from "@/composables/DataLoaderService.js";
+import { useDateRangeService } from "@/composables/DateRangeService.js";
 
 const props = defineProps({
   config: {
@@ -59,7 +59,7 @@ const props = defineProps({
 });
 
 const metric = ref([]);
-const { dataSources } = useStoreService();
+const { dataSources } = useDateRangeService();
 const metricGroup = _.uniq(
   _.map(props.config.metrics, (metric) => {
     return metric.split(".")[0];
