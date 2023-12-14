@@ -128,7 +128,7 @@
 </template>
 
 <script setup>
-import { nextTick, ref } from "vue";
+import { inject, nextTick, ref } from "vue";
 import * as d3 from "d3";
 import { encodeQueryData } from "@/utils/query";
 import _ from "lodash";
@@ -136,7 +136,8 @@ import QueryTooltip from "@/components/QueryTooltip.vue";
 import { formatSql } from "@/utils/sql";
 import { useDateRangeService } from "@/composables/DateRangeService.js";
 
-const { dataSources, from, to } = useDateRangeService();
+const { from, to } = useDateRangeService();
+const dataSources = inject("dataSources");
 
 // eslint-disable-next-line no-unused-vars
 const props = defineProps({
