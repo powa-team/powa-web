@@ -2,14 +2,6 @@ import { useRoute, useRouter } from "vue-router";
 import { ref } from "vue";
 import { dateMath } from "@grafana/data";
 
-const dataSources = ref({});
-const dashboardConfig = ref(null);
-const handlerConfig = ref({
-  homeUrl: "",
-});
-const changesUrl = ref("");
-const changes = ref([]);
-const breadcrumbs = ref([]);
 const defaultFrom = "now-1h";
 const rawFrom = ref(defaultFrom);
 const defaultTo = "now";
@@ -43,12 +35,6 @@ export function useDateRangeService() {
   }
 
   return {
-    dataSources,
-    dashboardConfig,
-    handlerConfig,
-    changesUrl,
-    changes,
-    breadcrumbs,
     rawFrom,
     rawTo,
     from,

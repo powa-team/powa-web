@@ -145,7 +145,7 @@
 </template>
 
 <script setup>
-import { onMounted, watch } from "vue";
+import { onMounted, provide, readonly, ref, watch } from "vue";
 import { useTheme } from "vuetify";
 import { icons } from "@/plugins/vuetify.js";
 import { useDateRangeService } from "@/composables/DateRangeService.js";
@@ -162,18 +162,18 @@ const { alertMessages, addAlertMessage, removeAlertMessage } =
   useMessageService();
 
 const theme = useTheme();
-const {
-  breadcrumbs,
-  dataSources,
-  dashboardConfig,
-  from,
-  to,
-  handlerConfig,
-  changesUrl,
-  changes,
-  setFromTo,
-} = useDateRangeService();
+const { from, to, setFromTo } = useDateRangeService();
 const route = useRoute();
+const breadcrumbs = ref([]);
+provide("breadcrumbs", readonly(breadcrumbs));
+const dataSources = ref({});
+provide("dataSources", readonly(dataSources));
+const dashboardConfig = ref({});
+provide("dashboardConfig", readonly(dashboardConfig));
+const handlerConfig = ref({ homeUrl: "" });
+const changesUrl = ref(null);
+const changes = ref([]);
+provide("changes", readonly(changes));
 
 let servers;
 document.querySelectorAll('script[type="text/servers"]').forEach(function (el) {
