@@ -192,7 +192,7 @@ import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import _ from "lodash";
 import { icons } from "@/plugins/vuetify";
 /*import store from "@/store";*/
-import { useStoreService } from "@/composables/useStoreService";
+import { useDateRangeService } from "@/composables/DateRangeService.js";
 import * as d3 from "d3";
 import size from "@/utils/size";
 import { toISO } from "@/utils/dates";
@@ -208,7 +208,7 @@ const props = defineProps({
   },
 });
 
-const { changes, dataSources, from, to, setFromTo } = useStoreService();
+const { changes, dataSources, from, to, setFromTo } = useDateRangeService();
 
 const loading = ref(false);
 const noData = ref(false);

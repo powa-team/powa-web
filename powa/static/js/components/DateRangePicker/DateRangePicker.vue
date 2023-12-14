@@ -154,10 +154,10 @@ import { quickOptions } from "./options.ts";
 import { dateMath, rangeUtil } from "@grafana/data";
 import { icons } from "@/plugins/vuetify";
 import { toISO } from "@/utils/dates";
-import { useStoreService } from "@/composables/useStoreService.js";
+import { useDateRangeService } from "@/composables/DateRangeService.js";
 
 const menu = ref(false);
-const { from, to, rawFrom, rawTo, setFromTo } = useStoreService();
+const { from, to, rawFrom, rawTo, setFromTo } = useDateRangeService();
 
 // The values to display in the custom range from and to fields
 // we don't use raw values because we may want to pick/change from and
