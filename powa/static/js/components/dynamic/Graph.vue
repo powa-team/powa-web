@@ -188,7 +188,7 @@
 </template>
 
 <script setup>
-import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { inject, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import _ from "lodash";
 import { icons } from "@/plugins/vuetify";
 /*import store from "@/store";*/
@@ -208,7 +208,9 @@ const props = defineProps({
   },
 });
 
-const { changes, dataSources, from, to, setFromTo } = useDateRangeService();
+const { from, to, setFromTo } = useDateRangeService();
+const changes = inject("changes");
+const dataSources = inject("dataSources");
 
 const loading = ref(false);
 const noData = ref(false);

@@ -82,7 +82,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, inject, ref } from "vue";
 import { useDateRangeService } from "@/composables/DateRangeService.js";
 import _ from "lodash";
 import size from "@/utils/size";
@@ -109,7 +109,8 @@ const metricGroup = _.uniq(
 );
 const { loading, data: data } = useDataLoader(metricGroup);
 const search = ref("");
-const { dataSources, getUrl } = useDateRangeService();
+const { getUrl } = useDateRangeService();
+const dataSources = inject("dataSources");
 
 const fields = computed(() => {
   const metricGroup = _.uniq(
