@@ -1,10 +1,10 @@
 import { onMounted, ref, watchEffect } from "vue";
-import { useStoreService } from "@/composables/useStoreService";
+import { useDateRangeService } from "@/composables/DateRangeService.js";
 
 export function useDataLoader(metric) {
   const loading = ref(false);
   const data = ref(undefined);
-  const { dataSources } = useStoreService();
+  const { dataSources } = useDateRangeService();
 
   onMounted(() => {
     watchEffect(() => {

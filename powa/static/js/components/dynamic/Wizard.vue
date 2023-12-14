@@ -134,9 +134,9 @@ import { encodeQueryData } from "@/utils/query";
 import _ from "lodash";
 import QueryTooltip from "@/components/QueryTooltip.vue";
 import { formatSql } from "@/utils/sql";
-import { useStoreService } from "@/composables/useStoreService.js";
+import { useDateRangeService } from "@/composables/DateRangeService.js";
 
-const { dataSources, from, to } = useStoreService();
+const { dataSources, from, to } = useDateRangeService();
 
 // eslint-disable-next-line no-unused-vars
 const props = defineProps({
