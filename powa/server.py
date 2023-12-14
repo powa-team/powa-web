@@ -26,6 +26,7 @@ from powa.sql.views_graph import (powa_getstatdata_sample,
                                   powa_get_database_conflicts_sample,
                                   powa_get_io_sample,
                                   powa_get_slru_sample,
+                                  powa_get_subscription_sample,
                                   powa_get_wal_sample,
                                   powa_get_wal_receiver_sample)
 from powa.sql.views_grid import (powa_getstatdata_db,
@@ -826,6 +827,74 @@ class ByAllSlruMetricGroup(MetricGroupDef):
 
         return val
 
+class GlobalSubMetricGroup(MetricGroupDef):
+    """
+    Metric group used by pg_stat_subscription(_stats) graphs.
+    """
+    pass
+    name = "subscriptions"
+    xaxis = "name"
+    data_url = r"/server/(\d+)/metrics/subscriptions/"
+    last_msg_lag = MetricDef(label="Last message latency", type="duration",
+                              desc="Time spent transmitting the last message"
+                                   " received from origin WAL sender")
+    report_lag = MetricDef(label="Report lag", type="duration",
+                           desc="Time elapsed since since last reporting of"
+                                 " WAL location to origin WAL sender")
+    apply_error_count = MetricDef(label="# apply error", type="number",
+                                  desc="Total number of times an error"
+                                       " occurred while applying changes")
+    sync_error_count = MetricDef(label="# sync error", type="number",
+                                 desc="Total number of times an error"
+                                      " occurred during the inital table"
+                                      " synchronization")
+
+    @classmethod
+    def _get_metrics(cls, handler, **params):
+        base = cls.metrics.copy()
+
+        pg_version_num = handler.get_pg_version_num(handler.path_args[0])
+        # if we can't connect to the remote server, assume pg15 or more
+        if pg_version_num is None:
+            return base
+
+        # pg_stat_subscription was added in pg10 and pg_stat_subscription_stats
+        # was added in pg15.
+        # leader_pid was added in pg16 and worker_type in pg17 but we don't use
+        # those for now.
+        if pg_version_num < 100000:
+            return {}
+        elif pg_version_num < 150000:
+            base.pop("apply_error_count")
+            base.pop("sync_error_count")
+
+        return base
+
+    @property
+    def query(self):
+        query = powa_get_subscription_sample()
+
+        from_clause = query
+
+        cols = ["sub.srvid",
+                "extract(epoch FROM sub.ts) AS ts",
+                "max(last_msg_lag) AS last_msg_lag",
+                "max(report_lag) AS report_lag",
+                "sum(apply_error_count) AS apply_error_count",
+                "sum(sync_error_count) AS sync_error_count",
+                ]
+
+        return """SELECT {cols}
+        FROM (
+            {from_clause}
+        ) AS sub
+        WHERE sub.mesure_interval != '0 s'
+        GROUP BY sub.srvid, sub.ts, sub.mesure_interval
+        ORDER BY sub.ts""".format(
+            cols=', '.join(cols),
+            from_clause=from_clause,
+        )
+
 class GlobalWalMetricGroup(MetricGroupDef):
     """
     Metric group used by pg_stat_wal graph.
@@ -1324,7 +1393,8 @@ class ServerOverview(DashboardPage):
                    GlobalDbActivityConflMetricGroup, GlobalIoMetricGroup,
                    ByAllIoMetricGroup,
                    GlobalSlruMetricGroup, ByAllSlruMetricGroup,
-                   GlobalWalMetricGroup, GlobalWalReceiverMetricGroup]
+                   GlobalWalMetricGroup, GlobalWalReceiverMetricGroup,
+                   GlobalSubMetricGroup]
     params = ["server"]
     parent = Overview
     title = "All databases"
@@ -1455,6 +1525,19 @@ class ServerOverview(DashboardPage):
         graphs_dash.append(Dashboard("Background Writer / Checkpointer", bgw_graphs))
 
         # Add archiver / replication graphs
+        sub_metrics = GlobalSubMetricGroup.split(self,
+                [["last_msg_lag", "report_lag"]])
+        sub_graphs = []
+
+        sub_graphs.append(Graph("Subscriptions message & report",
+                                url="https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-SUBSCRIPTION",
+                                metrics=sub_metrics[1]))
+
+        if len(sub_metrics[0]) > 0:
+            sub_graphs.append(Graph("Subscriptions errors",
+                                    url="https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-SUBSCRIPTION-STATS",
+                                    metrics=sub_metrics[0]))
+
         arch_graphs = [[Graph("Archiver",
                               metrics=GlobalArchiverMetricGroup.all(self)),
                         Graph("Replication connections",
@@ -1512,7 +1595,8 @@ class ServerOverview(DashboardPage):
                                        GlobalWalReceiverMetricGroup.report_lag],
                               renderer="bar",
                               stack=True),
-                       ]]
+                       ],
+                       sub_graphs]
         graphs_dash.append(Dashboard("Archiver / Replication", arch_graphs))
 
         # Add pg_stat_database graphs
