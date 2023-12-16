@@ -54,7 +54,6 @@
         <template v-if="props.config.toprow" #header>
           <thead>
             <tr>
-              <th></th>
               <th
                 v-for="group in props.config.toprow"
                 :key="group.name"
