@@ -986,6 +986,10 @@ class DatabaseOverview(DashboardPage):
                         metrics=metrics)]]))
 
         toprow = [{
+                       # query
+                       'merge': True
+                   }, {
+                       # plan time
                        'merge': True
                    }, {
                        'name': 'Execution',
