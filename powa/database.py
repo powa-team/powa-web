@@ -986,35 +986,31 @@ class DatabaseOverview(DashboardPage):
                         metrics=metrics)]]))
 
         toprow = [{
-                       'merge': True
+                       # query
+                   }, {
+                       # plan time
                    }, {
                        'name': 'Execution',
-                       'merge': False,
                        'colspan': 3
                    }, {
                        'name': 'Blocks',
-                       'merge': False,
                        'colspan': 4,
                    }, {
                        'name': 'Temp blocks',
-                       'merge': False,
                        'colspan': 2
                    }, {
                        'name': 'I/O Time',
-                       'merge': False,
                        'colspan': 2
                    }]
         if pgss18:
             toprow.extend([{
                        'name': 'WALs',
-                       'merge': False,
                        'colspan': 3
                        }])
 
         if pgss110:
             toprow.extend([{
                        'name': 'JIT',
-                       'merge': False,
                        'colspan': 2
                        }])
         self._dashboard.widgets.extend(

@@ -1759,29 +1759,25 @@ class ServerOverview(DashboardPage):
                         metrics=metrics)]]))
 
         toprow = [{
-                       'merge': True
+                       # database
+                   }, {
+                       # plan time
                    }, {
                        'name': 'Execution',
-                       'merge': False,
                        'colspan': 3
                    }, {
                        'name': 'Blocks',
-                       'merge': False,
                        'colspan': 4,
                    }, {
                        'name': 'Temp blocks',
-                       'merge': False,
                        'colspan': 2
                    }, {
                        'name': 'I/O',
-                       'merge': False,
                    }, {
                        'name': 'WAL',
-                       'merge': False,
                        'colspan': 3
                    }, {
                        'name': 'JIT',
-                       'merge': False,
                        'colspan': 2
                    }]
         dashes = [graphs,
