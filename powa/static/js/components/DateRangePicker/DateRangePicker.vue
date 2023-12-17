@@ -155,9 +155,10 @@ import { dateMath, rangeUtil } from "@grafana/data";
 import { icons } from "@/plugins/vuetify";
 import { toISO } from "@/utils/dates";
 import { useDateRangeService } from "@/composables/DateRangeService.js";
+import { useRoute, useRouter } from "vue-router";
 
 const menu = ref(false);
-const { from, to, rawFrom, rawTo, setFromTo } = useDateRangeService();
+const { from, to, rawFrom, rawTo } = useDateRangeService();
 
 // The values to display in the custom range from and to fields
 // we don't use raw values because we may want to pick/change from and
@@ -177,6 +178,8 @@ const valid = ref(true);
 const emit = defineEmits({
   refresh: () => true,
 });
+const route = useRoute();
+const router = useRouter();
 
 const rangeString = computed(() => {
   if (!rawFrom.value || !rawTo.value) {
@@ -207,7 +210,10 @@ const toRules = ref(commonRules);
 
 function loadRangeShortcut(shortcut) {
   menu.value = false;
-  setFromTo(shortcut.from, shortcut.to);
+  router.push({
+    path: route.path,
+    query: { from: shortcut.from, to: shortcut.to },
+  });
 }
 
 watchEffect(() => {
@@ -225,8 +231,11 @@ function refresh() {
 }
 
 function applyTimeRange() {
-  setFromTo(inputFrom.value, inputTo.value);
   menu.value = false;
+  router.push({
+    path: route.path,
+    query: { from: inputFrom.value, to: inputTo.value },
+  });
 }
 
 function cancelPicker() {
@@ -258,6 +267,9 @@ function zoomOut() {
   const diff = to.value - from.value;
   const newFrom = toISO(new Date(from.value.toDate().getTime() - diff / 2));
   const newTo = toISO(new Date(to.value.toDate().getTime() + diff / 2));
-  setFromTo(newFrom, newTo);
+  router.push({
+    path: route.path,
+    query: { from: newFrom, to: newTo },
+  });
 }
 </script>

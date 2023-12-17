@@ -1,4 +1,3 @@
-import { useRoute, useRouter } from "vue-router";
 import { ref } from "vue";
 import { dateMath } from "@grafana/data";
 
@@ -20,18 +19,11 @@ function getUrl(url) {
 }
 
 export function useDateRangeService() {
-  const route = useRoute();
-  const router = useRouter();
-
   function setFromTo(newFrom = defaultFrom, newTo = defaultTo) {
     rawFrom.value = newFrom;
     rawTo.value = newTo;
     from.value = dateMath.parse(newFrom);
     to.value = dateMath.parse(newTo);
-    router.push({
-      path: route.path,
-      query: { from: newFrom, to: newTo },
-    });
   }
 
   return {
