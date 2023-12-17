@@ -193,6 +193,7 @@ import _ from "lodash";
 import { icons } from "@/plugins/vuetify";
 /*import store from "@/store";*/
 import { useDateRangeService } from "@/composables/DateRangeService.js";
+import { useRoute, useRouter } from "vue-router";
 import * as d3 from "d3";
 import size from "@/utils/size";
 import { toISO } from "@/utils/dates";
@@ -208,7 +209,9 @@ const props = defineProps({
   },
 });
 
-const { from, to, setFromTo } = useDateRangeService();
+const { from, to } = useDateRangeService();
+const route = useRoute();
+const router = useRouter();
 const changes = inject("changes");
 const dataSources = inject("dataSources");
 
@@ -757,7 +760,11 @@ function brushended({ selection }) {
   if (selection) {
     const from = toISO(xScale.invert(selection[0]));
     const to = toISO(xScale.invert(selection[1]));
-    setFromTo(from, to);
+    router.push({
+      path: route.path,
+      query: { from, to },
+    });
+
     gb.call(brush);
     gb.call(brush.move, null);
   }
