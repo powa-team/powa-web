@@ -21,7 +21,7 @@
             <v-icon
               class="pl-2 text--secondary"
               v-bind="tooltipProps"
-              :icon="icons.mdiInformation"
+              :icon="mdiInformation"
             ></v-icon>
           </template>
           <div>
@@ -42,7 +42,7 @@
           title="See the documentation"
         >
           <v-icon class="pl-2">
-            {{ icons.mdiLinkVariant }}
+            {{ mdiLinkVariant }}
           </v-icon>
         </a>
       </v-card-title>
@@ -111,14 +111,14 @@
                   changed:<br />
                   <v-chip label class="ma-2 pa-2" size="small">
                     <v-icon v-if="eventData.prev_is_dropped" size="small">{{
-                      icons.mdiCancel
+                      mdiCancel
                     }}</v-icon>
                     <span v-else>{{ eventData.prev_val }}</span>
                   </v-chip>
                   →
                   <v-chip label class="ma-2 pa-2" size="small">
                     <v-icon v-if="eventData.is_dropped" size="small">{{
-                      icons.mdiCancel
+                      mdiCancel
                     }}</v-icon>
                     <span v-else>{{ eventData.new_val || "&emsp;" }}</span>
                   </v-chip>
@@ -140,11 +140,11 @@
             </div>
           </template>
           <template v-else-if="changesTooltip.event.kind == 'reboot'">
-            <v-icon size="small">{{ icons.mdiAlert }}</v-icon>
+            <v-icon size="small">{{ mdiAlert }}</v-icon>
             <b>Instance restarted!</b>
           </template>
           <template v-else>
-            <v-icon size="small">{{ icons.mdiAlert }}</v-icon>
+            <v-icon size="small">{{ mdiAlert }}</v-icon>
             Unknown configChanges
             {{ changesTooltip.event.kind }}:<br />
             {{ changesTooltip.event.data }}
@@ -190,7 +190,7 @@
 <script setup>
 import { inject, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import _ from "lodash";
-import { icons } from "@/plugins/vuetify";
+import { mdiAlert, mdiCancel, mdiInformation, mdiLinkVariant } from "@mdi/js";
 /*import store from "@/store";*/
 import { useDateRangeService } from "@/composables/DateRangeService.js";
 import { useRoute, useRouter } from "vue-router";
