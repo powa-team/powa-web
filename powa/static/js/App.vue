@@ -20,13 +20,13 @@
           :to="handlerConfig.configUrl"
           title="Configuration"
         >
-          <v-icon start :icon="icons.mdiCog" class="me-2" />
+          <v-icon start :icon="mdiCog" class="me-2" />
           Configuration
         </v-btn>
         <v-menu v-if="handlerConfig.notifyAllowed">
           <template #activator="{ props }">
             <v-btn variant="text" color="primary" v-bind="props">
-              <v-icon start :icon="icons.mdiReload" class="me-2"></v-icon>
+              <v-icon start :icon="mdiReload" class="me-2"></v-icon>
               Actions
             </v-btn>
           </template>
@@ -62,8 +62,8 @@
         <v-switch
           v-model="theme.global.name.value"
           hide-details
-          :false-icon="icons.mdiWhiteBalanceSunny"
-          :true-icon="icons.mdiWeatherNight"
+          :false-icon="mdiWhiteBalanceSunny"
+          :true-icon="mdiWeatherNight"
           true-value="dark"
           false-value="light"
           class="flex-grow-0"
@@ -71,7 +71,7 @@
         >
         </v-switch>
         <v-btn variant="text" color="primary" :href="handlerConfig.logoutUrl">
-          <v-icon start :icon="icons.mdiPower" class="me-2"></v-icon>
+          <v-icon start :icon="mdiPower" class="me-2"></v-icon>
           Logout
         </v-btn>
       </template>
@@ -134,7 +134,7 @@
           <template #actions>
             <v-icon
               text
-              :icon="icons.mdiClose"
+              :icon="mdiClose"
               @click="closeSnackBar(message)"
             ></v-icon>
           </template>
@@ -147,7 +147,14 @@
 <script setup>
 import { onMounted, provide, readonly, ref, watch } from "vue";
 import { useTheme } from "vuetify";
-import { icons } from "@/plugins/vuetify.js";
+import {
+  mdiClose,
+  mdiCog,
+  mdiPower,
+  mdiReload,
+  mdiWeatherNight,
+  mdiWhiteBalanceSunny,
+} from "@mdi/js";
 import { useDateRangeService } from "@/composables/DateRangeService.js";
 import { useRoute } from "vue-router";
 import _ from "lodash";
