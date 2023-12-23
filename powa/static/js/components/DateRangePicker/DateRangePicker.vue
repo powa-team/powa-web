@@ -127,7 +127,7 @@
         </v-sheet>
       </v-menu>
     </v-btn>
-    <v-btn @click="refresh">
+    <v-btn @click="reload">
       <v-icon>
         {{ mdiReload }}
       </v-icon>
@@ -155,7 +155,7 @@ import { useDateRangeService } from "@/composables/DateRangeService.js";
 import { useRoute, useRouter } from "vue-router";
 
 const menu = ref(false);
-const { from, to, rawFrom, rawTo } = useDateRangeService();
+const { from, to, rawFrom, rawTo, refresh } = useDateRangeService();
 
 // The values to display in the custom range from and to fields
 // we don't use raw values because we may want to pick/change from and
@@ -223,7 +223,8 @@ watchEffect(() => {
   synchronizeToPicker();
 });
 
-function refresh() {
+function reload() {
+  refresh();
   emit("refresh");
 }
 
