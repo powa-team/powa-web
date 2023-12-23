@@ -31,7 +31,6 @@
             label="Search"
             :append-inner-icon="mdiMagnify"
             density="compact"
-            single-line
             hide-details
             class="pt-0 mt-0"
           ></v-text-field>

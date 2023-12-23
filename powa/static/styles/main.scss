@@ -1,5 +1,9 @@
 @use "highlight";
 
+html {
+  font-size: 14px;
+}
+
 pre.sql {
   max-height: 400px;
   overflow: auto;
@@ -28,7 +32,6 @@ pre.sql {
     th,
     td {
       padding: 0 0.3rem;
-      font-size: 0.9em;
     }
   }
 }

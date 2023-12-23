@@ -1,11 +1,25 @@
 @use 'vuetify/settings' with (
   $spacer: 2px,
+  $card-text-padding: 8px, // spacer * 4
+  $card-text-font-size: 0.9rem,
+  $table-font-size: 0.9rem,
+  $card-item-padding: 4px 8px, // spacer, spacer * 2
+  $card-title-font-size: 1rem,
+  $card-title-line-height: 1.5rem,
+  $button-font-size: 1rem,
+  $field-font-size: reset,
   $color-pack: false,
   $button-text-transform: none,
   $button-text-letter-spacing: inherit,
   $card-background: rgb(var(--v-theme-background)),
   $table-background: rgb(var(--v-theme-background)),
+  $table-density: ('default': 0, 'comfortable': -2, 'compact': -14),
   $progress-linear-background: rgb(var(--v-theme-primary)),
   $tooltip-background-color: rgb(var(--v-theme-background)),
-  $tooltip-text-color: rgb(var(--v-theme-surface-variant))
+  $tooltip-text-color: rgb(var(--v-theme-surface-variant)),
+  $tooltip-padding: 4px 8px,
+  $list-background: rgba(var(--v-theme-background)),
+  $list-item-title-font-size: 1em,
+  $input-density: ('default': 0, 'comfortable': -2, 'compact': -14),
+  $tabs-density: ( 'default': 0, 'comfortable' : -1, 'compact': -9),
 );
