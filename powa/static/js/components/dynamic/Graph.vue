@@ -50,7 +50,7 @@
     <v-card-text>
       <div
         ref="container"
-        style="height: 250px; position: relative"
+        style="height: 180px; position: relative"
         :hidden="noData"
       >
         <div
