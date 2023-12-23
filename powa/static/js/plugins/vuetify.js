@@ -1,37 +1,6 @@
 import "vuetify/styles";
 import { createVuetify } from "vuetify";
 import { aliases, mdi } from "vuetify/lib/iconsets/mdi-svg";
-import {
-  mdiAlert,
-  mdiCalendar,
-  mdiCancel,
-  mdiClockOutline,
-  mdiCog,
-  mdiHome,
-  mdiInformation,
-  mdiMagnifyMinusOutline,
-  mdiReload,
-  mdiPower,
-  mdiClose,
-  mdiWhiteBalanceSunny,
-  mdiWeatherNight,
-} from "@mdi/js";
-
-export const icons = {
-  mdiAlert,
-  mdiCalendar,
-  mdiCancel,
-  mdiClockOutline,
-  mdiCog,
-  mdiHome,
-  mdiInformation,
-  mdiMagnifyMinusOutline,
-  mdiPower,
-  mdiReload,
-  mdiClose,
-  mdiWhiteBalanceSunny,
-  mdiWeatherNight,
-};
 
 const opts = {
   icons: {

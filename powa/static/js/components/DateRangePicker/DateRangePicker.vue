@@ -2,7 +2,7 @@
   <div>
     <v-btn>
       <v-icon class="mr-2">
-        {{ icons.mdiClockOutline }}
+        {{ mdiClockOutline }}
       </v-icon>
       <span>{{ rangeString }}</span>
       <v-menu v-model="menu" activator="parent" :close-on-content-click="false">
@@ -21,11 +21,7 @@
                 <v-col cols="auto">
                   <v-dialog v-model="fromDialog" activator="parent">
                     <template #activator="{ props }">
-                      <v-btn
-                        size="small"
-                        :icon="icons.mdiCalendar"
-                        v-bind="props"
-                      >
+                      <v-btn size="small" :icon="mdiCalendar" v-bind="props">
                       </v-btn>
                     </template>
                     <v-date-picker
@@ -73,11 +69,7 @@
                     max-width="400"
                   >
                     <template #activator="{ props }">
-                      <v-btn
-                        size="small"
-                        :icon="icons.mdiCalendar"
-                        v-bind="props"
-                      >
+                      <v-btn size="small" :icon="mdiCalendar" v-bind="props">
                       </v-btn>
                     </template>
                     <v-date-picker v-model="pickerTo" title="Select 'to' date">
@@ -137,12 +129,12 @@
     </v-btn>
     <v-btn @click="refresh">
       <v-icon>
-        {{ icons.mdiReload }}
+        {{ mdiReload }}
       </v-icon>
     </v-btn>
     <v-btn class="me-4" @click="zoomOut">
       <v-icon>
-        {{ icons.mdiMagnifyMinusOutline }}
+        {{ mdiMagnifyMinusOutline }}
       </v-icon>
     </v-btn>
   </div>
@@ -152,7 +144,12 @@
 import { computed, ref, watchEffect } from "vue";
 import { quickOptions } from "./options.ts";
 import { dateMath, rangeUtil } from "@grafana/data";
-import { icons } from "@/plugins/vuetify";
+import {
+  mdiCalendar,
+  mdiClockOutline,
+  mdiMagnifyMinusOutline,
+  mdiReload,
+} from "@mdi/js";
 import { toISO } from "@/utils/dates";
 import { useDateRangeService } from "@/composables/DateRangeService.js";
 import { useRoute, useRouter } from "vue-router";
