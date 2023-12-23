@@ -22,8 +22,12 @@ export function useDateRangeService() {
   function setFromTo(newFrom = defaultFrom, newTo = defaultTo) {
     rawFrom.value = newFrom;
     rawTo.value = newTo;
-    from.value = dateMath.parse(newFrom);
-    to.value = dateMath.parse(newTo);
+    refresh();
+  }
+
+  function refresh() {
+    from.value = dateMath.parse(rawFrom.value);
+    to.value = dateMath.parse(rawTo.value);
   }
 
   return {
@@ -32,6 +36,7 @@ export function useDateRangeService() {
     from,
     to,
     setFromTo,
+    refresh,
     getUrl,
   };
 }
