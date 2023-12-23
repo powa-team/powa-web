@@ -56,6 +56,11 @@ th[colspan]:not([colspan="1"]) {
   border-bottom: 0 !important;
 }
 
+th[colspan]:not([colspan="1"]) {
+  border-left: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-bottom: 0 !important;
+}
+
 td {
   &:not(.query) {
     width: 1%;
