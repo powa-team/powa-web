@@ -1,10 +1,15 @@
 @use "highlight";
 
+html {
+  font-size: 14px;
+}
+
 pre.sql {
   max-height: 400px;
   overflow: auto;
   background-color: rgba(0, 0, 0, 0.05);
   white-space: pre-wrap;
+  padding: 4px;
   code {
     display: block;
     background-color: initial !important;
@@ -28,7 +33,6 @@ pre.sql {
     th,
     td {
       padding: 0 0.3rem;
-      font-size: 0.9em;
     }
   }
 }
