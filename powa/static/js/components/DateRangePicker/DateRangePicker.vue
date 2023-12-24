@@ -127,7 +127,7 @@
         </v-sheet>
       </v-menu>
     </v-btn>
-    <v-btn @click="reload">
+    <v-btn :disabled="!canReload" @click="reload">
       <v-icon>
         {{ mdiReload }}
       </v-icon>
@@ -141,6 +141,7 @@
 </template>
 
 <script setup>
+import * as _ from "lodash";
 import { computed, ref, watchEffect } from "vue";
 import { quickOptions } from "./options.ts";
 import { dateMath, rangeUtil } from "@grafana/data";
@@ -270,4 +271,8 @@ function zoomOut() {
     query: { from: newFrom, to: newTo },
   });
 }
+
+const canReload = computed(
+  () => _.includes(rawFrom.value, "now") || _.includes(rawTo.value, "now")
+);
 </script>
