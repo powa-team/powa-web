@@ -61,9 +61,21 @@
           alert("You're runing the dev version. Please make sure ViteJS server is running.");
         }
       </script>
+      <script type="module" src="http://localhost:5173/@vite/client"></script>
       <script type="module" src="http://localhost:5173/powa/static/js/main.js" onerror="showLoadError()"></script>
     {% else %}
-      {% raw inject_assets("powa/static/js/main.js") %}
+      {% for css in manifest('powa/static/js/main.js')['css'] %}
+      <link rel="stylesheet" href="{{static_url("dist/" + css) }}" />
+      {% end %}
+      {% for chunk in manifest('powa/static/js/main.js')['imports'] %}
+        {% for css in manifest(chunk).get("css", []) %}
+        <link rel="stylesheet" href="{{static_url("dist/" + css) }}" />
+        {% end %}
+      {% end %}
+      <script type="module" src="{{ static_url("dist/" + manifest('powa/static/js/main.js')['file']) }}"></script>
+      {% for chunk in manifest('powa/static/js/main.js')['imports'] %}
+      <script type="modulepreload" src="{{ static_url("dist/" + manifest(chunk)['file']) }}"></script>
+      {% end %}
     {% end %}
   </body>
 </html>
