@@ -8,6 +8,7 @@ from datetime import datetime
 from powa import __VERSION__
 from powa.json import JSONEncoder
 from tornado.options import options
+from tornado.web import HTTPError
 try:
     from urllib import urlencode  # py2
 except ImportError:
@@ -143,38 +144,13 @@ def to_json(_, value):
     """
     return JSONEncoder().encode(value)
 
-
-def inject_assets(self, entrypoint):
-    fn = os.path.realpath(__file__ + "../../static/dist/manifest.json")
-    with open(fn) as f:
-        entrypoints = json.load(f)
-
-    def build_url(asset):
-        # FIXME generate URL using `static_url` as we do in templates
-        return "/static/dist/" + asset
-
-    def build_js_tag(asset):
-        return f'<script type="module" src="{build_url(asset)}"></script>'
-
-    def build_css_tag(assets):
-        return "\n".join(
-            [f'<link rel="stylesheet" href="{build_url(asset)}">' for asset in assets]
-        )
-
-    def generate_tags(entrypoint, tags):
-        print(entrypoint)
-        if entrypoint in entrypoints:
-            manifest_entry = entrypoints[entrypoint]
-
-            if "imports" in manifest_entry:
-                for import_ in manifest_entry["imports"]:
-                    generate_tags(import_, tags)
-
-            if "file" in manifest_entry:
-                tags.append(build_js_tag(manifest_entry["file"]))
-            if "css" in manifest_entry:
-                tags.append(build_css_tag(manifest_entry["css"]))
-
-    tags = []
-    generate_tags(entrypoint, tags)
-    return "\n".join(tags)
+def manifest(self, entrypoint):
+    fn = os.path.realpath(__file__ + "../../static/dist/.vite/manifest.json")
+    try:
+        f = open(fn)
+    except FileNotFoundError:
+        raise HTTPError(500, "manifest.json doesn't exist, did you run `npm run build`?")
+    else:
+        with f:
+            entrypoints = json.load(f)
+    return entrypoints[entrypoint]
