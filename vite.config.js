@@ -21,6 +21,7 @@ export default defineConfig({
   build: {
     manifest: true,
     outDir: resolve(__dirname, "powa/static/dist"),
+    emptyOutDir: true,
     rollupOptions: {
       input: "/powa/static/js/main.js",
       output: {
