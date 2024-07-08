@@ -1,5 +1,5 @@
 import { ref } from "vue";
-import { dateMath } from "@grafana/data";
+import dateMath from "@/utils/datemath";
 
 const defaultFrom = "now-1h";
 const rawFrom = ref(defaultFrom);

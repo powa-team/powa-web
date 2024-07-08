@@ -144,7 +144,8 @@
 import * as _ from "lodash";
 import { computed, ref, watchEffect } from "vue";
 import { quickOptions } from "./options.ts";
-import { dateMath, rangeUtil } from "@grafana/data";
+import dateMath from "@/utils/datemath";
+import rangeUtil from "@/utils/rangeutil";
 import {
   mdiCalendar,
   mdiClockOutline,
