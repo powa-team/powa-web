@@ -1760,26 +1760,38 @@ class ServerOverview(DashboardPage):
 
         toprow = [{
                        # database
-                   }, {
+                   }]
+
+        if pgss18:
+            toprow.extend([{
                        # plan time
-                   }, {
-                       'name': 'Execution',
-                       'colspan': 3
-                   }, {
-                       'name': 'Blocks',
-                       'colspan': 4,
-                   }, {
-                       'name': 'Temp blocks',
-                       'colspan': 2
-                   }, {
-                       'name': 'I/O',
-                   }, {
+                   }])
+
+        toprow.extend([{
+                   'name': 'Execution',
+                   'colspan': 3
+               }, {
+                   'name': 'Blocks',
+                   'colspan': 4,
+               }, {
+                   'name': 'Temp blocks',
+                   'colspan': 2
+               }, {
+                   'name': 'I/O',
+               }])
+
+        if pgss18:
+            toprow.extend([{
                        'name': 'WAL',
                        'colspan': 3
-                   }, {
+                       }])
+
+        if pgss110:
+            toprow.extend([{
                        'name': 'JIT',
                        'colspan': 2
-                   }]
+                       }])
+
         dashes = [graphs,
                   [Grid("Details for all databases",
                         toprow=toprow,

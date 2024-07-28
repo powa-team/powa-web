@@ -987,21 +987,27 @@ class DatabaseOverview(DashboardPage):
 
         toprow = [{
                        # query
-                   }, {
-                       # plan time
-                   }, {
-                       'name': 'Execution',
-                       'colspan': 3
-                   }, {
-                       'name': 'Blocks',
-                       'colspan': 4,
-                   }, {
-                       'name': 'Temp blocks',
-                       'colspan': 2
-                   }, {
-                       'name': 'I/O Time',
-                       'colspan': 2
                    }]
+
+        if pgss18:
+            toprow.extend([{
+                       # plan time
+                   }])
+
+        toprow.extend([{
+                'name': 'Execution',
+                'colspan': 3
+            }, {
+                'name': 'Blocks',
+                'colspan': 4,
+            }, {
+                'name': 'Temp blocks',
+                'colspan': 2
+            }, {
+                'name': 'I/O Time',
+                'colspan': 2
+            }])
+
         if pgss18:
             toprow.extend([{
                        'name': 'WALs',
