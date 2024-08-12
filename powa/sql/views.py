@@ -2,6 +2,7 @@
 Functions to generate the queries used in components that are neither graphs or
 grid.
 """
+
 QUALSTAT_FILTER_RATIO = """CASE
             WHEN sum(execution_count) = 0 THEN 0
             ELSE sum(nbfiltered) / sum(execution_count)::numeric * 100
@@ -10,12 +11,7 @@ QUALSTAT_FILTER_RATIO = """CASE
 
 def qualstat_base_statdata(eval_type=None):
     if eval_type is not None:
-        base_cols = ["srvid",
-                     "qualid,"
-                     "queryid",
-                     "dbid",
-                     "userid"
-                     ]
+        base_cols = ["srvid", "qualid," "queryid", "dbid", "userid"]
 
         pqnh = """(
         SELECT {outer_cols}
@@ -26,11 +22,11 @@ def qualstat_base_statdata(eval_type=None):
             WHERE (qual).eval_type = '{eval_type}'
             GROUP BY {base_cols}
         )""".format(
-            outer_cols=', '.join(base_cols + ["array_agg(qual) AS quals"]),
-            inner_cols=', '.join(base_cols + ["unnest(quals) AS qual"]),
-            base_cols=', '.join(base_cols),
-            eval_type=eval_type
-            )
+            outer_cols=", ".join(base_cols + ["array_agg(qual) AS quals"]),
+            inner_cols=", ".join(base_cols + ["unnest(quals) AS qual"]),
+            base_cols=", ".join(base_cols),
+            eval_type=eval_type,
+        )
     else:
         pqnh = "{powa}.powa_qualstats_quals"
 
@@ -58,32 +54,38 @@ def qualstat_base_statdata(eval_type=None):
     return base_query
 
 
-def qualstat_getstatdata(eval_type=None, extra_from='', extra_join='',
-                         extra_select=[], extra_where=[], extra_groupby=[],
-                         extra_having=[]):
+def qualstat_getstatdata(
+    eval_type=None,
+    extra_from="",
+    extra_join="",
+    extra_select=[],
+    extra_where=[],
+    extra_groupby=[],
+    extra_having=[],
+):
     base_query = qualstat_base_statdata(eval_type)
 
     # Reformat extra_select, extra_where, extra_groupby and extra_having to be
     # plain additional SQL clauses.
     if len(extra_select) > 0:
-        extra_select = ', ' + ', '.join(extra_select)
+        extra_select = ", " + ", ".join(extra_select)
     else:
-        extra_select = ''
+        extra_select = ""
 
     if len(extra_where) > 0:
-        extra_where = ' AND ' + ' AND '.join(extra_where)
+        extra_where = " AND " + " AND ".join(extra_where)
     else:
-        extra_where = ''
+        extra_where = ""
 
     if len(extra_groupby) > 0:
-        extra_groupby = ', ' + ', '.join(extra_groupby)
+        extra_groupby = ", " + ", ".join(extra_groupby)
     else:
-        extra_groupby = ''
+        extra_groupby = ""
 
     if len(extra_having) > 0:
-        extra_having = " HAVING " + ' AND '.join(extra_having)
+        extra_having = " HAVING " + " AND ".join(extra_having)
     else:
-        extra_having = ''
+        extra_having = ""
 
     return """SELECT
         ps.srvid, qualid, ps.queryid, query, ps.dbid,
@@ -102,14 +104,14 @@ def qualstat_getstatdata(eval_type=None, extra_from='', extra_join='',
         GROUP BY ps.srvid, qualid, ps.queryid, ps.dbid, ps.query, quals
         {extra_groupby}
         {extra_having}""".format(
-            filter_ratio=QUALSTAT_FILTER_RATIO,
-            extra_select=extra_select,
-            base_query=base_query,
-            extra_join=extra_join,
-            extra_where=extra_where,
-            extra_groupby=extra_groupby,
-            extra_having=extra_having
-            )
+        filter_ratio=QUALSTAT_FILTER_RATIO,
+        extra_select=extra_select,
+        base_query=base_query,
+        extra_join=extra_join,
+        extra_where=extra_where,
+        extra_groupby=extra_groupby,
+        extra_having=extra_having,
+    )
 
 
 TEXTUAL_INDEX_QUERY = """
@@ -163,7 +165,7 @@ FROM (SELECT t.nspname,
 
 def get_config_changes(restrict_database=False):
     restrict_db = ""
-    if (restrict_database):
+    if restrict_database:
         restrict_db = "AND (d.datname = %(database)s OR h.setdatabase = 0)"
 
     sql = """SELECT * FROM

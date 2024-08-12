@@ -1,6 +1,8 @@
 """
 Functions to generate the queries used in the various graphs components
 """
+
+
 def wal_to_num(walname):
     """
     Extracts the sequence number from the given WAL file name, similarly to
@@ -9,10 +11,11 @@ def wal_to_num(walname):
     return """(('x' || substr({walname}, 9, 8))::bit(32)::bigint
  * '4294967296'::bigint / 16777216
  + ('x' || substr({walname}, 17, 8))::bit(32)::bigint)""".format(
-    walname=walname)
+        walname=walname
+    )
+
 
 class Biggest(object):
-
     def __init__(self, base_columns, order_by):
         if type(base_columns) is str:
             base_columns = [base_columns]
@@ -25,22 +28,23 @@ class Biggest(object):
     def __call__(self, var, minval=0, label=None):
         label = label or var
 
-        sql = "greatest(lead({var})" \
-              " OVER (PARTITION BY {partitionby} ORDER BY {orderby})" \
-              " - {var}," \
-              " {minval})" \
-              " AS {alias}".format(
-                  var=var,
-                  orderby=', '.join(self.order_by),
-                  partitionby=', '.join(self.base_columns),
-                  minval=minval,
-                  alias=label
-              )
+        sql = (
+            "greatest(lead({var})"
+            " OVER (PARTITION BY {partitionby} ORDER BY {orderby})"
+            " - {var},"
+            " {minval})"
+            " AS {alias}".format(
+                var=var,
+                orderby=", ".join(self.order_by),
+                partitionby=", ".join(self.base_columns),
+                minval=minval,
+                alias=label,
+            )
+        )
         return sql
 
 
 class Biggestsum(object):
-
     def __init__(self, base_columns, order_by):
         if type(base_columns) is str:
             base_columns = [base_columns]
@@ -53,17 +57,19 @@ class Biggestsum(object):
     def __call__(self, var, minval=0, label=None):
         label = label or var
 
-        sql = "greatest(lead(sum({var}))"\
-              " OVER (PARTITION BY {partitionby} ORDER BY {orderby})" \
-              " - sum({var})," \
-              " {minval})" \
-              " AS {alias}".format(
-                  var=var,
-                  orderby=', '.join(self.order_by),
-                  partitionby=', '.join(self.base_columns),
-                  minval=minval,
-                  alias=label
-              )
+        sql = (
+            "greatest(lead(sum({var}))"
+            " OVER (PARTITION BY {partitionby} ORDER BY {orderby})"
+            " - sum({var}),"
+            " {minval})"
+            " AS {alias}".format(
+                var=var,
+                orderby=", ".join(self.order_by),
+                partitionby=", ".join(self.base_columns),
+                minval=minval,
+                alias=label,
+            )
+        )
         return sql
 
 
@@ -158,15 +164,15 @@ def powa_getstatdata_sample(mode, predicates=[]):
         base_query = BASE_QUERY_SAMPLE
         base_columns = ["srvid", "dbid", "queryid", "userid"]
 
-    biggest = Biggest(base_columns, 'ts')
-    biggestsum = Biggestsum(base_columns, 'ts')
+    biggest = Biggest(base_columns, "ts")
+    biggestsum = Biggestsum(base_columns, "ts")
 
-    where = ' AND '.join(predicates)
-    if where != '':
-        where = ' AND ' + where
+    where = " AND ".join(predicates)
+    if where != "":
+        where = " AND " + where
 
     cols = base_columns + [
-        'ts',
+        "ts",
         biggest("ts", "'0 s'", "mesure_interval"),
         biggestsum("calls"),
         biggestsum("total_plan_time", label="plantime"),
@@ -208,10 +214,10 @@ def powa_getstatdata_sample(mode, predicates=[]):
     WHERE srvid = %(server)s
     {where}
     GROUP BY {base_columns}, ts""".format(
-        cols=', '.join(cols),
+        cols=", ".join(cols),
         base_query=base_query,
         where=where,
-        base_columns=', '.join(base_columns)
+        base_columns=", ".join(base_columns),
     )
 
 
@@ -319,48 +325,55 @@ def kcache_getstatdata_sample(mode, predicates=[]):
     """
     predicates is an optional array of plain-text predicates.
     """
-    if (mode == "db"):
+    if mode == "db":
         base_query = BASE_QUERY_KCACHE_SAMPLE_DB
         base_columns = ["d.oid AS dbid", "srvid, datname"]
         groupby_columns = "d.oid, srvid, datname"
-    elif (mode == "query"):
+    elif mode == "query":
         base_query = BASE_QUERY_KCACHE_SAMPLE
-        base_columns = ["d.oid AS dbid", "d.srvid", "datname", "queryid",
-                        "userid"]
+        base_columns = [
+            "d.oid AS dbid",
+            "d.srvid",
+            "datname",
+            "queryid",
+            "userid",
+        ]
         groupby_columns = "d.oid, d.srvid, datname, queryid, userid"
 
     biggestsum = Biggestsum(groupby_columns, "ts")
 
-    where = ' AND '.join(predicates)
-    if where != '':
-        where = ' AND ' + where
+    where = " AND ".join(predicates)
+    if where != "":
+        where = " AND " + where
 
-    base_columns.extend([
-        "ts",
-        biggestsum("reads"),
-        biggestsum("writes"),
-        biggestsum("user_time"),
-        biggestsum("system_time"),
-        biggestsum("minflts"),
-        biggestsum("majflts"),
-        # not maintained on GNU/Linux, and not available on Windows
-        # biggestsum("nswaps"),
-        # biggestsum("msgsnds"),
-        # biggestsum("msgrcvs"),
-        # biggestsum("nsignals"),
-        biggestsum("nvcsws"),
-        biggestsum("nivcsws"),
-    ])
+    base_columns.extend(
+        [
+            "ts",
+            biggestsum("reads"),
+            biggestsum("writes"),
+            biggestsum("user_time"),
+            biggestsum("system_time"),
+            biggestsum("minflts"),
+            biggestsum("majflts"),
+            # not maintained on GNU/Linux, and not available on Windows
+            # biggestsum("nswaps"),
+            # biggestsum("msgsnds"),
+            # biggestsum("msgrcvs"),
+            # biggestsum("nsignals"),
+            biggestsum("nvcsws"),
+            biggestsum("nivcsws"),
+        ]
+    )
 
     return """SELECT {base_columns}
     FROM {base_query}
     WHERE d.srvid = %(server)s
     {where}
     GROUP BY {groupby_columns}, ts""".format(
-        base_columns=', '.join(base_columns),
+        base_columns=", ".join(base_columns),
         groupby_columns=groupby_columns,
         where=where,
-        base_query=base_query
+        base_query=base_query,
     )
 
 
@@ -495,7 +508,7 @@ BASE_QUERY_WAIT_SAMPLE = """(
 # knowing that the first 3 xid are reserved and can never be assigned, and that
 # the highest transaction id is 2^32.
 def BASE_QUERY_PGSA_SAMPLE(per_db=False):
-    if (per_db):
+    if per_db:
         extra = """JOIN {powa}.powa_catalog_databases d
             ON d.oid = pgsa_history.datid
         WHERE d.datname = %(database)s"""
@@ -631,7 +644,7 @@ BASE_QUERY_CHECKPOINTER_SAMPLE = """
 
 
 def BASE_QUERY_DATABASE_SAMPLE(per_db=False):
-    if (per_db):
+    if per_db:
         extra = """JOIN {powa}.powa_catalog_databases d
             ON d.oid = psd_history.datid
         WHERE d.datname = %(database)s"""
@@ -692,7 +705,7 @@ def BASE_QUERY_DATABASE_SAMPLE(per_db=False):
 
 
 def BASE_QUERY_DATABASE_CONFLICTS_SAMPLE(per_db=False):
-    if (per_db):
+    if per_db:
         extra = """JOIN {powa}.powa_catalog_databases d
             ON d.oid = psd_history.datid
         WHERE d.datname = %(database)s"""
@@ -891,7 +904,7 @@ BASE_QUERY_SLRU_SAMPLE = """
 
 
 def BASE_QUERY_SUBSCRIPTION_SAMPLE(subname=None):
-    if (subname is not None):
+    if subname is not None:
         extra = "AND subname = %(subscription)s"
     else:
         extra = ""
@@ -1256,12 +1269,12 @@ def powa_getwaitdata_sample(mode, predicates=[]):
         base_query = BASE_QUERY_WAIT_SAMPLE
         base_columns = ["srvid", "dbid", "queryid"]
 
-    biggest = Biggest(base_columns, 'ts')
-    biggestsum = Biggestsum(base_columns, 'ts')
+    biggest = Biggest(base_columns, "ts")
+    biggestsum = Biggestsum(base_columns, "ts")
 
-    where = ' AND '.join(predicates)
-    if where != '':
-        where = ' AND ' + where
+    where = " AND ".join(predicates)
+    if where != "":
+        where = " AND " + where
 
     all_cols = base_columns + [
         "ts",
@@ -1286,10 +1299,10 @@ def powa_getwaitdata_sample(mode, predicates=[]):
     WHERE srvid = %(server)s
     {where}
     GROUP BY {base_columns}, ts""".format(
-        all_cols=', '.join(all_cols),
-        base_columns=', '.join(base_columns),
+        all_cols=", ".join(all_cols),
+        base_columns=", ".join(base_columns),
         base_query=base_query,
-        where=where
+        where=where,
     )
 
 
@@ -1314,26 +1327,24 @@ def powa_get_pgsa_sample(per_db=False):
     def ts_get_sec(field):
         alias = field + "_age"
         return """extract(epoch FROM (ts - {f})) * 1000 AS {a}""".format(
-                f=field,
-                a=alias)
+            f=field, a=alias
+        )
 
     all_cols = base_columns + [
         "ts",
         "datid",
-        txid_age("backend_xid"),     # backend_xid_age
-        txid_age("backend_xmin"),    # backend_xmin_age
-        ts_get_sec("backend_start"), # backend_start_age
-        ts_get_sec("xact_start"),    # xact_start_age
-        ts_get_sec("query_start"),   # query_start_age
+        txid_age("backend_xid"),  # backend_xid_age
+        txid_age("backend_xmin"),  # backend_xmin_age
+        ts_get_sec("backend_start"),  # backend_start_age
+        ts_get_sec("xact_start"),  # xact_start_age
+        ts_get_sec("query_start"),  # query_start_age
         "state",
         "leader_pid",
     ]
 
     return """SELECT {all_cols}
     FROM {base_query}""".format(
-        all_cols=', '.join(all_cols),
-        base_columns=', '.join(base_columns),
-        base_query=base_query
+        all_cols=", ".join(all_cols), base_query=base_query
     )
 
 
@@ -1341,8 +1352,7 @@ def powa_get_archiver_sample():
     base_query = BASE_QUERY_ARCHIVER_SAMPLE
     base_columns = ["srvid"]
 
-    biggest = Biggest(base_columns, 'ts')
-    biggestsum = Biggestsum(base_columns, 'ts')
+    biggest = Biggest(base_columns, "ts")
 
     all_cols = base_columns + [
         "ts",
@@ -1352,15 +1362,14 @@ def powa_get_archiver_sample():
         biggest(wal_to_num("last_archived_wal"), label="nb_arch"),
         "last_failed_time",
         wal_to_num("current_wal")
-            + " - " + wal_to_num("last_archived_wal")
-            + " - 1 AS nb_to_arch",
+        + " - "
+        + wal_to_num("last_archived_wal")
+        + " - 1 AS nb_to_arch",
     ]
 
     return """SELECT {all_cols}
     FROM {base_query}""".format(
-        all_cols=', '.join(all_cols),
-        base_columns=', '.join(base_columns),
-        base_query=base_query
+        all_cols=", ".join(all_cols), base_query=base_query
     )
 
 
@@ -1368,8 +1377,8 @@ def powa_get_bgwriter_sample():
     base_query = BASE_QUERY_BGWRITER_SAMPLE
     base_columns = ["srvid"]
 
-    biggest = Biggest(base_columns, 'ts')
-    biggestsum = Biggestsum(base_columns, 'ts')
+    biggest = Biggest(base_columns, "ts")
+    biggestsum = Biggestsum(base_columns, "ts")
 
     all_cols = base_columns + [
         "ts",
@@ -1384,9 +1393,9 @@ def powa_get_bgwriter_sample():
     return """SELECT {all_cols}
     FROM {base_query}
     GROUP BY {base_columns}, ts""".format(
-        all_cols=', '.join(all_cols),
-        base_columns=', '.join(base_columns),
-        base_query=base_query
+        all_cols=", ".join(all_cols),
+        base_columns=", ".join(base_columns),
+        base_query=base_query,
     )
 
 
@@ -1394,8 +1403,8 @@ def powa_get_checkpointer_sample():
     base_query = BASE_QUERY_CHECKPOINTER_SAMPLE
     base_columns = ["srvid"]
 
-    biggest = Biggest(base_columns, 'ts')
-    biggestsum = Biggestsum(base_columns, 'ts')
+    biggest = Biggest(base_columns, "ts")
+    biggestsum = Biggestsum(base_columns, "ts")
 
     all_cols = base_columns + [
         "ts",
@@ -1410,9 +1419,9 @@ def powa_get_checkpointer_sample():
     return """SELECT {all_cols}
     FROM {base_query}
     GROUP BY {base_columns}, ts""".format(
-        all_cols=', '.join(all_cols),
-        base_columns=', '.join(base_columns),
-        base_query=base_query
+        all_cols=", ".join(all_cols),
+        base_columns=", ".join(base_columns),
+        base_query=base_query,
     )
 
 
@@ -1420,76 +1429,73 @@ def powa_get_database_sample(per_db=False):
     base_query = BASE_QUERY_DATABASE_SAMPLE(per_db)
     base_columns = ["srvid"]
 
-    biggest = Biggest(base_columns, 'ts')
+    biggest = Biggest(base_columns, "ts")
 
     all_cols = base_columns + [
-            "ts",
-            biggest("ts", "'0 s'", "mesure_interval"),
-            biggest("numbackends"),
-            biggest("xact_commit"),
-            biggest("xact_rollback"),
-            biggest("blks_read"),
-            biggest("blks_hit"),
-            biggest("tup_returned"),
-            biggest("tup_fetched"),
-            biggest("tup_inserted"),
-            biggest("tup_updated"),
-            biggest("tup_deleted"),
-            biggest("conflicts"),
-            biggest("temp_files"),
-            biggest("temp_bytes"),
-            biggest("deadlocks"),
-            biggest("checksum_failures"),
-            "checksum_last_failure",
-            biggest("blk_read_time"),
-            biggest("blk_write_time"),
-            biggest("session_time"),
-            biggest("active_time"),
-            biggest("idle_in_transaction_time"),
-            biggest("sessions"),
-            biggest("sessions_abandoned"),
-            biggest("sessions_fatal"),
-            biggest("sessions_killed"),
-            "stats_reset",
-            ]
+        "ts",
+        biggest("ts", "'0 s'", "mesure_interval"),
+        biggest("numbackends"),
+        biggest("xact_commit"),
+        biggest("xact_rollback"),
+        biggest("blks_read"),
+        biggest("blks_hit"),
+        biggest("tup_returned"),
+        biggest("tup_fetched"),
+        biggest("tup_inserted"),
+        biggest("tup_updated"),
+        biggest("tup_deleted"),
+        biggest("conflicts"),
+        biggest("temp_files"),
+        biggest("temp_bytes"),
+        biggest("deadlocks"),
+        biggest("checksum_failures"),
+        "checksum_last_failure",
+        biggest("blk_read_time"),
+        biggest("blk_write_time"),
+        biggest("session_time"),
+        biggest("active_time"),
+        biggest("idle_in_transaction_time"),
+        biggest("sessions"),
+        biggest("sessions_abandoned"),
+        biggest("sessions_fatal"),
+        biggest("sessions_killed"),
+        "stats_reset",
+    ]
 
     return """SELECT {all_cols}
     FROM {base_query}""".format(
-            all_cols=', '.join(all_cols),
-            base_query=base_query
-            )
+        all_cols=", ".join(all_cols), base_query=base_query
+    )
 
 
 def powa_get_database_conflicts_sample(per_db=False):
     base_query = BASE_QUERY_DATABASE_CONFLICTS_SAMPLE(per_db)
     base_columns = ["srvid"]
 
-    biggest = Biggest(base_columns, 'ts')
+    biggest = Biggest(base_columns, "ts")
 
     all_cols = base_columns + [
-            "ts",
-            biggest("ts", "'0 s'", "mesure_interval"),
-            biggest("confl_tablespace"),
-            biggest("confl_lock"),
-            biggest("confl_snapshot"),
-            biggest("confl_bufferpin"),
-            biggest("confl_deadlock"),
-            biggest("confl_active_logicalslot"),
-            ]
+        "ts",
+        biggest("ts", "'0 s'", "mesure_interval"),
+        biggest("confl_tablespace"),
+        biggest("confl_lock"),
+        biggest("confl_snapshot"),
+        biggest("confl_bufferpin"),
+        biggest("confl_deadlock"),
+        biggest("confl_active_logicalslot"),
+    ]
 
     return """SELECT {all_cols}
     FROM {base_query}""".format(
-            all_cols=', '.join(all_cols),
-            base_query=base_query
-            )
+        all_cols=", ".join(all_cols), base_query=base_query
+    )
 
 
 def powa_get_replication_sample():
     base_query = BASE_QUERY_REPLICATION_SAMPLE
     base_columns = ["srvid"]
 
-    biggest = Biggest(base_columns, 'ts')
-    biggestsum = Biggestsum(base_columns, 'ts')
+    biggest = Biggest(base_columns, "ts")
 
     all_cols = base_columns + [
         "ts",
@@ -1513,9 +1519,7 @@ def powa_get_replication_sample():
 
     return """SELECT {all_cols}
     FROM {base_query}""".format(
-        all_cols=', '.join(all_cols),
-        base_columns=', '.join(base_columns),
-        base_query=base_query
+        all_cols=", ".join(all_cols), base_query=base_query
     )
 
 
@@ -1523,13 +1527,12 @@ def powa_get_io_sample(qual=None):
     base_query = BASE_QUERY_IO_SAMPLE
     base_columns = ["srvid", "backend_type", "object", "context"]
 
-    biggest = Biggest(base_columns, 'ts')
-    biggestsum = Biggestsum(base_columns, 'ts')
+    biggest = Biggest(base_columns, "ts")
 
-    if (qual is not None):
-        qual = ' AND %s' % qual
+    if qual is not None:
+        qual = " AND %s" % qual
     else:
-        qual = ''
+        qual = ""
 
     all_cols = base_columns + [
         "ts",
@@ -1552,9 +1555,7 @@ def powa_get_io_sample(qual=None):
     return """SELECT {all_cols}
     FROM {base_query}
     {qual}""".format(
-        all_cols=', '.join(all_cols),
-        base_query=base_query,
-        qual=qual
+        all_cols=", ".join(all_cols), base_query=base_query, qual=qual
     )
 
 
@@ -1562,13 +1563,12 @@ def powa_get_slru_sample(qual=None):
     base_query = BASE_QUERY_SLRU_SAMPLE
     base_columns = ["srvid", "name"]
 
-    biggest =Biggest(base_columns, 'ts')
-    biggestsum = Biggestsum(base_columns, 'ts')
+    biggest = Biggest(base_columns, "ts")
 
-    if (qual is not None):
-        qual = ' AND %s' % qual
+    if qual is not None:
+        qual = " AND %s" % qual
     else:
-        qual = ''
+        qual = ""
 
     all_cols = base_columns + [
         "ts",
@@ -1585,7 +1585,7 @@ def powa_get_slru_sample(qual=None):
     return """SELECT {all_cols}
     FROM {base_query}
     {qual}""".format(
-        all_cols=', '.join(all_cols),
+        all_cols=", ".join(all_cols),
         base_query=base_query,
         qual=qual,
     )
@@ -1595,8 +1595,7 @@ def powa_get_subscription_sample(subname=None):
     base_query = BASE_QUERY_SUBSCRIPTION_SAMPLE(subname)
     base_columns = ["srvid", "subname"]
 
-    biggest =Biggest(base_columns, 'ts')
-    biggestsum = Biggestsum(base_columns, 'ts')
+    biggest = Biggest(base_columns, "ts")
 
     all_cols = base_columns + [
         "ts",
@@ -1609,7 +1608,7 @@ def powa_get_subscription_sample(subname=None):
 
     return """SELECT {all_cols}
     FROM {base_query}""".format(
-        all_cols=', '.join(all_cols),
+        all_cols=", ".join(all_cols),
         base_query=base_query,
     )
 
@@ -1618,8 +1617,8 @@ def powa_get_wal_sample():
     base_query = BASE_QUERY_WAL_SAMPLE
     base_columns = ["srvid"]
 
-    biggest = Biggest(base_columns, 'ts')
-    biggestsum = Biggestsum(base_columns, 'ts')
+    biggest = Biggest(base_columns, "ts")
+    biggestsum = Biggestsum(base_columns, "ts")
 
     all_cols = base_columns + [
         "ts",
@@ -1637,9 +1636,9 @@ def powa_get_wal_sample():
     return """SELECT {all_cols}
     FROM {base_query}
     GROUP BY {base_columns}, ts""".format(
-        all_cols=', '.join(all_cols),
-        base_columns=', '.join(base_columns),
-        base_query=base_query
+        all_cols=", ".join(all_cols),
+        base_columns=", ".join(base_columns),
+        base_query=base_query,
     )
 
 
@@ -1647,7 +1646,7 @@ def powa_get_wal_receiver_sample():
     base_query = BASE_QUERY_WAL_RECEIVER_SAMPLE
     base_columns = ["srvid", "slot_name", "sender_host", "sender_port"]
 
-    biggest = Biggest(base_columns, 'ts')
+    biggest = Biggest(base_columns, "ts")
 
     all_cols = base_columns + [
         "ts",
@@ -1673,14 +1672,11 @@ def powa_get_wal_receiver_sample():
 
     return """SELECT {all_cols}
     FROM {base_query}""".format(
-        all_cols=', '.join(all_cols),
-        base_columns=', '.join(base_columns),
-        base_query=base_query
+        all_cols=", ".join(all_cols), base_query=base_query
     )
 
 
 def powa_get_all_idx_sample(mode):
-
     if mode == "db":
         base_query = BASE_QUERY_ALL_IDXS_SAMPLE_DB
         base_columns = ["srvid", "dbid", "datname"]
@@ -1688,8 +1684,8 @@ def powa_get_all_idx_sample(mode):
         base_query = BASE_QUERY_ALL_IDXS_SAMPLE
         base_columns = ["srvid", "dbid", "datname", "relid"]
 
-    biggest = Biggest(base_columns, 'ts')
-    biggestsum = Biggestsum(base_columns, 'ts')
+    biggest = Biggest(base_columns, "ts")
+    biggestsum = Biggestsum(base_columns, "ts")
 
     all_cols = base_columns + [
         "ts",
@@ -1706,14 +1702,13 @@ def powa_get_all_idx_sample(mode):
         FROM {base_query}
         WHERE srvid = %(server)s
         GROUP BY {base_columns}, ts""".format(
-            all_cols=', '.join(all_cols),
-            base_columns=', '.join(base_columns),
-            base_query=base_query
+        all_cols=", ".join(all_cols),
+        base_columns=", ".join(base_columns),
+        base_query=base_query,
     )
 
 
 def powa_get_all_tbl_sample(mode):
-
     if mode == "db":
         base_query = BASE_QUERY_ALL_TBLS_SAMPLE_DB
         base_columns = ["srvid", "dbid", "datname"]
@@ -1721,8 +1716,8 @@ def powa_get_all_tbl_sample(mode):
         base_query = BASE_QUERY_ALL_TBLS_SAMPLE
         base_columns = ["srvid", "dbid", "datname", "relid"]
 
-    biggest = Biggest(base_columns, 'ts')
-    biggestsum = Biggestsum(base_columns, 'ts')
+    biggest = Biggest(base_columns, "ts")
+    biggestsum = Biggestsum(base_columns, "ts")
 
     all_cols = base_columns + [
         "ts",
@@ -1744,14 +1739,13 @@ def powa_get_all_tbl_sample(mode):
         FROM {base_query}
         WHERE srvid = %(server)s
         GROUP BY {base_columns}, ts""".format(
-            all_cols=', '.join(all_cols),
-            base_columns=', '.join(base_columns),
-            base_query=base_query
+        all_cols=", ".join(all_cols),
+        base_columns=", ".join(base_columns),
+        base_query=base_query,
     )
 
 
 def powa_get_user_fct_sample(mode):
-
     if mode == "db":
         base_query = BASE_QUERY_USER_FCTS_SAMPLE_DB
         base_columns = ["srvid", "dbid", "datname"]
@@ -1759,8 +1753,8 @@ def powa_get_user_fct_sample(mode):
         base_query = BASE_QUERY_USER_FCTS_SAMPLE
         base_columns = ["srvid", "dbid", "datname", "funcid"]
 
-    biggest = Biggest(base_columns, 'ts')
-    biggestsum = Biggestsum(base_columns, 'ts')
+    biggest = Biggest(base_columns, "ts")
+    biggestsum = Biggestsum(base_columns, "ts")
 
     all_cols = base_columns + [
         "ts",
@@ -1774,7 +1768,7 @@ def powa_get_user_fct_sample(mode):
         FROM {base_query}
         WHERE srvid = %(server)s
         GROUP BY {base_columns}, ts""".format(
-            all_cols=', '.join(all_cols),
-            base_columns=', '.join(base_columns),
-            base_query=base_query
+        all_cols=", ".join(all_cols),
+        base_columns=", ".join(base_columns),
+        base_query=base_query,
     )

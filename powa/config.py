@@ -1,14 +1,20 @@
 """
 Dashboard for the configuration summary page.
 """
+
 from __future__ import absolute_import
-from powa.dashboards import (
-    Dashboard, Grid,
-    MetricGroupDef, MetricDef,
-    DashboardPage, ContentWidget)
-from powa.sql.views import get_config_changes
-from powa.collector import CollectorServerDetail
+
 import json
+from powa.collector import CollectorServerDetail
+from powa.dashboards import (
+    ContentWidget,
+    Dashboard,
+    DashboardPage,
+    Grid,
+    MetricDef,
+    MetricGroupDef,
+)
+from powa.sql.views import get_config_changes
 
 
 def get_pgts_query(handler, restrict_database=False):
@@ -16,9 +22,10 @@ def get_pgts_query(handler, restrict_database=False):
     # installed in version 2.0.0 or more.  We check for local installation
     # only, as query will look in local table.  If the extension isn't setup
     # remotely, the check will be pretty quick.
-    pgts = handler.has_extension_version('0', "pg_track_settings", "2.0.0",
-                                         remote_access=False)
-    if (not pgts):
+    pgts = handler.has_extension_version(
+        "0", "pg_track_settings", "2.0.0", remote_access=False
+    )
+    if not pgts:
         return None
 
     return get_config_changes(restrict_database)
@@ -73,6 +80,7 @@ class ServersErrors(ContentWidget):
     """
     Detail widget showing the various errors related to servers logged
     """
+
     title = "Errors"
     data_url = r"/config/errors"
 
@@ -100,6 +108,7 @@ class AllCollectorsDetail(ContentWidget):
     Detail widget showing summarized information for the background worker and
     the remote collector daemon.
     """
+
     title = "Collector Detail"
     data_url = r"/config/allcollectors"
 
@@ -137,9 +146,9 @@ class AllCollectorsDetail(ContentWidget):
         rows = self.execute(sql)
 
         self.logger.warn("%r", rows[0])
-        if (rows[0]["not_authorized"] == True):
+        if rows[0]["not_authorized"] is True:
             collector = None
-        if (rows[0]["nb_found"] == 0):
+        if rows[0]["nb_found"] == 0:
             collector = []
         else:
             collector = rows
@@ -211,21 +220,21 @@ class PowaServersMetricGroup(MetricGroupDef):
         return val
 
     def post_process(self, data, **kwargs):
-        if (len(data["data"])):
-            raw = self.notify_collector('WORKERS_STATUS', timeout=1)
-            if (not raw):
+        if len(data["data"]):
+            raw = self.notify_collector("WORKERS_STATUS", timeout=1)
+            if not raw:
                 return data
 
             line = None
             # get the first correct response only, if multiple answers were
             # returned
-            while (line is None and len(raw) > 0):
+            while line is None and len(raw) > 0:
                 tmp = raw.pop(0)
-                if ("OK" in tmp):
+                if "OK" in tmp:
                     line = tmp["OK"]
 
             # nothing correct, give up
-            if (line is None or line == {}):
+            if line is None or line == {}:
                 return data
 
             stats = json.loads(line)
@@ -260,7 +269,7 @@ class PgSettingsMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        if (self.path_args[0] == '0'):
+        if self.path_args[0] == "0":
             return self.__query
         else:
             # we'll get the data on the foreign server in post_process
@@ -268,15 +277,16 @@ class PgSettingsMetricGroup(MetricGroupDef):
 
     def post_process(self, data, server, **kwargs):
         # For local server we can return data already retrieved
-        if (server == '0'):
+        if server == "0":
             return data
 
         values = None
 
         # Check first if the info is available locally
-        if (self.has_extension_version(server, 'pg_track_settings', '2.0.0')):
+        if self.has_extension_version(server, "pg_track_settings", "2.0.0"):
             try:
-                values = self.execute("""
+                values = self.execute(
+                    """
                         SELECT t.name AS setting_name,
                             t.setting AS setting_value,
                             s.unit AS setting_unit,
@@ -285,32 +295,40 @@ class PgSettingsMetricGroup(MetricGroupDef):
                                                                    %(srvid)s) t
                         LEFT JOIN pg_catalog.pg_settings s
                             ON s.name = t.name
-                        """, params={'srvid': server})
+                        """,
+                    params={"srvid": server},
+                )
 
                 # If no rows were retrieved, it probably means that
                 # pg_tracksettings isn't sampled even if the extension exists.
                 # Reset values so we can try to fetch info from the remote
                 # server.
-                if (values.rowcount == 0):
+                if values.rowcount == 0:
                     values = None
             except Exception:
                 # ignore any error, we'll just fallback on remote check
                 pass
 
-        if (values is None):
+        if values is None:
             try:
                 values = self.execute(self.__query, srvid=server)
             except Exception:
                 # ignore any connection or remote execution error
                 pass
 
-        if (values is not None):
+        if values is not None:
             data = {"data": [self.process(val) for val in values]}
         else:
-            data = {"data": [],
-                    "messages": {'alert': ["Could not retrieve PostgreSQL"
-                                           + " settings "
-                                           + "on remote server"]}}
+            data = {
+                "data": [],
+                "messages": {
+                    "alert": [
+                        "Could not retrieve PostgreSQL"
+                        + " settings "
+                        + "on remote server"
+                    ]
+                },
+            }
 
         return data
 
@@ -332,7 +350,7 @@ class PgStatExtensionsMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        if (self.path_args[0] == '0'):
+        if self.path_args[0] == "0":
             return """SELECT pe.extname, pae.name IS NOT NULL AS available,
                         pae.installed_version IS NOT NULL AS installed,
                     pec.enabled AS handled,
@@ -369,7 +387,7 @@ class PgStatExtensionsMetricGroup(MetricGroupDef):
         needed
         """
         # We already have all the data for the local server
-        if (server == '0'):
+        if server == "0":
             return data
 
         res = None
@@ -381,12 +399,14 @@ class PgStatExtensionsMetricGroup(MetricGroupDef):
             extnames.append(row["extname"])
 
         try:
-            res = self.execute("""
+            res = self.execute(
+                """
             SELECT name AS extname, installed_version
             FROM pg_available_extensions
-            WHERE name = ANY(%(extnames)s)""", srvid=server,params={
-                'extnames': extnames
-                })
+            WHERE name = ANY(%(extnames)s)""",
+                srvid=server,
+                params={"extnames": extnames},
+            )
         except Exception as e:
             # ignore any connection or remote execution error, but keep the
             # error message
@@ -395,8 +415,12 @@ class PgStatExtensionsMetricGroup(MetricGroupDef):
 
         # if we couldn't get any data, send what we have
         if res is None or len(res) == 0:
-            data["messages"] = {'alert': ["Could not retrieve extensions"
-                                          + " on remote server: %s" % errmsg]}
+            data["messages"] = {
+                "alert": [
+                    "Could not retrieve extensions"
+                    + " on remote server: %s" % errmsg
+                ]
+            }
             return data
 
         remote_exts = res
@@ -406,24 +430,29 @@ class PgStatExtensionsMetricGroup(MetricGroupDef):
             found = False
 
             for r in remote_exts:
-                if (r["extname"] == ext["extname"]):
+                if r["extname"] == ext["extname"]:
                     found = True
                     break
 
-            if (not found):
+            if not found:
                 ext["available"] = False
                 ext["installed"] = None
             else:
                 ext["available"] = True
                 ext["installed"] = r["installed_version"] is not None
 
-            if (ext["handled"] and ext["installed"] is None):
+            if ext["handled"] and ext["installed"] is None:
                 alerts.append(ext["extname"])
 
-        if (len(alerts) > 0):
-            data["messages"] = {'alert':
-                                [("%d extensions need to be installed:%s"
-                                 % (len(alerts), ' '.join(alerts)))]}
+        if len(alerts) > 0:
+            data["messages"] = {
+                "alert": [
+                    (
+                        "%d extensions need to be installed:%s"
+                        % (len(alerts), " ".join(alerts))
+                    )
+                ]
+            }
 
         return data
 
@@ -444,7 +473,7 @@ class PgSupportExtensionsMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        if (self.path_args[0] == '0'):
+        if self.path_args[0] == "0":
             return """SELECT pe.extname, pae.name IS NOT NULL AS available,
                         pae.installed_version IS NOT NULL AS installed,
                     coalesce(pae.installed_version , '-') AS extversion
@@ -468,7 +497,7 @@ class PgSupportExtensionsMetricGroup(MetricGroupDef):
         Get the missing metadata of the extensions on the remote servers
         """
         # We already have all the data for the local server
-        if (server == '0'):
+        if server == "0":
             return data
 
         res = None
@@ -480,12 +509,14 @@ class PgSupportExtensionsMetricGroup(MetricGroupDef):
             extnames.append(row["extname"])
 
         try:
-            res = self.execute("""
+            res = self.execute(
+                """
             SELECT name AS extname, installed_version
             FROM pg_available_extensions
-            WHERE name = ANY(%(extnames)s)""", srvid=server,params={
-                'extnames': extnames
-                })
+            WHERE name = ANY(%(extnames)s)""",
+                srvid=server,
+                params={"extnames": extnames},
+            )
         except Exception as e:
             # ignore any connection or remote execution error, but keep the
             # error message
@@ -494,8 +525,12 @@ class PgSupportExtensionsMetricGroup(MetricGroupDef):
 
         # if we couldn't get any data, send what we have
         if res is None or len(res) == 0:
-            data["messages"] = {'alert': ["Could not retrieve extensions"
-                                          + " on remote server: %s" % errmsg]}
+            data["messages"] = {
+                "alert": [
+                    "Could not retrieve extensions"
+                    + " on remote server: %s" % errmsg
+                ]
+            }
             return data
 
         remote_exts = res
@@ -504,14 +539,14 @@ class PgSupportExtensionsMetricGroup(MetricGroupDef):
             found = False
 
             for r in remote_exts:
-                if (r["extname"] == ext["extname"]):
+                if r["extname"] == ext["extname"]:
                     found = True
                     break
 
-            if (not found):
+            if not found:
                 ext["available"] = False
                 ext["installed"] = None
-                ext["extversion"] = '-'
+                ext["extversion"] = "-"
             else:
                 ext["available"] = True
                 ext["installed"] = r["installed_version"] is not None
@@ -574,26 +609,34 @@ class RepositoryConfigOverview(DashboardPage):
 
     base_url = r"/config/"
     datasources = [PowaServersMetricGroup, AllCollectorsDetail, ServersErrors]
-    title = 'Configuration'
+    title = "Configuration"
 
     def dashboard(self):
         # This COULD be initialized in the constructor, but tornado < 3 doesn't
         # call it
-        if getattr(self, '_dashboard', None) is not None:
+        if getattr(self, "_dashboard", None) is not None:
             return self._dashboard
 
         self._dashboard = Dashboard(
             "Server list",
-            [[AllCollectorsDetail],
-             [Grid("Servers",
-                   columns=[{
-                    "name": "server_alias",
-                    "label": "Server",
-                    "url_attr": "url",
-                    "direction": "ascending"
-                    }],
-                   metrics=PowaServersMetricGroup.all())],
-             [ServersErrors]]
+            [
+                [AllCollectorsDetail],
+                [
+                    Grid(
+                        "Servers",
+                        columns=[
+                            {
+                                "name": "server_alias",
+                                "label": "Server",
+                                "url_attr": "url",
+                                "direction": "ascending",
+                            }
+                        ],
+                        metrics=PowaServersMetricGroup.all(),
+                    )
+                ],
+                [ServersErrors],
+            ],
         )
         return self._dashboard
 
@@ -604,9 +647,14 @@ class RemoteConfigOverview(DashboardPage):
     """
 
     base_url = r"/config/(\d+)"
-    datasources = [PgSettingsMetricGroup, PgStatExtensionsMetricGroup,
-                   PgSupportExtensionsMetricGroup, PgDbModulesMetricGroup,
-                   PgCatalogsMetricGroup, CollectorServerDetail]
+    datasources = [
+        PgSettingsMetricGroup,
+        PgStatExtensionsMetricGroup,
+        PgSupportExtensionsMetricGroup,
+        PgDbModulesMetricGroup,
+        PgCatalogsMetricGroup,
+        CollectorServerDetail,
+    ]
     params = ["server"]
     parent = RepositoryConfigOverview
     # title = 'Remote server configuration'
@@ -618,55 +666,74 @@ class RemoteConfigOverview(DashboardPage):
     def dashboard(self):
         # This COULD be initialized in the constructor, but tornado < 3 doesn't
         # call it
-        if getattr(self, '_dashboard', None) is not None:
+        if getattr(self, "_dashboard", None) is not None:
             return self._dashboard
 
         grids = [
-            [Grid("Stats Extensions",
-                  columns=[{
-                    "name": "extname",
-                    "label": "Extension",
-                  }],
-                  metrics=PgStatExtensionsMetricGroup.all()
-                  ),
-                  Grid("Support Extensions",
-                       columns=[{
-                         "name": "extname",
-                         "label": "Extension",
-                       }],
-                       metrics=PgSupportExtensionsMetricGroup.all()
-                  )
-             ]]
+            [
+                Grid(
+                    "Stats Extensions",
+                    columns=[
+                        {
+                            "name": "extname",
+                            "label": "Extension",
+                        }
+                    ],
+                    metrics=PgStatExtensionsMetricGroup.all(),
+                ),
+                Grid(
+                    "Support Extensions",
+                    columns=[
+                        {
+                            "name": "extname",
+                            "label": "Extension",
+                        }
+                    ],
+                    metrics=PgSupportExtensionsMetricGroup.all(),
+                ),
+            ]
+        ]
 
-        if (self.path_args[0] != '0'):
-            grids.append([
-                Grid("Database modules",
-                     columns=[{
-                      "name": "db_module",
-                      "label": "DB module",
-                      }],
-                     metrics=PgDbModulesMetricGroup.all()
-                     ),
-                Grid("Catalogs",
-                    columns=[{
-                      "name": "datname",
-                      "label": "Database",
-                    }],
-                    metrics=PgCatalogsMetricGroup.all())
-            ])
+        if self.path_args[0] != "0":
+            grids.append(
+                [
+                    Grid(
+                        "Database modules",
+                        columns=[
+                            {
+                                "name": "db_module",
+                                "label": "DB module",
+                            }
+                        ],
+                        metrics=PgDbModulesMetricGroup.all(),
+                    ),
+                    Grid(
+                        "Catalogs",
+                        columns=[
+                            {
+                                "name": "datname",
+                                "label": "Database",
+                            }
+                        ],
+                        metrics=PgCatalogsMetricGroup.all(),
+                    ),
+                ]
+            )
 
-        grids.append([
-            Grid("PostgreSQL settings",
-                 columns=[{
-                  "name": "setting_name",
-                  "label": "Setting",
-                  }],
-                 metrics=PgSettingsMetricGroup.all()
-                 )
-        ])
-
-        self._dashboard = Dashboard(
-            "Configuration overview",
-              grids
+        grids.append(
+            [
+                Grid(
+                    "PostgreSQL settings",
+                    columns=[
+                        {
+                            "name": "setting_name",
+                            "label": "Setting",
+                        }
+                    ],
+                    metrics=PgSettingsMetricGroup.all(),
+                )
+            ]
         )
+
+        self._dashboard = Dashboard("Configuration overview", grids)
         return self._dashboard

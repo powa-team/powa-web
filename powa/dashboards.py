@@ -4,16 +4,19 @@ Dashboard definition classes.
 This module provides several classes to define a Dashboard.
 """
 
-from powa.json import JSONizable
+from operator import attrgetter
+from powa.compat import classproperty, with_metaclass
 from powa.framework import AuthHandler
-from powa.compat import with_metaclass, classproperty
+from powa.json import JSONizable
 from powa.ui_modules import MenuEntry
 from tornado.web import URLSpec
-from operator import attrgetter
+
 try:
     from collections import OrderedDict
-except:
+except ModuleNotFoundError:
     from ordereddict import OrderedDict
+
+import psycopg2
 from inspect import isfunction
 
 GLOBAL_COUNTER = 0
@@ -37,7 +40,9 @@ class DashboardHandler(AuthHandler):
         title = self.dashboard().title % params
 
         if self.request.headers.get("Content-Type") == "application/json":
-            param_dashboard = self.dashboard().parameterized_json(self, **params)
+            param_dashboard = self.dashboard().parameterized_json(
+                self, **params
+            )
             param_datasource = []
             for datasource in self.datasources:
                 # ugly hack to avoid calling the datasource twice per
@@ -48,36 +53,57 @@ class DashboardHandler(AuthHandler):
                     continue
 
                 value = datasource.parameterized_json(self, **params)
-                value['data_url'] = self.reverse_url(datasource.url_name,
-                                                     *args)
+                value["data_url"] = self.reverse_url(
+                    datasource.url_name, *args
+                )
                 param_datasource.append(value)
 
             # tell the frontend how to get the configuration changes, if the
             # DashboardPage provided it
             param_timeline = None
-            if (self.timeline):
+            if self.timeline:
                 # Dashboards can specify a subset of arguments to use for the
                 # timeline.
-                if (self.timeline_params):
-                    tl_args = [params[prm] for prm in self.params
-                                                   if prm in self.timeline_params]
+                if self.timeline_params:
+                    tl_args = [
+                        params[prm]
+                        for prm in self.params
+                        if prm in self.timeline_params
+                    ]
                 else:
                     tl_args = args
-                param_timeline = self.reverse_url(self.timeline.url_name, *tl_args)
+                param_timeline = self.reverse_url(
+                    self.timeline.url_name, *tl_args
+                )
 
             last = len(self.breadcrumb) - 1
             breadcrumbs = [
                 {
                     "text": item.title,
-                    "href": self.reverse_url(item.url_name, *item.url_params.values()),
-                } for i, item in enumerate(reversed(self.breadcrumb))
-            ] + [{
-                "text": item.children_title,
-                "children": [{
-                    "url": self.reverse_url(child.url_name, *child.url_params.values()),
-                    "title": child.title
-                    } for child in item.children] if item.children and i == last else None
-                } for i, item in enumerate(reversed(self.breadcrumb)) if i == last and item.children
+                    "href": self.reverse_url(
+                        item.url_name, *item.url_params.values()
+                    ),
+                }
+                for i, item in enumerate(reversed(self.breadcrumb))
+            ] + [
+                {
+                    "text": item.children_title,
+                    "children": (
+                        [
+                            {
+                                "url": self.reverse_url(
+                                    child.url_name, *child.url_params.values()
+                                ),
+                                "title": child.title,
+                            }
+                            for child in item.children
+                        ]
+                        if item.children and i == last
+                        else None
+                    ),
+                }
+                for i, item in enumerate(reversed(self.breadcrumb))
+                if i == last and item.children
             ]
 
             return self.render_json(
@@ -112,16 +138,20 @@ class DashboardHandler(AuthHandler):
         conn = self.connect()
         cur = conn.cursor()
 
-        powa_roles = ['powa_signal_backend', 'powa_write_all_data',
-                      'powa_admin']
+        powa_roles = [
+            "powa_signal_backend",
+            "powa_write_all_data",
+            "powa_admin",
+        ]
         roles_to_test = []
 
         # pg 14+ introduced predefined roles
         if conn.server_version >= 140000:
-            roles_to_test.append('pg_signal_backend')
+            roles_to_test.append("pg_signal_backend")
 
         try:
-            cur.execute("""WITH s(v) AS (
+            cur.execute(
+                """WITH s(v) AS (
                     SELECT unnest(%s)
                     UNION ALL
                     SELECT rolname
@@ -129,18 +159,20 @@ class DashboardHandler(AuthHandler):
                     WHERE powa_role = ANY (%s)
                 )
                 SELECT bool_or(pg_has_role(current_user, v, 'USAGE'))
-                    FROM s""", (roles_to_test, powa_roles))
-        except psycopg2.Error as e:
+                    FROM s""",
+                (roles_to_test, powa_roles),
+            )
+        except psycopg2.Error:
             conn.rollback()
             return False
 
         row = cur.fetchone()
 
         # should not happen
-        if (not row):
+        if not row:
             return False
 
-        return (row[0] is True)
+        return row[0] is True
 
     @property
     def breadcrumb(self):
@@ -160,10 +192,12 @@ class MetricGroupHandler(AuthHandler):
 
     def get(self, *params):
         url_params = dict(zip(self.params, params))
-        url_query_params = dict((
-            (key, value[0].decode('utf8'))
-            for key, value
-            in self.request.arguments.items()))
+        url_query_params = dict(
+            (
+                (key, value[0].decode("utf8"))
+                for key, value in self.request.arguments.items()
+            )
+        )
         url_params.update(url_query_params)
         url_params = self.add_params(url_params)
         res = self.query
@@ -175,11 +209,12 @@ class MetricGroupHandler(AuthHandler):
             query = res[0]
             url_params.update(res[1])
         data = {"data": []}
-        if (query is not None):
+        if query is not None:
             values = self.execute(query, params=url_params)
             if values is not None:
-                data = {"data": [self.process(val, **url_params)
-                                 for val in values]}
+                data = {
+                    "data": [self.process(val, **url_params) for val in values]
+                }
 
         data = self.post_process(data, **url_params)
         self.render_json(data)
@@ -230,6 +265,7 @@ class DataSource(JSONizable):
             a subclass of RequestHandler used to process this DataSource.
 
     """
+
     datasource_handler_cls = None
     data_url = None
     enabled = True
@@ -241,11 +277,9 @@ class DataSource(JSONizable):
         """
         return "datasource_%s" % cls.__name__
 
-
     @classproperty
     def parameterized_json(cls, handler, **parms):
         return cls.to_json()
-
 
 
 class Metric(JSONizable):
@@ -311,7 +345,8 @@ class Dashboard(JSONizable):
             if (12 % len(row)) != 0:
                 raise ValueError(
                     "Each widget row length must be a "
-                    "divisor of 12 (have: %d)" % len(row))
+                    "divisor of 12 (have: %d)" % len(row)
+                )
 
     @property
     def widgets(self):
@@ -330,9 +365,11 @@ class Dashboard(JSONizable):
 
     def to_json(self):
         self._validate_layout()
-        return {'title': self.title,
-                'type': 'dashboard',
-                'widgets': self.widgets}
+        return {
+            "title": self.title,
+            "type": "dashboard",
+            "widgets": self.widgets,
+        }
 
     def param_widgets(self, _, **params):
         param_rows = []
@@ -344,44 +381,46 @@ class Dashboard(JSONizable):
         return param_rows
 
     def parameterized_json(self, _, **params):
-        return {'title': self.title % params,
-                'type': 'dashboard',
-                'widgets': self.param_widgets(_, **params)}
+        return {
+            "title": self.title % params,
+            "type": "dashboard",
+            "widgets": self.param_widgets(_, **params),
+        }
+
 
 class Panel(JSONizable):
-
     def __init__(self, title, widget):
         self.title = title
         self.widget = widget
 
     def to_json(self):
-        return {"title": self.title,
-                "widget": self.widget}
+        return {"title": self.title, "widget": self.widget}
 
     def parameterized_json(self, _, **args):
-        return {"title": self.title % args,
-                "type": "panel",
-                "widget": self.widget.parameterized_json(_, **args)}
+        return {
+            "title": self.title % args,
+            "type": "panel",
+            "widget": self.widget.parameterized_json(_, **args),
+        }
 
 
 class TabContainer(JSONizable):
-
     def __init__(self, title, tabs=None):
         self.title = title
         self.tabs = tabs or []
 
     def to_json(self):
-        tabs = []
-        return {'title': self.title,
-                'tabs': self.tabs}
+        return {"title": self.title, "tabs": self.tabs}
 
     def parameterized_json(self, _, **params):
         tabs = []
         for tab in self.tabs:
             tabs.append(tab.parameterized_json(_, **params))
-        return {'title': self.title % params,
-                'type': 'tabcontainer',
-                'tabs': tabs}
+        return {
+            "title": self.title % params,
+            "type": "tabcontainer",
+            "tabs": tabs,
+        }
 
 
 class Widget(JSONizable):
@@ -415,25 +454,24 @@ class ContentWidget(Widget, DataSource, AuthHandler):
     This widget acts as both a Widget and DataSource, since the Data used is
     simplistic.
     """
+
     datasource_handler_cls = ContentHandler
 
     def initialize(self, datasource=None, params=None):
         self.params = params
 
-
     @classmethod
     def to_json(cls):
         return {
-            'data_url': cls.data_url,
-            'name': cls.__name__,
-            'type': cls.__name__,
-            'title': cls.title
+            "data_url": cls.data_url,
+            "name": cls.__name__,
+            "type": cls.__name__,
+            "title": cls.title,
         }
 
     @classmethod
     def parameterized_json(cls, _, **params):
         return cls.to_json()
-
 
 
 class Grid(Widget):
@@ -464,14 +502,15 @@ class Grid(Widget):
             if any(m._group != mg1 for m in self.metrics):
                 raise ValueError(
                     "A grid is not allowed to have metrics from different "
-                    "groups. (title: %s)" % self.title)
+                    "groups. (title: %s)" % self.title
+                )
 
     def to_json(self):
         values = self.__dict__.copy()
-        values['metrics'] = []
-        values['type'] = 'grid'
+        values["metrics"] = []
+        values["type"] = "grid"
         for metric in self.metrics:
-            values['metrics'].append(metric._fqn())
+            values["metrics"].append(metric._fqn())
         return values
 
 
@@ -480,10 +519,15 @@ class Graph(Widget):
     A widget backed by a Rickshaw graph.
     """
 
-    def __init__(self, title, grouper=None, url=None,
-                 axistype="time",
-                 metrics=None,
-                 **kwargs):
+    def __init__(
+        self,
+        title,
+        grouper=None,
+        url=None,
+        axistype="time",
+        metrics=None,
+        **kwargs,
+    ):
         self.title = title
         self.url = url
         self.grouper = grouper
@@ -503,14 +547,15 @@ class Graph(Widget):
         for metric in metrics:
             if metric.axis_type != axis_type:
                 raise ValueError(
-                    "Some metrics do not have the same x-axis type!")
+                    "Some metrics do not have the same x-axis type!"
+                )
 
     def to_json(self):
         values = self.__dict__.copy()
-        values['metrics'] = []
-        values['type'] = 'graph'
+        values["metrics"] = []
+        values["type"] = "graph"
         for metric in self.metrics:
-            values['metrics'].append(metric._fqn())
+            values["metrics"].append(metric._fqn())
         return values
 
 
@@ -523,7 +568,7 @@ class Declarative(object):
         self.args = args
         self.kwargs = kwargs
         global GLOBAL_COUNTER
-        self.kwargs.setdefault('_order', GLOBAL_COUNTER)
+        self.kwargs.setdefault("_order", GLOBAL_COUNTER)
         GLOBAL_COUNTER += 1
 
 
@@ -531,6 +576,7 @@ class MetricDef(Declarative):
     """
     A metric definition.
     """
+
     _cls = Metric
 
 
@@ -542,27 +588,25 @@ class MetaMetricGroup(type, JSONizable):
     """
 
     def __new__(meta, name, bases, dct):
-        dct['metrics'] = {}
-        dct['_stubs'] = {}
-        if not isinstance(dct.get('name', ''), str):
+        dct["metrics"] = {}
+        dct["_stubs"] = {}
+        if not isinstance(dct.get("name", ""), str):
             raise ValueError("The metric group name must be of type str")
         for base in bases:
             if hasattr(base, "enabled"):
                 dct.setdefault("enabled", base.enabled)
-            if hasattr(base, '_stubs'):
+            if hasattr(base, "_stubs"):
                 for key, stub in base._stubs.items():
-                    dct[key] = stub.__class__(*stub.args,
-                                              **stub.kwargs)
+                    dct[key] = stub.__class__(*stub.args, **stub.kwargs)
         for key, val in list(dct.items()):
             if isinstance(val, Declarative):
-                dct['_stubs'][key] = val
-                val.kwargs['name'] = key
+                dct["_stubs"][key] = val
+                val.kwargs["name"] = key
                 dct[key] = val = val._cls(*val.args, **val.kwargs)
             if isinstance(val, Metric):
                 dct.pop(key)
-                dct['metrics'][key] = val
+                dct["metrics"][key] = val
         return super(MetaMetricGroup, meta).__new__(meta, name, bases, dct)
-
 
     def __init__(cls, name, bases, dct):
         for metric in dct.get("metrics").values():
@@ -578,25 +622,28 @@ class MetaMetricGroup(type, JSONizable):
         return key in cls.metrics
 
 
-
-
 class MetricGroupDef(with_metaclass(MetaMetricGroup, DataSource)):
     """
     Base class for MetricGroupDef.
 
     A MetricGroupDef provides syntactic sugar for instantiating MetricGroups.
     """
+
     _inst = None
-    metrics = {}
     datasource_handler_cls = MetricGroupHandler
 
     @classmethod
     def to_json(cls):
-        values = dict(((key, val) for key, val in cls.__dict__.items()
-                       if not key.startswith("_") and not isfunction(val)))
-        values['type'] = 'metric_group'
+        values = dict(
+            (
+                (key, val)
+                for key, val in cls.__dict__.items()
+                if not key.startswith("_") and not isfunction(val)
+            )
+        )
+        values["type"] = "metric_group"
         values.setdefault("xaxis", "ts")
-        values['metrics'] = list(cls.metrics.values())
+        values["metrics"] = list(cls.metrics.values())
         values.pop("query", None)
         return values
 
@@ -615,8 +662,10 @@ class MetricGroupDef(with_metaclass(MetaMetricGroup, DataSource)):
         if handler is None:
             return sorted(cls.metrics.values(), key=attrgetter("_order"))
 
-        return sorted(cls._get_metrics(handler, **params).values(),
-                      key=attrgetter("_order"))
+        return sorted(
+            cls._get_metrics(handler, **params).values(),
+            key=attrgetter("_order"),
+        )
 
     @classmethod
     def split(cls, handler, splits):
@@ -681,7 +730,9 @@ class DashboardPage(object):
     parent = None
     timeline = None
     timeline_params = None
-    docs_stats_url = 'https://powa.readthedocs.io/en/latest/components/stats_extensions/'
+    docs_stats_url = (
+        "https://powa.readthedocs.io/en/latest/components/stats_extensions/"
+    )
 
     @classmethod
     def url_specs(cls, url_prefix):
@@ -692,21 +743,32 @@ class DashboardPage(object):
         """
 
         url_specs = []
-        url_specs.append(URLSpec(
-            r"%s%s/" % (url_prefix, cls.base_url.strip("/")),
-            type(cls.__name__, (cls.dashboard_handler_cls, cls), {}), {
-                "template": cls.template,
-                "params": cls.params},
-            name=cls.__name__))
+        url_specs.append(
+            URLSpec(
+                r"%s%s/" % (url_prefix, cls.base_url.strip("/")),
+                type(cls.__name__, (cls.dashboard_handler_cls, cls), {}),
+                {"template": cls.template, "params": cls.params},
+                name=cls.__name__,
+            )
+        )
         for datasource in cls.datasources:
             if datasource.data_url is None:
-                raise KeyError("A Datasource must have a data_url: %s" %
-                               datasource.__name__)
-            url_specs.append(URLSpec(
-                r"%s%s/" % (url_prefix, datasource.data_url.strip("/")),
-                type(datasource.__name__, (datasource, datasource.datasource_handler_cls),
-                     dict(datasource.__dict__)),
-                {"datasource": datasource, "params": cls.params}, name=datasource.url_name))
+                raise KeyError(
+                    "A Datasource must have a data_url: %s"
+                    % datasource.__name__
+                )
+            url_specs.append(
+                URLSpec(
+                    r"%s%s/" % (url_prefix, datasource.data_url.strip("/")),
+                    type(
+                        datasource.__name__,
+                        (datasource, datasource.datasource_handler_cls),
+                        dict(datasource.__dict__),
+                    ),
+                    {"datasource": datasource, "params": cls.params},
+                    name=datasource.url_name,
+                )
+            )
         return url_specs
 
     @classmethod
@@ -715,18 +777,19 @@ class DashboardPage(object):
 
     @classmethod
     def get_selfmenu(cls, handler, params):
-        my_params = OrderedDict((key, params.get(key))
-                                for key in cls.params)
+        my_params = OrderedDict((key, params.get(key)) for key in cls.params)
         return MenuEntry(cls.title % params, cls.__name__, my_params)
 
     @classmethod
     def get_breadcrumb(cls, handler, params):
-        if (getattr(cls, "breadcrum_title", None)):
+        if getattr(cls, "breadcrum_title", None):
             title = cls.breadcrum_title(handler, params)
         else:
             title = cls.title % params
         entry = MenuEntry(title, cls.__name__, params)
-        entry.children_title = cls.title % params if hasattr(cls, "title") else None
+        entry.children_title = (
+            cls.title % params if hasattr(cls, "title") else None
+        )
         entry.children = cls.get_childmenu(handler, params)
         items = [entry]
 
@@ -736,8 +799,10 @@ class DashboardPage(object):
         else:
             parent_params = []
 
-        if cls.parent is not None and hasattr(handler, 'parent') and \
-            hasattr(cls.parent, 'get_breadcrumb'):
-            items.extend(cls.parent.get_breadcrumb(handler,
-                                                   parent_params))
+        if (
+            cls.parent is not None
+            and hasattr(handler, "parent")
+            and hasattr(cls.parent, "get_breadcrumb")
+        ):
+            items.extend(cls.parent.get_breadcrumb(handler, parent_params))
         return items

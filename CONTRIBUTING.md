@@ -15,6 +15,25 @@ This project relies on a few frameworks / libraries including:
 For the following steps, we assume you use PoWA web in debug mode (for example
 by running `./run-powa.py` or using podman dev environment).
 
+### Python syntax and formatting
+
+Python syntax and formatting must conform to ruff. CI checks new code with ruff.
+
+If not already available, you can create a virtualenv for developpement purpose:
+
+```shell
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+```
+
+You can then do a syntax check and format check by running the following command:
+
+``` shell
+ruff check
+ruff format --check
+```
+
 ## Requirements
 
  - A recent version of `NodeJS` (16+) and `npm` are required.
