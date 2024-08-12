@@ -423,11 +423,6 @@ class ContentWidget(Widget, DataSource, AuthHandler):
 
     @classmethod
     def to_json(cls):
-        """
-        to_json is an hybridmethod, the goal is to provide two different
-        implementations when it is used as a class (DataSource) or as
-        an instance (Widget).
-        """
         return {
             'data_url': cls.data_url,
             'name': cls.__name__,

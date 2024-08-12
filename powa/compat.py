@@ -39,30 +39,3 @@ class classproperty(object):
 
     def __get__(self, instance, owner):
         return self.getter(owner)
-
-
-class hybridmethod(object):
-    """
-    Decorator allowing to define method which behaves differently
-    if called at the instance or at the class level.
-    """
-
-    def __init__(self, class_method=None, instance_method=None):
-        self._class_method = class_method
-        self._instance_method = instance_method or class_method
-
-    def instance_method(self, instance_method):
-        """Setter for the instance method."""
-        self._instance_method = instance_method
-        return self
-
-    def class_method(self, class_method):
-        """Setter for class method."""
-        self._class_method = class_method
-        return self
-
-    def __get__(self, instance, owner):
-        if instance is None:
-            return self._class_method.__get__(owner, owner.__class__)
-        else:
-            return self._instance_method.__get__(instance, owner)
