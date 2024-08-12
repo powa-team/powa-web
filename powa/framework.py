@@ -1,21 +1,22 @@
 """
 Utilities for the basis of Powa
 """
-from collections import defaultdict
-from tornado.web import RequestHandler, authenticated, HTTPError
-from powa.json import JSONizable
-from powa import ui_methods
-from powa.json import to_json
-import psycopg2
-from psycopg2.extensions import connection as _connection, cursor as _cursor
-from psycopg2.extras import RealDictCursor
-from tornado.options import options
-import pickle
+
 import logging
+import pickle
+import psycopg2
 import random
 import re
 import select
 import time
+from collections import defaultdict
+from powa import ui_methods
+from powa.json import JSONizable, to_json
+from psycopg2.extensions import connection as _connection
+from psycopg2.extensions import cursor as _cursor
+from psycopg2.extras import RealDictCursor
+from tornado.options import options
+from tornado.web import HTTPError, RequestHandler, authenticated
 
 
 class CustomConnection(_connection):
@@ -33,6 +34,7 @@ class CustomConnection(_connection):
     All you need to do is pass query strings of the form
     SELECT ... FROM {extension_name}.some_relation ...
     """
+
     def initialize(self, logger, srvid, dsn, encoding_query, debug):
         self._logger = logger
         self._srvid = srvid or 0
@@ -40,15 +42,15 @@ class CustomConnection(_connection):
         self._debug = debug
 
         if encoding_query is not None:
-            self.set_client_encoding(encoding_query['client_encoding'])
+            self.set_client_encoding(encoding_query["client_encoding"])
 
     def cursor(self, *args, **kwargs):
-        factory = kwargs.get('cursor_factory')
+        factory = kwargs.get("cursor_factory")
 
         if factory is None:
-            kwargs['cursor_factory'] = CustomCursor
+            kwargs["cursor_factory"] = CustomCursor
         elif factory == RealDictCursor:
-            kwargs['cursor_factory'] = CustomDictCursor
+            kwargs["cursor_factory"] = CustomDictCursor
         else:
             msg = "Unsupported cursor_factory: %s" % factory.__name__
             self._logger.error(msg)
@@ -85,7 +87,7 @@ class CustomCursor(_cursor):
 
 
 def resolve_nsps(query, connection):
-    if hasattr(connection, '_nsps'):
+    if hasattr(connection, "_nsps"):
         return query.format(**connection._nsps)
 
     return query
@@ -94,7 +96,7 @@ def resolve_nsps(query, connection):
 def log_query(cls, query, params=None, exception=None):
     t = round((time.time() - cls.timestamp) * 1000, 2)
 
-    fmt = ''
+    fmt = ""
     if exception is not None:
         fmt = "Error during query execution:\n{}\n".format(exception)
 
@@ -102,9 +104,15 @@ def log_query(cls, query, params=None, exception=None):
     if params is not None:
         fmt += "\n{params}"
 
-    cls.connection._logger.debug(fmt.format(ms=t, query=query, params=params,
-                                            dsn=cls.connection._dsn,
-                                            srvid=cls.connection._srvid))
+    cls.connection._logger.debug(
+        fmt.format(
+            ms=t,
+            query=query,
+            params=params,
+            dsn=cls.connection._dsn,
+            srvid=cls.connection._srvid,
+        )
+    )
 
 
 class BaseHandler(RequestHandler, JSONizable):
@@ -119,15 +127,20 @@ class BaseHandler(RequestHandler, JSONizable):
         self._databases = None
         self._servers = None
         self._connections = {}
-        self._ext_versions = defaultdict(lambda : defaultdict(dict))
+        self._ext_versions = defaultdict(lambda: defaultdict(dict))
         self.url_prefix = options.url_prefix
         self.logger = logging.getLogger("tornado.application")
-        if self.application.settings['debug']:
+        if self.application.settings["debug"]:
             self.logger.setLevel(logging.DEBUG)
 
     def __get_url(self, **connoptions):
-        url = ' '.join(['%s=%s' % (k, v)
-                        for (k, v) in connoptions.items() if v is not None])
+        url = " ".join(
+            [
+                "%s=%s" % (k, v)
+                for (k, v) in connoptions.items()
+                if v is not None
+            ]
+        )
 
         return url
 
@@ -136,14 +149,14 @@ class BaseHandler(RequestHandler, JSONizable):
         Return a simplified dsn that won't leak the password if provided in the
         options, for logging purpose.
         """
-        dsn = '{user}@{host}:{port}/{database}'.format(**connoptions)
+        dsn = "{user}@{host}:{port}/{database}".format(**connoptions)
         return dsn
 
     def render_json(self, value):
         """
         Render the object as json response.
         """
-        self.set_header('Content-Type', 'application/json')
+        self.set_header("Content-Type", "application/json")
         self.write(to_json(value))
 
     @property
@@ -152,11 +165,11 @@ class BaseHandler(RequestHandler, JSONizable):
         Return the current_user if he is allowed to connect
         to his server of choice.
         """
-        raw = self.get_str_cookie('user')
+        raw = self.get_str_cookie("user")
         if raw is not None:
             try:
                 self.connect()
-                return raw or 'anonymous'
+                return raw or "anonymous"
             except Exception:
                 return None
 
@@ -166,7 +179,7 @@ class BaseHandler(RequestHandler, JSONizable):
         Return the server connected to if any
         """
         try:
-            return self.get_secure_cookie('server').decode('utf-8')
+            return self.get_secure_cookie("server").decode("utf-8")
         except AttributeError:
             return None
 
@@ -180,8 +193,8 @@ class BaseHandler(RequestHandler, JSONizable):
             return None
         connoptions = options.servers[server].copy()
         host = "localhost"
-        if 'host' in connoptions:
-            host = connoptions['host']
+        if "host" in connoptions:
+            host = connoptions["host"]
         return "%s" % (host)
 
     @property
@@ -194,8 +207,8 @@ class BaseHandler(RequestHandler, JSONizable):
             return None
         connoptions = options.servers[server].copy()
         port = "5432"
-        if 'port' in connoptions:
-            port = connoptions['port']
+        if "port" in connoptions:
+            port = connoptions["port"]
         return "%s" % (port)
 
     @property
@@ -209,11 +222,11 @@ class BaseHandler(RequestHandler, JSONizable):
         connoptions = options.servers[server].copy()
         host = "localhost"
         port = "5432"
-        if 'host' in connoptions:
-            host = connoptions['host']
-        if 'port' in connoptions:
-            port = connoptions['port']
-        return "%s:%s" % ( host, port )
+        if "host" in connoptions:
+            host = connoptions["host"]
+        if "port" in connoptions:
+            port = connoptions["port"]
+        return "%s:%s" % (host, port)
 
     @property
     def database(self):
@@ -239,19 +252,26 @@ class BaseHandler(RequestHandler, JSONizable):
             SELECT regexp_replace(extversion, '(dev|beta\d*)', '') AS version
             FROM pg_extension
             WHERE extname = 'powa'
-            """, **kwargs)[0]['version']
+            """,
+            **kwargs,
+        )[0]["version"]
         if version is None:
             return None
-        return [int(part) for part in version.split('.')]
+        return [int(part) for part in version.split(".")]
 
     def get_pg_version_num(self, srvid=None, **kwargs):
         try:
-            return int(self.execute(
-                """
+            return int(
+                self.execute(
+                    """
                 SELECT setting
                 FROM pg_settings
                 WHERE name = 'server_version_num'
-                """, srvid=srvid, **kwargs)[0]['setting'])
+                """,
+                    srvid=srvid,
+                    **kwargs,
+                )[0]["setting"]
+            )
         except Exception:
             return None
 
@@ -261,29 +281,36 @@ class BaseHandler(RequestHandler, JSONizable):
         """
         if self.current_user:
             if self._databases is None:
-                self._databases = [d['datname'] for d in self.execute(
-                    """
+                self._databases = [
+                    d["datname"]
+                    for d in self.execute(
+                        """
                     SELECT p.datname
                     FROM {powa}.powa_databases p
                     LEFT JOIN pg_database d ON p.oid = d.oid
                     WHERE COALESCE(datallowconn, true)
                     AND srvid = %(srvid)s
                     ORDER BY DATNAME
-                    """, params={'srvid': srvid})]
+                    """,
+                        params={"srvid": srvid},
+                    )
+                ]
             return self._databases
 
     def deparse_srvid(self, srvid):
-        if (srvid == '0'):
+        if srvid == "0":
             return self.current_connection
         else:
-            return self.execute("""
+            return self.execute(
+                """
                                 SELECT COALESCE(alias,
                                                 hostname || ':' || port)
                                        AS server
                                 FROM {powa}.powa_servers
                                 WHERE id = %(srvid)s
-                                """, params={'srvid': int(srvid)}
-                                )[0]['server']
+                                """,
+                params={"srvid": int(srvid)},
+            )[0]["server"]
 
     @property
     def servers(self, **kwargs):
@@ -292,8 +319,10 @@ class BaseHandler(RequestHandler, JSONizable):
         """
         if self.current_user:
             if self._servers is None:
-                self._servers = [[s['id'], s['val'], s['alias']] for s in self.execute(
-                    """
+                self._servers = [
+                    [s["id"], s["val"], s["alias"]]
+                    for s in self.execute(
+                        """
                     SELECT s.id, CASE WHEN s.id = 0 THEN
                         %(default)s
                     ELSE
@@ -302,32 +331,42 @@ class BaseHandler(RequestHandler, JSONizable):
                     s.alias
                     FROM {powa}.powa_servers s
                     ORDER BY hostname
-                    """, params={'default': self.current_connection})]
+                    """,
+                        params={"default": self.current_connection},
+                    )
+                ]
             return self._servers
 
     def on_finish(self):
         for conn in self._connections.values():
             conn.close()
 
-    def connect(self, srvid=None, server=None, user=None, password=None,
-                database=None, remote_access=False, **kwargs):
+    def connect(
+        self,
+        srvid=None,
+        server=None,
+        user=None,
+        password=None,
+        database=None,
+        remote_access=False,
+        **kwargs,
+    ):
         """
         Connect to a specific database.
         Parameters default values are taken from the cookies and the server
         configuration file.
         """
-        if (srvid is not None and srvid != "0"):
+        if srvid is not None and srvid != "0":
             remote_access = True
 
         # Check for global connection restriction first
-        if (remote_access and not options['allow_ui_connection']):
+        if remote_access and not options["allow_ui_connection"]:
             raise Exception("UI connection globally not allowed.")
 
         conn_allowed = None
-        server = server or self.get_str_cookie('server')
-        user = user or self.get_str_cookie('user')
-        password = (password or
-                    self.get_str_cookie('password'))
+        server = server or self.get_str_cookie("server")
+        user = user or self.get_str_cookie("user")
+        password = password or self.get_str_cookie("password")
         if server not in options.servers:
             raise HTTPError(404, "Server %s not found." % server)
 
@@ -338,44 +377,53 @@ class BaseHandler(RequestHandler, JSONizable):
         encoding_query = connoptions.pop("query", None)
         if encoding_query is not None:
             if not isinstance(encoding_query, dict):
-                raise Exception('Invalid "query" parameter: %r, ' %
-                        encoding_query)
+                raise Exception(
+                    'Invalid "query" parameter: %r, ' % encoding_query
+                )
 
             for k in encoding_query:
                 if k != "client_encoding":
-                    raise Exception('Invalid "query" parameter: %r", '
-                            'unexpected key "%s"'%
-                            (encoding_query, k))
+                    raise Exception(
+                        'Invalid "query" parameter: %r", '
+                        'unexpected key "%s"' % (encoding_query, k)
+                    )
 
-        if (srvid is not None and srvid != "0"):
+        if srvid is not None and srvid != "0":
             tmp = self.connect()
             cur = tmp.cursor(cursor_factory=RealDictCursor)
-            cur.execute("""
+            cur.execute(
+                """
             SELECT hostname, port, username, password, dbname,
                 allow_ui_connection
             FROM {powa}.powa_servers WHERE id = %(srvid)s
-            """, {'srvid': srvid})
+            """,
+                {"srvid": srvid},
+            )
             row = cur.fetchone()
             cur.close()
 
-            connoptions['host'] = row['hostname']
-            connoptions['port'] = row['port']
-            connoptions['user'] = row['username']
-            connoptions['password'] = row['password']
-            connoptions['database'] = row['dbname']
-            conn_allowed = row['allow_ui_connection']
+            connoptions["host"] = row["hostname"]
+            connoptions["port"] = row["port"]
+            connoptions["user"] = row["username"]
+            connoptions["password"] = row["password"]
+            connoptions["database"] = row["dbname"]
+            conn_allowed = row["allow_ui_connection"]
         else:
-            if 'user' not in connoptions:
-                connoptions['user'] = user
-            if 'password' not in connoptions:
-                connoptions['password'] = password
+            if "user" not in connoptions:
+                connoptions["user"] = user
+            if "password" not in connoptions:
+                connoptions["password"] = password
 
         # If a non-powa connection is requested, check if we're allowed
-        if (remote_access):
+        if remote_access:
             # authorization check for local connection has not been done yet
-            if (conn_allowed is None):
-                tmp = self.connect(remote_access=False, server=server,
-                                   user=user, password=password)
+            if conn_allowed is None:
+                tmp = self.connect(
+                    remote_access=False,
+                    server=server,
+                    user=user,
+                    password=password,
+                )
                 cur = tmp.cursor()
                 cur.execute("""
                 SELECT allow_ui_connection
@@ -385,21 +433,26 @@ class BaseHandler(RequestHandler, JSONizable):
                 cur.close()
                 conn_allowed = row[0]
 
-            if (not conn_allowed):
+            if not conn_allowed:
                 raise Exception("UI connection not allowed for this server.")
 
         if database is not None:
-            connoptions['database'] = database
+            connoptions["database"] = database
 
         url = self.__get_url(**connoptions)
         if url in self._connections:
             return self._connections.get(url)
 
-        conn = psycopg2.connect(connection_factory=CustomConnection,
-                                **connoptions)
-        conn.initialize(self.logger, srvid, self.__get_safe_dsn(**connoptions),
-                        encoding_query,
-                        self.application.settings['debug'])
+        conn = psycopg2.connect(
+            connection_factory=CustomConnection, **connoptions
+        )
+        conn.initialize(
+            self.logger,
+            srvid,
+            self.__get_safe_dsn(**connoptions),
+            encoding_query,
+            self.application.settings["debug"],
+        )
 
         # Get and cache all extensions schemas, in a dict with the extension
         # name as the key and the *quoted* schema as the value.
@@ -417,8 +470,9 @@ class BaseHandler(RequestHandler, JSONizable):
         self._connections[url] = conn
         return self._connections[url]
 
-    def __get_extension_version(self, srvid, extname, database=None,
-                                remote_access=True):
+    def __get_extension_version(
+        self, srvid, extname, database=None, remote_access=True
+    ):
         """
         Returns a tuple with all digits of the version of the specific
         extension on the specific server and database, or None if the extension
@@ -432,14 +486,14 @@ class BaseHandler(RequestHandler, JSONizable):
         # Check for a cached version first.  Note that we do cache the lack of
         # extension (storing None), so we use an empty string to detect that no
         # caching happened yet.
-        remver = self._ext_versions[srvid][database].get(extname, '')
+        remver = self._ext_versions[srvid][database].get(extname, "")
 
-        if remver != '':
+        if remver != "":
             return remver
 
         # For remote server, check first if powa-collector reported a version
         # for that extension, but only for default database.
-        if (srvid != "0" and database is None):
+        if srvid != "0" and database is None:
             try:
                 remver = self.execute(
                     """
@@ -447,8 +501,9 @@ class BaseHandler(RequestHandler, JSONizable):
                     FROM {powa}.powa_extension_config
                     WHERE srvid = %(srvid)s
                     AND extname = %(extname)s
-                    """, params={'srvid': srvid, 'extname': extname}
-                    )[0]['version']
+                    """,
+                    params={"srvid": srvid, "extname": extname},
+                )[0]["version"]
 
             except Exception:
                 return None
@@ -461,9 +516,12 @@ class BaseHandler(RequestHandler, JSONizable):
                     FROM pg_catalog.pg_extension
                     WHERE extname = %(extname)s
                     LIMIT 1
-                    """, srvid=srvid, database=database,
-                    params={"extname": extname}, remote_access=remote_access
-                )[0]['extversion']
+                    """,
+                    srvid=srvid,
+                    database=database,
+                    params={"extname": extname},
+                    remote_access=remote_access,
+                )[0]["extversion"]
             except Exception:
                 return None
 
@@ -472,13 +530,13 @@ class BaseHandler(RequestHandler, JSONizable):
             return None
 
         # Clean up any extraneous characters
-        remver = re.search(r'[0-9\.]*[0-9]', remver)
+        remver = re.search(r"[0-9\.]*[0-9]", remver)
 
         if remver is None:
             self._ext_versions[srvid][database][extname] = None
             return None
 
-        remver = tuple(map(int, remver.group(0).split('.')))
+        remver = tuple(map(int, remver.group(0).split(".")))
         self._ext_versions[srvid][database][extname] = remver
 
         return remver
@@ -495,28 +553,33 @@ class BaseHandler(RequestHandler, JSONizable):
         the powa-web server.  This assumes that "module" is the name of the
         underlying extension.
         """
-        if (srvid == '0' or srvid == 0):
+        if srvid == "0" or srvid == 0:
             # if local server, fallback to the full test, as it won't be more
             # expensive
-            return self.has_extension_version(srvid, extname, '0',
-                                              remote_access=False)
+            return self.has_extension_version(
+                srvid, extname, "0", remote_access=False
+            )
         else:
             try:
                 # Look for at least an enabled snapshot function.  If a module
                 # provides multiple snapshot functions and only a subset is
                 # activated, let's assume that the extension is available.
-                return self.execute("""
+                return self.execute(
+                    """
                 SELECT COUNT(*) != 0 AS res
                 FROM {powa}.powa_functions
                 WHERE srvid = %(srvid)s
                 AND name = %(extname)s
                 AND enabled
-                """, params={"srvid": srvid, "extname": extname})[0]['res']
+                """,
+                    params={"srvid": srvid, "extname": extname},
+                )[0]["res"]
             except Exception:
                 return False
 
-    def has_extension_version(self, srvid, extname, version, database=None,
-                              remote_access=True):
+    def has_extension_version(
+        self, srvid, extname, version, database=None, remote_access=True
+    ):
         """
         Returns whether the version of the specific extension on the specific
         server and database is at least the given version.
@@ -524,13 +587,14 @@ class BaseHandler(RequestHandler, JSONizable):
         if version is None:
             raise Exception("No version provided!")
 
-        remver = self.__get_extension_version(srvid, extname,
-                                              remote_access=remote_access)
+        remver = self.__get_extension_version(
+            srvid, extname, remote_access=remote_access
+        )
 
         if remver is None:
             return False
 
-        wanted = tuple(map(int, version.split('.')))
+        wanted = tuple(map(int, version.split(".")))
 
         return remver >= wanted
 
@@ -547,22 +611,29 @@ class BaseHandler(RequestHandler, JSONizable):
             return
         super(BaseHandler, self).write_error(status_code, **kwargs)
 
-    def execute(self, query, srvid=None, params=None, server=None,
-                user=None,
-                database=None,
-                password=None,
-                remote_access=False):
+    def execute(
+        self,
+        query,
+        srvid=None,
+        params=None,
+        server=None,
+        user=None,
+        database=None,
+        password=None,
+        remote_access=False,
+    ):
         """
         Execute a query against a database, with specific bind parameters.
         """
         if params is None:
             params = {}
 
-        if 'samples' not in params:
-            params['samples'] = 100
+        if "samples" not in params:
+            params["samples"] = 100
 
-        conn = self.connect(srvid, server, user, password, database,
-                            remote_access)
+        conn = self.connect(
+            srvid, server, user, password, database, remote_access
+        )
 
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("SAVEPOINT powa_web")
@@ -602,8 +673,8 @@ class BaseHandler(RequestHandler, JSONizable):
 
         # some commands will contain user-provided strings, so we need to
         # properly escape the arguments.
-        payload = "%s %s %s" % (command, channel, ' '.join(args))
-        cur.execute("NOTIFY powa_collector, %s", (payload, ))
+        payload = "%s %s %s" % (command, channel, " ".join(args))
+        cur.execute("NOTIFY powa_collector, %s", (payload,))
 
         cur.close()
         conn.commit()
@@ -619,18 +690,18 @@ class BaseHandler(RequestHandler, JSONizable):
 
         conn.poll()
         res = []
-        while (conn.notifies):
+        while conn.notifies:
             notif = conn.notifies.pop(0)
 
-            payload = notif.payload.split(' ')
+            payload = notif.payload.split(" ")
 
             received_command = payload.pop(0)
             # we shouldn't received unexpected messages, but ignore them if any
-            if (received_command != command):
+            if received_command != command:
                 continue
 
             status = payload.pop(0)
-            payload = ' '.join(payload)
+            payload = " ".join(payload)
 
             # we should get a single answer, but if multiple are received
             # append them and let the caller handle it.
@@ -652,7 +723,7 @@ class BaseHandler(RequestHandler, JSONizable):
     def get_str_cookie(self, name, default=None):
         value = self.get_secure_cookie(name)
         if value is not None:
-            return value.decode('utf8')
+            return value.decode("utf8")
         return default
 
     def set_pickle_cookie(self, name, value):
@@ -674,9 +745,9 @@ class BaseHandler(RequestHandler, JSONizable):
             "server": self.server,
             "version": ui_methods.version(None),
             "year": ui_methods.year(None),
-            "configUrl": self.reverse_url('RepositoryConfigOverview'),
-            "logoUrl": self.static_url('img/favicon/favicon-32x32.png'),
-            "homeUrl": self.reverse_url('Overview'),
+            "configUrl": self.reverse_url("RepositoryConfigOverview"),
+            "logoUrl": self.static_url("img/favicon/favicon-32x32.png"),
+            "homeUrl": self.reverse_url("Overview"),
         }
 
 
@@ -689,8 +760,8 @@ class AuthHandler(BaseHandler):
     def prepare(self):
         super(AuthHandler, self).prepare()
 
-
     def to_json(self):
-        return dict(**super(AuthHandler, self).to_json(), **{
-            "logoutUrl": self.reverse_url('logout')
-        })
+        return dict(
+            **super(AuthHandler, self).to_json(),
+            **{"logoutUrl": self.reverse_url("logout")},
+        )

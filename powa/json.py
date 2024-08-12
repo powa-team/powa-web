@@ -1,13 +1,16 @@
 from __future__ import absolute_import
-from json import JSONEncoder as BaseJSONEncoder
+
 from datetime import datetime
 from decimal import Decimal
+from json import JSONEncoder as BaseJSONEncoder
+
 
 class JSONEncoder(BaseJSONEncoder):
     """
     JSONEncoder used throughout the application.
     Handle Decimal, datetime and JSONizable objects.
     """
+
     def default(self, obj):
         if isinstance(obj, Decimal):
             return float(obj)
@@ -16,6 +19,7 @@ class JSONEncoder(BaseJSONEncoder):
         if isinstance(obj, JSONizable):
             return obj.to_json()
         return BaseJSONEncoder.default(self, obj)
+
 
 class JSONizable(object):
     """
@@ -29,8 +33,14 @@ class JSONizable(object):
         Returns:
             an object which can be encoded by the BaseJSONEncoder.
         """
-        return dict(((key, val) for key, val in self.__dict__.items()
-                if not key.startswith("_")))
+        return dict(
+            (
+                (key, val)
+                for key, val in self.__dict__.items()
+                if not key.startswith("_")
+            )
+        )
+
 
 def to_json(object):
     """

@@ -3,20 +3,19 @@ Index page presenting the list of available servers.
 """
 
 from powa.dashboards import (
-    Dashboard, Grid,
-    MetricGroupDef, MetricDef,
-    DashboardPage)
-
-try:
-    from collections import OrderedDict
-except:
-    from ordereddict import OrderedDict
+    Dashboard,
+    DashboardPage,
+    Grid,
+    MetricDef,
+    MetricGroupDef,
+)
 
 
 class OverviewMetricGroup(MetricGroupDef):
     """
     Metric group used by the "all servers" grid
     """
+
     name = "all_servers"
     xaxis = "srvid"
     axis_type = "category"
@@ -27,7 +26,6 @@ class OverviewMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-
         sql = """SELECT id AS srvid,
                 CASE WHEN id = 0 THEN
                    '<local>'
@@ -43,7 +41,7 @@ class OverviewMetricGroup(MetricGroupDef):
                 LEFT JOIN pg_settings set ON set.name = 'server_version'
                     AND s.id = 0"""
 
-        return (sql, {'host': self.current_host, 'port': self.current_port})
+        return (sql, {"host": self.current_host, "port": self.current_port})
 
     def process(self, val, **kwargs):
         val["url"] = self.reverse_url("ServerOverview", val["srvid"])
@@ -54,24 +52,33 @@ class Overview(DashboardPage):
     """
     Overview dashboard page.
     """
+
     base_url = r"/server/"
     datasources = [OverviewMetricGroup]
-    title = 'All servers'
+    title = "All servers"
 
     def dashboard(self):
         # This COULD be initialized in the constructor, but tornado < 3 doesn't
         # call it
-        if getattr(self, '_dashboard', None) is not None:
+        if getattr(self, "_dashboard", None) is not None:
             return self._dashboard
 
-        dashes = [[Grid("All servers",
-                        columns=[{
+        dashes = [
+            [
+                Grid(
+                    "All servers",
+                    columns=[
+                        {
                             "name": "alias",
                             "label": "Instance",
                             "url_attr": "url",
-                            "direction": "descending"
-                        }],
-                        metrics=OverviewMetricGroup.all())]]
+                            "direction": "descending",
+                        }
+                    ],
+                    metrics=OverviewMetricGroup.all(),
+                )
+            ]
+        ]
 
         self._dashboard = Dashboard("All servers", dashes)
         return self._dashboard
@@ -79,6 +86,7 @@ class Overview(DashboardPage):
     @classmethod
     def get_childmenu(cls, handler, params):
         from powa.server import ServerOverview
+
         children = []
         for s in list(handler.servers):
             new_params = params.copy()

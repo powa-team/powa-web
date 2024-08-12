@@ -1,5 +1,7 @@
-block_size = "(SELECT cast(current_setting('block_size') AS numeric)" \
-             " AS block_size) AS bs"
+block_size = (
+    "(SELECT cast(current_setting('block_size') AS numeric)"
+    " AS block_size) AS bs"
+)
 
 
 def mulblock(col, alias=None, fn=None):
@@ -16,26 +18,26 @@ def mulblock(col, alias=None, fn=None):
 
 
 def total_measure_interval(col):
-    sql = "extract(epoch FROM " \
-          + " CASE WHEN min({col}) = '0 second' THEN '1 second'" \
-          + " ELSE min({col})" \
-          + "END)"
+    sql = (
+        "extract(epoch FROM "
+        + " CASE WHEN min({col}) = '0 second' THEN '1 second'"
+        + " ELSE min({col})"
+        + "END)"
+    )
 
     return sql.format(col=col)
 
 
 def diff(var, alias=None):
     alias = alias or var
-    return "max({var}) - min({var}) AS {alias}".format(
-        var=var,
-        alias=alias)
+    return "max({var}) - min({var}) AS {alias}".format(var=var, alias=alias)
+
 
 def diffblk(var, blksize=8192, alias=None):
     alias = alias or var
     return "(max({var}) - min({var})) * {blksize} AS {alias}".format(
-        var=var,
-        blksize=blksize,
-        alias=alias)
+        var=var, blksize=blksize, alias=alias
+    )
 
 
 def get_ts():
@@ -47,13 +49,10 @@ def sum_per_sec(col, prefix=None, alias=None):
     if prefix is not None:
         prefix = prefix + "."
     else:
-        prefix = ''
+        prefix = ""
 
     return "sum({prefix}{col}) / {ts} AS {alias}".format(
-        prefix=prefix,
-        col=col,
-        ts=get_ts(),
-        alias=alias
+        prefix=prefix, col=col, ts=get_ts(), alias=alias
     )
 
 
@@ -62,13 +61,10 @@ def byte_per_sec(col, prefix=None, alias=None):
     if prefix is not None:
         prefix = prefix + "."
     else:
-        prefix = ''
+        prefix = ""
 
     return "sum({prefix}{col}) * block_size / {ts} AS {alias}".format(
-        prefix=prefix,
-        col=col,
-        ts=get_ts(),
-        alias=alias
+        prefix=prefix, col=col, ts=get_ts(), alias=alias
     )
 
 
@@ -78,9 +74,8 @@ def wps(col, do_sum=True):
         field = "sum(" + field + ")"
 
     return "({field} / {ts}) AS {col}".format(
-        field=field,
-        col=col,
-        ts=get_ts())
+        field=field, col=col, ts=get_ts()
+    )
 
 
 def to_epoch(col, prefix=None):
@@ -94,23 +89,27 @@ def to_epoch(col, prefix=None):
 
 def total_read(prefix, noalias=False):
     if noalias:
-        alias = ''
+        alias = ""
     else:
-        alias = ' AS total_blks_read'
+        alias = " AS total_blks_read"
 
-    sql = "sum({prefix}.shared_blks_hit" \
-          + "+ {prefix}.local_blks_read" \
-          + "+ {prefix}.temp_blks_read" \
-          ") * block_size / {total_measure_interval}{alias}"
+    sql = (
+        "sum({prefix}.shared_blks_hit"
+        + "+ {prefix}.local_blks_read"
+        + "+ {prefix}.temp_blks_read"
+        ") * block_size / {total_measure_interval}{alias}"
+    )
 
     return sql.format(
         prefix=prefix,
-        total_measure_interval=total_measure_interval('mesure_interval'),
-        alias=alias
+        total_measure_interval=total_measure_interval("mesure_interval"),
+        alias=alias,
     )
 
 
 def total_hit(c):
-    return "sum(shared_blks_hit + local_blks_hit) * block_size /" \
-           + total_measure_interval('mesure_interval') \
-           + " AS total_blks_hit"
+    return (
+        "sum(shared_blks_hit + local_blks_hit) * block_size /"
+        + total_measure_interval("mesure_interval")
+        + " AS total_blks_hit"
+    )

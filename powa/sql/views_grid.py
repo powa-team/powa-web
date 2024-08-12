@@ -1,6 +1,7 @@
 """
 Functions to generate the queries used in the various grid components
 """
+
 from powa.sql.utils import block_size, diff, diffblk
 
 
@@ -316,10 +317,10 @@ def powa_getiodata(qual=None):
     """
     base_query = powa_base_io()
 
-    if (qual is not None):
-        qual = ' WHERE %s' % qual
+    if qual is not None:
+        qual = " WHERE %s" % qual
     else:
-        qual = ''
+        qual = ""
 
     base_cols = [
         "srvid",
@@ -348,8 +349,8 @@ def powa_getiodata(qual=None):
     FROM {base_query}
     {qual}
     GROUP BY srvid, {base_cols}, op_bytes""".format(
-        cols=', '.join(cols),
-        base_cols=', '.join(base_cols),
+        cols=", ".join(cols),
+        base_cols=", ".join(base_cols),
         base_query=base_query,
         qual=qual,
     )
@@ -432,10 +433,10 @@ def powa_getslrudata(qual=None):
     """
     base_query = powa_base_slru()
 
-    if (qual is not None):
-        qual = ' WHERE %s' % qual
+    if qual is not None:
+        qual = " WHERE %s" % qual
     else:
-        qual = ''
+        qual = ""
 
     base_cols = [
         "srvid",
@@ -457,8 +458,8 @@ def powa_getslrudata(qual=None):
     CROSS JOIN {block_size}
     {qual}
     GROUP BY {base_cols}, block_size""".format(
-        cols=', '.join(cols),
-        base_cols=', '.join(base_cols),
+        cols=", ".join(cols),
+        base_cols=", ".join(base_cols),
         base_query=base_query,
         block_size=block_size,
         qual=qual,
@@ -510,9 +511,9 @@ def powa_getstatdata_detailed_db(srvid="%(server)s", predicates=[]):
     base_query = powa_base_statdata_detailed_db()
     diffs = get_diffs_forstatdata()
 
-    where = ' AND '.join(predicates)
-    if where != '':
-        where = ' AND ' + where
+    where = " AND ".join(predicates)
+    if where != "":
+        where = " AND " + where
 
     cols = [
         "srvid",
@@ -529,10 +530,7 @@ def powa_getstatdata_detailed_db(srvid="%(server)s", predicates=[]):
     {where}
     GROUP BY srvid, queryid, dbid, toplevel, userid, datname
     HAVING max(calls) - min(calls) > 0""".format(
-        cols=', '.join(cols),
-        base_query=base_query,
-        srvid=srvid,
-        where=where
+        cols=", ".join(cols), base_query=base_query, srvid=srvid, where=where
     )
 
 
@@ -546,19 +544,14 @@ def powa_getstatdata_db(srvid):
     base_query = powa_base_statdata_db()
     diffs = get_diffs_forstatdata()
 
-    cols = [
-            "srvid",
-            "dbid"
-            ] + diffs
+    cols = ["srvid", "dbid"] + diffs
 
     return """SELECT {cols}
     FROM {base_query}
     WHERE srvid = {srvid}
     GROUP BY srvid, dbid
     HAVING max(calls) - min(calls) > 0""".format(
-        cols=', '.join(cols),
-        base_query=base_query,
-        srvid=srvid
+        cols=", ".join(cols), base_query=base_query, srvid=srvid
     )
 
 
@@ -771,8 +764,7 @@ def powa_getwaitdata_detailed_db():
     FROM {base_query}
     GROUP BY srvid, queryid, dbid, datname, event_type, event
     HAVING max(count) - min(count) > 0""".format(
-        count=diff('count'),
-        base_query=base_query
+        count=diff("count"), base_query=base_query
     )
 
 
@@ -789,8 +781,7 @@ def powa_getwaitdata_db():
     FROM {base_query}
     GROUP BY srvid, dbid, event_type, event
     HAVING max(count) - min(count) > 0""".format(
-        count=diff('count'),
-        base_query=base_query
+        count=diff("count"), base_query=base_query
     )
 
 
@@ -970,37 +961,37 @@ def powa_getuserfuncdata_detailed_db(funcid=None):
     base_query = powa_base_userfuncdata_detailed_db()
 
     cols = [
-            "d.srvid",
-            "h.dbid",
-            "d.datname",
-            "funcid",
-            "coalesce(regprocedure, '<' || funcid || '>') AS func_name",
-            "lanname",
-            diff("calls"),
-            diff("total_time"),
-            diff("self_time"),
-            ]
-    if (funcid):
+        "d.srvid",
+        "h.dbid",
+        "d.datname",
+        "funcid",
+        "coalesce(regprocedure, '<' || funcid || '>') AS func_name",
+        "lanname",
+        diff("calls"),
+        diff("total_time"),
+        diff("self_time"),
+    ]
+    if funcid:
         cols.extend(["prosrc", "last_refresh"])
 
     groupby = [
-               "d.srvid",
-               "h.dbid",
-               "d.datname",
-               "funcid",
-               "regprocedure",
-               "lanname"
-        ]
-    if (funcid):
+        "d.srvid",
+        "h.dbid",
+        "d.datname",
+        "funcid",
+        "regprocedure",
+        "lanname",
+    ]
+    if funcid:
         groupby.extend(["prosrc", "last_refresh"])
 
-    if (funcid):
+    if funcid:
         join_db = """LEFT JOIN {powa}.powa_catalog_databases pcd
             ON pcd.srvid = d.srvid AND pcd.oid = h.dbid"""
         and_funcid = "AND funcid = {funcid}".format(funcid=funcid)
     else:
-        join_db = ''
-        and_funcid = ''
+        join_db = ""
+        and_funcid = ""
 
     return """SELECT {cols}
     FROM {base_query}
@@ -1009,11 +1000,11 @@ def powa_getuserfuncdata_detailed_db(funcid=None):
     {and_funcid}
     GROUP BY {groupby}
     HAVING max(calls) - min(calls) > 0""".format(
-        cols=', '.join(cols),
+        cols=", ".join(cols),
         base_query=base_query,
         join_db=join_db,
         and_funcid=and_funcid,
-        groupby=', '.join(groupby)
+        groupby=", ".join(groupby),
     )
 
 
@@ -1027,18 +1018,17 @@ def powa_getuserfuncdata_db():
     base_query = powa_base_userfuncdata_db()
 
     cols = [
-            "d.srvid",
-            "d.datname",
-            "h.dbid",
-            diff("calls"),
-            diff("total_time"),
-            diff("self_time"),
-            ]
+        "d.srvid",
+        "d.datname",
+        "h.dbid",
+        diff("calls"),
+        diff("total_time"),
+        diff("self_time"),
+    ]
 
     return """SELECT {cols}
     FROM {base_query}
     GROUP BY d.srvid, d.datname, h.dbid, d.oid
     HAVING max(calls) - min(calls) > 0""".format(
-        cols=', '.join(cols),
-        base_query=base_query
+        cols=", ".join(cols), base_query=base_query
     )

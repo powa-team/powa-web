@@ -1,14 +1,18 @@
 """
 Global optimization widget
 """
-from __future__ import absolute_import
-from powa.framework import AuthHandler
-from powa.dashboards import (
-    Widget, MetricGroupDef)
 
-from powa.sql import (resolve_quals, get_any_sample_query,
-                      get_hypoplans, HypoIndex)
+from __future__ import absolute_import
+
 import json
+from powa.dashboards import MetricGroupDef, Widget
+from powa.framework import AuthHandler
+from powa.sql import (
+    HypoIndex,
+    get_any_sample_query,
+    get_hypoplans,
+    resolve_quals,
+)
 from powa.sql.views import qualstat_getstatdata
 from psycopg2 import Error
 from psycopg2.extras import RealDictCursor
@@ -16,41 +20,44 @@ from tornado.web import HTTPError
 
 
 class IndexSuggestionHandler(AuthHandler):
-
     def post(self, srvid, database):
         try:
             # Check remote access first
-            remote_conn = self.connect(srvid, database=database,
-                                       remote_access=True)
+            remote_conn = self.connect(
+                srvid, database=database, remote_access=True
+            )
             remote_cur = remote_conn.cursor()
         except Exception as e:
-            raise HTTPError(501, "Could not connect to remote server: %s" %
-                                 str(e))
+            raise HTTPError(
+                501, "Could not connect to remote server: %s" % str(e)
+            )
 
         payload = json.loads(self.request.body.decode("utf8"))
-        from_date = payload['from_date']
-        to_date = payload['to_date']
+        from_date = payload["from_date"]
+        to_date = payload["to_date"]
         indexes = []
-        for ind in payload['indexes']:
-            hypoind = HypoIndex(ind['nspname'],
-                                ind['relname'],
-                                ind['ams'])
-            hypoind._ddl = ind['ddl']
+        for ind in payload["indexes"]:
+            hypoind = HypoIndex(ind["nspname"], ind["relname"], ind["ams"])
+            hypoind._ddl = ind["ddl"]
             indexes.append(hypoind)
-        queryids = payload['queryids']
+        queryids = payload["queryids"]
         powa_conn = self.connect(database="powa")
         cur = powa_conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("""
+        cur.execute(
+            """
             SELECT DISTINCT query, ps.queryid
             FROM {powa}.powa_statements ps
             WHERE srvid = %(srvid)s
             AND queryid IN %(queryids)s
-        """, ({'srvid': srvid, 'queryids': tuple(queryids)}))
+        """,
+            ({"srvid": srvid, "queryids": tuple(queryids)}),
+        )
         queries = cur.fetchall()
         cur.close()
         # Create all possible indexes for this qual
-        hypo_version = self.has_extension_version(srvid, "hypopg", "0.0.3",
-                                                  database=database)
+        hypo_version = self.has_extension_version(
+            srvid, "hypopg", "0.0.3", database=database
+        )
         hypoplans = {}
         indbyname = {}
         inderrors = {}
@@ -59,9 +66,12 @@ class IndexSuggestionHandler(AuthHandler):
             # create them
             for ind in indexes:
                 try:
-                    remote_cur.execute("""SELECT *
+                    remote_cur.execute(
+                        """SELECT *
                             FROM hypopg_create_index(%(ddl)s)
-                            """, {'ddl': ind.ddl})
+                            """,
+                        {"ddl": ind.ddl},
+                    )
                     indname = remote_cur.fetchone()[1]
                     indbyname[indname] = ind
                 except Error as e:
@@ -72,14 +82,14 @@ class IndexSuggestionHandler(AuthHandler):
                     continue
             # Build the query and fetch the plans
             for row in queries:
-                querystr = get_any_sample_query(self, srvid, database,
-                                                row['queryid'],
-                                                from_date,
-                                                to_date)
+                querystr = get_any_sample_query(
+                    self, srvid, database, row["queryid"], from_date, to_date
+                )
                 if querystr:
                     try:
-                        hypoplans[row['queryid']] = get_hypoplans(
-                            remote_cur, querystr, indbyname.values())
+                        hypoplans[row["queryid"]] = get_hypoplans(
+                            remote_cur, querystr, indbyname.values()
+                        )
                     except Exception:
                         # TODO: stop ignoring the error
                         continue
@@ -93,6 +103,7 @@ class IndexSuggestionHandler(AuthHandler):
 
 class WizardMetricGroup(MetricGroupDef):
     """Metric group for the wizard."""
+
     name = "wizard"
     xaxis = "quals"
     axis_type = "category"
@@ -101,7 +112,7 @@ class WizardMetricGroup(MetricGroupDef):
 
     @property
     def query(self):
-        pq = qualstat_getstatdata(eval_type='f')
+        pq = qualstat_getstatdata(eval_type="f")
 
         cols = [
             # queryid in pg11+ is int64, so the value can exceed javascript's
@@ -116,7 +127,7 @@ class WizardMetricGroup(MetricGroupDef):
             "execution_count",
             "array_agg(query) AS queries",
             "avg_filter",
-            "filter_ratio"
+            "filter_ratio",
         ]
 
         query = """SELECT {cols}
@@ -133,7 +144,7 @@ class WizardMetricGroup(MetricGroupDef):
             sub.quals::jsonb, sub.avg_filter, sub.filter_ratio
         ORDER BY sub.occurences DESC
         LIMIT 200""".format(
-            cols=', '.join(cols),
+            cols=", ".join(cols),
             pq=pq,
         )
         return query
@@ -145,36 +156,36 @@ class WizardMetricGroup(MetricGroupDef):
 
 
 class Wizard(Widget):
-
     def __init__(self, title):
         self.title = title
 
     def parameterized_json(self, handler, **parms):
         values = self.__dict__.copy()
-        values['metrics'] = []
-        values['type'] = 'wizard'
-        values['datasource'] = 'wizard'
+        values["metrics"] = []
+        values["type"] = "wizard"
+        values["datasource"] = "wizard"
 
         # First check that we can connect on the remote server, otherwise we
         # won't be able to do anything
         try:
-            remote_conn = handler.connect(parms["server"],
-                                          database=parms["database"],
-                                          remote_access=True)
+            handler.connect(
+                parms["server"], database=parms["database"], remote_access=True
+            )
         except Exception as e:
-            values['has_remote_conn'] = False
-            values['conn_error'] = str(e)
+            values["has_remote_conn"] = False
+            values["conn_error"] = str(e)
             return values
 
-        values['has_remote_conn'] = True
+        values["has_remote_conn"] = True
 
-        hypover = handler.has_extension_version(parms["server"],
-                                                "hypopg", "0.0.3",
-                                                database=parms["database"])
-        qsver = handler.has_extension_version(parms["server"], "pg_qualstats",
-                                              "0.0.7")
-        values['has_hypopg'] = hypover
-        values['has_qualstats'] = qsver
-        values['server'] = parms["server"]
-        values['database'] = parms["database"]
+        hypover = handler.has_extension_version(
+            parms["server"], "hypopg", "0.0.3", database=parms["database"]
+        )
+        qsver = handler.has_extension_version(
+            parms["server"], "pg_qualstats", "0.0.7"
+        )
+        values["has_hypopg"] = hypover
+        values["has_qualstats"] = qsver
+        values["server"] = parms["server"]
+        values["database"] = parms["database"]
         return values

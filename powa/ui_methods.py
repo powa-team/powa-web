@@ -1,9 +1,9 @@
 """
 Set of helper functions available from the templates.
 """
-import os
-import json
 
+import json
+import os
 from datetime import datetime
 from powa import __VERSION__
 from powa.json import JSONEncoder
@@ -40,19 +40,23 @@ def field(_, **kwargs):
     Returns:
         a form field formatted with the given attributes.
     """
-    kwargs.setdefault('tag', 'input')
-    kwargs.setdefault('type', 'text')
-    kwargs.setdefault('class', 'form-control')
-    attrs = " ".join('%s="%s"' % (key, value) for key, value in kwargs.items()
-                     if key not in ('tag', 'label'))
-    kwargs['attrs'] = attrs
+    kwargs.setdefault("tag", "input")
+    kwargs.setdefault("type", "text")
+    kwargs.setdefault("class", "form-control")
+    attrs = " ".join(
+        '%s="%s"' % (key, value)
+        for key, value in kwargs.items()
+        if key not in ("tag", "label")
+    )
+    kwargs["attrs"] = attrs
 
     def render(content):
         """
         Render the field itself.
         """
-        kwargs['content'] = content.decode('utf8')
-        return """
+        kwargs["content"] = content.decode("utf8")
+        return (
+            """
 <v-col cols="12">
     <label>%(label)s:
     <%(tag)s %(attrs)s>
@@ -60,7 +64,9 @@ def field(_, **kwargs):
     </%(tag)s>
     </label>
 </v-col>
-""" % kwargs
+"""
+            % kwargs
+        )
 
     return render
 
@@ -89,7 +95,7 @@ def flashed_messages(self):
 
 
 def sanitycheck_messages(self):
-    messages = {'error': []}
+    messages = {"error": []}
 
     # Check if now collector is running
     sql = """SELECT
@@ -109,7 +115,7 @@ def sanitycheck_messages(self):
         JOIN pg_stat_activity a ON a.application_name LIKE n.val"""
     rows = self.execute(sql)
 
-    if (rows is None):
+    if rows is None:
         messages["error"].append("No collector is running!")
 
     sql = """SELECT
@@ -126,9 +132,9 @@ def sanitycheck_messages(self):
         ) m ON m.srvid = s.id"""
     rows = self.execute(sql)
 
-    if (rows is not None and len(rows) > 0):
+    if rows is not None and len(rows) > 0:
         for r in rows:
-            messages["error"].append("%s: %s" % (r['alias'], r['error']))
+            messages["error"].append("%s: %s" % (r["alias"], r["error"]))
         return messages
 
     return {}
@@ -140,12 +146,15 @@ def to_json(_, value):
     """
     return JSONEncoder().encode(value)
 
+
 def manifest(self, entrypoint):
     fn = os.path.realpath(__file__ + "../../static/dist/.vite/manifest.json")
     try:
         f = open(fn)
     except FileNotFoundError:
-        raise HTTPError(500, "manifest.json doesn't exist, did you run `npm run build`?")
+        raise HTTPError(
+            500, "manifest.json doesn't exist, did you run `npm run build`?"
+        )
     else:
         with f:
             entrypoints = json.load(f)
