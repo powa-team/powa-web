@@ -9,10 +9,6 @@ from powa import __VERSION__
 from powa.json import JSONEncoder
 from tornado.options import options
 from tornado.web import HTTPError
-try:
-    from urllib import urlencode  # py2
-except ImportError:
-    from urllib.parse import urlencode  # py3
 
 
 def version(_):
