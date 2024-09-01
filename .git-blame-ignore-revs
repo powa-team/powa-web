@@ -1,0 +1,7 @@
+# This requires git 2.23 or later.
+#
+# You need to configure git to use this file, with something like:
+# $ git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Introduction of ruff
+ecb8013b5f3287b51d00a4d7bf9e186cf1336b85
