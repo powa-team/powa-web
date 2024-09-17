@@ -23,7 +23,7 @@
     "husky": "^8.0.3",
     "prettier": "^2.8.8",
     "sass": "^1.77.6",
-    "vite": "^5.3.2"
+    "vite": "^5.4.6"
   },
   "dependencies": {
     "@vitejs/plugin-vue": "^4.6.2",
