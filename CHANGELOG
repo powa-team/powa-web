@@ -1,11 +1,48 @@
 5.0.0 (WIP):
-  - Complete rewrite of the UI using (currently) modern frameworks and
-    libraries. It is now built with ViteJS, VueJS, Vuetify and d3. (Marion
-    Giusti, Pierre-Louis Gonon and Pierre Giraud. Thanks to Dalibo for
-    sponsoring this work).
+  New feature:
+    - Complete rewrite of the UI using (currently) modern frameworks and
+      libraries. It is now built with ViteJS, VueJS, Vuetify and d3. (Marion
+      Giusti, Pierre-Louis Gonon and Pierre Giraud. Thanks to Dalibo for
+      sponsoring this work).
+    - Allow forcing a snapshot or requesting a catalog refresh from the UI
+      (Julien Rouhaud)
+    - Handle any extension installed in any schema (Julien Rouhaud)
+    - Add support for PostgreSQL 17 (Julien Rouhaud)
+    - Add widgets for pg_stat_user_functions metrics (Julien Rouhaud)
+    - Add pg_stat_activity graphs on the per-server and per-db pages (Julien
+      Rouhaud)
+    - Add table / index bar graphs on the per-server and per-db pages (Julien
+      Rouhaud)
+    - Add pg_stat_archiver widgets (Julien Rouhaud)
+    - Add pg_stat_replication widgets (Julien Rouhaud)
+    - Add pg_stat_database widgets (Julien Rouhaud)
+    - Add pg_stat_replication_slots widgets (Julien Rouhaud)
+    - Add pg_stat_io widgets (Julien Rouhaud)
+    - Add pg_stat_database_conflicts widgets (Julien Rouhaud)
+    - Add pg_stat_slru widgets (Julien Rouhaud)
+    - Add pg_stat_wal widgets (Julien Rouhaud)
+    - Add pg_stat_wal_receiver widgets (Julien Rouhaud)
+    - Add pg_stat_subscription(_statistic) widgets (Julien Rouhaud)
+    - Handle new IO timing and JIT counters added in newer pg_stat_statements
+      versions (Julien Rouhaud)
+  Bug fixes:
+    - Properly handle metric groups that don't return any row (Julien Rouhaud)
+    - Properly handle SQL error when retrieving execution plans (Julien Rouhaud)
+    - Ignore query texts truncated by pg_qualstats when getting a sampled query
+      (Julien Rouhaud)
+    - Fix the worker status retrieval for local server on the config page
+      (Julien Rouhaud)
+    - Detect insufficient privilege when checking for collector processes
+      (Julien Rouhaud)
+  Misc
+    - Assume pg10+ server if no remote connection is available (Julien Rouhaud)
+    - Remove sqlalchemy dependency (Julien Rouhaud)
+    - Split the list of extensions in configuration page to multiple categories
+      depending on their use (Julien Rouhaud)
+    - Show server alias in the breadcrumb selector (Pierre Giraud)
 4.2.1:
   Misc
-  - salqlchemy > 1.4 is not supported (thanks to David Mödinger for the report)
+  - sqlalchemy > 1.4 is not supported (thanks to David Mödinger for the report)
 4.2.0:
   New feature:
   - Add support for pg_stat_statements.toplevel, added in pg_stat_statements
