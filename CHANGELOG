@@ -1,4 +1,4 @@
-5.0.0 (WIP):
+5.0.0:
   New feature:
     - Complete rewrite of the UI using (currently) modern frameworks and
       libraries. It is now built with ViteJS, VueJS, Vuetify and d3. (Marion
