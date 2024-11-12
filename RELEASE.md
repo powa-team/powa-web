@@ -6,7 +6,7 @@
   - [ ] Run `npm ci` to install packages.
   - [ ] Run `npm run build` to build assets (JS and CSS).
 - [ ] Update [the changelog](https://github.com/powa-team/powa-web/blob/master/CHANGELOG) if not already up-to-date.
-- [ ] Commit the changes (assets and changelog).
+- [ ] Commit the changes (files in `powa/static/dist` and changelog).
 - [ ] Create a tag either from the command line or Github web interface.
 - [ ] Verify that images are pushed to Docker hub (via the powa-podman repo).
 - [ ] Publish to `pypi`.
