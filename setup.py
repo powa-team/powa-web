@@ -6,7 +6,7 @@ __VERSION__ = None
 with open("powa/__init__.py") as f:
     for line in f:
         if line.startswith("__VERSION__"):
-            __VERSION__ = line.split("=")[1].replace("'", "").strip()
+            __VERSION__ = line.split("=")[1].replace('"', "").strip()
 
 
 requires = ["tornado>=2.0", "psycopg2"]
