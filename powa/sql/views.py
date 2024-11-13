@@ -11,7 +11,7 @@ QUALSTAT_FILTER_RATIO = """CASE
 
 def qualstat_base_statdata(eval_type=None):
     if eval_type is not None:
-        base_cols = ["srvid", "qualid," "queryid", "dbid", "userid"]
+        base_cols = ["srvid", "qualid", "queryid", "dbid", "userid"]
 
         pqnh = """(
         SELECT {outer_cols}
