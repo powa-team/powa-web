@@ -988,7 +988,7 @@ def powa_getuserfuncdata_detailed_db(funcid=None):
     if funcid:
         join_db = """LEFT JOIN {powa}.powa_catalog_databases pcd
             ON pcd.srvid = d.srvid AND pcd.oid = h.dbid"""
-        and_funcid = "AND funcid = {funcid}".format(funcid=funcid)
+        and_funcid = f"AND funcid = {funcid}"
     else:
         join_db = ""
         and_funcid = ""

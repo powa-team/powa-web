@@ -57,7 +57,7 @@ define("keyfile", type=str, help="Path to key file", default=None)
 def parse_file(filepath):
     try:
         parse_config_file(filepath)
-    except IOError:
+    except OSError:
         pass
     except Error as e:
         print("Error parsing config file %s:" % filepath)

@@ -2,7 +2,6 @@
 Global optimization widget
 """
 
-from __future__ import absolute_import
 
 import json
 from powa.dashboards import MetricGroupDef, Widget

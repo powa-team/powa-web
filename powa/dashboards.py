@@ -559,7 +559,7 @@ class Graph(Widget):
         return values
 
 
-class Declarative(object):
+class Declarative:
     """
     Base class for declarative classes.
     """
@@ -705,7 +705,7 @@ class MetricGroupDef(with_metaclass(MetaMetricGroup, DataSource)):
         return self._metrics
 
 
-class DashboardPage(object):
+class DashboardPage:
     """
     A Dashboard page ties together a set of datasources, and a dashboard.
 

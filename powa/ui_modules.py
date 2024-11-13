@@ -1,4 +1,4 @@
-class MenuEntry(object):
+class MenuEntry:
     def __init__(
         self,
         title,

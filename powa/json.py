@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 
 from datetime import datetime
 from decimal import Decimal
@@ -21,7 +20,7 @@ class JSONEncoder(BaseJSONEncoder):
         return BaseJSONEncoder.default(self, obj)
 
 
-class JSONizable(object):
+class JSONizable:
     """
     Base class for an object which is serializable to JSON.
     """

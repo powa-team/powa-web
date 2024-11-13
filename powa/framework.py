@@ -98,7 +98,7 @@ def log_query(cls, query, params=None, exception=None):
 
     fmt = ""
     if exception is not None:
-        fmt = "Error during query execution:\n{}\n".format(exception)
+        fmt = f"Error during query execution:\n{exception}\n"
 
     fmt += "query on {dsn} (srvid {srvid}): {ms} ms\n{query}"
     if params is not None:

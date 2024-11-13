@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 
 from powa import __VERSION_NUM__
 from powa.framework import BaseHandler
