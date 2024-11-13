@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 """
 Powa main application.
 """
@@ -63,36 +61,36 @@ def make_app(**kwargs):
     parse_options()
 
     URLS = [
-        U(r"%slogin/" % options.url_prefix, LoginHandler, name="login"),
-        U(r"%slogout/" % options.url_prefix, LogoutHandler, name="logout"),
+        U(rf"{options.url_prefix}login/", LoginHandler, name="login"),
+        U(rf"{options.url_prefix}logout/", LogoutHandler, name="logout"),
         U(
-            r"%sreload_collector/" % options.url_prefix,
+            rf"{options.url_prefix}reload_collector/",
             CollectorReloadHandler,
             name="reload_collector",
         ),
         U(
-            r"%sforce_snapshot/(\d+)" % options.url_prefix,
+            rf"{options.url_prefix}force_snapshot/(\d+)",
             CollectorForceSnapshotHandler,
             name="force_snapshot",
         ),
         U(
-            r"%srefresh_db_cat/" % options.url_prefix,
+            rf"{options.url_prefix}refresh_db_cat/",
             CollectorDbCatRefreshHandler,
             name="refresh_db_cat",
         ),
         U(
-            r"%sserver/select" % options.url_prefix,
+            rf"{options.url_prefix}server/select",
             ServerSelector,
             name="server_selector",
         ),
         U(
-            r"%sdatabase/select" % options.url_prefix,
+            rf"{options.url_prefix}database/select",
             DatabaseSelector,
             name="database_selector",
         ),
-        U(r"%s" % options.url_prefix, IndexHandler, name="index"),
+        U(rf"{options.url_prefix}", IndexHandler, name="index"),
         U(
-            r"%sserver/(\d+)/database/([^\/]+)/suggest/" % options.url_prefix,
+            rf"{options.url_prefix}server/(\d+)/database/([^\/]+)/suggest/",
             IndexSuggestionHandler,
             name="index_suggestion",
         ),
@@ -124,9 +122,9 @@ def make_app(**kwargs):
         URLS,
         ui_modules=ui_modules,
         ui_methods=ui_methods,
-        login_url=("%slogin/" % options.url_prefix),
+        login_url=(f"{options.url_prefix}login/"),
         static_path=os.path.join(POWA_ROOT, "static"),
-        static_url_prefix=("%sstatic/" % options.url_prefix),
+        static_url_prefix=(f"{options.url_prefix}static/"),
         cookie_secret=options.cookie_secret,
         template_path=os.path.join(POWA_ROOT, "templates"),
         **kwargs,
