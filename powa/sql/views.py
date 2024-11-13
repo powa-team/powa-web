@@ -30,7 +30,7 @@ def qualstat_base_statdata(eval_type=None):
     else:
         pqnh = "{powa}.powa_qualstats_quals"
 
-    base_query = """
+    base_query = f"""
     (
     SELECT srvid, qualid, queryid, dbid, userid, (unnested.records).*
     FROM (
@@ -49,7 +49,7 @@ def qualstat_base_statdata(eval_type=None):
     WHERE pqnc.ts <@ tstzrange(%(from)s, %(to)s, '[]')
     AND pqnc.srvid = %(server)s
     ) h
-    JOIN {pqnh} AS pqnh USING (srvid, queryid, qualid)""".format(pqnh=pqnh)
+    JOIN {pqnh} AS pqnh USING (srvid, queryid, qualid)"""
 
     return base_query
 
@@ -87,13 +87,13 @@ def qualstat_getstatdata(
     else:
         extra_having = ""
 
-    return """SELECT
+    return f"""SELECT
         ps.srvid, qualid, ps.queryid, query, ps.dbid,
         to_json(quals) AS quals,
         sum(execution_count) AS execution_count,
         sum(occurences) AS occurences,
         (sum(nbfiltered) / sum(occurences)) AS avg_filter,
-        {filter_ratio} AS filter_ratio
+        {QUALSTAT_FILTER_RATIO} AS filter_ratio
         {extra_select}
         FROM
         {base_query}
@@ -103,15 +103,7 @@ def qualstat_getstatdata(
         {extra_where}
         GROUP BY ps.srvid, qualid, ps.queryid, ps.dbid, ps.query, quals
         {extra_groupby}
-        {extra_having}""".format(
-        filter_ratio=QUALSTAT_FILTER_RATIO,
-        extra_select=extra_select,
-        base_query=base_query,
-        extra_join=extra_join,
-        extra_where=extra_where,
-        extra_groupby=extra_groupby,
-        extra_having=extra_having,
-    )
+        {extra_having}"""
 
 
 TEXTUAL_INDEX_QUERY = """
@@ -168,7 +160,7 @@ def get_config_changes(restrict_database=False):
     if restrict_database:
         restrict_db = "AND (d.datname = %(database)s OR h.setdatabase = 0)"
 
-    sql = """SELECT * FROM
+    sql = f"""SELECT * FROM
 (
   WITH src AS (
     select ts, name,
@@ -234,6 +226,6 @@ FROM {{pg_track_settings}}.pg_reboot AS r
 WHERE r.srvid = %(server)s
 AND r.ts>= %(from)s
 AND r.ts <= %(to)s
-ORDER BY ts""".format(restrict_db=restrict_db)
+ORDER BY ts"""
 
     return sql

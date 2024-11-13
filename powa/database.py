@@ -305,7 +305,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
         from_clause = query
 
         if self.has_extension(self.path_args[0], "pg_stat_kcache"):
-            from_clause = "({query}) AS sub2".format(query=query)
+            from_clause = f"({query}) AS sub2"
 
             # Add system metrics from pg_stat_kcache,
             kcache_query = kcache_getstatdata_sample(
@@ -344,10 +344,8 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
                 ]
             )
 
-            from_clause += """
-            LEFT JOIN ({kcache_query}) AS kc USING (dbid, ts, srvid)""".format(
-                kcache_query=kcache_query
-            )
+            from_clause += f"""
+            LEFT JOIN ({kcache_query}) AS kc USING (dbid, ts, srvid)"""
 
         return """SELECT {cols}
         FROM (
@@ -505,7 +503,7 @@ class DatabaseWaitOverviewMetricGroup(MetricGroupDef):
                 wps("count_io"),
             ]
 
-        from_clause = "({query}) AS sub".format(query=query)
+        from_clause = f"({query}) AS sub"
 
         return """SELECT {cols}
         FROM {from_clause}
@@ -887,12 +885,12 @@ class ByQueryMetricGroup(MetricGroupDef):
                 ]
             )
 
-        from_clause = """(
+        from_clause = f"""(
                 {inner_query}
             ) AS sub
             JOIN {{powa}}.powa_statements AS ps
                 USING (srvid, queryid, userid, dbid)
-            CROSS JOIN {bs}""".format(inner_query=inner_query, bs=block_size)
+            CROSS JOIN {block_size}"""
 
         return """SELECT {cols}
                 FROM {from_clause}
@@ -936,11 +934,11 @@ class ByQueryWaitSamplingMetricGroup(MetricGroupDef):
             "sum(count) AS counts",
         ]
 
-        from_clause = """(
+        from_clause = f"""(
             {inner_query}
         ) AS sub
             JOIN {{powa}}.powa_statements AS ps
-                USING (srvid, queryid, dbid)""".format(inner_query=inner_query)
+                USING (srvid, queryid, dbid)"""
 
         return """SELECT {cols}
             FROM {from_clause}

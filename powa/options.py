@@ -57,11 +57,11 @@ define("keyfile", type=str, help="Path to key file", default=None)
 def parse_file(filepath):
     try:
         parse_config_file(filepath)
-    except IOError:
+    except OSError:
         pass
     except Error as e:
-        print("Error parsing config file %s:" % filepath)
-        print("\t%s" % e)
+        print(f"Error parsing config file {filepath}:")
+        print(f"\t{e}")
         sys.exit(-1)
 
 
@@ -75,7 +75,7 @@ def parse_options():
             parse_file(options.config)
     except Error as e:
         print("Error parsing command line options:")
-        print("\t%s" % e)
+        print(f"\t{e}")
         sys.exit(1)
 
     for key in ("servers", "cookie_secret"):
@@ -105,7 +105,7 @@ def parse_options():
     define(
         "index_url",
         type=str,
-        default="%sserver/" % getattr(options, "url_prefix", "/"),
+        default="{}server/".format(getattr(options, "url_prefix", "/")),
     )
 
     # we used to expect a field named "username", so accept "username" as an

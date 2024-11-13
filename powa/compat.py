@@ -6,8 +6,6 @@ Mostly copied straight from six:
 
 """
 
-from __future__ import absolute_import
-
 import json
 import psycopg2
 from psycopg2 import extensions
@@ -37,7 +35,7 @@ def with_metaclass(meta, *bases):
     return type.__new__(metaclass, "temporary_class", (), {})
 
 
-class classproperty(object):
+class classproperty:
     """
     A descriptor similar to property, but using the class.
     """

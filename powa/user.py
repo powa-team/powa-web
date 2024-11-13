@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from powa import __VERSION_NUM__
 from powa.framework import BaseHandler
 from tornado.options import options
@@ -39,8 +37,7 @@ class LoginHandler(BaseHandler):
         # Major.Minor version should be the same
         if version[0:2] != __VERSION_NUM__[0:2]:
             self.flash(
-                "Unable to connect: powa-archivist version %s.X does not match powa-web version %s.X"
-                % (
+                "Unable to connect: powa-archivist version {}.X does not match powa-web version {}.X".format(
                     ".".join(str(x) for x in version[0:2]),
                     ".".join(str(x) for x in __VERSION_NUM__[0:2]),
                 ),

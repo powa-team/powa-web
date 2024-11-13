@@ -112,9 +112,9 @@ class ByDatabaseMetricGroup(MetricGroupDef):
     def query(self):
         bs = block_size
         inner_query = powa_getstatdata_db("%(server)s")
-        from_clause = """({inner_query}) AS sub
+        from_clause = f"""({inner_query}) AS sub
         JOIN {{powa}}.powa_databases pd ON pd.oid = sub.dbid
-            AND pd.srvid = sub.srvid""".format(inner_query=inner_query)
+            AND pd.srvid = sub.srvid"""
 
         cols = [
             "pd.srvid",
@@ -189,15 +189,15 @@ class ByDatabaseWaitSamplingMetricGroup(MetricGroupDef):
     def query(self):
         inner_query = powa_getwaitdata_db()
 
-        from_clause = """({inner_query}) AS sub
+        from_clause = f"""({inner_query}) AS sub
             JOIN {{powa}}.powa_databases pd ON pd.oid = sub.dbid
-            AND pd.srvid = sub.srvid""".format(inner_query=inner_query)
+            AND pd.srvid = sub.srvid"""
 
-        return """SELECT pd.srvid, pd.datname, sub.event_type, sub.event,
+        return f"""SELECT pd.srvid, pd.datname, sub.event_type, sub.event,
             sum(sub.count) AS counts
             FROM {from_clause}
             GROUP BY pd.srvid, pd.datname, sub.event_type, sub.event
-            ORDER BY sum(sub.count) DESC""".format(from_clause=from_clause)
+            ORDER BY sum(sub.count) DESC"""
 
     def process(self, val, **kwargs):
         val["url"] = self.reverse_url(
@@ -489,16 +489,15 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
         from_clause = query
 
         if self.has_extension(self.path_args[0], "pg_stat_kcache"):
-            from_clause = "({query}) AS sub2".format(query=query)
+            from_clause = f"({query}) AS sub2"
 
             # Add system metrics from pg_stat_kcache,
             kcache_query = kcache_getstatdata_sample("db")
 
             total_sys_hit = (
-                "{total_read} - sum(sub.reads)"
-                "/ {ts}"
-                " AS total_sys_hit"
-                "".format(total_read=total_read("sub", True), ts=get_ts())
+                "{total_read} - sum(sub.reads)/ {ts} AS total_sys_hit".format(
+                    total_read=total_read("sub", True), ts=get_ts()
+                )
             )
             total_disk_read = (
                 "sum(sub.reads) / " + get_ts() + " AS total_disk_read"
@@ -524,10 +523,8 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
                 ]
             )
 
-            from_clause += """
-            LEFT JOIN ({kcache_query}) AS kc USING (dbid, ts, srvid)""".format(
-                kcache_query=kcache_query
-            )
+            from_clause += f"""
+            LEFT JOIN ({kcache_query}) AS kc USING (dbid, ts, srvid)"""
 
         return """SELECT {cols}
         FROM (
@@ -622,7 +619,7 @@ class GlobalWaitsMetricGroup(MetricGroupDef):
                 wps("count_io"),
             ]
 
-        from_clause = "({query}) AS sub".format(query=query)
+        from_clause = f"({query}) AS sub"
 
         return """SELECT {cols}
         FROM {from_clause}
@@ -1068,8 +1065,7 @@ class GlobalSubMetricGroup(MetricGroupDef):
     apply_error_count = MetricDef(
         label="# apply error",
         type="number",
-        desc="Total number of times an error"
-        " occurred while applying changes",
+        desc="Total number of times an error occurred while applying changes",
     )
     sync_error_count = MetricDef(
         label="# sync error",
@@ -1239,8 +1235,7 @@ class GlobalWalReceiverMetricGroup(MetricGroupDef):
     flush_delta = MetricDef(
         label="Flush delta",
         type="size",
-        desc="Total amount of data received and written"
-        " but not flushed yet",
+        desc="Total amount of data received and written but not flushed yet",
     )
     last_msg_lag = MetricDef(
         label="Last message latency",

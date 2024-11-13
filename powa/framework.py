@@ -52,7 +52,7 @@ class CustomConnection(_connection):
         elif factory == RealDictCursor:
             kwargs["cursor_factory"] = CustomDictCursor
         else:
-            msg = "Unsupported cursor_factory: %s" % factory.__name__
+            msg = f"Unsupported cursor_factory: {factory.__name__}"
             self._logger.error(msg)
             raise Exception(msg)
 
@@ -65,7 +65,7 @@ class CustomDictCursor(RealDictCursor):
 
         self.timestamp = time.time()
         try:
-            return super(CustomDictCursor, self).execute(query, params)
+            return super().execute(query, params)
         except Exception as e:
             log_query(self, query, params, e)
             raise e
@@ -79,7 +79,7 @@ class CustomCursor(_cursor):
 
         self.timestamp = time.time()
         try:
-            return super(CustomCursor, self).execute(query, params)
+            return super().execute(query, params)
         except Exception as e:
             log_query(self, query, params, e)
         finally:
@@ -98,7 +98,7 @@ def log_query(cls, query, params=None, exception=None):
 
     fmt = ""
     if exception is not None:
-        fmt = "Error during query execution:\n{}\n".format(exception)
+        fmt = f"Error during query execution:\n{exception}\n"
 
     fmt += "query on {dsn} (srvid {srvid}): {ms} ms\n{query}"
     if params is not None:
@@ -122,7 +122,7 @@ class BaseHandler(RequestHandler, JSONizable):
     """
 
     def __init__(self, *args, **kwargs):
-        super(BaseHandler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.flashed_messages = {}
         self._databases = None
         self._servers = None
@@ -135,11 +135,7 @@ class BaseHandler(RequestHandler, JSONizable):
 
     def __get_url(self, **connoptions):
         url = " ".join(
-            [
-                "%s=%s" % (k, v)
-                for (k, v) in connoptions.items()
-                if v is not None
-            ]
+            [f"{k}={v}" for (k, v) in connoptions.items() if v is not None]
         )
 
         return url
@@ -195,7 +191,7 @@ class BaseHandler(RequestHandler, JSONizable):
         host = "localhost"
         if "host" in connoptions:
             host = connoptions["host"]
-        return "%s" % (host)
+        return f"{host}"
 
     @property
     def current_port(self):
@@ -209,7 +205,7 @@ class BaseHandler(RequestHandler, JSONizable):
         port = "5432"
         if "port" in connoptions:
             port = connoptions["port"]
-        return "%s" % (port)
+        return f"{port}"
 
     @property
     def current_connection(self):
@@ -226,7 +222,7 @@ class BaseHandler(RequestHandler, JSONizable):
             host = connoptions["host"]
         if "port" in connoptions:
             port = connoptions["port"]
-        return "%s:%s" % (host, port)
+        return f"{host}:{port}"
 
     @property
     def database(self):
@@ -368,7 +364,7 @@ class BaseHandler(RequestHandler, JSONizable):
         user = user or self.get_str_cookie("user")
         password = password or self.get_str_cookie("password")
         if server not in options.servers:
-            raise HTTPError(404, "Server %s not found." % server)
+            raise HTTPError(404, f"Server {server} not found.")
 
         connoptions = options.servers[server].copy()
 
@@ -378,14 +374,14 @@ class BaseHandler(RequestHandler, JSONizable):
         if encoding_query is not None:
             if not isinstance(encoding_query, dict):
                 raise Exception(
-                    'Invalid "query" parameter: %r, ' % encoding_query
+                    f'Invalid "query" parameter: {encoding_query!r}, '
                 )
 
             for k in encoding_query:
                 if k != "client_encoding":
                     raise Exception(
-                        'Invalid "query" parameter: %r", '
-                        'unexpected key "%s"' % (encoding_query, k)
+                        f'Invalid "query" parameter: {encoding_query!r}", '
+                        f'unexpected key "{k}"'
                     )
 
         if srvid is not None and srvid != "0":
@@ -609,7 +605,7 @@ class BaseHandler(RequestHandler, JSONizable):
             self._status_code = status_code
             self.render("xhr.html", content=kwargs["exc_info"][1].log_message)
             return
-        super(BaseHandler, self).write_error(status_code, **kwargs)
+        super().write_error(status_code, **kwargs)
 
     def execute(
         self,
@@ -668,12 +664,12 @@ class BaseHandler(RequestHandler, JSONizable):
         cur.execute("UNLISTEN *")
 
         random.seed()
-        channel = "r%d" % random.randint(1, 99999)
-        cur.execute("LISTEN %s" % channel)
+        channel = f"r{random.randint(1, 99999)}"
+        cur.execute(f"LISTEN {channel}")
 
         # some commands will contain user-provided strings, so we need to
         # properly escape the arguments.
-        payload = "%s %s %s" % (command, channel, " ".join(args))
+        payload = "{} {} {}".format(command, channel, " ".join(args))
         cur.execute("NOTIFY powa_collector, %s", (payload,))
 
         cur.close()
@@ -758,10 +754,10 @@ class AuthHandler(BaseHandler):
 
     @authenticated
     def prepare(self):
-        super(AuthHandler, self).prepare()
+        super().prepare()
 
     def to_json(self):
         return dict(
-            **super(AuthHandler, self).to_json(),
+            **super().to_json(),
             **{"logoutUrl": self.reverse_url("logout")},
         )

@@ -9,7 +9,8 @@ extend-include = ["powa-web", "powa/powa.wsgi"]
 # In addition, we also enable:
 # `Q` for "flake8-quotes"
 # `I` for "isort"
-extend-select = ["Q", "I"]
+# `UP` for "pyupgrade"
+extend-select = ["Q", "I", "UP"]
 
 [lint.per-file-ignores]
 "powa/__init__.py" = ["E402"]

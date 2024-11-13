@@ -76,8 +76,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     local_blks_read = MetricDef(
         label="Local read",
         type="sizerate",
-        desc="Amount of local buffers found from OS"
-        " cache or read from disk",
+        desc="Amount of local buffers found from OS cache or read from disk",
     )
     local_blks_hit = MetricDef(
         label="Local hit",
@@ -349,9 +348,9 @@ class QueryOverviewMetricGroup(MetricGroupDef):
             to_epoch("ts"),
             sum_per_sec("rows"),
             sum_per_sec("calls"),
-            "CASE WHEN {total_blocks} = 0 THEN 0 ELSE"
-            " sum(shared_blks_hit)::numeric * 100 / {total_blocks}"
-            "END AS hit_ratio".format(total_blocks=total_blocks),
+            f"CASE WHEN {total_blocks} = 0 THEN 0 ELSE"
+            f" sum(shared_blks_hit)::numeric * 100 / {total_blocks}"
+            "END AS hit_ratio",
             byte_per_sec("shared_blks_read"),
             byte_per_sec("shared_blks_hit"),
             byte_per_sec("shared_blks_dirtied"),
@@ -426,30 +425,20 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                 " * block_size"
             )
             sys_hit_ratio = (
-                "{sys_hits}::numeric * 100 / ({total_blocks}"
-                " * block_size)".format(
-                    sys_hits=sys_hits, total_blocks=total_blocks
-                )
+                f"{sys_hits}::numeric * 100 / ({total_blocks} * block_size)"
             )
             disk_hit_ratio = (
-                "sum(sub.reads) * 100 / "
-                "({total_blocks} * block_size)".format(
-                    total_blocks=total_blocks
-                )
+                f"sum(sub.reads) * 100 / ({total_blocks} * block_size)"
             )
             total_time = "greatest(sum(runtime), 1)"
             other_time = (
-                "sum(runtime) - (("
-                "(sum(user_time) + sum(system_time))"
-                ") * 1000)"
+                "sum(runtime) - (((sum(user_time) + sum(system_time))) * 1000)"
             )
 
             # Rusage can return values > real time due to sampling bias
             # aligned to kernel ticks. As such, we have to clamp values to 100%
             def total_time_percent(col, alias=None, noalias=False):
-                val = "least(100, ({col} * 100) / {total_time})".format(
-                    col=col, total_time=total_time
-                )
+                val = f"least(100, ({col} * 100) / {total_time})"
 
                 if not noalias:
                     val += " as " + alias
@@ -472,34 +461,26 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                     total_time_percent(
                         "sum(system_time) * 1000", "system_time"
                     ),
-                    "greatest({other}, 0) AS other_time".format(
-                        other=total_time_percent(other_time, noalias=True)
-                    ),
-                    "CASE WHEN {tb} = 0 THEN 0 ELSE {dhr} END AS disk_hit_ratio".format(
-                        tb=total_blocks, dhr=disk_hit_ratio
-                    ),
-                    "CASE WHEN {tb} = 0 THEN 0 ELSE {shr} END AS sys_hit_ratio".format(
-                        tb=total_blocks, shr=sys_hit_ratio
-                    ),
+                    f"greatest({total_time_percent(other_time, noalias=True)}, 0) AS other_time",
+                    f"CASE WHEN {total_blocks} = 0 THEN 0 ELSE {disk_hit_ratio} END AS disk_hit_ratio",
+                    f"CASE WHEN {total_blocks} = 0 THEN 0 ELSE {sys_hit_ratio} END AS sys_hit_ratio",
                 ]
             )
 
-            from_clause = """SELECT *
+            from_clause = f"""SELECT *
                 FROM (
                     {from_clause}
                 ) sub2
                 LEFT JOIN (
                     {kcache_query}
                 ) AS kc
-                    USING (ts, srvid, queryid, userid, dbid)""".format(
-                from_clause=from_clause, kcache_query=kcache_query
-            )
+                    USING (ts, srvid, queryid, userid, dbid)"""
         else:
             cols.extend(
                 [
-                    """CASE WHEN {tb} = 0 THEN 0
-                    ELSE sum(shared_blks_read)::numeric * 100 / {tb}
-                END AS miss_ratio""".format(tb=total_blocks)
+                    f"""CASE WHEN {total_blocks} = 0 THEN 0
+                    ELSE sum(shared_blks_read)::numeric * 100 / {total_blocks}
+                END AS miss_ratio"""
                 ]
             )
 
@@ -534,7 +515,7 @@ class QueryIndexes(ContentWidget):
             )
         except Exception as e:
             raise HTTPError(
-                501, "Could not connect to remote server: %s" % str(e)
+                501, f"Could not connect to remote server: {str(e)}"
             )
 
         extra_join = """,
@@ -589,7 +570,7 @@ class QueryIndexes(ContentWidget):
                         )[0]["indexname"]
                     except Error as e:
                         self.flash(
-                            "Could not create hypothetical index: %s" % str(e)
+                            f"Could not create hypothetical index: {str(e)}"
                         )
             # Build the query and fetch the plans
             querystr = get_any_sample_query(
@@ -608,7 +589,7 @@ class QueryIndexes(ContentWidget):
                 # TODO: offer the possibility to fill in parameters from the UI
                 self.flash(
                     "We couldn't get plans for this query, presumably "
-                    "because some parameters are missing: %s" % str(e)
+                    f"because some parameters are missing: {str(e)}"
                 )
 
         self.render_json(dict(indexes=indexes, hypoplan=hypoplan))
@@ -773,11 +754,11 @@ class WaitSamplingList(MetricGroupDef):
             "sum(count) AS counts",
         ]
 
-        from_clause = """(
+        from_clause = f"""(
                 {inner_query}
             ) AS sub
             JOIN {{powa}}.powa_statements AS ps
-                USING (srvid, queryid, dbid)""".format(inner_query=inner_query)
+                USING (srvid, queryid, dbid)"""
 
         return """SELECT {cols}
         FROM {from_clause}
@@ -820,7 +801,7 @@ class QualList(MetricGroupDef):
             )
         except Exception as e:
             raise HTTPError(
-                501, "Could not connect to remote server: %s" % str(e)
+                501, f"Could not connect to remote server: {str(e)}"
             )
 
         data["data"] = resolve_quals(remote_conn, data["data"])
@@ -844,11 +825,11 @@ class QueryDetail(ContentWidget):
             srvid, ["datname = %(database)s", "queryid = %(query)s"]
         )
 
-        from_clause = """{{powa}}.powa_statements AS ps
+        from_clause = f"""{{powa}}.powa_statements AS ps
         LEFT JOIN (
             {stmt}
         ) AS sub USING (queryid, dbid, userid)
-        CROSS JOIN {block_size}""".format(stmt=stmt, block_size=block_size)
+        CROSS JOIN {block_size}"""
 
         rblk = "(sum(shared_blks_read) * block_size)"
         wblk = "(sum(shared_blks_hit) * block_size)"

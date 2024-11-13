@@ -275,7 +275,7 @@ class DataSource(JSONizable):
         """
         Returns the default url_name for this data source.
         """
-        return "datasource_%s" % cls.__name__
+        return f"datasource_{cls.__name__}"
 
     @classproperty
     def parameterized_json(cls, handler, **parms):
@@ -310,14 +310,14 @@ class Metric(JSONizable):
         """
 
         if self._group is not None:
-            raise ValueError("Already bound to %s" % self._group)
+            raise ValueError(f"Already bound to {self._group}")
         self._group = group
 
     def _fqn(self):
         """
         Return the fully qualified name of this metric.
         """
-        return "%s.%s" % (self._group.name, self.name)
+        return f"{self._group.name}.{self.name}"
 
 
 class Dashboard(JSONizable):
@@ -345,7 +345,7 @@ class Dashboard(JSONizable):
             if (12 % len(row)) != 0:
                 raise ValueError(
                     "Each widget row length must be a "
-                    "divisor of 12 (have: %d)" % len(row)
+                    f"divisor of 12 (have: {len(row)})"
                 )
 
     @property
@@ -502,7 +502,7 @@ class Grid(Widget):
             if any(m._group != mg1 for m in self.metrics):
                 raise ValueError(
                     "A grid is not allowed to have metrics from different "
-                    "groups. (title: %s)" % self.title
+                    f"groups. (title: {self.title})"
                 )
 
     def to_json(self):
@@ -559,7 +559,7 @@ class Graph(Widget):
         return values
 
 
-class Declarative(object):
+class Declarative:
     """
     Base class for declarative classes.
     """
@@ -606,12 +606,12 @@ class MetaMetricGroup(type, JSONizable):
             if isinstance(val, Metric):
                 dct.pop(key)
                 dct["metrics"][key] = val
-        return super(MetaMetricGroup, meta).__new__(meta, name, bases, dct)
+        return super().__new__(meta, name, bases, dct)
 
     def __init__(cls, name, bases, dct):
         for metric in dct.get("metrics").values():
             metric.bind(cls)
-        super(MetaMetricGroup, cls).__init__(name, bases, dct)
+        super().__init__(name, bases, dct)
 
     def __getattr__(cls, key):
         if key not in cls.metrics:
@@ -705,7 +705,7 @@ class MetricGroupDef(with_metaclass(MetaMetricGroup, DataSource)):
         return self._metrics
 
 
-class DashboardPage(object):
+class DashboardPage:
     """
     A Dashboard page ties together a set of datasources, and a dashboard.
 
@@ -745,7 +745,7 @@ class DashboardPage(object):
         url_specs = []
         url_specs.append(
             URLSpec(
-                r"%s%s/" % (url_prefix, cls.base_url.strip("/")),
+                r"{}{}/".format(url_prefix, cls.base_url.strip("/")),
                 type(cls.__name__, (cls.dashboard_handler_cls, cls), {}),
                 {"template": cls.template, "params": cls.params},
                 name=cls.__name__,
@@ -754,12 +754,13 @@ class DashboardPage(object):
         for datasource in cls.datasources:
             if datasource.data_url is None:
                 raise KeyError(
-                    "A Datasource must have a data_url: %s"
-                    % datasource.__name__
+                    f"A Datasource must have a data_url: {datasource.__name__}"
                 )
             url_specs.append(
                 URLSpec(
-                    r"%s%s/" % (url_prefix, datasource.data_url.strip("/")),
+                    r"{}{}/".format(
+                        url_prefix, datasource.data_url.strip("/")
+                    ),
                     type(
                         datasource.__name__,
                         (datasource, datasource.datasource_handler_cls),
