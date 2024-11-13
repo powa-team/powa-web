@@ -141,7 +141,8 @@ class ByDatabaseMetricGroup(MetricGroupDef):
                 [
                     "sum(plantime) AS plantime",
                     "sum(wal_records) AS wal_records",
-                    "sum(wal_fpi) AS wal_fpi," "sum(wal_bytes) AS wal_bytes",
+                    "sum(wal_fpi) AS wal_fpi",
+                    "sum(wal_bytes) AS wal_bytes",
                 ]
             )
 
