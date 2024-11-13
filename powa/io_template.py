@@ -42,7 +42,7 @@ class TemplateIoGraph(MetricGroupDef):
     writeback_time = MetricDef(
         label="Writeback time",
         type="duration",
-        desc="Total time spend doing writeback per " "second",
+        desc="Total time spend doing writeback per second",
     )
     extends = MetricDef(
         label="Extends",
@@ -52,7 +52,7 @@ class TemplateIoGraph(MetricGroupDef):
     extend_time = MetricDef(
         label="Extend time",
         type="duration",
-        desc="Total time spend extending relations per " "second",
+        desc="Total time spend extending relations per second",
     )
     hits = MetricDef(
         label="Hits",
@@ -62,12 +62,12 @@ class TemplateIoGraph(MetricGroupDef):
     evictions = MetricDef(
         label="Eviction",
         type="sizerate",
-        desc="Amount of data evicted from shared_buffers " "per second",
+        desc="Amount of data evicted from shared_buffers per second",
     )
     reuses = MetricDef(
         label="Reuses",
         type="sizerate",
-        desc="Amount of data reused in shared_buffers per " "second",
+        desc="Amount of data reused in shared_buffers per second",
     )
     fsyncs = MetricDef(
         label="Fsyncs", type="sizerate", desc="Blocks flushed per second"

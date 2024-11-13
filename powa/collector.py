@@ -54,7 +54,7 @@ class CollectorServerDetail(MetricGroupDef):
         if status is None:
             return {
                 "messages": {
-                    "warning": ["Could not get status for this " "instance"]
+                    "warning": ["Could not get status for this instance"]
                 },
                 "data": [],
             }

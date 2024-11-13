@@ -271,7 +271,7 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
     total_blks_read = MetricDef(
         label="Total read",
         type="sizerate",
-        desc="Amount of data found in OS cache or" " read from disk",
+        desc="Amount of data found in OS cache or read from disk",
     )
     wal_records = MetricDef(
         label="#Wal records",
@@ -305,7 +305,7 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
     majflts = MetricDef(
         label="Hard page faults",
         type="number",
-        desc="Memory pages not found in memory and loaded" " from storage",
+        desc="Memory pages not found in memory and loaded from storage",
     )
     # not maintained on GNU/Linux, and not available on Windows
     # nswaps = MetricDef(label="Swaps", type="number")
@@ -335,7 +335,7 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
     jit_inlining_count = MetricDef(
         label="# of JIT inlining",
         type="integer",
-        desc="Number of queries where inlining was" " done",
+        desc="Number of queries where inlining was done",
     )
     jit_inlining_time = MetricDef(
         label="JIT inlining time",
@@ -345,7 +345,7 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
     jit_optimization_count = MetricDef(
         label="# of JIT optimization",
         type="integer",
-        desc="Number of queries where" " optimization was done",
+        desc="Number of queries where optimization was done",
     )
     jit_optimization_time = MetricDef(
         label="JIT optimization time",
@@ -355,7 +355,7 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
     jit_emission_count = MetricDef(
         label="# of JIT emission",
         type="integer",
-        desc="Number of queries where emission was" " done",
+        desc="Number of queries where emission was done",
     )
     jit_emission_time = MetricDef(
         label="JIT emission time",
@@ -365,7 +365,7 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
     jit_deform_count = MetricDef(
         label="# of JIT tuple deforming",
         type="integer",
-        desc="Number of queries where tuple deforming" " was done",
+        desc="Number of queries where tuple deforming was done",
     )
     jit_deform_time = MetricDef(
         label="JIT tuple deforming time",
@@ -500,7 +500,7 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
                 "".format(total_read=total_read("sub", True), ts=get_ts())
             )
             total_disk_read = (
-                "sum(sub.reads)" " / " + get_ts() + " AS total_disk_read"
+                "sum(sub.reads) / " + get_ts() + " AS total_disk_read"
             )
             minflts = sum_per_sec("minflts", prefix="sub")
             majflts = sum_per_sec("majflts", prefix="sub")
@@ -549,19 +549,19 @@ class GlobalWaitsMetricGroup(MetricGroupDef):
     # pg 9.6 only metrics
     count_lwlocknamed = MetricDef(
         label="Lightweight Named",
-        desc="Number of named lightweight lock" " wait events",
+        desc="Number of named lightweight lock wait events",
     )
     count_lwlocktranche = MetricDef(
         label="Lightweight Tranche",
-        desc="Number of lightweight lock tranche" " wait events",
+        desc="Number of lightweight lock tranche wait events",
     )
     # pg 10+ metrics
     count_lwlock = MetricDef(
         label="Lightweight Lock",
-        desc="Number of wait events due to lightweight" " locks",
+        desc="Number of wait events due to lightweight locks",
     )
     count_lock = MetricDef(
-        label="Lock", desc="Number of wait events due to heavyweight" " locks"
+        label="Lock", desc="Number of wait events due to heavyweight locks"
     )
     count_bufferpin = MetricDef(
         label="Buffer pin", desc="Number of wait events due to buffer pin"
@@ -572,15 +572,15 @@ class GlobalWaitsMetricGroup(MetricGroupDef):
         " internal processes activity",
     )
     count_client = MetricDef(
-        label="Client", desc="Number of wait events due to client" " activity"
+        label="Client", desc="Number of wait events due to client activity"
     )
     count_extension = MetricDef(
         label="Extension",
-        desc="Number wait events due to third-party" " extensions",
+        desc="Number wait events due to third-party extensions",
     )
     count_ipc = MetricDef(
         label="IPC",
-        desc="Number of wait events due to inter-process" "communication",
+        desc="Number of wait events due to inter-process communication",
     )
     count_timeout = MetricDef(
         label="Timeout", desc="Number of wait events due to timeouts"
@@ -645,7 +645,7 @@ class GlobalPGSAMetricGroup(MetricGroupDef):
     oldest_backend = MetricDef(
         label="Oldest backend",
         type="duration",
-        desc="Age of the oldest backend, excluding" " replication backends",
+        desc="Age of the oldest backend, excluding replication backends",
     )
     oldest_xact = MetricDef(label="Oldest transaction", type="duration")
     oldest_query = MetricDef(label="Oldest query", type="duration")
@@ -745,7 +745,7 @@ class GlobalBgwriterMetricGroup(MetricGroupDef):
     buffers_clean = MetricDef(
         label="Buffers clean",
         type="sizerate",
-        desc="Number of buffers written by the" " background writer",
+        desc="Number of buffers written by the background writer",
     )
     maxwritten_clean = MetricDef(
         label="Maxwritten clean",
@@ -757,7 +757,7 @@ class GlobalBgwriterMetricGroup(MetricGroupDef):
     buffers_backend = MetricDef(
         label="Buffers backend",
         type="sizerate",
-        desc="Number of buffers written directly by a" " backend",
+        desc="Number of buffers written directly by a backend",
     )
     buffers_backend_fsync = MetricDef(
         label="Buffers backend fsync",
@@ -814,12 +814,12 @@ class GlobalCheckpointerMetricGroup(MetricGroupDef):
     num_timed = MetricDef(
         label="# of scheduled checkpoints",
         type="number",
-        desc="Number of scheduled checkpoints that" " have been performed",
+        desc="Number of scheduled checkpoints that have been performed",
     )
     num_requested = MetricDef(
         label="# of requested checkpoints",
         type="number",
-        desc="Number of requested checkpoints that" " have been performed",
+        desc="Number of requested checkpoints that have been performed",
     )
     write_time = MetricDef(
         label="Write time",
@@ -840,7 +840,7 @@ class GlobalCheckpointerMetricGroup(MetricGroupDef):
     buffers_written = MetricDef(
         label="Buffers checkpoint",
         type="sizerate",
-        desc="Number of buffers written during" " checkpoints",
+        desc="Number of buffers written during checkpoints",
     )
 
     @property
@@ -905,7 +905,7 @@ class GlobalSlruMetricGroup(MetricGroupDef):
     blks_zeroed = MetricDef(
         label="Zeroed",
         type="sizerate",
-        desc="Number of blocks zeroed during" " initializations",
+        desc="Number of blocks zeroed during initializations",
     )
     blks_hit = MetricDef(
         label="Hit",
@@ -928,7 +928,7 @@ class GlobalSlruMetricGroup(MetricGroupDef):
     blks_exists = MetricDef(
         label="Exists",
         type="sizerate",
-        desc="Number of blocks checked for existence for" " this SLRU",
+        desc="Number of blocks checked for existence for this SLRU",
     )
     flushes = MetricDef(
         label="Flushes",
@@ -992,7 +992,7 @@ class ByAllSlruMetricGroup(MetricGroupDef):
     blks_zeroed = MetricDef(
         label="Zeroed",
         type="size",
-        desc="Total number of blocks zeroed during" " initializations",
+        desc="Total number of blocks zeroed during initializations",
     )
     blks_hit = MetricDef(
         label="Hit",
@@ -1010,17 +1010,17 @@ class ByAllSlruMetricGroup(MetricGroupDef):
     blks_written = MetricDef(
         label="Written",
         type="size",
-        desc="Total number of disk blocks written for this" " SLRU",
+        desc="Total number of disk blocks written for this SLRU",
     )
     blks_exists = MetricDef(
         label="Exists",
         type="size",
-        desc="Total number of blocks checked for existence" " for this SLRU",
+        desc="Total number of blocks checked for existence for this SLRU",
     )
     flushes = MetricDef(
         label="Flushes",
         type="number",
-        desc="Total number of flushes of dirty data for this" " SLRU",
+        desc="Total number of flushes of dirty data for this SLRU",
     )
     truncates = MetricDef(
         label="Truncates",
@@ -1249,7 +1249,7 @@ class GlobalWalReceiverMetricGroup(MetricGroupDef):
     report_delta = MetricDef(
         label="Report delta",
         type="size",
-        desc="Total amount of data not yet reported to" " origin WAL sender",
+        desc="Total amount of data not yet reported to origin WAL sender",
     )
     report_lag = MetricDef(
         label="Report lag",
@@ -1260,7 +1260,7 @@ class GlobalWalReceiverMetricGroup(MetricGroupDef):
     received_bytes = MetricDef(
         label="WAL receiver bandwidth",
         type="sizerate",
-        desc="Amount of data received from original WAL" " sender",
+        desc="Amount of data received from original WAL sender",
     )
 
     @classmethod
@@ -1441,17 +1441,17 @@ class GlobalDbActivityMetricGroup(MetricGroupDef):
     session_time = MetricDef(
         label="Session time",
         type="duration",
-        desc="Total time spent by database sessions per " "second",
+        desc="Total time spent by database sessions per second",
     )
     active_time = MetricDef(
         label="Active time",
         type="duration",
-        desc="Total time spent executing SQL statements " "per second",
+        desc="Total time spent executing SQL statements per second",
     )
     idle_in_transaction_time = MetricDef(
         label="idle in xact time",
         type="duration",
-        desc="Total time spent idling while " "in a transaction per second",
+        desc="Total time spent idling while in a transaction per second",
     )
     sessions = MetricDef(
         label="# sessions",
