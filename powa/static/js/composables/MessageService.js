@@ -27,8 +27,10 @@ function addAlertMessage(level, message) {
 }
 
 function addAlertMessages(messages) {
-  for (let message in messages) {
-    addAlertMessage(message.level, message.message);
+  for (let level in messages) {
+    for (let message of messages[level]) {
+      addAlertMessage(level, message);
+    }
   }
 }
 function removeAlertMessage(id) {

@@ -165,7 +165,7 @@ import LoginView from "@/components/LoginView.vue";
 import { encodeQueryData } from "@/utils/query";
 import { useMessageService } from "@/composables/MessageService.js";
 
-const { alertMessages, addAlertMessage, removeAlertMessage } =
+const { alertMessages, addAlertMessage, addAlertMessages, removeAlertMessage } =
   useMessageService();
 
 const theme = useTheme();
@@ -355,7 +355,7 @@ function loadData() {
       try {
         const data = JSON.parse(response);
         if (data) {
-          this.addAlertMessages(data.messages);
+          addAlertMessages(data.messages);
         }
       } catch (error) {
         // pass
