@@ -27,7 +27,7 @@ class NameSlruMetricGroup(MetricGroupDef):
     blks_zeroed = MetricDef(
         label="Zeroed",
         type="sizerate",
-        desc="Number of blocks zeroed during" " initializations",
+        desc="Number of blocks zeroed during initializations",
     )
     blks_hit = MetricDef(
         label="Hit",
@@ -50,7 +50,7 @@ class NameSlruMetricGroup(MetricGroupDef):
     blks_exists = MetricDef(
         label="Exists",
         type="sizerate",
-        desc="Number of blocks checked for existence for" " this SLRU",
+        desc="Number of blocks checked for existence for this SLRU",
     )
     flushes = MetricDef(
         label="Flushes",

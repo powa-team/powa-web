@@ -47,16 +47,16 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     data_url = r"/server/(\d+)/metrics/database/([^\/]+)/query/(-?\d+)"
     rows = MetricDef(
         label="#Rows",
-        desc="Sum of the number of rows returned by the query" " per second",
+        desc="Sum of the number of rows returned by the query per second",
     )
     calls = MetricDef(
         label="#Calls",
-        desc="Number of time the query has been executed" " per second",
+        desc="Number of time the query has been executed per second",
     )
     shared_blks_read = MetricDef(
         label="Shared read",
         type="sizerate",
-        desc="Amount of data found in OS cache or" " read from disk",
+        desc="Amount of data found in OS cache or read from disk",
     )
     shared_blks_hit = MetricDef(
         label="Shared hit",
@@ -66,12 +66,12 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     shared_blks_dirtied = MetricDef(
         label="Shared dirtied",
         type="sizerate",
-        desc="Amount of data modified in shared" " buffers",
+        desc="Amount of data modified in shared buffers",
     )
     shared_blks_written = MetricDef(
         label="Shared written",
         type="sizerate",
-        desc="Amount of shared buffers written to" " disk",
+        desc="Amount of shared buffers written to disk",
     )
     local_blks_read = MetricDef(
         label="Local read",
@@ -82,17 +82,17 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     local_blks_hit = MetricDef(
         label="Local hit",
         type="sizerate",
-        desc="Amount of local buffers found in shared" " buffers",
+        desc="Amount of local buffers found in shared buffers",
     )
     local_blks_dirtied = MetricDef(
         label="Local dirtied",
         type="sizerate",
-        desc="Amount of data modified in local" " buffers",
+        desc="Amount of data modified in local buffers",
     )
     local_blks_written = MetricDef(
         label="Local written",
         type="sizerate",
-        desc="Amount of local buffers written to" " disk",
+        desc="Amount of local buffers written to disk",
     )
     temp_blks_read = MetricDef(
         label="Temp read",
@@ -102,7 +102,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     temp_blks_written = MetricDef(
         label="Temp written",
         type="sizerate",
-        desc="Amount of data written to temporary" " file",
+        desc="Amount of data written to temporary file",
     )
     shared_blk_read_time = MetricDef(
         label="Shared Read time",
@@ -150,7 +150,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     miss_ratio = MetricDef(
         label="Shared buffers miss ratio",
         type="percent",
-        desc="Percentage of data found in OS cache or read" " from disk",
+        desc="Percentage of data found in OS cache or read from disk",
     )
     wal_records = MetricDef(
         label="#Wal records",
@@ -209,7 +209,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     majflts = MetricDef(
         label="Hard page faults",
         type="number",
-        desc="Memory pages not found in memory and loaded" " from storage",
+        desc="Memory pages not found in memory and loaded from storage",
     )
     # not maintained on GNU/Linux, and not available on Windows
     # nswaps = MetricDef(label="Swaps", type="number")
@@ -239,7 +239,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     jit_inlining_count = MetricDef(
         label="# of JIT inlining",
         type="integer",
-        desc="Number of queries where inlining was" " done",
+        desc="Number of queries where inlining was done",
     )
     jit_inlining_time = MetricDef(
         label="JIT inlining time",
@@ -249,7 +249,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     jit_optimization_count = MetricDef(
         label="# of JIT optimization",
         type="integer",
-        desc="Number of queries where" " optimization was done",
+        desc="Number of queries where optimization was done",
     )
     jit_optimization_time = MetricDef(
         label="JIT optimization time",
@@ -259,7 +259,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     jit_emission_count = MetricDef(
         label="# of JIT emission",
         type="integer",
-        desc="Number of queries where emission was" " done",
+        desc="Number of queries where emission was done",
     )
     jit_emission_time = MetricDef(
         label="JIT emission time",
@@ -269,7 +269,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     jit_deform_count = MetricDef(
         label="# of JIT tuple deforming",
         type="integer",
-        desc="Number of queries where tuple deforming" " was done",
+        desc="Number of queries where tuple deforming was done",
     )
     jit_deform_time = MetricDef(
         label="JIT tuple deforming time",
@@ -658,19 +658,19 @@ class WaitsQueryOverviewMetricGroup(MetricGroupDef):
     # pg 9.6 only metrics
     count_lwlocknamed = MetricDef(
         label="Lightweight Named",
-        desc="Number of named lightweight lock" " wait events",
+        desc="Number of named lightweight lock wait events",
     )
     count_lwlocktranche = MetricDef(
         label="Lightweight Tranche",
-        desc="Number of lightweight lock tranche" " wait events",
+        desc="Number of lightweight lock tranche wait events",
     )
     # pg 10+ metrics
     count_lwlock = MetricDef(
         label="Lightweight Lock",
-        desc="Number of wait events due to lightweight" " locks",
+        desc="Number of wait events due to lightweight locks",
     )
     count_lock = MetricDef(
-        label="Lock", desc="Number of wait events due to heavyweight" " locks"
+        label="Lock", desc="Number of wait events due to heavyweight locks"
     )
     count_bufferpin = MetricDef(
         label="Buffer pin", desc="Number of wait events due to buffer pin"
@@ -681,15 +681,15 @@ class WaitsQueryOverviewMetricGroup(MetricGroupDef):
         " internal processes activity",
     )
     count_client = MetricDef(
-        label="Client", desc="Number of wait events due to client" " activity"
+        label="Client", desc="Number of wait events due to client activity"
     )
     count_extension = MetricDef(
         label="Extension",
-        desc="Number wait events due to third-party" " extensions",
+        desc="Number wait events due to third-party extensions",
     )
     count_ipc = MetricDef(
         label="IPC",
-        desc="Number of wait events due to inter-process" "communication",
+        desc="Number of wait events due to inter-process communication",
     )
     count_timeout = MetricDef(
         label="Timeout", desc="Number of wait events due to timeouts"

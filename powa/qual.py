@@ -103,7 +103,7 @@ class QualDetail(ContentWidget):
                 501, "Could not connect to remote server: %s" % str(e)
             )
         stmt = qualstat_getstatdata(
-            extra_select=["queryid = %(query)s" " AS is_my_query"],
+            extra_select=["queryid = %(query)s AS is_my_query"],
             extra_where=["qualid = %(qualid)s", "occurences > 0"],
             extra_groupby=["queryid"],
         )

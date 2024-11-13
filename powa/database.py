@@ -68,7 +68,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     calls = MetricDef(
         label="Queries per sec",
         type="number",
-        desc="Number of time the query has been executed, " "per second",
+        desc="Number of time the query has been executed, per second",
     )
     planload = MetricDef(
         label="Plantime per sec",
@@ -88,7 +88,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     total_blks_read = MetricDef(
         label="Total shared buffers miss",
         type="sizerate",
-        desc="Amount of data found in OS cache or" " read from disk",
+        desc="Amount of data found in OS cache or read from disk",
     )
     wal_records = MetricDef(
         label="#Wal records",
@@ -122,7 +122,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     majflts = MetricDef(
         label="Hard page faults",
         type="number",
-        desc="Memory pages not found in memory and loaded" " from storage",
+        desc="Memory pages not found in memory and loaded from storage",
     )
     # not maintained on GNU/Linux, and not available on Windows
     # nswaps = MetricDef(label="Swaps", type="number")
@@ -152,7 +152,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     jit_inlining_count = MetricDef(
         label="# of JIT inlining",
         type="integer",
-        desc="Number of queries where inlining was" " done",
+        desc="Number of queries where inlining was done",
     )
     jit_inlining_time = MetricDef(
         label="JIT inlining time",
@@ -162,7 +162,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     jit_optimization_count = MetricDef(
         label="# of JIT optimization",
         type="integer",
-        desc="Number of queries where" " optimization was done",
+        desc="Number of queries where optimization was done",
     )
     jit_optimization_time = MetricDef(
         label="JIT optimization time",
@@ -172,7 +172,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     jit_emission_count = MetricDef(
         label="# of JIT emission",
         type="integer",
-        desc="Number of queries where emission was" " done",
+        desc="Number of queries where emission was done",
     )
     jit_emission_time = MetricDef(
         label="JIT emission time",
@@ -182,7 +182,7 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
     jit_deform_count = MetricDef(
         label="# of JIT tuple deforming",
         type="integer",
-        desc="Number of queries where tuple deforming" " was done",
+        desc="Number of queries where tuple deforming was done",
     )
     jit_deform_time = MetricDef(
         label="JIT tuple deforming time",
@@ -433,19 +433,19 @@ class DatabaseWaitOverviewMetricGroup(MetricGroupDef):
     # pg 9.6 only metrics
     count_lwlocknamed = MetricDef(
         label="Lightweight Named",
-        desc="Number of named lightweight lock" " wait events",
+        desc="Number of named lightweight lock wait events",
     )
     count_lwlocktranche = MetricDef(
         label="Lightweight Tranche",
-        desc="Number of lightweight lock tranche" " wait events",
+        desc="Number of lightweight lock tranche wait events",
     )
     # pg 10+ metrics
     count_lwlock = MetricDef(
         label="Lightweight Lock",
-        desc="Number of wait events due to lightweight" " locks",
+        desc="Number of wait events due to lightweight locks",
     )
     count_lock = MetricDef(
-        label="Lock", desc="Number of wait events due to heavyweight" " locks"
+        label="Lock", desc="Number of wait events due to heavyweight locks"
     )
     count_bufferpin = MetricDef(
         label="Buffer pin", desc="Number of wait events due to buffer pin"
@@ -456,15 +456,15 @@ class DatabaseWaitOverviewMetricGroup(MetricGroupDef):
         " internal processes activity",
     )
     count_client = MetricDef(
-        label="Client", desc="Number of wait events due to client" " activity"
+        label="Client", desc="Number of wait events due to client activity"
     )
     count_extension = MetricDef(
         label="Extension",
-        desc="Number wait events due to third-party" " extensions",
+        desc="Number wait events due to third-party extensions",
     )
     count_ipc = MetricDef(
         label="IPC",
-        desc="Number of wait events due to inter-process" "communication",
+        desc="Number of wait events due to inter-process communication",
     )
     count_timeout = MetricDef(
         label="Timeout", desc="Number of wait events due to timeouts"
@@ -707,17 +707,17 @@ class DatabaseDbActivityMetricGroup(MetricGroupDef):
     session_time = MetricDef(
         label="Session time",
         type="duration",
-        desc="Total time spent by database sessions per " "second",
+        desc="Total time spent by database sessions per second",
     )
     active_time = MetricDef(
         label="Active time",
         type="duration",
-        desc="Total time spent executing SQL statements " "per second",
+        desc="Total time spent executing SQL statements per second",
     )
     idle_in_transaction_time = MetricDef(
         label="idle in xact time",
         type="duration",
-        desc="Total time spent idling while " "in a transaction per second",
+        desc="Total time spent idling while in a transaction per second",
     )
     sessions = MetricDef(
         label="# sessions",
