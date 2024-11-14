@@ -8,9 +8,9 @@ hljs.registerLanguage("sql", pgsql);
 export function formatSql(value) {
   try {
     value = formatDialect(value, { dialect: postgresql });
-    value = hljs.highlightAuto(value, ["sql"]).value;
   } catch (error) {
-    console.error("Could not highlight SQL:", value);
+    console.error("Could not format SQL:", "\n", value, "\n", error);
   }
+  value = hljs.highlightAuto(value, ["sql"]).value;
   return value;
 }
