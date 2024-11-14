@@ -6,7 +6,6 @@ Mostly copied straight from six:
 
 """
 
-
 import json
 import psycopg2
 from psycopg2 import extensions

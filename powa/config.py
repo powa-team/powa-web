@@ -2,7 +2,6 @@
 Dashboard for the configuration summary page.
 """
 
-
 import json
 from powa.collector import CollectorServerDetail
 from powa.dashboards import (
@@ -417,7 +416,7 @@ class PgStatExtensionsMetricGroup(MetricGroupDef):
             data["messages"] = {
                 "alert": [
                     "Could not retrieve extensions"
-                    + " on remote server: %s" % errmsg
+                    + f" on remote server: {errmsg}"
                 ]
             }
             return data
@@ -527,7 +526,7 @@ class PgSupportExtensionsMetricGroup(MetricGroupDef):
             data["messages"] = {
                 "alert": [
                     "Could not retrieve extensions"
-                    + " on remote server: %s" % errmsg
+                    + f" on remote server: {errmsg}"
                 ]
             }
             return data

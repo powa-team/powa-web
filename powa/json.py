@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from decimal import Decimal
 from json import JSONEncoder as BaseJSONEncoder

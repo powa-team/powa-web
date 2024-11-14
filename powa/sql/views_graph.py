@@ -1526,7 +1526,7 @@ def powa_get_io_sample(qual=None):
     biggest = Biggest(base_columns, "ts")
 
     if qual is not None:
-        qual = " AND %s" % qual
+        qual = f" AND {qual}"
     else:
         qual = ""
 
@@ -1562,7 +1562,7 @@ def powa_get_slru_sample(qual=None):
     biggest = Biggest(base_columns, "ts")
 
     if qual is not None:
-        qual = " AND %s" % qual
+        qual = f" AND {qual}"
     else:
         qual = ""
 

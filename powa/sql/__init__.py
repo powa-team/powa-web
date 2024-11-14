@@ -142,7 +142,7 @@ class ResolvedQual(JSONizable):
             return f"{abs(self.n_distinct) * 100} %"
 
     def to_json(self):
-        base = super(ResolvedQual, self).to_json()
+        base = super().to_json()
         base["label"] = str(self)
         base["distinct_values"] = self.distinct_values
         return base
@@ -163,7 +163,7 @@ class ComposedQual(JSONizable):
         queries=None,
         queryids=None,
     ):
-        super(ComposedQual, self).__init__()
+        super().__init__()
         self.qualid = qualid
         self.relname = relname
         self.nspname = nspname
@@ -195,7 +195,7 @@ class ComposedQual(JSONizable):
         return f"WHERE {self}"
 
     def to_json(self):
-        base = super(ComposedQual, self).to_json()
+        base = super().to_json()
         base["quals"] = self._quals
         base["where_clause"] = self.where_clause
         return base
@@ -406,7 +406,7 @@ def get_plans(cls, server, database, query, all_vals):
             )
             plan = "\n".join(v["QUERY PLAN"] for v in result)
         except Exception as e:
-            plan = "ERROR: %r" % e
+            plan = f"ERROR: {e!r}"
             pass
         plans.append(
             Plan(
@@ -582,7 +582,7 @@ class HypoPlan(JSONizable):
         )
 
     def to_json(self):
-        base = super(HypoPlan, self).to_json()
+        base = super().to_json()
         base["gain_percent"] = self.gain_percent
         return base
 
@@ -605,7 +605,7 @@ class HypoIndex(JSONizable):
                 if qual.attname not in attrs:
                     attrs.append(qual.attname)
             # Qual resolution is responsible for quoting all identifiers
-            super(HypoIndex, self).__setattr__(
+            super().__setattr__(
                 "_ddl",
                 """CREATE INDEX ON {nsp}.{rel}({attrs})""".format(
                     nsp=self.nspname, rel=self.relname, attrs=",".join(attrs)
@@ -613,7 +613,7 @@ class HypoIndex(JSONizable):
             )
 
     def __setattr(self, name, value):
-        super(HypoIndex, self).__setattr__(name, value)
+        super().__setattr__(name, value)
         # Only btree is supported right now
         if name in ("amname", "nspname", "relname", "composed_qual"):
             self._update_ddl()
@@ -634,7 +634,7 @@ class HypoIndex(JSONizable):
         return (None, None)
 
     def to_json(self):
-        base = super(HypoIndex, self).to_json()
+        base = super().to_json()
         base["ddl"] = self.ddl
         return base
 

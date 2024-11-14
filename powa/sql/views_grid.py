@@ -318,7 +318,7 @@ def powa_getiodata(qual=None):
     base_query = powa_base_io()
 
     if qual is not None:
-        qual = " WHERE %s" % qual
+        qual = f" WHERE {qual}"
     else:
         qual = ""
 
@@ -434,7 +434,7 @@ def powa_getslrudata(qual=None):
     base_query = powa_base_slru()
 
     if qual is not None:
-        qual = " WHERE %s" % qual
+        qual = f" WHERE {qual}"
     else:
         qual = ""
 

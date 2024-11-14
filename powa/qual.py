@@ -100,7 +100,7 @@ class QualDetail(ContentWidget):
             )
         except Exception as e:
             raise HTTPError(
-                501, "Could not connect to remote server: %s" % str(e)
+                501, f"Could not connect to remote server: {str(e)}"
             )
         stmt = qualstat_getstatdata(
             extra_select=["queryid = %(query)s AS is_my_query"],

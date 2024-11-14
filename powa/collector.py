@@ -3,7 +3,6 @@ Dashboard for the powa-collector summary page, and other infrastructure for the
 collector handling.
 """
 
-
 import json
 from powa.dashboards import MetricGroupDef
 from powa.framework import AuthHandler

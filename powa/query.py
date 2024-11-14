@@ -426,12 +426,10 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                 " * block_size"
             )
             sys_hit_ratio = (
-                f"{sys_hits}::numeric * 100 / ({total_blocks}"
-                " * block_size)"
+                f"{sys_hits}::numeric * 100 / ({total_blocks}" " * block_size)"
             )
             disk_hit_ratio = (
-                "sum(sub.reads) * 100 / "
-                f"({total_blocks} * block_size)"
+                "sum(sub.reads) * 100 / " f"({total_blocks} * block_size)"
             )
             total_time = "greatest(sum(runtime), 1)"
             other_time = (
@@ -520,7 +518,7 @@ class QueryIndexes(ContentWidget):
             )
         except Exception as e:
             raise HTTPError(
-                501, "Could not connect to remote server: %s" % str(e)
+                501, f"Could not connect to remote server: {str(e)}"
             )
 
         extra_join = """,
@@ -575,7 +573,7 @@ class QueryIndexes(ContentWidget):
                         )[0]["indexname"]
                     except Error as e:
                         self.flash(
-                            "Could not create hypothetical index: %s" % str(e)
+                            f"Could not create hypothetical index: {str(e)}"
                         )
             # Build the query and fetch the plans
             querystr = get_any_sample_query(
@@ -594,7 +592,7 @@ class QueryIndexes(ContentWidget):
                 # TODO: offer the possibility to fill in parameters from the UI
                 self.flash(
                     "We couldn't get plans for this query, presumably "
-                    "because some parameters are missing: %s" % str(e)
+                    f"because some parameters are missing: {str(e)}"
                 )
 
         self.render_json(dict(indexes=indexes, hypoplan=hypoplan))
@@ -806,7 +804,7 @@ class QualList(MetricGroupDef):
             )
         except Exception as e:
             raise HTTPError(
-                501, "Could not connect to remote server: %s" % str(e)
+                501, f"Could not connect to remote server: {str(e)}"
             )
 
         data["data"] = resolve_quals(remote_conn, data["data"])

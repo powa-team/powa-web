@@ -2,7 +2,6 @@
 Global optimization widget
 """
 
-
 import json
 from powa.dashboards import MetricGroupDef, Widget
 from powa.framework import AuthHandler
@@ -28,7 +27,7 @@ class IndexSuggestionHandler(AuthHandler):
             remote_cur = remote_conn.cursor()
         except Exception as e:
             raise HTTPError(
-                501, "Could not connect to remote server: %s" % str(e)
+                501, f"Could not connect to remote server: {str(e)}"
             )
 
         payload = json.loads(self.request.body.decode("utf8"))
