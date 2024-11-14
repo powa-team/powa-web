@@ -130,19 +130,19 @@ class ResolvedQual(JSONizable):
         self.attnum = attnum
 
     def __str__(self):
-        return "{}.{} {} ?".format(self.relname, self.attname, self.opname)
+        return f"{self.relname}.{self.attname} {self.opname} ?"
 
     @property
     def distinct_values(self):
         if self.n_distinct == 0:
             return None
         elif self.n_distinct > 0:
-            return "{}".format(self.n_distinct)
+            return f"{self.n_distinct}"
         else:
-            return "{} %".format(abs(self.n_distinct) * 100)
+            return f"{abs(self.n_distinct) * 100} %"
 
     def to_json(self):
-        base = super(ResolvedQual, self).to_json()
+        base = super().to_json()
         base["label"] = str(self)
         base["distinct_values"] = self.distinct_values
         return base
@@ -163,7 +163,7 @@ class ComposedQual(JSONizable):
         queries=None,
         queryids=None,
     ):
-        super(ComposedQual, self).__init__()
+        super().__init__()
         self.qualid = qualid
         self.relname = relname
         self.nspname = nspname
@@ -192,10 +192,10 @@ class ComposedQual(JSONizable):
 
     @property
     def where_clause(self):
-        return "WHERE {}".format(self)
+        return f"WHERE {self}"
 
     def to_json(self):
-        base = super(ComposedQual, self).to_json()
+        base = super().to_json()
         base["quals"] = self._quals
         base["where_clause"] = self.where_clause
         return base
@@ -324,14 +324,14 @@ def qual_constants(
     qual_filter = ""
 
     if queries is not None:
-        query_subfilter = "AND queryid IN ({})".format(queries)
-        query_filter = "AND s.queryid IN ({})".format(queries)
+        query_subfilter = f"AND queryid IN ({queries})"
+        query_filter = f"AND s.queryid IN ({queries})"
 
     if quals is not None:
-        qual_subfilter = "AND qualid IN ({})".format(quals)
-        qual_filter = "AND qnc.qualid IN ({})".format(quals)
+        qual_subfilter = f"AND qualid IN ({quals})"
+        qual_filter = f"AND qnc.qualid IN ({quals})"
 
-    base = """
+    base = f"""
     (
     WITH sample AS (
     SELECT s.srvid, query, s.queryid, qn.qualid, quals as quals,
@@ -358,14 +358,14 @@ def qual_constants(
             {qual_subfilter}
         ) qnc ON qnc.srvid = s.srvid AND qn.qualid = qnc.qualid AND qn.queryid = qnc.queryid,
         LATERAL
-                unnest({qual_type}) as t(constants,occurences, execution_count, nbfiltered)
-        WHERE {filter}
+                unnest({type}) as t(constants,occurences, execution_count, nbfiltered)
+        WHERE {filter_clause}
         {query_filter}
         {qual_filter}
         AND s.srvid = {srvid}
         GROUP BY s.srvid, qn.qualid, quals, constants, s.queryid, query
-        ORDER BY {order}
-        LIMIT {top_value}
+        ORDER BY {orders[type]}
+        LIMIT {top}
     )
     SELECT srvid, query, queryid, qualid, quals, constants as constants,
                 occurences as occurences,
@@ -375,19 +375,9 @@ def qual_constants(
                 row_number() OVER (ORDER BY execution_count desc NULLS LAST) AS rownumber
         FROM sample
     ORDER BY rownumber
-    LIMIT {top_value}
-    ) {qual_type}
-    """.format(
-        qual_type=type,
-        filter=filter_clause,
-        query_subfilter=query_subfilter,
-        query_filter=query_filter,
-        qual_subfilter=qual_subfilter,
-        qual_filter=qual_filter,
-        order=orders[type],
-        top_value=top,
-        srvid=srvid,
-    )
+    LIMIT {top}
+    ) {type}
+    """
 
     query = "SELECT * FROM " + base
 
@@ -410,13 +400,13 @@ def get_plans(cls, server, database, query, all_vals):
         query = format_jumbled_query(query, vals["constants"])
         plan = "N/A"
         try:
-            sqlQuery = "EXPLAIN {}".format(query)
+            sqlQuery = f"EXPLAIN {query}"
             result = cls.execute(
                 sqlQuery, srvid=server, database=database, remote_access=True
             )
             plan = "\n".join(v["QUERY PLAN"] for v in result)
         except Exception as e:
-            plan = "ERROR: %r" % e
+            plan = f"ERROR: {e!r}"
             pass
         plans.append(
             Plan(
@@ -592,7 +582,7 @@ class HypoPlan(JSONizable):
         )
 
     def to_json(self):
-        base = super(HypoPlan, self).to_json()
+        base = super().to_json()
         base["gain_percent"] = self.gain_percent
         return base
 
@@ -615,7 +605,7 @@ class HypoIndex(JSONizable):
                 if qual.attname not in attrs:
                     attrs.append(qual.attname)
             # Qual resolution is responsible for quoting all identifiers
-            super(HypoIndex, self).__setattr__(
+            super().__setattr__(
                 "_ddl",
                 """CREATE INDEX ON {nsp}.{rel}({attrs})""".format(
                     nsp=self.nspname, rel=self.relname, attrs=",".join(attrs)
@@ -623,7 +613,7 @@ class HypoIndex(JSONizable):
             )
 
     def __setattr(self, name, value):
-        super(HypoIndex, self).__setattr__(name, value)
+        super().__setattr__(name, value)
         # Only btree is supported right now
         if name in ("amname", "nspname", "relname", "composed_qual"):
             self._update_ddl()
@@ -644,7 +634,7 @@ class HypoIndex(JSONizable):
         return (None, None)
 
     def to_json(self):
-        base = super(HypoIndex, self).to_json()
+        base = super().to_json()
         base["ddl"] = self.ddl
         return base
 
@@ -692,7 +682,7 @@ def get_hypoplans(cur, query, indexes=None):
     cur.execute("SET hypopg.enabled = off")
     try:
         cur.execute("SAVEPOINT hypo")
-        cur.execute("EXPLAIN {}".format(query))
+        cur.execute(f"EXPLAIN {query}")
         baseplan = "\n".join(v[0] for v in cur.fetchall())
         cur.execute("RELEASE hypo")
     except Exception as e:
@@ -702,7 +692,7 @@ def get_hypoplans(cur, query, indexes=None):
     cur.execute("SET hypopg.enabled = on")
     try:
         cur.execute("SAVEPOINT hypo")
-        cur.execute("EXPLAIN {}".format(query))
+        cur.execute(f"EXPLAIN {query}")
         hypoplan = "\n".join(v[0] for v in cur.fetchall())
         cur.execute("RELEASE hypo")
     except Exception as e:
