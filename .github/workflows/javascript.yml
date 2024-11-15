@@ -1,0 +1,36 @@
+name: Check syntax and build JS
+
+on:
+  pull_request:
+
+jobs:
+  test-javascript:
+    name: JavaScript Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        id: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      
+      - name: Install Dependencies
+        id: npm-ci
+        run: npm ci
+
+      - name: Lint
+        id: npm-lint
+        run: npm run lint
+
+      - name: Check Format
+        id: npm-format-check
+        run: npm run format 
+
+      - name: Check Build
+        id: npm-build-check
+        run: npm run build 
