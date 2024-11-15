@@ -34,7 +34,7 @@ export default defineConfig({
           luxon: ["luxon"],
           highlight: ["highlight.js"],
           moment: ["moment"],
-          "sql-formatter": ["sql-formatter"],
+          "sqltools-formatter": ["@sqltools/formatter"],
         },
       },
     },
