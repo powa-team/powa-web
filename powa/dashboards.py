@@ -152,7 +152,7 @@ class DashboardHandler(AuthHandler):
         try:
             cur.execute(
                 """WITH s(v) AS (
-                    SELECT unnest(%s)
+                    SELECT unnest(%s::text[])
                     UNION ALL
                     SELECT rolname
                     FROM {powa}.powa_roles
