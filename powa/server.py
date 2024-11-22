@@ -722,10 +722,11 @@ class GlobalArchiverMetricGroup(MetricGroupDef):
     @property
     def query(self):
         query = powa_get_archiver_sample()
+        ts = get_ts()
 
         cols = [
             "extract(epoch FROM ts) AS ts",
-            "round(nb_arch::numeric / " + get_ts() + ", 2) AS nb_arch",
+            "round((nb_arch::numeric / " + ts + ")::numeric, 2) AS nb_arch",
             "nb_to_arch",
         ]
 
