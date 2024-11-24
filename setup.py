@@ -1,4 +1,3 @@
-import sys
 from setuptools import find_packages, setup
 
 __VERSION__ = None
@@ -10,11 +9,6 @@ with open("powa/__init__.py") as f:
 
 
 requires = ["tornado>=2.0", "psycopg2"]
-
-# include ordereddict for python2.6
-if sys.version_info < (2, 7, 0):
-    requires.append("ordereddict")
-
 
 setup(
     name="powa-web",
@@ -35,8 +29,15 @@ setup(
         "License :: Other/Proprietary License",
         "License :: OSI Approved :: BSD License",
         "Operating System :: OS Independent",
-        "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3 :: Only",
         "Topic :: Database :: Front-Ends",
     ],
+    python_requires=">=3.6, <4",
 )

@@ -43,7 +43,7 @@ class QualConstantsMetricGroup(MetricGroupDef):
         correlated = qualstat_getstatdata(
             extra_where=["qualid = %(qual)s", "queryid = %(query)s"]
         )
-        sql = """SELECT sub.*, correlated.occurences as total_occurences
+        sql = f"""SELECT sub.*, correlated.occurences as total_occurences
             FROM (
                 SELECT *
                 FROM (
@@ -52,7 +52,7 @@ class QualConstantsMetricGroup(MetricGroupDef):
             ) AS sub, (
                 {correlated}
             ) AS correlated
-        """.format(most_used=most_used, correlated=correlated)
+        """
 
         return sql
 
@@ -100,7 +100,7 @@ class QualDetail(ContentWidget):
             )
         except Exception as e:
             raise HTTPError(
-                501, "Could not connect to remote server: %s" % str(e)
+                501, f"Could not connect to remote server: {str(e)}"
             )
         stmt = qualstat_getstatdata(
             extra_select=["queryid = %(query)s AS is_my_query"],
