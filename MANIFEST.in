@@ -2,8 +2,6 @@ exclude powa/templates/
 recursive-include powa/templates *.html
 recursive-include  powa/static/css *
 recursive-include  powa/static/img *
-include powa/static/js/powa.min-all.js
-include powa/static/js/config.js
-include powa/static/js/require.js
+recursive-include  powa/static/dist *
 include powa/powa.wsgi
 include powa-web.conf-dist
