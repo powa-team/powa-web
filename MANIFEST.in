@@ -1,9 +1,21 @@
-exclude powa/templates/
+# Exclude all dot files and dot directories
+exclude .*
+recursive-exclude .* *
+
+exclude vite.config.js
+exclude *.json
+
+recursive-exclude powa/static/js *
+recursive-exclude powa/static/styles *
 recursive-include powa/templates *.html
 recursive-include  powa/static/css *
 recursive-include  powa/static/img *
-include powa/static/js/powa.min-all.js
-include powa/static/js/config.js
-include powa/static/js/require.js
+recursive-include  powa/static/dist *
 include powa/powa.wsgi
 include powa-web.conf-dist
+include run_powa.py
+
+include *.md
+include *.txt
+include CHANGELOG
+include readme

@@ -27,3 +27,7 @@ jobs:
       run: |
         ruff check --output-format=github .
         ruff format --check
+
+    - name: Check manifest
+      run: |
+        check-manifest
