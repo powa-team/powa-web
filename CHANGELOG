@@ -1,3 +1,14 @@
+5.0.1:
+  New feature:
+    - Make the server field in login form required (Pierre Giraud)
+  Bug fixes:
+    - Fix alert messages (Pierre Giraud)
+    - Fix typo in WAL and pg_qualstats related queries (Pierre Giraud)
+    - Various SQL formatting improvements (Pierre Giraud)
+    - Fix postgres 13 and below compatibility (Julien Rouhaud)
+    - Include the missing generated assets in the release (Julien Rouhaud)
+    - Fix various packaging problems (Matthias Dötsch, Pierre Giraud, Julien
+      Rouhaud)
 5.0.0:
   New feature:
     - Complete rewrite of the UI using (currently) modern frameworks and
