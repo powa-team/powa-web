@@ -8,8 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint --ext .js,.vue --fix powa/static/",
-    "format": "prettier powa/static/js --check",
-    "prepare": "husky install"
+    "format": "prettier powa/static/js --check"
   },
   "devDependencies": {
     "@mdi/js": "^7.4.47",
@@ -20,7 +19,6 @@
     "eslint-config-prettier": "^8.10.0",
     "eslint-plugin-vue": "^9.26.0",
     "eslint-plugin-vuetify": "^2.4.0",
-    "husky": "^8.0.3",
     "prettier": "^2.8.8",
     "sass": "^1.77.6",
     "vite": "^5.4.6"
