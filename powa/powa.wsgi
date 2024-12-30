@@ -1,10 +1,11 @@
 #!/usr/bin/env python
-from powa import make_app
 import sys
 import tornado
+from powa import make_app
 
-if tornado.version > '4':
+if tornado.version > "4":
     from tornado.wsgi import WSGIAdapter
+
     application = make_app(debug=False, gzip=True, compress_response=True)
     application = WSGIAdapter(application)
 else:
@@ -12,8 +13,8 @@ else:
     # implement isatty for the log file, and certain versions
     # of tornado don't check for the existence of isatty
     if not hasattr(sys.stderr, "isatty"):
-        class StdErrWrapper(object):
 
+        class StdErrWrapper(object):
             def __init__(self, wrapped):
                 super(StdErrWrapper, self).__setattr__("wrapped", wrapped)
 
@@ -29,4 +30,6 @@ else:
                 return setattr(self.wrapped, att, value)
 
         sys.stderr = StdErrWrapper(sys.stderr)
-    application = make_app(debug=False, gzip=True, compress_response=True, legacy_wsgi=True)
+    application = make_app(
+        debug=False, gzip=True, compress_response=True, legacy_wsgi=True
+    )
