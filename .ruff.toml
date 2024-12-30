@@ -1,4 +1,5 @@
 line-length = 79
+extend-include = ["powa-web", "powa/powa.wsgi"]
 
 [lint]
 # Default `select` is: "E4", "E7", "E9", "F"
