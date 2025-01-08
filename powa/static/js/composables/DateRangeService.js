@@ -7,7 +7,7 @@ const defaultTo = "now";
 const rawTo = ref(defaultTo);
 
 const from = ref(dateMath.parse(defaultFrom));
-const to = ref(dateMath.parse(defaultTo), true);
+const to = ref(dateMath.parse(defaultTo, true));
 
 function getUrl(url) {
   const query = {};
@@ -27,7 +27,7 @@ export function useDateRangeService() {
 
   function refresh() {
     from.value = dateMath.parse(rawFrom.value);
-    to.value = dateMath.parse(rawTo.value);
+    to.value = dateMath.parse(rawTo.value, true);
   }
 
   return {
