@@ -176,7 +176,6 @@ provide("breadcrumbs", readonly(breadcrumbs));
 const dataSources = ref({});
 provide("dataSources", readonly(dataSources));
 const dashboardConfig = ref({});
-provide("dashboardConfig", readonly(dashboardConfig));
 const handlerConfig = ref({ homeUrl: "" });
 const changesUrl = ref(null);
 const changes = ref([]);
