@@ -554,7 +554,7 @@ def powa_base_waitdata_detailed_db():
       SELECT wsh.dbid, wsh.queryid, wsh.event_type, wsh.event,
         wsh.coalesce_range, unnest(records) AS records
       FROM {powa}.powa_wait_sampling_history wsh
-      WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
+      WHERE coalesce_range && tstzrange(%(from)s, %(from)s, '[]')
       AND wsh.dbid = powa_databases.oid
       -- we can't simply join powa_statements as there's no userid in
       -- powa_wait_sampling_* tables
