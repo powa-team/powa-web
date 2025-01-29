@@ -399,14 +399,14 @@ class DatabasePGSAOverview(MetricGroupDef):
     @property
     def query(self):
         query = powa_get_pgsa_sample(per_db=True)
-
+        # Those greatests are to avoid having negative values returned, see https://github.com/powa-team/powa-archivist/issues/98
         cols = [
             "extract(epoch FROM ts) AS ts",
-            "max(backend_xid_age) AS backend_xid_age",
-            "max(backend_xmin_age) AS backend_xmin_age",
-            "max(backend_start_age) FILTER (WHERE datid IS NOT NULL) AS oldest_backend",
-            "max(xact_start_age) FILTER (WHERE datid IS NOT NULL) AS oldest_xact",
-            "max(query_start_age) FILTER (WHERE datid IS NOT NULL) AS oldest_query",
+            "greatest(max(backend_xid_age),0) AS backend_xid_age",
+            "greatest(max(backend_xmin_age),0) AS backend_xmin_age",
+            "greatest(max(backend_start_age) FILTER (WHERE datid IS NOT NULL),0) AS oldest_backend",
+            "greatest(max(xact_start_age) FILTER (WHERE datid IS NOT NULL),0) AS oldest_xact",
+            "greatest(max(query_start_age) FILTER (WHERE datid IS NOT NULL AND state !~ 'idle'),0) AS oldest_query",
             "count(*) FILTER (WHERE state = 'idle') AS nb_idle",
             "count(*) FILTER (WHERE state = 'active') AS nb_active",
             "count(*) FILTER (WHERE state = 'idle in transaction') AS nb_idle_xact",
