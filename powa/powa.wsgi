@@ -14,9 +14,9 @@ else:
     # of tornado don't check for the existence of isatty
     if not hasattr(sys.stderr, "isatty"):
 
-        class StdErrWrapper(object):
+        class StdErrWrapper:
             def __init__(self, wrapped):
-                super(StdErrWrapper, self).__setattr__("wrapped", wrapped)
+                super().__setattr__("wrapped", wrapped)
 
             def isatty(self):
                 if hasattr(self.wrapped, "isatty"):

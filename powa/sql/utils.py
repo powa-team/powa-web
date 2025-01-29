@@ -30,14 +30,12 @@ def total_measure_interval(col):
 
 def diff(var, alias=None):
     alias = alias or var
-    return "max({var}) - min({var}) AS {alias}".format(var=var, alias=alias)
+    return f"max({var}) - min({var}) AS {alias}"
 
 
 def diffblk(var, blksize=8192, alias=None):
     alias = alias or var
-    return "(max({var}) - min({var})) * {blksize} AS {alias}".format(
-        var=var, blksize=blksize, alias=alias
-    )
+    return f"(max({var}) - min({var})) * {blksize} AS {alias}"
 
 
 def get_ts():
@@ -51,9 +49,7 @@ def sum_per_sec(col, prefix=None, alias=None):
     else:
         prefix = ""
 
-    return "sum({prefix}{col}) / {ts} AS {alias}".format(
-        prefix=prefix, col=col, ts=get_ts(), alias=alias
-    )
+    return f"sum({prefix}{col}) / {get_ts()} AS {alias}"
 
 
 def byte_per_sec(col, prefix=None, alias=None):
@@ -63,9 +59,7 @@ def byte_per_sec(col, prefix=None, alias=None):
     else:
         prefix = ""
 
-    return "sum({prefix}{col}) * block_size / {ts} AS {alias}".format(
-        prefix=prefix, col=col, ts=get_ts(), alias=alias
-    )
+    return f"sum({prefix}{col}) * block_size / {get_ts()} AS {alias}"
 
 
 def wps(col, do_sum=True):
@@ -73,18 +67,16 @@ def wps(col, do_sum=True):
     if do_sum:
         field = "sum(" + field + ")"
 
-    return "({field} / {ts}) AS {col}".format(
-        field=field, col=col, ts=get_ts()
-    )
+    return f"({field} / {get_ts()}) AS {col}"
 
 
 def to_epoch(col, prefix=None):
     if prefix is not None:
-        qn = "{prefix}.{col}".format(prefix=prefix, col=col)
+        qn = f"{prefix}.{col}"
     else:
         qn = col
 
-    return "extract(epoch FROM {qn}) AS {col}".format(qn=qn, col=col)
+    return f"extract(epoch FROM {qn}) AS {col}"
 
 
 def total_read(prefix, noalias=False):

@@ -44,7 +44,7 @@ def field(_, **kwargs):
     kwargs.setdefault("type", "text")
     kwargs.setdefault("class", "form-control")
     attrs = " ".join(
-        '%s="%s"' % (key, value)
+        f'{key}="{value}"'
         for key, value in kwargs.items()
         if key not in ("tag", "label")
     )
@@ -55,18 +55,15 @@ def field(_, **kwargs):
         Render the field itself.
         """
         kwargs["content"] = content.decode("utf8")
-        return (
-            """
+        return """
 <v-col cols="12">
-    <label>%(label)s:
-    <%(tag)s %(attrs)s>
-        %(content)s
-    </%(tag)s>
+    <label>{label}:
+    <{tag} {attrs}>
+        {content}
+    </{tag}>
     </label>
 </v-col>
-"""
-            % kwargs
-        )
+""".format(**kwargs)
 
     return render
 
@@ -134,7 +131,7 @@ def sanitycheck_messages(self):
 
     if rows is not None and len(rows) > 0:
         for r in rows:
-            messages["error"].append("%s: %s" % (r["alias"], r["error"]))
+            messages["error"].append("{}: {}".format(r["alias"], r["error"]))
         return messages
 
     return {}

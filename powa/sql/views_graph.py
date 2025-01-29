@@ -8,14 +8,12 @@ def wal_to_num(walname):
     Extracts the sequence number from the given WAL file name, similarly to
     pg_split_walfile_name().  It's assuming a 16MB wal_segment_size.
     """
-    return """(('x' || substr({walname}, 9, 8))::bit(32)::bigint
+    return f"""(('x' || substr({walname}, 9, 8))::bit(32)::bigint
  * '4294967296'::bigint / 16777216
- + ('x' || substr({walname}, 17, 8))::bit(32)::bigint)""".format(
-        walname=walname
-    )
+ + ('x' || substr({walname}, 17, 8))::bit(32)::bigint)"""
 
 
-class Biggest(object):
+class Biggest:
     def __init__(self, base_columns, order_by):
         if type(base_columns) is str:
             base_columns = [base_columns]
@@ -44,7 +42,7 @@ class Biggest(object):
         return sql
 
 
-class Biggestsum(object):
+class Biggestsum:
     def __init__(self, base_columns, order_by):
         if type(base_columns) is str:
             base_columns = [base_columns]
@@ -516,7 +514,7 @@ def BASE_QUERY_PGSA_SAMPLE(per_db=False):
         extra = ""
 
     # We use dense_rank() as we need ALL the records for a specific ts
-    return """
+    return f"""
     (SELECT pgsa_history.srvid,
       dense_rank() OVER (ORDER BY pgsa_history.ts) AS number,
       count(*) OVER () AS total,
@@ -548,7 +546,7 @@ def BASE_QUERY_PGSA_SAMPLE(per_db=False):
       {extra}
     ) AS pgsa
     WHERE number %% ( int8larger((total)/(%(samples)s+1),1) ) = 0
-""".format(extra=extra)
+"""
 
 
 BASE_QUERY_ARCHIVER_SAMPLE = """
@@ -651,7 +649,7 @@ def BASE_QUERY_DATABASE_SAMPLE(per_db=False):
     else:
         extra = ""
 
-    return """
+    return f"""
     (SELECT psd_history.srvid,
       row_number() OVER (ORDER BY psd_history.ts) AS number,
       count(*) OVER () AS total,
@@ -701,7 +699,7 @@ def BASE_QUERY_DATABASE_SAMPLE(per_db=False):
       GROUP BY psd_history.srvid, psd_history.ts
     ) AS psd
     WHERE number %% ( int8larger((total)/(%(samples)s+1),1) ) = 0
-""".format(extra=extra)
+"""
 
 
 def BASE_QUERY_DATABASE_CONFLICTS_SAMPLE(per_db=False):
@@ -712,7 +710,7 @@ def BASE_QUERY_DATABASE_CONFLICTS_SAMPLE(per_db=False):
     else:
         extra = ""
 
-    return """
+    return f"""
     (SELECT psdc_history.srvid,
       row_number() OVER (ORDER BY psdc_history.ts) AS number,
       count(*) OVER () AS total,
@@ -742,7 +740,7 @@ def BASE_QUERY_DATABASE_CONFLICTS_SAMPLE(per_db=False):
       GROUP BY psdc_history.srvid, psdc_history.ts
     ) AS psdc
     WHERE number %% ( int8larger((total)/(%(samples)s+1),1) ) = 0
-""".format(extra=extra)
+"""
 
 
 # We use dense_rank() as we need ALL the records for a specific ts.  Caller
@@ -911,7 +909,7 @@ def BASE_QUERY_SUBSCRIPTION_SAMPLE(subname=None):
 
     # We use dense_rank() as we need ALL the records for a specific ts.  Caller
     # will group the data as needed.
-    return """
+    return f"""
     (SELECT srvid,
       dense_rank() OVER (ORDER BY ts) AS number,
       count(*) OVER (PARTITION BY ts) AS num_per_window,
@@ -962,7 +960,7 @@ def BASE_QUERY_SUBSCRIPTION_SAMPLE(subname=None):
       ) AS subscription_history
     ) AS io
     WHERE number %% ( int8larger((total / num_per_window)/(%(samples)s+1),1) ) = 0
-""".format(extra=extra)
+"""
 
 
 BASE_QUERY_WAL_SAMPLE = """
@@ -1314,7 +1312,7 @@ def powa_get_pgsa_sample(per_db=False):
         ref = "cur_txid"
         alias = field + "_age"
 
-        return """CASE
+        return f"""CASE
         WHEN {ref}::text::bigint - {field}::text::bigint < -100000
           THEN ({ref}::text::bigint - 3) +
             ((4::bigint * 1024 * 1024 * 1024) - {field}::text::bigint)
@@ -1322,13 +1320,11 @@ def powa_get_pgsa_sample(per_db=False):
           THEN 0
         ELSE
           {ref}::text::bigint - {field}::text::bigint
-      END AS {alias}""".format(field=field, ref=ref, alias=alias)
+      END AS {alias}"""
 
     def ts_get_sec(field):
         alias = field + "_age"
-        return """extract(epoch FROM (ts - {f})) * 1000 AS {a}""".format(
-            f=field, a=alias
-        )
+        return f"""extract(epoch FROM (ts - {field})) * 1000 AS {alias}"""
 
     all_cols = base_columns + [
         "ts",
@@ -1530,7 +1526,7 @@ def powa_get_io_sample(qual=None):
     biggest = Biggest(base_columns, "ts")
 
     if qual is not None:
-        qual = " AND %s" % qual
+        qual = f" AND {qual}"
     else:
         qual = ""
 
@@ -1566,7 +1562,7 @@ def powa_get_slru_sample(qual=None):
     biggest = Biggest(base_columns, "ts")
 
     if qual is not None:
-        qual = " AND %s" % qual
+        qual = f" AND {qual}"
     else:
         qual = ""
 
