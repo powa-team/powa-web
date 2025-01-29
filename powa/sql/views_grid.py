@@ -46,12 +46,6 @@ def powa_base_statdata_detailed_db():
       FROM {powa}.powa_statements_history psh
       WHERE coalesce_range && tstzrange(%(from)s, %(from)s, '[]')
       AND psh.dbid = powa_databases.oid
-      AND psh.queryid IN (
-        SELECT powa_statements.queryid
-        FROM {powa}.powa_statements
-        WHERE powa_statements.dbid = powa_databases.oid
-          AND powa_statements.srvid = %(server)s
-      )
       AND psh.srvid = %(server)s
     ) AS unnested
     WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
@@ -70,12 +64,6 @@ def powa_base_statdata_detailed_db():
       FROM {powa}.powa_statements_history psh
       WHERE coalesce_range && tstzrange(%(to)s, %(to)s, '[]')
       AND psh.dbid = powa_databases.oid
-      AND psh.queryid IN (
-        SELECT powa_statements.queryid
-        FROM {powa}.powa_statements
-        WHERE powa_statements.dbid = powa_databases.oid
-          AND powa_statements.srvid = %(server)s
-      )
       AND psh.srvid = %(server)s
     ) AS unnested
     WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
@@ -95,12 +83,6 @@ def powa_base_statdata_detailed_db():
       FROM {powa}.powa_statements_history psh
       WHERE coalesce_range && tstzrange(%(from)s, %(to)s, '[]')
       AND psh.dbid = powa_databases.oid
-      AND psh.queryid IN (
-        SELECT powa_statements.queryid
-        FROM {powa}.powa_statements
-        WHERE powa_statements.dbid = powa_databases.oid
-          AND powa_statements.srvid = %(server)s
-      )
       AND psh.srvid = %(server)s
     ) AS unnested
     WHERE (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
@@ -112,12 +94,6 @@ def powa_base_statdata_detailed_db():
     FROM {powa}.powa_statements_history_current psc
     WHERE (record).ts <@ tstzrange(%(from)s,%(to)s,'[]')
     AND psc.dbid = powa_databases.oid
-    AND psc.queryid IN (
-      SELECT powa_statements.queryid
-      FROM {powa}.powa_statements
-      WHERE powa_statements.dbid = powa_databases.oid
-        AND powa_statements.srvid = %(server)s
-    )
     AND psc.srvid = %(server)s
   ) h"""
     return base_query
@@ -582,12 +558,6 @@ def powa_base_waitdata_detailed_db():
       AND wsh.dbid = powa_databases.oid
       -- we can't simply join powa_statements as there's no userid in
       -- powa_wait_sampling_* tables
-      AND wsh.queryid IN (
-        SELECT ps.queryid
-        FROM {powa}.powa_statements ps
-        WHERE ps.dbid = powa_databases.oid
-          AND ps.srvid = %(server)s
-      )
       AND wsh.srvid = %(server)s
     ) AS unnested
     WHERE  (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
@@ -608,12 +578,6 @@ def powa_base_waitdata_detailed_db():
       AND wsh.dbid = powa_databases.oid
       -- we can't simply join powa_statements as there's no userid in
       -- powa_wait_sampling_* tables
-      AND wsh.queryid IN (
-        SELECT ps.queryid
-        FROM {powa}.powa_statements ps
-        WHERE ps.dbid = powa_databases.oid
-          AND ps.srvid = %(server)s
-      )
       AND wsh.srvid = %(server)s
     ) AS unnested
     WHERE  (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
@@ -635,12 +599,6 @@ def powa_base_waitdata_detailed_db():
       AND wsh.dbid = powa_databases.oid
       -- we can't simply join powa_statements as there's no userid in
       -- powa_wait_sampling_* tables
-      AND wsh.queryid IN (
-        SELECT ps.queryid
-        FROM {powa}.powa_statements ps
-        WHERE ps.dbid = powa_databases.oid
-          AND ps.srvid = %(server)s
-      )
       AND wsh.srvid = %(server)s
     ) AS unnested
     WHERE  (records).ts <@ tstzrange(%(from)s, %(to)s, '[]')
@@ -654,12 +612,6 @@ def powa_base_waitdata_detailed_db():
     AND wsc.dbid = powa_databases.oid
     -- we can't simply join powa_statements as there's no userid in
     -- powa_wait_sampling_* tables
-    AND wsc.queryid IN (
-      SELECT ps.queryid
-      FROM {powa}.powa_statements ps
-      WHERE ps.dbid = powa_databases.oid
-        AND ps.srvid = %(server)s
-    )
     AND wsc.srvid = %(server)s
   ) h
   WHERE powa_databases.srvid = %(server)s
