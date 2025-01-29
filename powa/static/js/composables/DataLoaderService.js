@@ -1,20 +1,12 @@
-import { inject, onMounted, ref, watchEffect } from "vue";
+import { computed } from "vue";
+import { storeToRefs } from "pinia";
+import { useDashboardStore } from "@/stores/dashboard.js";
 
 export function useDataLoader(metric) {
-  const loading = ref(false);
-  const data = ref(undefined);
-  const dataSources = inject("dataSources");
+  const { dataSources } = storeToRefs(useDashboardStore());
+  const source = computed(() => dataSources.value[metric]);
+  const loading = computed(() => source.value.isFetching);
+  const data = computed(() => source.value.data);
 
-  onMounted(() => {
-    watchEffect(() => {
-      loading.value = true;
-      const sourceConfig = dataSources.value[metric];
-      sourceConfig.promise.then((response) => {
-        data.value = JSON.parse(response);
-        loading.value = false;
-      });
-    });
-  });
-
-  return { loading, data };
+  return { data, loading, source };
 }
