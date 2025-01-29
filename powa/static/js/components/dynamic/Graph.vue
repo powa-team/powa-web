@@ -183,8 +183,9 @@
 </template>
 
 <script setup>
-import { inject, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import _ from "lodash";
+import { storeToRefs } from "pinia";
 import {
   mdiAlert,
   mdiCancel,
@@ -192,13 +193,17 @@ import {
   mdiLinkVariant,
 } from "@mdi/js";
 /*import store from "@/store";*/
-import { useDateRangeService } from "@/composables/DateRangeService.js";
 import { useRoute, useRouter } from "vue-router";
 import * as d3 from "d3";
 import size from "@/utils/size";
 import { toISO } from "@/utils/dates";
 import { formatDuration } from "@/utils/duration";
 import { formatPercentage } from "@/utils/percentage";
+import { useDateRangeStore } from "@/stores/dateRange.js";
+import { useDashboardStore } from "@/stores/dashboard.js";
+import { useDataLoader } from "@/composables/DataLoaderService.js";
+
+const { changes } = storeToRefs(useDashboardStore());
 
 const props = defineProps({
   config: {
@@ -209,11 +214,9 @@ const props = defineProps({
   },
 });
 
-const { from, to } = useDateRangeService();
 const route = useRoute();
 const router = useRouter();
-const changes = inject("changes");
-const dataSources = inject("dataSources");
+const { from, to } = storeToRefs(useDateRangeStore());
 
 const loading = ref(false);
 const noData = ref(false);
@@ -257,8 +260,19 @@ let gb;
 let data = {};
 // The config changes data
 let changesData = {};
-// The source config for the given chart
-let sourceConfig;
+
+const metricGroup = _.uniq(
+  _.map(props.config.metrics, (metric) => {
+    return metric.split(".")[0];
+  })
+);
+if (metricGroup.length > 1) {
+  console.error(
+    "metrics from different datasources on a single widget are not supported"
+  );
+}
+// The data source for the given chart
+const { source, data: data_ } = useDataLoader(metricGroup);
 // Whether or not to use stack
 let stacked = false;
 // The stack generator if required
@@ -344,6 +358,7 @@ const valueFormats = {
 // Time formatter
 const timeFormat = d3.timeFormat("%Y-%m-%d %H:%M:%S");
 
+let unwatch;
 onMounted(async () => {
   // Await for next tick in case we're in a tab item
   await nextTick();
@@ -354,11 +369,14 @@ onMounted(async () => {
   chosenMetrics.value = metrics.value;
 
   initChart();
-
-  watch(
-    () => dataSources.value,
+  unwatch = watch(
+    () => [data_.value, changes.value],
     () => {
-      sourceConfig && loadData();
+      loading.value = true;
+      // make sure both data and changes are loaded before drawing the chart
+      if (data_.value && changes.value) {
+        loadData();
+      }
     },
     { immediate: true }
   );
@@ -367,6 +385,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener("resize", resize);
+  unwatch && unwatch();
 });
 
 function resize() {
@@ -393,20 +412,6 @@ function initChart() {
     .style("-webkit-tap-highlight-color", "transparent")
     .style("overflow", "visible")
     .attr("transform", `translate(0, ${margin.top})`);
-
-  const metricGroup = _.uniq(
-    _.map(props.config.metrics, (metric) => {
-      return metric.split(".")[0];
-    })
-  );
-  if (metricGroup.length > 1) {
-    console.error(
-      "metrics from different datasources on a single widget are not supported"
-    );
-    return;
-  }
-
-  sourceConfig = dataSources.value[metricGroup];
 
   stacked = props.config.stack;
 
@@ -440,7 +445,7 @@ function initChart() {
   // For each metric prepare the container for the line path
   let index = 0;
   _.each(metrics.value, (metric) => {
-    const type = sourceConfig.metrics[metric].type || "number";
+    const type = source.value.config.metrics[metric].type || "number";
     if (!_.has(yAxisByType, type)) {
       yAxisByType[type] = {
         metrics: [],
@@ -506,40 +511,35 @@ function initChart() {
 }
 
 function loadData() {
-  loading.value = true;
+  dataLoaded();
+  drawOrUpdateChart();
 
-  const promises = [sourceConfig.promise, changes.value];
-  Promise.all(promises).then((response) => {
-    data = JSON.parse(response[0]).data;
-    dataLoaded();
-    drawOrUpdateChart();
-
-    // make sure we group changes by ts in order to have one tooltip for each
-    // change date
-    const grouped = _.groupBy(_.cloneDeep(response[1].data), "ts");
-    _.forEach(grouped, (a, key) => {
-      if (_.uniq(_.map(a, "kind")).length > 1) {
-        console.error("Multiple 'kind' values for the same 'ts'");
-      }
-      grouped[key] = Object.assign(a[0], {
-        data: _.reduce(
-          a,
-          (result, n) => {
-            result.push(n.data);
-            return result;
-          },
-          []
-        ),
-      });
+  // make sure we group changes by ts in order to have one tooltip for each
+  // change date
+  const grouped = _.groupBy(_.cloneDeep(changes.value.data), "ts");
+  _.forEach(grouped, (a, key) => {
+    if (_.uniq(_.map(a, "kind")).length > 1) {
+      console.error("Multiple 'kind' values for the same 'ts'");
+    }
+    grouped[key] = Object.assign(a[0], {
+      data: _.reduce(
+        a,
+        (result, n) => {
+          result.push(n.data);
+          return result;
+        },
+        []
+      ),
     });
-
-    changesData = _.values(grouped);
-    changesLoaded();
-    loading.value = false;
   });
+
+  changesData = _.values(grouped);
+  changesLoaded();
+  loading.value = false;
 }
 
 function dataLoaded() {
+  data = data_.value.data;
   if (_.isEmpty(data)) {
     noData.value = true;
     return;
@@ -682,11 +682,11 @@ function drawOrUpdateChart() {
 }
 
 function getLabel(metric) {
-  return sourceConfig && sourceConfig.metrics[metric].label;
+  return source.value.config && source.value.config.metrics[metric].label;
 }
 
 function getDesc(metric) {
-  return sourceConfig && sourceConfig.metrics[metric].desc;
+  return source.value.config && source.value.config.metrics[metric].desc;
 }
 
 function pointermoved(event) {
@@ -707,7 +707,7 @@ function pointermoved(event) {
       return d[metric];
     });
     const Y2 = stack(data)[index];
-    const type = sourceConfig.metrics[metric].type || "number";
+    const type = source.value.config.metrics[metric].type || "number";
     content[metric] = valueFormats[type](Y[i]);
     markersData.push([
       metric,

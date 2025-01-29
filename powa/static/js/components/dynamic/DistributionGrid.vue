@@ -8,8 +8,10 @@
         <thead>
           <tr>
             <th>Value</th>
-            <th class="text-right">{{ sourceConfig.metrics[metric].label }}</th>
-            <th>% {{ sourceConfig.metrics[metric].label }}</th>
+            <th class="text-right">
+              {{ source.config.metrics[metric].label }}
+            </th>
+            <th>% {{ source.config.metrics[metric].label }}</th>
           </tr>
         </thead>
         <tbody>
@@ -36,7 +38,7 @@
 </template>
 
 <script setup>
-import { computed, inject, ref } from "vue";
+import { computed, ref } from "vue";
 import _ from "lodash";
 import { formatPercentage } from "@/utils/percentage";
 import { useDataLoader } from "@/composables/DataLoaderService.js";
@@ -56,10 +58,9 @@ const metricGroup = _.uniq(
     return metric.split(".")[0];
   })
 );
-const dataSources = inject("dataSources");
-const sourceConfig = dataSources.value[metricGroup];
 metric.value = props.config.metrics[0].split(".")[1];
-const { loading, data } = useDataLoader(metricGroup);
+// The data source for the given chart
+const { data, loading, source } = useDataLoader(metricGroup);
 
 const items = computed(() => {
   return data.value

@@ -128,16 +128,14 @@
 </template>
 
 <script setup>
-import { inject, nextTick, ref } from "vue";
+import { nextTick, ref } from "vue";
+import { storeToRefs } from "pinia";
 import * as d3 from "d3";
-import { encodeQueryData } from "@/utils/query";
 import _ from "lodash";
 import QueryTooltip from "@/components/QueryTooltip.vue";
 import { formatSql } from "@/utils/sql";
-import { useDateRangeService } from "@/composables/DateRangeService.js";
-
-const { from, to } = useDateRangeService();
-const dataSources = inject("dataSources");
+import { useDateRangeStore } from "@/stores/dateRange.js";
+import { useDataLoader } from "@/composables/DataLoaderService.js";
 
 // eslint-disable-next-line no-unused-vars
 const props = defineProps({
@@ -148,7 +146,9 @@ const props = defineProps({
     },
   },
 });
-const sourceConfig = dataSources.value[props.config.type];
+// The data source for the given chart
+const { source } = useDataLoader(props.config.type);
+const { from, to, urlSearchParams } = storeToRefs(useDateRangeStore());
 
 const optimized = ref(false);
 const progressLabel = ref("");
@@ -220,13 +220,13 @@ async function optimize() {
   indexCheckErrorItems.value = [];
   unoptimizableItems.value = [];
   await updateProgress("Fetching most executed quals…", 0);
-  const params = {
-    from: from.value.format("YYYY-MM-DD HH:mm:ssZZ"),
-    to: to.value.format("YYYY-MM-DD HH:mm:ssZZ"),
-  };
-  d3.json(sourceConfig.data_url + "?" + encodeQueryData(params)).then(
+  d3.json(`${source.value.config.data_url}?${urlSearchParams.value}`).then(
     async (response) => {
-      dataLoaded(response.data, params.from, params.to);
+      dataLoaded(
+        response.data,
+        urlSearchParams.value.from,
+        urlSearchParams.value.to
+      );
     }
   );
 }
