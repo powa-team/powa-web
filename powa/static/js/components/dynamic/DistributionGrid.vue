@@ -1,12 +1,5 @@
 <template>
   <v-card :loading="loading">
-    <template #progress>
-      <v-progress-linear
-        height="2"
-        indeterminate
-        style="position: absolute; z-index: 1"
-      ></v-progress-linear>
-    </template>
     <v-card-item class="bg-surface">
       <v-card-title class="pl-0">{{ config.title }}</v-card-title>
     </v-card-item>
