@@ -5,14 +5,6 @@
     border
     style="overflow: initial; z-index: initial"
   >
-    <template #loader="{ isActive }">
-      <v-progress-linear
-        height="2"
-        :active="isActive"
-        indeterminate
-        style="position: absolute; z-index: 1"
-      ></v-progress-linear>
-    </template>
     <v-card-item class="bg-surface">
       <v-card-title>
         {{ config.title }}
