@@ -73,12 +73,32 @@ export const useDashboardStore = defineStore("dashboard", () => {
         );
       }
 
+      function executeFn() {
+        source.isFetching = true;
+        source.controller = new AbortController();
+        fetch(`${source.config.data_url}?${urlSearchParams.value}`, {
+          signal: source.controller.signal,
+        })
+          .then((res) => res.json())
+          .then((json) => {
+            source.data = json;
+            addAlertMessages(json.messages);
+          })
+          .catch((err) => (source.error = err))
+          .finally(() => {
+            source.isFetching = false;
+          });
+        source.executed = true;
+      }
+
       const source = reactive({
         config,
         isFetching: true,
         data: null,
         error: null,
         controller: null,
+        executed: false,
+        execute: executeFn,
       });
       dataSources.value[config.name] = source;
     });
@@ -91,20 +111,7 @@ export const useDashboardStore = defineStore("dashboard", () => {
   function fetchDataSources() {
     cleanUpDataSources();
     _.each(dataSources.value, (source) => {
-      source.isFetching = true;
-      source.controller = new AbortController();
-      fetch(`${source.config.data_url}?${urlSearchParams.value}`, {
-        signal: source.controller.signal,
-      })
-        .then((res) => res.json())
-        .then((json) => {
-          source.data = json;
-          addAlertMessages(json.messages);
-        })
-        .catch((err) => (source.error = err))
-        .finally(() => {
-          source.isFetching = false;
-        });
+      source.executed && source.execute();
     });
   }
 
