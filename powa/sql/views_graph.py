@@ -546,6 +546,7 @@ def BASE_QUERY_PGSA_SAMPLE(per_db=False):
         AND pgsac.srvid = %(server)s
       ) AS pgsa_history
       {extra}
+      AND backend_type <> 'autovacuum worker'
     ) AS pgsa
     WHERE number %% ( int8larger((total)/(%(samples)s+1),1) ) = 0
 """.format(extra=extra)
