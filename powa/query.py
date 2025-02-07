@@ -76,8 +76,7 @@ class QueryOverviewMetricGroup(MetricGroupDef):
     local_blks_read = MetricDef(
         label="Local read",
         type="sizerate",
-        desc="Amount of local buffers found from OS"
-        " cache or read from disk",
+        desc="Amount of local buffers found from OS cache or read from disk",
     )
     local_blks_hit = MetricDef(
         label="Local hit",
@@ -432,16 +431,13 @@ class QueryOverviewMetricGroup(MetricGroupDef):
                 )
             )
             disk_hit_ratio = (
-                "sum(sub.reads) * 100 / "
-                "({total_blocks} * block_size)".format(
+                "sum(sub.reads) * 100 / ({total_blocks} * block_size)".format(
                     total_blocks=total_blocks
                 )
             )
             total_time = "greatest(sum(runtime), 1)"
             other_time = (
-                "sum(runtime) - (("
-                "(sum(user_time) + sum(system_time))"
-                ") * 1000)"
+                "sum(runtime) - (((sum(user_time) + sum(system_time))) * 1000)"
             )
 
             # Rusage can return values > real time due to sampling bias

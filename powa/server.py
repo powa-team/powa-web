@@ -495,10 +495,9 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
             kcache_query = kcache_getstatdata_sample("db")
 
             total_sys_hit = (
-                "{total_read} - sum(sub.reads)"
-                "/ {ts}"
-                " AS total_sys_hit"
-                "".format(total_read=total_read("sub", True), ts=get_ts())
+                "{total_read} - sum(sub.reads)/ {ts} AS total_sys_hit".format(
+                    total_read=total_read("sub", True), ts=get_ts()
+                )
             )
             total_disk_read = (
                 "sum(sub.reads) / " + get_ts() + " AS total_disk_read"
@@ -1068,8 +1067,7 @@ class GlobalSubMetricGroup(MetricGroupDef):
     apply_error_count = MetricDef(
         label="# apply error",
         type="number",
-        desc="Total number of times an error"
-        " occurred while applying changes",
+        desc="Total number of times an error occurred while applying changes",
     )
     sync_error_count = MetricDef(
         label="# sync error",
@@ -1239,8 +1237,7 @@ class GlobalWalReceiverMetricGroup(MetricGroupDef):
     flush_delta = MetricDef(
         label="Flush delta",
         type="size",
-        desc="Total amount of data received and written"
-        " but not flushed yet",
+        desc="Total amount of data received and written but not flushed yet",
     )
     last_msg_lag = MetricDef(
         label="Last message latency",
