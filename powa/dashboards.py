@@ -526,9 +526,11 @@ class Graph(Widget):
         url=None,
         axistype="time",
         metrics=None,
+        desc=None,
         **kwargs,
     ):
         self.title = title
+        self.desc = desc
         self.url = url
         self.grouper = grouper
         self.metrics = metrics or []

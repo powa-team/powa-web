@@ -639,6 +639,7 @@ class GlobalPGSAMetricGroup(MetricGroupDef):
 
     name = "pgsa"
     xaxis = "ts"
+    desc = "All backends, including autovacuum workers, are included"
     data_url = r"/server/(\d+)/metrics/pgsa/"
     backend_xid_age = MetricDef(label="Backend xid age")
     backend_xmin_age = MetricDef(label="Backend xmin age")
@@ -1864,7 +1865,11 @@ class ServerOverview(DashboardPage):
                 )
             )
         all_db_graphs[1].append(
-            Graph("Backend age (all databases)", metrics=pgsa_metrics[1])
+            Graph(
+                "Backend age (all databases)",
+                metrics=pgsa_metrics[1],
+                desc=GlobalPGSAMetricGroup.desc,
+            )
         )
 
         graphs_dash = [Dashboard("General Overview", all_db_graphs)]
