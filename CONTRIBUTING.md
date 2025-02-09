@@ -31,7 +31,7 @@ You can then do a syntax check and format check by running the following command
 
 ``` shell
 ruff check
-ruff format --check
+ruff format --check --diff
 ```
 
 ## Requirements

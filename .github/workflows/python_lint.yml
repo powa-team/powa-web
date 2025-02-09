@@ -26,7 +26,7 @@ jobs:
     - name: Python Ruff Lint and Format
       run: |
         ruff check --output-format=github .
-        ruff format --check
+        ruff format --check --diff
 
     - name: Check manifest
       run: |
