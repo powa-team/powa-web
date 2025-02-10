@@ -25,9 +25,9 @@
             ></v-icon>
           </template>
           <div>
-            <p v-if="config.desc">
+            <v-alert v-if="config.desc" class="ma-2 pa-3 ps-6">
               {{ config.desc }}
-            </p>
+            </v-alert>
             <dl>
               <div v-for="metric in chosenMetrics" :key="metric">
                 <dt>
