@@ -32,6 +32,7 @@ const opts = {
       dark: {
         dark: true,
         colors: {
+          "on-surface": "#ddd",
           primary: "#859145",
           mainbg: "#333333",
           tooltipbg: "#313131",
