@@ -510,7 +510,7 @@ BASE_QUERY_WAIT_SAMPLE = """(
 def BASE_QUERY_PGSA_SAMPLE(per_db=False):
     if per_db:
         extra = """JOIN {powa}.powa_catalog_databases d
-            ON d.oid = pgsa_history.datid
+            ON d.oid = pgsa_history.datid and d.srvid = pgsa_history.srvid
         WHERE d.datname = %(database)s"""
     else:
         extra = ""
@@ -646,7 +646,7 @@ BASE_QUERY_CHECKPOINTER_SAMPLE = """
 def BASE_QUERY_DATABASE_SAMPLE(per_db=False):
     if per_db:
         extra = """JOIN {powa}.powa_catalog_databases d
-            ON d.oid = psd_history.datid
+            ON d.oid = psd_history.datid and d.srvid = psd_history.srvid
         WHERE d.datname = %(database)s"""
     else:
         extra = ""
@@ -707,7 +707,7 @@ def BASE_QUERY_DATABASE_SAMPLE(per_db=False):
 def BASE_QUERY_DATABASE_CONFLICTS_SAMPLE(per_db=False):
     if per_db:
         extra = """JOIN {powa}.powa_catalog_databases d
-            ON d.oid = psd_history.datid
+            ON d.oid = psd_history.datid and d.srvid = psd_history.srvid
         WHERE d.datname = %(database)s"""
     else:
         extra = ""
