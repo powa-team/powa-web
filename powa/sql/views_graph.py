@@ -511,9 +511,10 @@ def BASE_QUERY_PGSA_SAMPLE(per_db=False):
     if per_db:
         extra = """JOIN {powa}.powa_catalog_databases d
             ON d.oid = pgsa_history.datid and d.srvid = pgsa_history.srvid
-        WHERE d.datname = %(database)s"""
+        WHERE d.datname = %(database)s
+      AND backend_type <> 'autovacuum worker'"""
     else:
-        extra = ""
+        extra = "WHERE backend_type <> 'autovacuum worker'"
 
     # We use dense_rank() as we need ALL the records for a specific ts
     return """
@@ -546,7 +547,6 @@ def BASE_QUERY_PGSA_SAMPLE(per_db=False):
         AND pgsac.srvid = %(server)s
       ) AS pgsa_history
       {extra}
-      AND backend_type <> 'autovacuum worker'
     ) AS pgsa
     WHERE number %% ( int8larger((total)/(%(samples)s+1),1) ) = 0
 """.format(extra=extra)
