@@ -517,9 +517,9 @@ def BASE_QUERY_PGSA_SAMPLE(per_db=False):
 
     # We use dense_rank() as we need ALL the records for a specific ts
     return """
+    (SELECT *,max(number) OVER () AS total FROM
     (SELECT pgsa_history.srvid,
       dense_rank() OVER (ORDER BY pgsa_history.ts) AS number,
-      count(*) OVER () AS total,
       ts,
       datid,
       cur_txid,
@@ -546,7 +546,7 @@ def BASE_QUERY_PGSA_SAMPLE(per_db=False):
         AND pgsac.srvid = %(server)s
       ) AS pgsa_history
       {extra}
-    ) AS pgsa
+    ) AS temp) AS pgsa
     WHERE number %% ( int8larger((total)/(%(samples)s+1),1) ) = 0
 """.format(extra=extra)
 
