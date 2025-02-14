@@ -938,8 +938,8 @@ def powa_getuserfuncdata_detailed_db(funcid=None):
         groupby.extend(["prosrc", "last_refresh"])
 
     if funcid:
-        join_db = """LEFT JOIN {powa}.powa_catalog_databases pcd
-            ON pcd.srvid = d.srvid AND pcd.oid = h.dbid"""
+        join_db = """INNER JOIN {powa}.powa_databases pd
+            ON pd.srvid = d.srvid AND pd.oid = h.dbid"""
         and_funcid = "AND funcid = {funcid}".format(funcid=funcid)
     else:
         join_db = ""
