@@ -19,9 +19,9 @@
         <v-tooltip location="bottom" content-class="elevation-2">
           <template #activator="{ props: tooltipProps }">
             <v-icon
-              class="pl-2 text--secondary"
+              class="pl-2"
               v-bind="tooltipProps"
-              :icon="mdiInformation"
+              :icon="mdiInformationOutline"
             ></v-icon>
           </template>
           <div>
@@ -193,7 +193,12 @@
 <script setup>
 import { inject, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import _ from "lodash";
-import { mdiAlert, mdiCancel, mdiInformation, mdiLinkVariant } from "@mdi/js";
+import {
+  mdiAlert,
+  mdiCancel,
+  mdiInformationOutline,
+  mdiLinkVariant,
+} from "@mdi/js";
 /*import store from "@/store";*/
 import { useDateRangeService } from "@/composables/DateRangeService.js";
 import { useRoute, useRouter } from "vue-router";
