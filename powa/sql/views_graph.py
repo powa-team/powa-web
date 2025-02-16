@@ -509,7 +509,7 @@ BASE_QUERY_WAIT_SAMPLE = """(
 # the highest transaction id is 2^32.
 def BASE_QUERY_PGSA_SAMPLE(per_db=False):
     if per_db:
-        extra = """JOIN {powa}.powa_catalog_databases d
+        extra = """JOIN {powa}.powa_databases d
             ON d.oid = pgsa_history.datid and d.srvid = pgsa_history.srvid
         WHERE d.datname = %(database)s"""
     else:
@@ -645,7 +645,7 @@ BASE_QUERY_CHECKPOINTER_SAMPLE = """
 
 def BASE_QUERY_DATABASE_SAMPLE(per_db=False):
     if per_db:
-        extra = """JOIN {powa}.powa_catalog_databases d
+        extra = """JOIN {powa}.powa_databases d
             ON d.oid = psd_history.datid and d.srvid = psd_history.srvid
         WHERE d.datname = %(database)s"""
     else:
@@ -706,7 +706,7 @@ def BASE_QUERY_DATABASE_SAMPLE(per_db=False):
 
 def BASE_QUERY_DATABASE_CONFLICTS_SAMPLE(per_db=False):
     if per_db:
-        extra = """JOIN {powa}.powa_catalog_databases d
+        extra = """JOIN {powa}.powa_databases d
             ON d.oid = psd_history.datid and d.srvid = psd_history.srvid
         WHERE d.datname = %(database)s"""
     else:
