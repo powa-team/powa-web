@@ -10,7 +10,7 @@
     <v-card-item class="bg-surface">
       <v-card-title class="pl-0">{{ config.title }}</v-card-title>
     </v-card-item>
-    <v-card-text v-if="errors !== undefined">
+    <v-card-text v-if="errors">
       <v-row>
         <v-col cols="12">
           <ul v-if="errors.length">

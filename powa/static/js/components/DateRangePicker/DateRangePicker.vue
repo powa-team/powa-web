@@ -153,11 +153,14 @@ import {
   mdiReload,
 } from "@mdi/js";
 import { toISO } from "@/utils/dates";
-import { useDateRangeService } from "@/composables/DateRangeService.js";
+import { useDateRangeStore } from "@/stores/dateRange.js";
+import { storeToRefs } from "pinia";
 import { useRoute, useRouter } from "vue-router";
 
 const menu = ref(false);
-const { from, to, rawFrom, rawTo, refresh } = useDateRangeService();
+
+const { from, to, rawFrom, rawTo } = storeToRefs(useDateRangeStore());
+const { refresh } = useDateRangeStore();
 
 // The values to display in the custom range from and to fields
 // we don't use raw values because we may want to pick/change from and

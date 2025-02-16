@@ -10,7 +10,7 @@
     <v-card-item class="bg-surface">
       <v-card-title class="pl-0">{{ config.title }}</v-card-title>
     </v-card-item>
-    <v-card-text v-if="data !== undefined">
+    <v-card-text>
       <template v-if="data">
         <v-row data-equalizer>
           <v-col cols="4" class="pt-8">

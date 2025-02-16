@@ -1,5 +1,12 @@
 <template>
   <v-app>
+    <v-progress-linear
+      :active="isFetching"
+      :indeterminate="isFetching"
+      absolute
+      :height="2"
+      style="z-index: 3"
+    ></v-progress-linear>
     <v-app-bar elevation="2" height="40" style="overflow: initial; z-index: 2">
       <v-btn
         :to="{ path: handlerConfig.homeUrl }"
@@ -78,7 +85,7 @@
       <template v-if="handlerConfig.currentUser" #extension>
         <bread-crumbs :bread-crumb-items="breadcrumbs"></bread-crumbs>
         <v-spacer></v-spacer>
-        <date-range-picker ml-auto @refresh="loadData"></date-range-picker>
+        <date-range-picker ml-auto></date-range-picker>
       </template>
     </v-app-bar>
     <v-main>
@@ -145,8 +152,9 @@
 </template>
 
 <script setup>
-import { onMounted, provide, readonly, ref, watch } from "vue";
+import { onMounted } from "vue";
 import { useTheme } from "vuetify";
+import { storeToRefs } from "pinia";
 import {
   mdiClose,
   mdiCog,
@@ -155,32 +163,22 @@ import {
   mdiWeatherNight,
   mdiWhiteBalanceSunny,
 } from "@mdi/js";
-import { useDateRangeService } from "@/composables/DateRangeService.js";
-import { useRoute } from "vue-router";
 import _ from "lodash";
 import * as d3 from "d3";
 import BreadCrumbs from "@/components/BreadCrumbs.vue";
 import DateRangePicker from "@/components/DateRangePicker/DateRangePicker.vue";
 import LoginView from "@/components/LoginView.vue";
-import { encodeQueryData } from "@/utils/query";
 import { useMessageService } from "@/composables/MessageService.js";
+import { useDashboardStore } from "@/stores/dashboard.js";
 
-const { alertMessages, addAlertMessage, addAlertMessages, removeAlertMessage } =
+const { breadcrumbs, dashboardConfig, handlerConfig, isFetching } = storeToRefs(
+  useDashboardStore()
+);
+
+const { alertMessages, addAlertMessage, removeAlertMessage } =
   useMessageService();
 
 const theme = useTheme();
-const { from, to, setFromTo } = useDateRangeService();
-const route = useRoute();
-const breadcrumbs = ref([]);
-provide("breadcrumbs", readonly(breadcrumbs));
-const dataSources = ref({});
-provide("dataSources", readonly(dataSources));
-const dashboardConfig = ref({});
-provide("dashboardConfig", readonly(dashboardConfig));
-const handlerConfig = ref({ homeUrl: "" });
-const changesUrl = ref(null);
-const changes = ref([]);
-provide("changes", readonly(changes));
 
 let servers;
 document.querySelectorAll('script[type="text/servers"]').forEach(function (el) {
@@ -309,75 +307,4 @@ function checkTheme() {
     localStorage.setItem("theme", "dark");
   }
 }
-
-function initDashboard() {
-  dashboardConfig.value = null;
-  // Load dahsboard config from same url but asking for JSON instead of HTML
-  d3.json(window.location.href, {
-    headers: {
-      "Content-type": "application/json",
-    },
-  }).then(configure);
-}
-
-function configure(config) {
-  document.title = config.dashboard.title;
-  dataSources.value = {};
-  dashboardConfig.value = config.dashboard;
-  handlerConfig.value = config.handler;
-  _.each(config.datasources, function (dataSource) {
-    try {
-      if (dataSource.type == "metric_group") {
-        dataSource.metrics = _.keyBy(dataSource.metrics, "name");
-      }
-    } catch (e) {
-      console.error(
-        "Could not instantiate metric group. Check the metric group definition"
-      );
-    }
-    dataSources.value[dataSource.name] = dataSource;
-  });
-  changesUrl.value = config.timeline;
-  breadcrumbs.value = config.breadcrumbs;
-  loadData();
-}
-
-function loadData() {
-  const params = {
-    from: from.value.format("YYYY-MM-DD HH:mm:ssZZ"),
-    to: to.value.format("YYYY-MM-DD HH:mm:ssZZ"),
-  };
-
-  const copy = Object.assign({}, dataSources.value);
-  _.forEach(copy, (source) => {
-    source.promise = d3.text(source.data_url + "?" + encodeQueryData(params));
-    source.promise.then((response) => {
-      try {
-        const data = JSON.parse(response);
-        if (data) {
-          addAlertMessages(data.messages);
-        }
-      } catch (error) {
-        // pass
-        // this may correspond to content widgets for example
-      }
-    });
-  });
-  dataSources.value = copy;
-  if (changesUrl.value) {
-    changes.value = d3.json(changesUrl.value + "?" + encodeQueryData(params));
-  }
-}
-
-watch(
-  () => route.params,
-  function (newVal, oldVal) {
-    setFromTo(route.query.from, route.query.to);
-    if (newVal.pathMatch != oldVal.pathMatch) {
-      initDashboard();
-    } else {
-      loadData();
-    }
-  }
-);
 </script>
