@@ -127,7 +127,7 @@
         </v-sheet>
       </v-menu>
     </v-btn>
-    <v-btn :disabled="!canReload" @click="reload">
+    <v-btn :disabled="!canReload" @click="refresh">
       <v-icon>
         {{ mdiReload }}
       </v-icon>
@@ -153,11 +153,14 @@ import {
   mdiReload,
 } from "@mdi/js";
 import { toISO } from "@/utils/dates";
-import { useDateRangeService } from "@/composables/DateRangeService.js";
+import { useDateRangeStore } from "@/stores/dateRange.js";
+import { storeToRefs } from "pinia";
 import { useRoute, useRouter } from "vue-router";
 
 const menu = ref(false);
-const { from, to, rawFrom, rawTo, refresh } = useDateRangeService();
+
+const { from, to, rawFrom, rawTo } = storeToRefs(useDateRangeStore());
+const { refresh } = useDateRangeStore();
 
 // The values to display in the custom range from and to fields
 // we don't use raw values because we may want to pick/change from and
@@ -174,9 +177,6 @@ const toDialog = ref(false);
 const form = ref(null);
 const valid = ref(true);
 
-const emit = defineEmits({
-  refresh: () => true,
-});
 const route = useRoute();
 const router = useRouter();
 
@@ -224,11 +224,6 @@ watchEffect(() => {
   inputTo.value = rawTo.value;
   synchronizeToPicker();
 });
-
-function reload() {
-  refresh();
-  emit("refresh");
-}
 
 function applyTimeRange() {
   menu.value = false;

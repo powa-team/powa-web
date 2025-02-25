@@ -10,7 +10,7 @@
     <v-card-item class="bg-surface">
       <v-card-title class="pl-0">{{ config.title }}</v-card-title>
     </v-card-item>
-    <v-card-text v-if="collector !== undefined">
+    <v-card-text v-if="collector">
       <v-row>
         <v-col>
           <template v-if="!collector">

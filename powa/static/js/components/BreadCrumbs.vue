@@ -30,7 +30,7 @@
 <script setup>
 import { toRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useDateRangeService } from "@/composables/DateRangeService.js";
+import { useDateRangeStore } from "@/stores/dateRange.js";
 const props = defineProps({
   breadCrumbItems: {
     type: Array,
@@ -43,7 +43,7 @@ const props = defineProps({
 const items = toRef(props, "breadCrumbItems");
 const router = useRouter();
 const route = useRoute();
-const { getUrl } = useDateRangeService();
+const { getUrl } = useDateRangeStore();
 
 function onSelect(url) {
   router.push(getUrl(url));

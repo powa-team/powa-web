@@ -4,6 +4,7 @@ import App from "@/App.vue";
 import dynamicComponents from "@/plugins/powa";
 import { createWebHistory, createRouter } from "vue-router";
 import { useMessageService } from "@/composables/MessageService";
+import { createPinia } from "pinia";
 
 import "@/../styles/main.scss";
 import "@/fonts/Roboto/roboto.css";
@@ -24,6 +25,7 @@ const routerPlugin = createRouter({
 });
 
 createApp(App)
+  .use(createPinia())
   .use(vuetify)
   .use(routerPlugin)
   .use(dynamicComponents)

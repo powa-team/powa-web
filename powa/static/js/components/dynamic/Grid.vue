@@ -1,13 +1,5 @@
 <template>
   <v-card :loading="loading">
-    <template #loader="{ isActive }">
-      <v-progress-linear
-        height="2"
-        :active="isActive"
-        indeterminate
-        style="position: absolute; z-index: 1"
-      ></v-progress-linear>
-    </template>
     <v-card-item class="bg-surface">
       <v-card-title>
         {{ config.title }}
@@ -81,8 +73,7 @@
 </template>
 
 <script setup>
-import { computed, inject, ref } from "vue";
-import { useDateRangeService } from "@/composables/DateRangeService.js";
+import { computed, ref } from "vue";
 import _ from "lodash";
 import size from "@/utils/size";
 import "highlight.js/styles/default.css";
@@ -90,6 +81,7 @@ import { mdiMagnify, mdiLinkVariant } from "@mdi/js";
 import { formatDuration } from "@/utils/duration";
 import { formatPercentage } from "@/utils/percentage";
 import GridCell from "@/components/GridCell.vue";
+import { useDateRangeStore } from "@/stores/dateRange.js";
 import { useDataLoader } from "@/composables/DataLoaderService.js";
 
 const props = defineProps({
@@ -106,25 +98,20 @@ const metricGroup = _.uniq(
     return metric.split(".")[0];
   })
 );
-const { loading, data: data } = useDataLoader(metricGroup);
+
+// The data source for the given chart
+const { getUrl } = useDateRangeStore();
+const { loading, source, data } = useDataLoader(metricGroup);
 const search = ref("");
-const { getUrl } = useDateRangeService();
-const dataSources = inject("dataSources");
 
 const fields = computed(() => {
-  const metricGroup = _.uniq(
-    _.map(props.config.metrics, (metric) => {
-      return metric.split(".")[0];
-    })
-  );
   const metrics = _.map(props.config.metrics, (metric) => {
     return metric.split(".")[1];
   });
-  const sourceConfig = dataSources.value[metricGroup];
 
   const columns = props.config.columns;
   _.each(metrics, function (metric) {
-    columns.push(Object.assign({}, sourceConfig.metrics[metric]));
+    columns.push(Object.assign({}, source.value.config.metrics[metric]));
   });
   _.each(columns, (c) => {
     Object.assign(c, {
