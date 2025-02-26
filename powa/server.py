@@ -639,7 +639,7 @@ class GlobalPGSAMetricGroup(MetricGroupDef):
 
     name = "pgsa"
     xaxis = "ts"
-    desc = "All backends, including autovacuum workers, are included"
+    desc = "All backends, excluding autovacuum workers, are included"
     data_url = r"/server/(\d+)/metrics/pgsa/"
     backend_xid_age = MetricDef(label="Backend xid age")
     backend_xmin_age = MetricDef(label="Backend xmin age")
@@ -1851,7 +1851,7 @@ class ServerOverview(DashboardPage):
         all_db_graphs.append(
             [
                 Graph(
-                    "Global activity (all databases)",
+                    "Global activity (all databases, except autovacuum)",
                     metrics=pgsa_metrics[0],
                     renderer="bar",
                     stack=True,
