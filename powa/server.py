@@ -1851,7 +1851,7 @@ class ServerOverview(DashboardPage):
         all_db_graphs.append(
             [
                 Graph(
-                    "Global activity (all databases)",
+                    "Global activity (all databases, except autovacuum)",
                     metrics=pgsa_metrics[0],
                     renderer="bar",
                     stack=True,

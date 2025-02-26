@@ -1082,7 +1082,7 @@ class DatabaseOverview(DashboardPage):
         db_graphs.append(
             [
                 Graph(
-                    "Global activity (On database %(database)s)",
+                    "Global activity (On database %(database)s, except autovacuum)",
                     metrics=pgsa_metrics[0],
                     renderer="bar",
                     stack=True,
