@@ -1853,7 +1853,7 @@ class ServerOverview(DashboardPage):
                 Graph(
                     "Global activity (all databases)",
                     metrics=pgsa_metrics[0],
-                    desc=desc=GlobalPGSAMetricGroup.desc,
+                    desc=GlobalPGSAMetricGroup.desc,
                     renderer="bar",
                     stack=True,
                 )
