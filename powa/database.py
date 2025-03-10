@@ -1084,6 +1084,7 @@ class DatabaseOverview(DashboardPage):
                 Graph(
                     "Global activity (On database %(database)s)",
                     metrics=pgsa_metrics[0],
+                    desc=DatabasePGSAOverview.desc,
                     renderer="bar",
                     stack=True,
                 )
