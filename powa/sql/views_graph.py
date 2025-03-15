@@ -539,11 +539,13 @@ def BASE_QUERY_PGSA_SAMPLE(per_db=False):
           AND pgsah.srvid = %(server)s
         ) AS unnested
         WHERE ts <@ tstzrange(%(from)s, %(to)s, '[]')
+        AND backend_type <> 'autovacuum worker'
         UNION ALL
         SELECT srvid, (record).*
         FROM {{powa}}.powa_stat_activity_history_current pgsac
         WHERE (pgsac.record).ts <@ tstzrange(%(from)s, %(to)s, '[]')
         AND pgsac.srvid = %(server)s
+        AND (record).backend_type <> 'autovacuum worker'
       ) AS pgsa_history
       {extra}
     ) AS pgsa
