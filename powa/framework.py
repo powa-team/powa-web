@@ -87,8 +87,11 @@ class CustomCursor(_cursor):
 
 
 def resolve_nsps(query, connection):
-    if hasattr(connection, "_nsps"):
-        return query.format(**connection._nsps)
+    try:
+        if hasattr(connection, "_nsps"):
+            return query.format(**connection._nsps)
+    except KeyError as e:
+        raise Exception("Extension not found: " + e.args[0])
 
     return query
 
@@ -254,7 +257,12 @@ class BaseHandler(RequestHandler, JSONizable):
             WHERE extname = 'powa'
             """,
             **kwargs,
-        )[0]["version"]
+        )
+
+        if len(version) == 0:
+            return None
+
+        version = version[0]["version"]
         if version is None:
             return None
         return [int(part) for part in version.split(".")]
