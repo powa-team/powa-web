@@ -13,14 +13,14 @@
               label="Password"
               type="password"
             ></v-text-field>
-            <v-select
+            <v-autocomplete
               name="server"
               label="Server"
               :items="servers"
               :rules="[rules.required]"
               :model-value="servers.length == 1 ? servers[0] : undefined"
             >
-            </v-select>
+            </v-autocomplete>
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
