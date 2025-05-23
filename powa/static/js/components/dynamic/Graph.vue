@@ -203,7 +203,7 @@ import { useDateRangeStore } from "@/stores/dateRange.js";
 import { useDashboardStore } from "@/stores/dashboard.js";
 import { useDataLoader } from "@/composables/DataLoaderService.js";
 
-const { changes } = storeToRefs(useDashboardStore());
+const { changes, cursorPosition } = storeToRefs(useDashboardStore());
 
 const props = defineProps({
   config: {
@@ -250,6 +250,8 @@ let series = [];
 let markers;
 // The SVG <g> containing the config changes markers
 let changesEl;
+// The SVG <g> in which we display the line showing cursor position
+let cursorLine;
 
 // The D3 brushX used for drag zoom
 let brush;
@@ -359,6 +361,7 @@ const valueFormats = {
 const timeFormat = d3.timeFormat("%Y-%m-%d %H:%M:%S");
 
 let unwatch;
+let unwatchCursorPosition;
 onMounted(async () => {
   // Await for next tick in case we're in a tab item
   await nextTick();
@@ -380,12 +383,20 @@ onMounted(async () => {
     },
     { immediate: true }
   );
+  unwatchCursorPosition = watch(cursorPosition, (date) => {
+    cursorLine
+      .selectAll("line")
+      .attr("display", _.isNil(date) ? "none" : "")
+      .attr("x1", xScale(date))
+      .attr("x2", xScale(date));
+  });
   window.addEventListener("resize", resize);
 });
 
 onUnmounted(() => {
   window.removeEventListener("resize", resize);
   unwatch && unwatch();
+  unwatchCursorPosition && unwatchCursorPosition();
 });
 
 function resize() {
@@ -441,6 +452,15 @@ function initChart() {
 
   // Create the group in which to show the circles on hover
   markers = svg.append("g").style("pointer-events", "none");
+
+  // Create the group in which to show the vertical line showing cursor position
+  cursorLine = svg.append("g").attr("class", "cursor-line");
+
+  cursorLine
+    .append("line")
+    .attr("display", "none")
+    .attr("y1", 0)
+    .attr("y2", height);
 
   // For each metric prepare the container for the line path
   let index = 0;
@@ -729,11 +749,14 @@ function pointermoved(event) {
     clientY: event.clientY,
     content: content,
   };
+
+  cursorPosition.value = X[i];
 }
 
 function pointerleft() {
   tooltip.value.content = null;
   markers.selectAll("circle").attr("display", "none");
+  cursorPosition.value = null;
 }
 
 function eventspointermoved(evt) {
@@ -873,6 +896,13 @@ svg.chart {
   shape-rendering: crispEdges;
   stroke: rgb(var(--v-theme-axisgridlinestroke));
   stroke-width: 1px;
+}
+
+.cursor-line line {
+  stroke: currentColor;
+  stroke-width: 1px;
+  stroke-dasharray: 4;
+  pointer-events: none;
 }
 
 .tick text.clone {
