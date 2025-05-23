@@ -18,6 +18,7 @@ export const useDashboardStore = defineStore("dashboard", () => {
   const changesUrl = ref(null);
   const changes = ref(null);
   const changesFetching = ref(false);
+  const cursorPosition = ref(null);
   let dashboardController;
   let changesController;
 
@@ -148,5 +149,6 @@ export const useDashboardStore = defineStore("dashboard", () => {
     dataSources,
     handlerConfig,
     isFetching,
+    cursorPosition,
   };
 });
