@@ -1,62 +1,56 @@
 {
-  "_d3-GY-Jf1db.js": {
-    "file": "assets/d3-GY-Jf1db.js",
+  "_d3-C1z745ZZ.js": {
+    "file": "assets/d3-C1z745ZZ.js",
     "name": "d3"
   },
-  "_highlight-CRyVn9mj.js": {
-    "file": "assets/highlight-CRyVn9mj.js",
-    "name": "highlight",
-    "imports": [
-      "_lodash-CmFMvF3r.js"
-    ]
+  "_highlight-YK6wctMS.js": {
+    "file": "assets/highlight-YK6wctMS.js",
+    "name": "highlight"
   },
-  "_lodash-CmFMvF3r.js": {
-    "file": "assets/lodash-CmFMvF3r.js",
+  "_lodash-BwctMegf.js": {
+    "file": "assets/lodash-BwctMegf.js",
     "name": "lodash"
   },
-  "_luxon-lqzArHOP.js": {
-    "file": "assets/luxon-lqzArHOP.js",
+  "_luxon-DQMALRfl.js": {
+    "file": "assets/luxon-DQMALRfl.js",
     "name": "luxon"
   },
   "_moment-C5S46NFB.js": {
     "file": "assets/moment-C5S46NFB.js",
     "name": "moment"
   },
-  "_sqltools-formatter-M1RRnKbr.js": {
-    "file": "assets/sqltools-formatter-M1RRnKbr.js",
-    "name": "sqltools-formatter",
-    "imports": [
-      "_lodash-CmFMvF3r.js"
-    ]
+  "_sqltools-formatter-DsERe3kC.js": {
+    "file": "assets/sqltools-formatter-DsERe3kC.js",
+    "name": "sqltools-formatter"
   },
-  "_vue-SrZHs5Ax.js": {
-    "file": "assets/vue-SrZHs5Ax.js",
+  "_vue-CwxuVOXE.js": {
+    "file": "assets/vue-CwxuVOXE.js",
     "name": "vue"
   },
-  "_vuetify-Bf0BnRvR.js": {
-    "file": "assets/vuetify-Bf0BnRvR.js",
+  "_vuetify-K_Anlx4M.js": {
+    "file": "assets/vuetify-K_Anlx4M.js",
     "name": "vuetify",
     "imports": [
-      "_vue-SrZHs5Ax.js"
+      "_vue-CwxuVOXE.js"
     ]
   },
   "powa/static/js/main.js": {
-    "file": "assets/main-BQBMx7EO.js",
+    "file": "assets/main-DINs4ZEY.js",
     "name": "main",
     "src": "powa/static/js/main.js",
     "isEntry": true,
     "imports": [
-      "_vue-SrZHs5Ax.js",
-      "_vuetify-Bf0BnRvR.js",
-      "_lodash-CmFMvF3r.js",
+      "_vue-CwxuVOXE.js",
+      "_vuetify-K_Anlx4M.js",
+      "_lodash-BwctMegf.js",
+      "_d3-C1z745ZZ.js",
       "_moment-C5S46NFB.js",
-      "_d3-GY-Jf1db.js",
-      "_luxon-lqzArHOP.js",
-      "_highlight-CRyVn9mj.js",
-      "_sqltools-formatter-M1RRnKbr.js"
+      "_luxon-DQMALRfl.js",
+      "_highlight-YK6wctMS.js",
+      "_sqltools-formatter-DsERe3kC.js"
     ],
     "css": [
-      "assets/main-OiFLL3TG.css"
+      "assets/main-D-n2EdIa.css"
     ]
   }
 }

@@ -1,3 +1,33 @@
+5.0.2:
+  New feature:
+    - Do not display autovacuum workers in the sessions graphs (Marc Cousin)
+    - Allow autocomplete for server name selector in login view (Pierre Giraud)
+    - Show and synchronize the cursor positions in all graphs (Pierre Giraud)
+  Bug fixes:
+    - Fix missing extension detection, including better error reporting if some
+      needed extensions are not installed on the repository server (Julien
+      Rouhaud, thanks to github user koppaline and Rafael Mundel whoc both
+      reported the issue)
+    - Fix pg_stat_activity widget that previously wasn't displaying enough rows
+      in some cases (Marc Cousin, Julien Rouhaud)
+    - Fix widget rendering that could display data from other pages in case
+      quickly changing pages using the browser back button (Pierre Giraud)
+    - Fix database name in widgets that could sometime be missing (Julien
+      Rouhaud)
+    - Fix multiple queries that didn't properly joined the server identifier,
+      leading to duplicated rows if the same queryid exists on multiple remote
+      servers, typically physical replicas (Marc Cousin)
+    - Fix oldest query widget, which didn't take into account idle connections
+      (Marc Cousin)
+    - Fix some date interval shortcuts like "yesterday" or "This month" (Pierre
+      Giraud)
+  Performance improvement
+    - Improve query for the pg_wait_sampling related widgets (Marc Cousin)
+  Misc
+    - Some UI improvements (Pierre Giraud)
+    - Improve widget documentation (Julien Rouhaud, Marc Cousin, Pierre Giraud)
+    - Update javascript dependencies (Julien Rouhaud)
+    - Remove some join (Marc Cousin)
 5.0.1:
   New feature:
     - Make the server field in login form required (Pierre Giraud)
