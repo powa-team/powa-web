@@ -1331,7 +1331,7 @@ def powa_get_pgsa_sample(per_db=False):
 
     def ts_get_sec(field):
         alias = field + "_age"
-        return """extract(epoch FROM (ts - {f})) * 1000 AS {a}""".format(
+        return """extract(epoch FROM (coalesce(clock_ts, ts) - {f})) * 1000 AS {a}""".format(
             f=field, a=alias
         )
 
