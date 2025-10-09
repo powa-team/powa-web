@@ -495,7 +495,7 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
             kcache_query = kcache_getstatdata_sample("db")
 
             total_sys_hit = (
-                "{total_read} - sum(sub.reads)/ {ts} AS total_sys_hit".format(
+                "greatest({total_read} - sum(sub.reads)/ {ts},0) AS total_sys_hit".format(
                     total_read=total_read("sub", True), ts=get_ts()
                 )
             )

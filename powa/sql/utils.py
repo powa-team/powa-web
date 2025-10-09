@@ -94,7 +94,7 @@ def total_read(prefix, noalias=False):
         alias = " AS total_blks_read"
 
     sql = (
-        "sum({prefix}.shared_blks_hit"
+        "sum({prefix}.shared_blks_read"
         + "+ {prefix}.local_blks_read"
         + "+ {prefix}.temp_blks_read"
         ") * block_size / {total_measure_interval}{alias}"
