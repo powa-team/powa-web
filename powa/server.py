@@ -494,10 +494,8 @@ class GlobalDatabasesMetricGroup(MetricGroupDef):
             # Add system metrics from pg_stat_kcache,
             kcache_query = kcache_getstatdata_sample("db")
 
-            total_sys_hit = (
-                "{total_read} - sum(sub.reads)/ {ts} AS total_sys_hit".format(
-                    total_read=total_read("sub", True), ts=get_ts()
-                )
+            total_sys_hit = "greatest({total_read} - sum(sub.reads)/ {ts},0) AS total_sys_hit".format(
+                total_read=total_read("sub", True), ts=get_ts()
             )
             total_disk_read = (
                 "sum(sub.reads) / " + get_ts() + " AS total_disk_read"

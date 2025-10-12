@@ -313,8 +313,8 @@ class DatabaseOverviewMetricGroup(MetricGroupDef):
             )
 
             total_sys_hit = (
-                "{total_read} - sum(sub.reads)"
-                "/ greatest(extract(epoch FROM sub.mesure_interval), 1)"
+                "greatest({total_read} - sum(sub.reads)"
+                "/ greatest(extract(epoch FROM sub.mesure_interval), 1),0)"
                 " AS total_sys_hit"
                 "".format(total_read=total_read("sub", True))
             )
