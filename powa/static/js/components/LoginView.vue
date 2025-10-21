@@ -14,13 +14,13 @@
               type="password"
             ></v-text-field>
             <v-autocomplete
-              name="server"
+              v-model="selectedServer"
               label="Server"
               :items="servers"
               :rules="[rules.required]"
-              :model-value="servers.length == 1 ? servers[0] : undefined"
             >
             </v-autocomplete>
+            <input type="hidden" name="server" :value="selectedServer" />
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
@@ -33,7 +33,9 @@
 </template>
 
 <script setup>
-defineProps({
+import { ref } from "vue";
+
+const props = defineProps({
   servers: {
     type: Array,
     default() {
@@ -45,4 +47,8 @@ defineProps({
 const rules = {
   required: (value) => !!value || "Field is required",
 };
+
+const selectedServer = ref(
+  props.servers.length == 1 ? props.servers[0] : undefined
+);
 </script>
