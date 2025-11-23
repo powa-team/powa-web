@@ -1,3 +1,12 @@
+5.1.0:
+  New feature:
+    - Improve pg_stat_activity graphs using the new clock_ts column (Julien
+      Rouhaud)
+  Bug fixes:
+    - Fix computation of the system cache (Marc Cousin)
+    - Fix default server value in login form (Pierre Giraud)
+  Misc:
+    - Bump various dependencies (Pierre Giraud, Julien Rouhaud)
 5.0.2:
   New feature:
     - Do not display autovacuum workers in the sessions graphs (Marc Cousin)
