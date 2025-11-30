@@ -1,3 +1,7 @@
+5.1.1:
+  Bug fixes:
+    - Fix pg_stat_activity widgets (Julien Rouhaud, thanks to github user
+      sthattepune for the report)
 5.1.0:
   New feature:
     - Improve pg_stat_activity graphs using the new clock_ts column (Julien
