@@ -523,6 +523,7 @@ def BASE_QUERY_PGSA_SAMPLE(per_db=False):
         SELECT pgsa_history.srvid,
           dense_rank() OVER (ORDER BY pgsa_history.ts) AS number,
           ts,
+          clock_ts,
           datid,
           cur_txid,
           backend_xid,
