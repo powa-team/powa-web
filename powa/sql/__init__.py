@@ -18,7 +18,7 @@ extract( epoch from
 def unprepare(sql):
     if sql.startswith("PREPARE"):
         sql = re.sub("PREPARE.*AS", "", sql)
-    sql = re.sub("\$\d+", "?", sql)
+    sql = re.sub(r"\$\d+", "?", sql)
     return sql
 
 
@@ -26,7 +26,7 @@ def format_jumbled_query(sql, params):
     sql = unprepare(sql)
     it = iter(params)
     try:
-        sql = re.sub("\?", lambda val: next(it), sql)
+        sql = re.sub(r"\?", lambda val: next(it), sql)
     except StopIteration:
         pass
     return sql
@@ -709,7 +709,7 @@ def get_hypoplans(cur, query, indexes=None):
         cur.execute("ROLLBACK TO hypo")
         raise e
 
-    COST_RE = "(?<=\.\.)\d+\.\d+"
+    COST_RE = r"(?<=\.\.)\d+\.\d+"
     m = re.search(COST_RE, baseplan)
     if m:
         basecost = float(m.group(0))

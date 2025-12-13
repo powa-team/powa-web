@@ -9,7 +9,7 @@ import re
 
 __VERSION__ = "5.1.1"
 
-ver_tmp = re.sub("(alpha|beta|dev)[0-9]*", "", __VERSION__)
+ver_tmp = re.sub(r"(alpha|beta|dev)[0-9]*", "", __VERSION__)
 __VERSION_NUM__ = [int(part) for part in (ver_tmp.split("."))]
 
 POWA_ROOT = os.path.dirname(__file__)
