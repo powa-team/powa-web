@@ -247,10 +247,17 @@ def resolve_quals(conn, quallist, attribute="quals"):
         )
         new_qual_list.append(newqual)
         values = [v for v in row[attribute] if v["relid"] != "0"]
+
         if not isinstance(values, list):
             values = [values]
+
         for v in values:
-            attname = attnames["{}.{}".format(v["relid"], v["attnum"])]
+            attname = attnames.get("{}.{}".format(v["relid"], v["attnum"]))
+
+            # The table might have been dropped since the snapshot
+            if attname is None:
+                continue
+
             if newqual.relname is not None:
                 if newqual.relname != attname["relname"]:
                     raise ValueError(
