@@ -234,6 +234,11 @@ def resolve_quals(conn, quallist, attribute="quals"):
         cur.execute(RESOLVE_ATTNAME, {"att_list": tuple(attname_to_look)})
         attnames = cur.fetchone()[0]
     new_qual_list = []
+
+    # nothing to do we couldn't resolve any attname
+    if attnames is None:
+        return new_qual_list
+
     for row in quallist:
         row = dict(row)
         newqual = ComposedQual(
