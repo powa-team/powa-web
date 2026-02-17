@@ -251,7 +251,7 @@ def resolve_quals(conn, quallist, attribute="quals"):
             queryids=row.get("queryids"),
         )
         new_qual_list.append(newqual)
-        values = [v for v in row[attribute] if v["relid"] != "0"]
+        values = [v for v in row[attribute] if v["relid"] != "0" and v["relid"] is not None]
 
         if not isinstance(values, list):
             values = [values]
