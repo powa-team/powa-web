@@ -1,53 +1,53 @@
 {
-  "_d3-C1z745ZZ.js": {
-    "file": "assets/d3-C1z745ZZ.js",
+  "_d3-DX_ntff7.js": {
+    "file": "assets/d3-DX_ntff7.js",
     "name": "d3"
   },
   "_highlight-YK6wctMS.js": {
     "file": "assets/highlight-YK6wctMS.js",
     "name": "highlight"
   },
-  "_lodash-BwctMegf.js": {
-    "file": "assets/lodash-BwctMegf.js",
+  "_lodash-sfYBK_qz.js": {
+    "file": "assets/lodash-sfYBK_qz.js",
     "name": "lodash"
   },
-  "_luxon-DQMALRfl.js": {
-    "file": "assets/luxon-DQMALRfl.js",
+  "_luxon-lqzArHOP.js": {
+    "file": "assets/luxon-lqzArHOP.js",
     "name": "luxon"
   },
   "_moment-C5S46NFB.js": {
     "file": "assets/moment-C5S46NFB.js",
     "name": "moment"
   },
-  "_sqltools-formatter-DsERe3kC.js": {
-    "file": "assets/sqltools-formatter-DsERe3kC.js",
+  "_sqltools-formatter-Cgtc27Sv.js": {
+    "file": "assets/sqltools-formatter-Cgtc27Sv.js",
     "name": "sqltools-formatter"
   },
-  "_vue-CwxuVOXE.js": {
-    "file": "assets/vue-CwxuVOXE.js",
+  "_vue-Di0OctBT.js": {
+    "file": "assets/vue-Di0OctBT.js",
     "name": "vue"
   },
-  "_vuetify-K_Anlx4M.js": {
-    "file": "assets/vuetify-K_Anlx4M.js",
+  "_vuetify-e1J-iNUR.js": {
+    "file": "assets/vuetify-e1J-iNUR.js",
     "name": "vuetify",
     "imports": [
-      "_vue-CwxuVOXE.js"
+      "_vue-Di0OctBT.js"
     ]
   },
   "powa/static/js/main.js": {
-    "file": "assets/main-BgNP5mCD.js",
+    "file": "assets/main-DqSxqAcL.js",
     "name": "main",
     "src": "powa/static/js/main.js",
     "isEntry": true,
     "imports": [
-      "_vue-CwxuVOXE.js",
-      "_vuetify-K_Anlx4M.js",
-      "_lodash-BwctMegf.js",
-      "_d3-C1z745ZZ.js",
+      "_vue-Di0OctBT.js",
+      "_vuetify-e1J-iNUR.js",
+      "_lodash-sfYBK_qz.js",
+      "_d3-DX_ntff7.js",
       "_moment-C5S46NFB.js",
-      "_luxon-DQMALRfl.js",
+      "_luxon-lqzArHOP.js",
       "_highlight-YK6wctMS.js",
-      "_sqltools-formatter-DsERe3kC.js"
+      "_sqltools-formatter-Cgtc27Sv.js"
     ],
     "css": [
       "assets/main-D-n2EdIa.css"
