@@ -756,6 +756,7 @@ class BaseHandler(RequestHandler, JSONizable):
             "configUrl": self.reverse_url("RepositoryConfigOverview"),
             "logoUrl": self.static_url("img/favicon/favicon-32x32.png"),
             "homeUrl": self.reverse_url("Overview"),
+            "urlPrefix": self.url_prefix,
         }
 
 

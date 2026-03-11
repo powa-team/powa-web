@@ -190,7 +190,7 @@ onMounted(() => {
 });
 
 function reloadCollector() {
-  d3.json("/reload_collector/").then(
+  d3.json(`${handlerConfig.value.urlPrefix}reload_collector/`).then(
     (response) => {
       if (response) {
         addAlertMessage("success", "Collector successfully reloaded!");
@@ -205,7 +205,7 @@ function reloadCollector() {
 }
 
 function forceSnapshot(srvid) {
-  d3.json("/force_snapshot/" + srvid).then(
+  d3.json(`${handlerConfig.value.urlPrefix}force_snapshot/` + srvid).then(
     (response) =>
       handleResponse(response, {
         success: "Forced snapshot requested. Status:",
@@ -229,7 +229,7 @@ function refreshDbCat(srvid, event) {
     dbnames.push(dbname);
   }
 
-  d3.json("/refresh_db_cat/", {
+  d3.json(`${handlerConfig.value.urlPrefix}refresh_db_cat/`, {
     body: JSON.stringify({ srvid: srvid, dbnames: dbnames }),
     headers: {
       "Content-type": "application/json; charset=UTF-8",

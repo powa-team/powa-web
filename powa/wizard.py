@@ -188,4 +188,5 @@ class Wizard(Widget):
         values["has_qualstats"] = qsver
         values["server"] = parms["server"]
         values["database"] = parms["database"]
+        values["url_prefix"] = handler.url_prefix
         return values
