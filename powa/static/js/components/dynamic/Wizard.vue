@@ -641,7 +641,7 @@ async function checkSolution() {
     to: to.value.format("YYYY-MM-DD HH:mm:ssZZ"),
   };
   d3.json(
-    `/server/${props.config.server}/database/${props.config.database}/suggest/`,
+    `${props.config.url_prefix}server/${props.config.server}/database/${props.config.database}/suggest/`,
     {
       method: "POST",
       body: JSON.stringify({
