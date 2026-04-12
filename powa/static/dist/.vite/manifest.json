@@ -7,8 +7,8 @@
     "file": "assets/highlight-YK6wctMS.js",
     "name": "highlight"
   },
-  "_lodash-sfYBK_qz.js": {
-    "file": "assets/lodash-sfYBK_qz.js",
+  "_lodash-Di7PnOaE.js": {
+    "file": "assets/lodash-Di7PnOaE.js",
     "name": "lodash"
   },
   "_luxon-lqzArHOP.js": {
@@ -35,14 +35,14 @@
     ]
   },
   "powa/static/js/main.js": {
-    "file": "assets/main-yFrilsyq.js",
+    "file": "assets/main-DWiIBT5O.js",
     "name": "main",
     "src": "powa/static/js/main.js",
     "isEntry": true,
     "imports": [
       "_vue-Di0OctBT.js",
       "_vuetify-e1J-iNUR.js",
-      "_lodash-sfYBK_qz.js",
+      "_lodash-Di7PnOaE.js",
       "_d3-DX_ntff7.js",
       "_moment-C5S46NFB.js",
       "_luxon-lqzArHOP.js",

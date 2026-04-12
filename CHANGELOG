@@ -1,3 +1,6 @@
+5.1.5:
+  Misc:
+    - Update javascript dependencies (Julien Rouhaud)
 5.1.4:
   Bug fixes:
     - use url_prefix in App.vue and Wizard.vue (Sylvere Richard)
