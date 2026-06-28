@@ -928,7 +928,7 @@ def BASE_QUERY_SUBSCRIPTION_SAMPLE(subname=None):
       latest_end_lsn,
       extract(epoch FROM ((ts - latest_end_time) * 1000)) AS report_lag,
       apply_error_count,
-      sync_error_count
+      sync_table_error_count
       FROM (
         SELECT *
         FROM (
@@ -1609,7 +1609,7 @@ def powa_get_subscription_sample(subname=None):
         biggest("last_msg_lag"),
         biggest("report_lag"),
         biggest("apply_error_count"),
-        biggest("sync_error_count"),
+        biggest("sync_table_error_count"),
     ]
 
     return """SELECT {all_cols}
