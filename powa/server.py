@@ -1068,11 +1068,11 @@ class GlobalSubMetricGroup(MetricGroupDef):
         type="number",
         desc="Total number of times an error occurred while applying changes",
     )
-    sync_error_count = MetricDef(
-        label="# sync error",
+    sync_table_error_count = MetricDef(
+        label="# table sync error",
         type="number",
         desc="Total number of times an error"
-        " occurred during the inital table"
+        " occurred during the initial table"
         " synchronization",
     )
 
@@ -1093,7 +1093,7 @@ class GlobalSubMetricGroup(MetricGroupDef):
             return {}
         elif pg_version_num < 150000:
             base.pop("apply_error_count")
-            base.pop("sync_error_count")
+            base.pop("sync_table_error_count")
 
         return base
 
@@ -1109,7 +1109,7 @@ class GlobalSubMetricGroup(MetricGroupDef):
             "max(last_msg_lag) AS last_msg_lag",
             "max(report_lag) AS report_lag",
             "sum(apply_error_count) AS apply_error_count",
-            "sum(sync_error_count) AS sync_error_count",
+            "sum(sync_table_error_count) AS sync_table_error_count",
         ]
 
         return """SELECT {cols}
