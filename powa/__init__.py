@@ -7,7 +7,7 @@ Powa main application.
 import os
 import re
 
-__VERSION__ = "5.1.5"
+__VERSION__ = "5.2.0"
 
 ver_tmp = re.sub(r"(alpha|beta|dev)[0-9]*", "", __VERSION__)
 __VERSION_NUM__ = [int(part) for part in (ver_tmp.split("."))]
