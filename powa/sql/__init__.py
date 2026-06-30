@@ -234,6 +234,11 @@ def resolve_quals(conn, quallist, attribute="quals"):
         cur.execute(RESOLVE_ATTNAME, {"att_list": tuple(attname_to_look)})
         attnames = cur.fetchone()[0]
     new_qual_list = []
+
+    # nothing to do we couldn't resolve any attname
+    if attnames is None:
+        return new_qual_list
+
     for row in quallist:
         row = dict(row)
         newqual = ComposedQual(
@@ -247,10 +252,17 @@ def resolve_quals(conn, quallist, attribute="quals"):
         )
         new_qual_list.append(newqual)
         values = [v for v in row[attribute] if v["relid"] != "0"]
+
         if not isinstance(values, list):
             values = [values]
+
         for v in values:
-            attname = attnames["{}.{}".format(v["relid"], v["attnum"])]
+            attname = attnames.get("{}.{}".format(v["relid"], v["attnum"]))
+
+            # The table might have been dropped since the snapshot
+            if attname is None:
+                continue
+
             if newqual.relname is not None:
                 if newqual.relname != attname["relname"]:
                     raise ValueError(
