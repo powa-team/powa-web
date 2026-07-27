@@ -25,16 +25,17 @@ export default defineConfig({
     rollupOptions: {
       input: "/powa/static/js/main.js",
       output: {
-        manualChunks: {
-          // Split external library from transpiled code.
-          d3: ["d3"],
-          lodash: ["lodash"],
-          vue: ["vue", "vue-router"],
-          vuetify: ["vuetify", "@mdi/js"],
-          luxon: ["luxon"],
-          highlight: ["highlight.js"],
-          moment: ["moment"],
-          "sqltools-formatter": ["@sqltools/formatter"],
+        codeSplitting: {
+          groups: [
+            { name: "d3", test: /node_modules\/d3/ },
+            { name: "lodash", test: /node_modules\/lodash/ },
+            { name: "vue", test: /node_modules\/(vue|vue-router)/ },
+            { name: "vuetify", test: /node_modules\/(vuetify|@mdi\/js)/ },
+            { name: "luxon", test: /node_modules\/luxon/ },
+            { name: "highlight", test: /node_modules\/highlight\.js/ },
+            { name: "moment", test: /node_modules\/moment/ },
+            { name: "sqltools-formatter", test: /node_modules\/@sqltools\/formatter/ },
+          ],
         },
       },
     },
