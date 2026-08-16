@@ -1,3 +1,7 @@
+5.3.0:
+  - Major version bump required due to pg_stat_lock.wait time datatype changed
+    in postgres 19beta2
+  - Update dependencies (Pierre Giraud, Julien Rouhaud)
 5.2.0:
   Bug fixes:
   - Fix pg19+ pg_stat_subscription_stats compatibility (Julien Rouhaud)
