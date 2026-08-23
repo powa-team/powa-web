@@ -1,3 +1,7 @@
+5.3.1:
+  Misc:
+    - Update ajv, brace-expansion and nanoid javascript dependencies (Julien
+      Rouhaud)
 5.3.0:
   - Major version bump required due to pg_stat_lock.wait time datatype changed
     in postgres 19beta2
