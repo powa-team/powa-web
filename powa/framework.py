@@ -590,13 +590,14 @@ class BaseHandler(RequestHandler, JSONizable):
     ):
         """
         Returns whether the version of the specific extension on the specific
-        server and database is at least the given version.
+        server and database is at least the given version.  If no database is
+        provided then the check is performed on the default database.
         """
         if version is None:
             raise Exception("No version provided!")
 
         remver = self.__get_extension_version(
-            srvid, extname, remote_access=remote_access
+            srvid, extname, remote_access=remote_access, database=database
         )
 
         if remver is None:
