@@ -272,7 +272,7 @@ async function dataLoaded(quals, from_date, to_date) {
     }
 
     await updateProgress(
-      `Building nodes for qual ${index} out of ${total_quals} quals…`,
+      `Building nodes for qual ${index} out of ${total_quals}…`,
       (10 + (10 * index) / total_quals).toFixed(2)
     );
     index++;
@@ -453,7 +453,7 @@ async function solve(nodes) {
   // use for (x of xs) here to make sure await works
   for (const node of remainingNodes) {
     await updateProgress(
-      `Building paths for node ${idx} out of ${nbNodes} nodes…`,
+      `Building paths for node ${idx} out of ${nbNodes}…`,
       30 + 10 * (idx / nbNodes).toFixed(2)
     );
 
@@ -483,7 +483,7 @@ async function solve(nodes) {
         const path = pair[1];
         if (_.some(path.nodes, (n) => n == node)) {
           await updateProgress(
-            `Optimizing ${idx} out of ${nbPaths} paths…`,
+            `Optimizing ${idx} out of ${nbPaths}…`,
             40 + 20 * (idx / nbPaths).toFixed(2)
           );
           idx++;
