@@ -417,30 +417,30 @@ function compareQuals(qual1, qual2) {
 
 async function solve(nodes) {
   let remainingNodes = nodes;
-  const pathes = {};
+  const paths = {};
   const makePathId = (nodes) => {
     return nodes.map((node) => node.id).join(",");
   };
-  function getPathes(node) {
+  function getPaths(node) {
     const mypath = {
       id: node.id,
       score: node.score,
       nodes: [node],
     };
-    const pathes = [];
+    const paths = [];
     _.each(node.contained, (contained) => {
-      _.each(getPathes(contained), (path) => {
+      _.each(getPaths(contained), (path) => {
         const currentPath = _.clone(path.nodes);
         currentPath.push(node);
-        pathes.push({
+        paths.push({
           nodes: currentPath,
           id: makePathId(currentPath),
           score: scorePath(nodes),
         });
       });
     });
-    pathes.push(mypath);
-    return pathes;
+    paths.push(mypath);
+    return paths;
   }
 
   // Compute score for each node.
@@ -453,22 +453,22 @@ async function solve(nodes) {
   // use for (x of xs) here to make sure await works
   for (const node of remainingNodes) {
     await updateProgress(
-      `Building pathes for node ${idx} out of ${nbNodes} nodes…`,
+      `Building paths for node ${idx} out of ${nbNodes} nodes…`,
       30 + 10 * (idx / nbNodes).toFixed(2)
     );
 
-    _.each(getPathes(node), function (path) {
-      pathes[path.id] = path;
+    _.each(getPaths(node), function (path) {
+      paths[path.id] = path;
     });
     idx++;
   }
   let safeguard = 0;
-  const nbPathes = _.keys(pathes).length;
+  const nbPaths = _.keys(paths).length;
   idx = 1;
-  while (_.values(pathes).length > 0 && safeguard < 10000) {
+  while (_.values(paths).length > 0 && safeguard < 10000) {
     safeguard++;
     /* Work with the remainging highest-scoring path */
-    const firstPath = _.maxBy(_.toPairs(pathes), (pair) => pair[1].score)[1];
+    const firstPath = _.maxBy(_.toPairs(paths), (pair) => pair[1].score)[1];
     /* Find attnum order */
     let attnums = [];
     let queryids = [];
@@ -478,16 +478,16 @@ async function solve(nodes) {
       const nodeAttnum = node.quals.map((qual) => qual.attnum);
       const newAttnums = _.difference(nodeAttnum, attnums);
       attnums = attnums.concat(newAttnums);
-      for (const pair of _.toPairs(pathes)) {
+      for (const pair of _.toPairs(paths)) {
         const pathid = pair[0];
         const path = pair[1];
         if (_.some(path.nodes, (n) => n == node)) {
           await updateProgress(
-            `Optimizing ${idx} out of ${nbPathes} pathes…`,
-            40 + 20 * (idx / nbPathes).toFixed(2)
+            `Optimizing ${idx} out of ${nbPaths} paths…`,
+            40 + 20 * (idx / nbPaths).toFixed(2)
           );
           idx++;
-          delete pathes[pathid];
+          delete paths[pathid];
         }
       }
       queryids = _.uniq(queryids.concat(node.queryids));
