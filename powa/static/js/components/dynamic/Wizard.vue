@@ -298,7 +298,7 @@ async function computeLinks(nodes) {
   for (let i = 0, nbNodes = nodes.length; i < nbNodes; i++) {
     firstNode = nodes[i];
     await updateProgress(
-      `Building links for node ${i + 1} out of ${nbNodes}`,
+      `Building links for node ${i + 1} out of ${nbNodes}…`,
       (20 + ((i + 1) / nbNodes) * 10).toFixed(2)
     );
     if (!firstNode.quals.some((qual) => _.keys(qual.amops).length > 0)) {
@@ -463,8 +463,8 @@ async function solve(nodes) {
     idx++;
   }
   let safeguard = 0;
-  let nbOptimized = 0;
   const nbPathes = _.keys(pathes).length;
+  idx = 1;
   while (_.values(pathes).length > 0 && safeguard < 10000) {
     safeguard++;
     /* Work with the remainging highest-scoring path */
@@ -472,10 +472,6 @@ async function solve(nodes) {
     /* Find attnum order */
     let attnums = [];
     let queryids = [];
-    await updateProgress(
-      `Optimizing ${nbOptimized} out of ${nbPathes} pathes…`,
-      40 + 20 * (nbOptimized / nbPathes).toFixed(2)
-    );
 
     // use for (x of xs) here to make sure await works
     for (const node of firstPath.nodes) {
@@ -486,14 +482,11 @@ async function solve(nodes) {
         const pathid = pair[0];
         const path = pair[1];
         if (_.some(path.nodes, (n) => n == node)) {
-          const pathToDel = pathes[pathid];
-          nbOptimized++;
-          if (pathToDel) {
-            await updateProgress(
-              `Optimizing ${nbOptimized} out of ${nbPathes} pathes…`,
-              40 + 20 * (nbOptimized / nbPathes).toFixed(2)
-            );
-          }
+          await updateProgress(
+            `Optimizing ${idx} out of ${nbPathes} pathes…`,
+            40 + 20 * (idx / nbPathes).toFixed(2)
+          );
+          idx++;
           delete pathes[pathid];
         }
       }
