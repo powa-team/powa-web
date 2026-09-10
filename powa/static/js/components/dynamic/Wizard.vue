@@ -26,11 +26,36 @@
               the documentation for more information
             </a>
           </div>
-          <div v-else>
-            <v-btn color="primary" class="mr-4" @click="optimize">
+          <div v-else class="d-flex">
+            <v-btn
+              v-if="!optimized && !optimizing"
+              color="primary"
+              class="mr-4"
+              @click="optimize"
+            >
               Optimize this database !
             </v-btn>
-            <span>{{ progressLabel }}</span>
+            <div class="d-inline-block">
+              <div v-for="step in progressSteps" :key="step">
+                <v-icon
+                  v-if="step.working"
+                  :icon="mdiLoading"
+                  class="text-warning spin"
+                />
+                <v-icon
+                  v-else-if="step.error"
+                  :icon="mdiAlertCircle"
+                  class="text-warning"
+                />
+                <v-icon v-else :icon="mdiCheck" class="text-success" />
+                {{ step.title }}
+                <span
+                  v-if="step.message"
+                  :class="step.error ? 'text-warning' : 'text-disabled'"
+                  >{{ step.message }}</span
+                >
+              </div>
+            </div>
           </div>
         </v-col>
       </v-row>
@@ -128,7 +153,7 @@
 </template>
 
 <script setup>
-import { nextTick, ref } from "vue";
+import { ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import * as d3 from "d3";
 import _ from "lodash";
@@ -136,6 +161,7 @@ import QueryTooltip from "@/components/QueryTooltip.vue";
 import { formatSql } from "@/utils/sql";
 import { useDateRangeStore } from "@/stores/dateRange.js";
 import { useDataLoader } from "@/composables/DataLoaderService.js";
+import { mdiAlertCircle, mdiCheck, mdiLoading } from "@mdi/js";
 
 // eslint-disable-next-line no-unused-vars
 const props = defineProps({
@@ -151,7 +177,8 @@ const { source } = useDataLoader(props.config.type);
 const { from, to, urlSearchParams } = storeToRefs(useDateRangeStore());
 
 const optimized = ref(false);
-const progressLabel = ref("");
+const optimizing = ref(false);
+const progressSteps = ref([]);
 const progress = ref(0);
 
 const indexHeaders = ref([
@@ -214,12 +241,21 @@ const unoptimizableHeaders = ref([
 ]);
 const unoptimizableItems = ref([]);
 
+watch(() => [from.value, to.value], reset);
+
+function reset() {
+  optimized.value = false;
+  optimizing.value = false;
+  progressSteps.value = [];
+}
+
 async function optimize() {
+  optimizing.value = true;
   indexItems.value = [];
   indexCheckItems.value = [];
   indexCheckErrorItems.value = [];
   unoptimizableItems.value = [];
-  await updateProgress("Fetching most executed quals…", 0);
+  addProgressStep("Fetching most executed quals");
   d3.json(`${source.value.config.data_url}?${urlSearchParams.value}`).then(
     async (response) => {
       dataLoaded(
@@ -234,11 +270,13 @@ async function optimize() {
 async function dataLoaded(quals, from_date, to_date) {
   const total_quals = _.size(quals);
   if (total_quals == 0) {
-    await updateProgress("No quals require optimization!", 100);
+    await endProgressStep("No qual require optimization!");
+    progress.value = 100;
     optimized.value = true;
     return;
   } else {
-    await updateProgress(`Building nodes for ${total_quals} quals…`, 0);
+    await endProgressStep(`(${total_quals})`);
+    addProgressStep(`Building nodes`);
   }
   const nodes = [];
   let index = 1;
@@ -271,13 +309,12 @@ async function dataLoaded(quals, from_date, to_date) {
       nodes.push(node);
     }
 
-    await updateProgress(
-      `Building nodes for qual ${index} out of ${total_quals}…`,
-      (10 + (10 * index) / total_quals).toFixed(2)
-    );
-    index++;
+    (progress.value = (10 + (10 * index) / total_quals).toFixed(2)), index++;
   }
+  await endProgressStep(`(${nodes.length})`);
+  addProgressStep(`Building links`, nodes.length);
   const result = await computeLinks(nodes);
+  await endProgressStep(`(${result[0].length})`);
   unoptimizableItems.value = result[1];
   await solve(result[0]);
   await checkSolution();
@@ -297,10 +334,7 @@ async function computeLinks(nodes) {
   let firstNode;
   for (let i = 0, nbNodes = nodes.length; i < nbNodes; i++) {
     firstNode = nodes[i];
-    await updateProgress(
-      `Building links for node ${i + 1} out of ${nbNodes}…`,
-      (20 + ((i + 1) / nbNodes) * 10).toFixed(2)
-    );
+    progress.value = (20 + ((i + 1) / nbNodes) * 10).toFixed(2);
     if (!firstNode.quals.some((qual) => _.keys(qual.amops).length > 0)) {
       nodesToTrash.push(firstNode);
       continue;
@@ -450,12 +484,10 @@ async function solve(nodes) {
 
   const nbNodes = nodes.length;
   let idx = 1;
+  addProgressStep(`Building paths`);
   // use for (x of xs) here to make sure await works
   for (const node of remainingNodes) {
-    await updateProgress(
-      `Building paths for node ${idx} out of ${nbNodes}…`,
-      30 + 10 * (idx / nbNodes).toFixed(2)
-    );
+    progress.value = 30 + 10 * (idx / nbNodes).toFixed(2);
 
     _.each(getPaths(node), function (path) {
       paths[path.id] = path;
@@ -464,7 +496,9 @@ async function solve(nodes) {
   }
   let safeguard = 0;
   const nbPaths = _.keys(paths).length;
+  await endProgressStep(`(${nbPaths})`);
   idx = 1;
+  addProgressStep(`Optimizing paths`);
   while (_.values(paths).length > 0 && safeguard < 10000) {
     safeguard++;
     /* Work with the remainging highest-scoring path */
@@ -482,10 +516,7 @@ async function solve(nodes) {
         const pathid = pair[0];
         const path = pair[1];
         if (_.some(path.nodes, (n) => n == node)) {
-          await updateProgress(
-            `Optimizing ${idx} out of ${nbPaths}…`,
-            40 + 20 * (idx / nbPaths).toFixed(2)
-          );
+          progress.value = 40 + 20 * (idx / nbPaths).toFixed(2);
           idx++;
           delete paths[pathid];
         }
@@ -506,6 +537,7 @@ async function solve(nodes) {
       stub: true,
     });
   }
+  await endProgressStep();
 }
 function scoreNode(node) {
   return _.uniq(node.quals.map((qual) => qual.attnum)).length;
@@ -608,16 +640,20 @@ function mergeNodes(node1, node2) {
 }
 
 async function checkSolution() {
+  addProgressStep("Checking solution with hypopg");
   if (!props.config.has_hypopg) {
-    await updateProgress("Install hypopg for solution validation", 100);
+    await endProgressStep("Hypopg is not installed", true);
+    progress.value = 100;
     return;
   }
 
   if (indexItems.value.length == 0) {
-    await updateProgress("No indexes to suggest!", 100);
+    await endProgressStep({
+      message: "No index to suggest!",
+    });
+    progress.value = 100;
     return;
   }
-  await updateProgress("Checking solution with hypopg...", 60);
   const indexes = [];
   let queryids = [];
   _.each(indexItems.value, (index) => {
@@ -660,17 +696,39 @@ async function checkSolution() {
         gain: stat.gain_percent,
       };
     });
-    await updateProgress("Done!", 100);
+    await endProgressStep();
+    progress.value = 100;
   });
 }
 
-async function updateProgress(text, value) {
-  progressLabel.value = text;
-  progress.value = value;
-  await nextTick();
+async function addProgressStep(text) {
+  progressSteps.value.push({
+    title: text,
+    working: true,
+  });
+}
+
+async function endProgressStep(message, error = false) {
+  const currentStep = progressSteps.value.at(-1);
+  await new Promise((r) => setTimeout(r, 300));
+  currentStep.message = message;
+  currentStep.error = error;
+  currentStep.working = false;
 }
 
 function getCellProps(data) {
   return { class: data.column.cellClass };
 }
 </script>
+
+<style scoped>
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>
