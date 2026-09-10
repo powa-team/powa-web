@@ -1,5 +1,5 @@
 <template>
-  <v-card>
+  <v-card ref="rootEl">
     <v-progress-linear
       :model-value="progress"
       height="2"
@@ -154,6 +154,7 @@
 
 <script setup>
 import { ref, watch } from "vue";
+import { useGoTo } from "vuetify";
 import { storeToRefs } from "pinia";
 import * as d3 from "d3";
 import _ from "lodash";
@@ -175,6 +176,9 @@ const props = defineProps({
 // The data source for the given chart
 const { source } = useDataLoader(props.config.type);
 const { from, to, urlSearchParams } = storeToRefs(useDateRangeStore());
+
+const goTo = useGoTo();
+const rootEl = ref(null);
 
 const optimized = ref(false);
 const optimizing = ref(false);
@@ -312,13 +316,13 @@ async function dataLoaded(quals, from_date, to_date) {
     (progress.value = (10 + (10 * index) / total_quals).toFixed(2)), index++;
   }
   await endProgressStep(`(${nodes.length})`);
-  addProgressStep(`Building links`, nodes.length);
+  addProgressStep(`Building links`);
   const result = await computeLinks(nodes);
   await endProgressStep(`(${result[0].length})`);
   unoptimizableItems.value = result[1];
   await solve(result[0]);
-  await checkSolution();
   optimized.value = true;
+  await checkSolution();
 }
 
 /* Compute the links between quals.
@@ -714,6 +718,9 @@ async function endProgressStep(message, error = false) {
   currentStep.message = message;
   currentStep.error = error;
   currentStep.working = false;
+  // Scroll the page to make it so the wizard is visible
+  // The offset corresponds to a bit more than the header's height
+  goTo(rootEl.value, { offset: -100 });
 }
 
 function getCellProps(data) {
