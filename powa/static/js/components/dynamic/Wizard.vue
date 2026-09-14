@@ -638,7 +638,7 @@ function trashQuals(node) {
 function mergeNodes(node1, node2) {
   node1.queries = _.uniq(node1.queries.concat(node2.queries));
   node1.queryids = _.uniq(node1.queryids.concat(node2.queryids));
-  const quals = _.union(node1.quals, node2.quals);
+  const quals = _.unionWith(node1.quals, node2.quals, _.isEqual);
   node1.quals = quals;
   qualUpdate(node1);
 }
