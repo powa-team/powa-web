@@ -122,16 +122,14 @@
             </v-data-table>
           </v-col>
         </v-row>
-        <v-row>
+        <v-row v-if="indexCheckItems.length > 0">
           <v-col>
             <v-data-table
-              v-if="indexCheckItems"
               :headers="indexCheckHeaders"
               :items="indexCheckItems"
               :cell-props="getCellProps"
               density="compact"
               class="superdense elevation-1"
-              no-data-text="No index validation done."
               items-per-page="-1"
             >
               <template #item.query="{ item }">
