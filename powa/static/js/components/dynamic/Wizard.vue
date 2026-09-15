@@ -350,11 +350,10 @@ async function computeLinks(nodes) {
         continue;
       }
 
-      nodesToTrash = _.uniq(
-        nodesToTrash.concat(makeLinks(firstNode, secondNode))
-      );
+      nodesToTrash = nodesToTrash.concat(makeLinks(firstNode, secondNode));
     }
   }
+  nodesToTrash = _.uniqWith(nodesToTrash, _.isEqual);
   _.each(nodes, function (nodeSource) {
     nodeSource.contained = _.difference(nodeSource.contained, nodesToTrash);
   });
