@@ -26,66 +26,70 @@
               the documentation for more information
             </a>
           </div>
-          <div v-else class="d-flex">
-            <v-btn
-              v-if="!optimized && !optimizing"
-              color="primary"
-              class="mr-4"
-              @click="optimize"
-            >
-              Optimize this database !
-            </v-btn>
-            <div class="d-inline-block">
-              <div v-for="step in progressSteps" :key="step">
-                <v-icon
-                  v-if="step.working"
-                  :icon="mdiLoading"
-                  class="text-warning spin"
-                />
-                <v-icon
-                  v-else-if="step.error"
-                  :icon="mdiAlertCircle"
-                  class="text-warning"
-                />
-                <v-icon v-else :icon="mdiCheck" class="text-success" />
-                {{ step.title }}
-                <span
-                  v-if="step.message"
-                  :class="step.error ? 'text-warning' : 'text-disabled'"
-                  >{{ step.message }}</span
-                >
+          <v-row v-else>
+            <v-col>
+              <v-btn
+                v-if="!optimized && !optimizing"
+                color="primary"
+                class="mr-4"
+                @click="optimize"
+              >
+                Optimize this database !
+              </v-btn>
+              <div class="d-inline-block">
+                <div v-for="step in progressSteps" :key="step">
+                  <v-icon
+                    v-if="step.working"
+                    :icon="mdiLoading"
+                    class="text-warning spin"
+                  />
+                  <v-icon
+                    v-else-if="step.error"
+                    :icon="mdiAlertCircle"
+                    class="text-warning"
+                  />
+                  <v-icon v-else :icon="mdiCheck" class="text-success" />
+                  {{ step.title }}
+                  <span
+                    v-if="step.message"
+                    :class="step.error ? 'text-warning' : 'text-disabled'"
+                    >{{ step.message }}</span
+                  >
+                </div>
               </div>
-            </div>
-          </div>
+            </v-col>
+            <v-col v-if="optimized">
+              <v-row v-if="unoptimizableItems.length == 0"
+                ><v-col
+                  ><v-alert
+                    color="success"
+                    icon="$success"
+                    variant="tonal"
+                    density="compact"
+                  >
+                    All quals are optimizable
+                  </v-alert>
+                </v-col>
+              </v-row>
+              <v-row v-if="!props.config.has_hypopg"
+                ><v-col
+                  ><v-alert
+                    color="warning"
+                    icon="$warning"
+                    variant="tonal"
+                    density="compact"
+                  >
+                    No index suggestion validation can be performed because
+                    <b>HypoPG is not installed</b>.
+                  </v-alert>
+                </v-col>
+              </v-row>
+            </v-col>
+          </v-row>
         </v-col>
       </v-row>
 
       <template v-if="optimized">
-        <v-row v-if="unoptimizableItems.length == 0"
-          ><v-col
-            ><v-alert
-              color="success"
-              icon="$success"
-              variant="tonal"
-              density="compact"
-            >
-              All quals are optimizable
-            </v-alert>
-          </v-col>
-        </v-row>
-        <v-row v-if="!props.config.has_hypopg"
-          ><v-col
-            ><v-alert
-              color="warning"
-              icon="$warning"
-              variant="tonal"
-              density="compact"
-            >
-              No index suggestion validation can be performed because
-              <b>HypoPG is not installed</b>.
-            </v-alert>
-          </v-col>
-        </v-row>
         <v-row>
           <v-col>
             <v-data-table
