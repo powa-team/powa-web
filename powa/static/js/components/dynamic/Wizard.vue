@@ -61,6 +61,18 @@
       </v-row>
 
       <template v-if="optimized">
+        <v-row v-if="unoptimizableItems.length == 0"
+          ><v-col
+            ><v-alert
+              color="success"
+              icon="$success"
+              variant="tonal"
+              density="compact"
+            >
+              All quals are optimizable
+            </v-alert>
+          </v-col>
+        </v-row>
         <v-row v-if="!props.config.has_hypopg"
           ><v-col
             ><v-alert
@@ -137,16 +149,14 @@
             </v-data-table>
           </v-col>
         </v-row>
-        <v-row>
+        <v-row v-if="unoptimizableItems.length > 0">
           <v-col>
             <v-data-table
-              v-if="unoptimizableItems"
               :headers="unoptimizableHeaders"
               :items="unoptimizableItems"
               :cell-props="getCellProps"
               density="compact"
               class="superdense elevation-1"
-              no-data-text="All quals could be optimized."
               items-per-page="-1"
             >
               <template #item.quals="{ item }">
