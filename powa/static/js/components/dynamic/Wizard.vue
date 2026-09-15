@@ -61,6 +61,19 @@
       </v-row>
 
       <template v-if="optimized">
+        <v-row v-if="!props.config.has_hypopg"
+          ><v-col
+            ><v-alert
+              color="warning"
+              icon="$warning"
+              variant="tonal"
+              density="compact"
+            >
+              No index suggestion validation can be performed because
+              <b>HypoPG is not installed</b>.
+            </v-alert>
+          </v-col>
+        </v-row>
         <v-row>
           <v-col>
             <v-data-table
