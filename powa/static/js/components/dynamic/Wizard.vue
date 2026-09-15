@@ -105,16 +105,14 @@
             </v-data-table>
           </v-col>
         </v-row>
-        <v-row>
+        <v-row v-if="indexCheckErrorItems.length > 0">
           <v-col>
             <v-data-table
-              v-if="indexCheckErrorItems"
               :headers="indexCheckErrorHeaders"
               :items="indexCheckErrorItems"
               :cell-props="getCellProps"
               density="compact"
               class="superdense elevation-1"
-              no-data-text="No hypothetical index creation error."
               items-per-page="-1"
             >
               <template #item.ddl="{ item }">
