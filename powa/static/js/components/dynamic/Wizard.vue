@@ -26,16 +26,40 @@
               the documentation for more information
             </a>
           </div>
-          <v-row v-else>
+          <v-row>
             <v-col>
-              <v-btn
-                v-if="!optimized && !optimizing"
-                color="primary"
-                class="mr-4"
-                @click="optimize"
+              <v-sheet
+                class="mx-auto pa-4 my-5 text-center"
+                max-width="400"
+                rounded="lg"
+                elevation="4"
               >
-                Optimize this database !
-              </v-btn>
+                <v-icon :icon="mdiAutoFix" size="50"></v-icon>
+
+                <h2 class="text-headline-small mt-0 mb-6">Index Suggestion</h2>
+
+                <p class="mb-4 text-medium-emphasis text-body-medium">
+                  PoWA can analyze executed quals to suggest indexes and verify
+                  what the gain would be.
+                </p>
+                <v-divider class="mb-4"></v-divider>
+                <div>
+                  <v-btn
+                    color="primary"
+                    class="mr-4"
+                    variant="flat"
+                    block
+                    :disabled="optimized || optimizing"
+                    @click="optimize"
+                  >
+                    Optimize this database !
+                  </v-btn>
+                </div>
+              </v-sheet>
+            </v-col>
+          </v-row>
+          <v-row v-if="optimized || optimizing">
+            <v-col>
               <div class="d-inline-block">
                 <div v-for="step in progressSteps" :key="step">
                   <v-icon
@@ -185,7 +209,7 @@ import QueryTooltip from "@/components/QueryTooltip.vue";
 import { formatSql } from "@/utils/sql";
 import { useDateRangeStore } from "@/stores/dateRange.js";
 import { useDataLoader } from "@/composables/DataLoaderService.js";
-import { mdiAlertCircle, mdiCheck, mdiLoading } from "@mdi/js";
+import { mdiAlertCircle, mdiAutoFix, mdiCheck, mdiLoading } from "@mdi/js";
 
 // eslint-disable-next-line no-unused-vars
 const props = defineProps({
