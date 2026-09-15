@@ -77,25 +77,6 @@
         <v-row>
           <v-col>
             <v-data-table
-              v-if="unoptimizableItems"
-              :headers="unoptimizableHeaders"
-              :items="unoptimizableItems"
-              :cell-props="getCellProps"
-              density="compact"
-              class="superdense elevation-1"
-              no-data-text="All quals could be optimized."
-              items-per-page="-1"
-            >
-              <template #item.quals="{ item }">
-                <div v-html="qualRepr(item)" />
-              </template>
-              <template #bottom></template>
-            </v-data-table>
-          </v-col>
-        </v-row>
-        <v-row>
-          <v-col>
-            <v-data-table
               v-if="indexItems"
               :headers="indexHeaders"
               :items="indexItems"
@@ -152,6 +133,25 @@
                 <b v-if="item.gain > 0" class="text-green">✓</b>
               </template>
               <template #item.gain="{ item }"> {{ item.gain }}% </template>
+              <template #bottom></template>
+            </v-data-table>
+          </v-col>
+        </v-row>
+        <v-row>
+          <v-col>
+            <v-data-table
+              v-if="unoptimizableItems"
+              :headers="unoptimizableHeaders"
+              :items="unoptimizableItems"
+              :cell-props="getCellProps"
+              density="compact"
+              class="superdense elevation-1"
+              no-data-text="All quals could be optimized."
+              items-per-page="-1"
+            >
+              <template #item.quals="{ item }">
+                <div v-html="qualRepr(item)" />
+              </template>
               <template #bottom></template>
             </v-data-table>
           </v-col>
