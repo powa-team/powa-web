@@ -128,12 +128,16 @@
           items-per-page="-1"
         >
           <template #item.query="{ item }">
-            <query-tooltip :value="item.query"></query-tooltip>
+            <router-link :key="item.key" :to="item.queryurl" exact-match>
+              <query-tooltip :value="item.query"></query-tooltip>
+            </router-link>
           </template>
           <template #item.used="{ item }">
-            <b v-if="item.gain > 0" class="text-green">✓</b>
+            <b v-if="item.gain_percent > 0" class="text-green">✓</b>
           </template>
-          <template #item.gain="{ item }"> {{ item.gain }}% </template>
+          <template #item.gain_percent="{ item }">
+            {{ item.gain_percent }}%
+          </template>
           <template #bottom></template>
         </v-data-table>
       </v-col>
@@ -231,7 +235,7 @@ const indexCheckHeaders = ref([
     align: "center",
   },
   {
-    value: "gain",
+    value: "gain_percent",
     title: "Gain",
     align: "end",
   },
@@ -694,11 +698,8 @@ async function checkSolution() {
         error: err,
       };
     });
-    indexCheckItems.value = _.map(data.plans, (stat) => {
-      return {
-        query: stat.query,
-        gain: stat.gain_percent,
-      };
+    indexCheckItems.value = _.map(data.plans, (stats, queryid) => {
+      return { ...stats, queryurl: data.queryurls[queryid] };
     });
     await endProgressStep();
     progress.value = 100;
