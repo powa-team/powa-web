@@ -7,7 +7,12 @@
       :height="2"
       style="z-index: 3"
     ></v-progress-linear>
-    <v-app-bar elevation="2" height="40" style="overflow: initial; z-index: 2">
+    <v-app-bar
+      elevation="2"
+      height="40"
+      style="overflow: initial; z-index: 2"
+      class="bg-surface-light"
+    >
       <v-btn
         :to="{ path: handlerConfig.homeUrl }"
         class="mr-2"

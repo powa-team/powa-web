@@ -1,6 +1,6 @@
 <template>
   <v-card :loading="loading">
-    <v-card-item class="bg-surface">
+    <v-card-item class="bg-surface-light mb-5">
       <v-card-title class="pl-0">{{ config.title }}</v-card-title>
     </v-card-item>
     <v-table density="compact" class="superdense">

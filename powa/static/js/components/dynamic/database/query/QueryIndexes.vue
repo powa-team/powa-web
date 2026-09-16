@@ -7,7 +7,7 @@
         style="position: absolute; z-index: 1"
       ></v-progress-linear>
     </template>
-    <v-card-item class="bg-surface">
+    <v-card-item class="bg-surface-light mb-5">
       <v-card-title class="pl-0">{{ config.title }}</v-card-title>
     </v-card-item>
     <v-card-text>
@@ -18,7 +18,7 @@
               <template v-for="(inds, clause) in data.indexes" :key="clause">
                 Possible indexes for attributes present in
                 <pre
-                  class="bg-surface sql"
+                  class="bg-surface-light mb-5 sql"
                 ><code v-html="formatSql(clause)"></code></pre>
                 <div v-for="(index, i) in inds" :key="i">
                   <v-list>

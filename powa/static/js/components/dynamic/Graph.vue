@@ -5,7 +5,7 @@
     border
     style="overflow: initial; z-index: initial"
   >
-    <v-card-item class="bg-surface">
+    <v-card-item class="bg-surface-light mb-5">
       <v-card-title>
         {{ config.title }}
         <v-tooltip location="bottom" content-class="elevation-2">

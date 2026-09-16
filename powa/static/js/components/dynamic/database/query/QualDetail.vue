@@ -7,7 +7,7 @@
         style="position: absolute; z-index: 1"
       ></v-progress-linear>
     </template>
-    <v-card-item class="bg-surface">
+    <v-card-item class="bg-surface-light mb-5">
       <v-card-title class="pl-0">{{ config.title }}</v-card-title>
     </v-card-item>
     <v-card-text v-if="qual !== undefined">

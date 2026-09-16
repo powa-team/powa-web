@@ -1,6 +1,6 @@
 <template>
   <v-card :loading="loading">
-    <v-card-item class="bg-surface">
+    <v-card-item class="bg-surface-light mb-5">
       <v-card-title>
         {{ config.title }}
         <a
