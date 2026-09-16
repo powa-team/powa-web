@@ -38,7 +38,7 @@ from powa.sql.views_grid import (
     powa_getuserfuncdata_detailed_db,
     powa_getwaitdata_detailed_db,
 )
-from powa.wizard import Wizard, WizardMetricGroup
+from powa.wizard import Wizard, WizardLink, WizardMetricGroup
 from tornado.web import HTTPError
 
 
@@ -1371,6 +1371,7 @@ class DatabaseOverview(DashboardPage):
         self._dashboard.widgets.extend(
             [
                 graphs,
+                [WizardLink],
                 [
                     Grid(
                         "Details for all queries",
@@ -1420,9 +1421,37 @@ class DatabaseOverview(DashboardPage):
                 ]
             )
 
-        self._dashboard.widgets.extend([[Wizard("Index suggestions")]])
         return self._dashboard
 
     @classmethod
     def breadcrum_title(cls, handler, param):
         return param["database"]
+
+
+class DatabaseOptimize(DashboardPage):
+    """Dashboard for database optimization suggestions."""
+
+    base_url = r"/server/(\d+)/database/([^\/]+)/optimize"
+    params = ["server", "database"]
+    datasources = [WizardMetricGroup]
+    parent = DatabaseOverview
+    title = "Index suggestion wizard"
+
+    def dashboard(self):
+        if getattr(self, "_dashboard", None) is not None:
+            return self._dashboard
+
+        self._dashboard = Dashboard(
+            "Optimize %(database)s",
+            [[Wizard("Index suggestions")]],
+        )
+        return self._dashboard
+
+    @classmethod
+    def get_breadcrumb(cls, handler, params):
+        # This page and its database-overview parent share the same URL
+        # parameters.  Do not drop ``database`` before building the parent's
+        # breadcrumb.
+        return [
+            cls.get_selfmenu(handler, params)
+        ] + DatabaseOverview.get_breadcrumb(handler, params)

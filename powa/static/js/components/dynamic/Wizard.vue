@@ -1,207 +1,169 @@
 <template>
-  <v-card ref="rootEl">
-    <v-progress-linear
-      :model-value="progress"
-      height="2"
-      style="position: absolute; z-index: 1"
-    ></v-progress-linear>
-    <v-card-item class="bg-surface-light mb-5">
-      <v-card-title class="pl-0">{{ config.title }}</v-card-title>
-    </v-card-item>
-    <v-card-text>
-      <v-row>
+  <h3 class="mb-3">
+    <v-icon :icon="mdiAutoFix" size="24" />{{ config.title }}
+  </h3>
+  <v-progress-linear
+    :model-value="progress"
+    height="2"
+    style="position: absolute; z-index: 1"
+  ></v-progress-linear>
+  <v-row>
+    <v-col>
+      <div v-if="!config.has_remote_conn">
+        Impossible to suggest indexes: impossible to connect to the remote
+        database.
+        <br />
+        <b>{{ config.conn_error }}</b>
+      </div>
+
+      <div v-else-if="!config.has_qualstats">
+        Impossible to suggest indexes: please enable support for pg_qualstats in
+        powa or update pg_qualstats extension to a newer version. See
+        <a href="http://powa.readthedocs.io">
+          the documentation for more information
+        </a>
+      </div>
+      <v-row v-if="optimized || optimizing">
         <v-col>
-          <div v-if="!config.has_remote_conn">
-            Impossible to suggest indexes: impossible to connect to the remote
-            database.
-            <br />
-            <b>{{ config.conn_error }}</b>
-          </div>
-
-          <div v-else-if="!config.has_qualstats">
-            Impossible to suggest indexes: please enable support for
-            pg_qualstats in powa or update pg_qualstats extension to a newer
-            version. See
-            <a href="http://powa.readthedocs.io">
-              the documentation for more information
-            </a>
-          </div>
-          <v-row>
-            <v-col>
-              <v-sheet
-                class="mx-auto pa-4 my-5 text-center"
-                max-width="400"
-                rounded="lg"
-                elevation="4"
+          <div class="d-inline-block">
+            <div v-for="step in progressSteps" :key="step">
+              <v-icon
+                v-if="step.working"
+                :icon="mdiLoading"
+                class="text-warning spin"
+              />
+              <v-icon
+                v-else-if="step.error"
+                :icon="mdiAlertCircle"
+                class="text-warning"
+              />
+              <v-icon v-else :icon="mdiCheck" class="text-success" />
+              {{ step.title }}
+              <span
+                v-if="step.message"
+                :class="step.error ? 'text-warning' : 'text-disabled'"
+                >{{ step.message }}</span
               >
-                <v-icon :icon="mdiAutoFix" size="50"></v-icon>
-
-                <h2 class="text-headline-small mt-0 mb-6">Index Suggestion</h2>
-
-                <p class="mb-4 text-medium-emphasis text-body-medium">
-                  PoWA can analyze executed quals to suggest indexes and verify
-                  what the gain would be.
-                </p>
-                <v-divider class="mb-4"></v-divider>
-                <div>
-                  <v-btn
-                    color="primary"
-                    class="mr-4"
-                    variant="flat"
-                    block
-                    :disabled="optimized || optimizing"
-                    @click="optimize"
-                  >
-                    Optimize this database !
-                  </v-btn>
-                </div>
-              </v-sheet>
+            </div>
+          </div>
+        </v-col>
+        <v-col v-if="optimized">
+          <v-row v-if="unoptimizableItems.length == 0"
+            ><v-col
+              ><v-alert
+                color="success"
+                icon="$success"
+                variant="tonal"
+                density="compact"
+              >
+                All quals are optimizable
+              </v-alert>
             </v-col>
           </v-row>
-          <v-row v-if="optimized || optimizing">
-            <v-col>
-              <div class="d-inline-block">
-                <div v-for="step in progressSteps" :key="step">
-                  <v-icon
-                    v-if="step.working"
-                    :icon="mdiLoading"
-                    class="text-warning spin"
-                  />
-                  <v-icon
-                    v-else-if="step.error"
-                    :icon="mdiAlertCircle"
-                    class="text-warning"
-                  />
-                  <v-icon v-else :icon="mdiCheck" class="text-success" />
-                  {{ step.title }}
-                  <span
-                    v-if="step.message"
-                    :class="step.error ? 'text-warning' : 'text-disabled'"
-                    >{{ step.message }}</span
-                  >
-                </div>
-              </div>
-            </v-col>
-            <v-col v-if="optimized">
-              <v-row v-if="unoptimizableItems.length == 0"
-                ><v-col
-                  ><v-alert
-                    color="success"
-                    icon="$success"
-                    variant="tonal"
-                    density="compact"
-                  >
-                    All quals are optimizable
-                  </v-alert>
-                </v-col>
-              </v-row>
-              <v-row v-if="!props.config.has_hypopg"
-                ><v-col
-                  ><v-alert
-                    color="warning"
-                    icon="$warning"
-                    variant="tonal"
-                    density="compact"
-                  >
-                    No index suggestion validation can be performed because
-                    <b>HypoPG is not installed</b>.
-                  </v-alert>
-                </v-col>
-              </v-row>
+          <v-row v-if="!props.config.has_hypopg"
+            ><v-col
+              ><v-alert
+                color="warning"
+                icon="$warning"
+                variant="tonal"
+                density="compact"
+              >
+                No index suggestion validation can be performed because
+                <b>HypoPG is not installed</b>.
+              </v-alert>
             </v-col>
           </v-row>
         </v-col>
       </v-row>
+    </v-col>
+  </v-row>
 
-      <template v-if="optimized">
-        <v-row>
-          <v-col>
-            <v-data-table
-              v-if="indexItems"
-              :headers="indexHeaders"
-              :items="indexItems"
-              :cell-props="getCellProps"
-              density="compact"
-              class="superdense elevation-1"
-              no-data-text="No qual to optimize !"
-              items-per-page="-1"
-            >
-              <template #item.ddl="{ item }">
-                <query-tooltip :value="indexDdl(item)"></query-tooltip>
-              </template>
-              <template #item.quals="{ item }">
-                <div v-html="qualRepr(item.node)" />
-              </template>
-              <template #item.nbqueries="{ item }">
-                {{ item.queryids.length }}
-              </template>
-              <template #bottom></template>
-            </v-data-table>
-          </v-col>
-        </v-row>
-        <v-row v-if="indexCheckErrorItems.length > 0">
-          <v-col>
-            <v-data-table
-              :headers="indexCheckErrorHeaders"
-              :items="indexCheckErrorItems"
-              :cell-props="getCellProps"
-              density="compact"
-              class="superdense elevation-1"
-              items-per-page="-1"
-            >
-              <template #item.ddl="{ item }">
-                <query-tooltip :value="item.ddl"></query-tooltip>
-              </template>
-              <template #bottom></template>
-            </v-data-table>
-          </v-col>
-        </v-row>
-        <v-row v-if="indexCheckItems.length > 0">
-          <v-col>
-            <v-data-table
-              :headers="indexCheckHeaders"
-              :items="indexCheckItems"
-              :cell-props="getCellProps"
-              density="compact"
-              class="superdense elevation-1"
-              items-per-page="-1"
-            >
-              <template #item.query="{ item }">
-                <query-tooltip :value="item.query"></query-tooltip>
-              </template>
-              <template #item.used="{ item }">
-                <b v-if="item.gain > 0" class="text-green">✓</b>
-              </template>
-              <template #item.gain="{ item }"> {{ item.gain }}% </template>
-              <template #bottom></template>
-            </v-data-table>
-          </v-col>
-        </v-row>
-        <v-row v-if="unoptimizableItems.length > 0">
-          <v-col>
-            <v-data-table
-              :headers="unoptimizableHeaders"
-              :items="unoptimizableItems"
-              :cell-props="getCellProps"
-              density="compact"
-              class="superdense elevation-1"
-              items-per-page="-1"
-            >
-              <template #item.quals="{ item }">
-                <div v-html="qualRepr(item)" />
-              </template>
-              <template #bottom></template>
-            </v-data-table>
-          </v-col>
-        </v-row>
-      </template>
-    </v-card-text>
-  </v-card>
+  <template v-if="optimized">
+    <v-row>
+      <v-col>
+        <v-data-table
+          v-if="indexItems"
+          :headers="indexHeaders"
+          :items="indexItems"
+          :cell-props="getCellProps"
+          density="compact"
+          class="superdense elevation-1"
+          no-data-text="No qual to optimize !"
+          items-per-page="-1"
+        >
+          <template #item.ddl="{ item }">
+            <query-tooltip :value="indexDdl(item)"></query-tooltip>
+          </template>
+          <template #item.quals="{ item }">
+            <div v-html="qualRepr(item.node)" />
+          </template>
+          <template #item.nbqueries="{ item }">
+            {{ item.queryids.length }}
+          </template>
+          <template #bottom></template>
+        </v-data-table>
+      </v-col>
+    </v-row>
+    <v-row v-if="indexCheckErrorItems.length > 0">
+      <v-col>
+        <v-data-table
+          :headers="indexCheckErrorHeaders"
+          :items="indexCheckErrorItems"
+          :cell-props="getCellProps"
+          density="compact"
+          class="superdense elevation-1"
+          items-per-page="-1"
+        >
+          <template #item.ddl="{ item }">
+            <query-tooltip :value="item.ddl"></query-tooltip>
+          </template>
+          <template #bottom></template>
+        </v-data-table>
+      </v-col>
+    </v-row>
+    <v-row v-if="indexCheckItems.length > 0">
+      <v-col>
+        <v-data-table
+          :headers="indexCheckHeaders"
+          :items="indexCheckItems"
+          :cell-props="getCellProps"
+          density="compact"
+          class="superdense elevation-1"
+          items-per-page="-1"
+        >
+          <template #item.query="{ item }">
+            <query-tooltip :value="item.query"></query-tooltip>
+          </template>
+          <template #item.used="{ item }">
+            <b v-if="item.gain > 0" class="text-green">✓</b>
+          </template>
+          <template #item.gain="{ item }"> {{ item.gain }}% </template>
+          <template #bottom></template>
+        </v-data-table>
+      </v-col>
+    </v-row>
+    <v-row v-if="unoptimizableItems.length > 0">
+      <v-col>
+        <v-data-table
+          :headers="unoptimizableHeaders"
+          :items="unoptimizableItems"
+          :cell-props="getCellProps"
+          density="compact"
+          class="superdense elevation-1"
+          items-per-page="-1"
+        >
+          <template #item.quals="{ item }">
+            <div v-html="qualRepr(item)" />
+          </template>
+          <template #bottom></template>
+        </v-data-table>
+      </v-col>
+    </v-row>
+  </template>
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
-import { useGoTo } from "vuetify";
+import { onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import * as d3 from "d3";
 import _ from "lodash";
@@ -223,9 +185,6 @@ const props = defineProps({
 // The data source for the given chart
 const { source } = useDataLoader(props.config.type);
 const { from, to, urlSearchParams } = storeToRefs(useDateRangeStore());
-
-const goTo = useGoTo();
-const rootEl = ref(null);
 
 const optimized = ref(false);
 const optimizing = ref(false);
@@ -298,6 +257,7 @@ function reset() {
   optimized.value = false;
   optimizing.value = false;
   progressSteps.value = [];
+  optimize();
 }
 
 async function optimize() {
@@ -317,6 +277,8 @@ async function optimize() {
     }
   );
 }
+
+onMounted(async () => await optimize());
 
 async function dataLoaded(quals, from_date, to_date) {
   const total_quals = _.size(quals);
@@ -764,9 +726,6 @@ async function endProgressStep(message, error = false) {
   currentStep.message = message;
   currentStep.error = error;
   currentStep.working = false;
-  // Scroll the page to make it so the wizard is visible
-  // The offset corresponds to a bit more than the header's height
-  goTo(rootEl.value, { offset: -100 });
 }
 
 function getCellProps(data) {
