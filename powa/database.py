@@ -4,7 +4,6 @@ Module containing the by-database dashboard.
 
 from powa.config import ConfigChangesDatabase
 from powa.dashboards import (
-    ContentWidget,
     Dashboard,
     DashboardPage,
     Graph,
@@ -990,15 +989,6 @@ class ByFuncUserFuncMetricGroup(MetricGroupDef):
             "FunctionOverview", val["srvid"], database, val["funcid"]
         )
         return val
-
-
-class WizardThisDatabase(ContentWidget):
-    title = "Apply wizardry to this database"
-
-    data_url = r"/server/(\d+)/database/([^\/]+)/wizardthisdatabase/"
-
-    def get(self, database):
-        self.render_json(dict(url=self.reverse_url("WizardPage", database)))
 
 
 class DatabaseOverview(DashboardPage):
