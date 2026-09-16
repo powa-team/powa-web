@@ -11,8 +11,8 @@
     </h3>
 
     <p class="mb-4 text-medium-emphasis text-body-medium">
-      PoWA can analyze executed quals to suggest indexes and verify what the
-      gain would be.
+      PoWA can detect <b>missing indexes</b>, make suggestions and evaluate the
+      potential improvement.
     </p>
     <div>
       <v-btn
