@@ -2,11 +2,6 @@
   <h3 class="mb-3">
     <v-icon :icon="mdiAutoFix" size="24" />{{ config.title }}
   </h3>
-  <v-progress-linear
-    :model-value="progress"
-    height="2"
-    style="position: absolute; z-index: 1"
-  ></v-progress-linear>
   <v-row>
     <v-col>
       <div v-if="!config.has_remote_conn">
@@ -48,7 +43,7 @@
           </div>
         </v-col>
         <v-col v-if="optimized">
-          <v-row v-if="unoptimizableItems.length == 0"
+          <v-row v-if="unoptimizableItems && unoptimizableItems.length == 0"
             ><v-col
               ><v-alert
                 color="success"
@@ -60,7 +55,8 @@
               </v-alert>
             </v-col>
           </v-row>
-          <v-row v-if="!props.config.has_hypopg"
+          <v-row
+            v-if="indexItems && indexItems.length && !props.config.has_hypopg"
             ><v-col
               ><v-alert
                 color="warning"
@@ -79,7 +75,7 @@
   </v-row>
 
   <template v-if="optimized">
-    <v-row>
+    <v-row v-if="indexItems">
       <v-col>
         <v-data-table
           v-if="indexItems"
@@ -104,7 +100,7 @@
         </v-data-table>
       </v-col>
     </v-row>
-    <v-row v-if="indexCheckErrorItems.length > 0">
+    <v-row v-if="indexCheckErrorItems && indexCheckErrorItems.length > 0">
       <v-col>
         <v-data-table
           :headers="indexCheckErrorHeaders"
@@ -121,7 +117,7 @@
         </v-data-table>
       </v-col>
     </v-row>
-    <v-row v-if="indexCheckItems.length > 0">
+    <v-row v-if="indexCheckItems && indexCheckItems.length > 0">
       <v-col>
         <v-data-table
           :headers="indexCheckHeaders"
@@ -142,7 +138,7 @@
         </v-data-table>
       </v-col>
     </v-row>
-    <v-row v-if="unoptimizableItems.length > 0">
+    <v-row v-if="unoptimizableItems && unoptimizableItems.length > 0">
       <v-col>
         <v-data-table
           :headers="unoptimizableHeaders"
@@ -208,7 +204,7 @@ const indexHeaders = ref([
     align: "end",
   },
 ]);
-const indexItems = ref([]);
+const indexItems = ref(null);
 
 const indexCheckErrorHeaders = ref([
   {
@@ -240,7 +236,7 @@ const indexCheckHeaders = ref([
     align: "end",
   },
 ]);
-const indexCheckItems = ref([]);
+const indexCheckItems = ref(null);
 
 const unoptimizableHeaders = ref([
   {
@@ -249,23 +245,18 @@ const unoptimizableHeaders = ref([
     cellClass: "query",
   },
 ]);
-const unoptimizableItems = ref([]);
+const unoptimizableItems = ref(null);
 
-watch(() => [from.value, to.value], reset);
+watch(() => [from.value, to.value], optimize);
 
-function reset() {
-  optimized.value = false;
-  optimizing.value = false;
+function optimize() {
   progressSteps.value = [];
-  optimize();
-}
-
-async function optimize() {
   optimizing.value = true;
   indexItems.value = [];
-  indexCheckItems.value = [];
-  indexCheckErrorItems.value = [];
-  unoptimizableItems.value = [];
+  indexCheckItems.value = null;
+  indexCheckErrorItems.value = null;
+  unoptimizableItems.value = null;
+  indexItems.value = null;
   addProgressStep("Fetching most executed quals");
   d3.json(`${source.value.config.data_url}?${urlSearchParams.value}`).then(
     async (response) => {
@@ -278,7 +269,7 @@ async function optimize() {
   );
 }
 
-onMounted(async () => await optimize());
+onMounted(optimize);
 
 async function dataLoaded(quals, from_date, to_date) {
   const total_quals = _.size(quals);
@@ -511,6 +502,7 @@ async function solve(nodes) {
   await endProgressStep(`(${nbPaths})`);
   idx = 1;
   addProgressStep(`Optimizing paths`);
+  indexItems.value = [];
   while (_.values(paths).length > 0 && safeguard < 10000) {
     safeguard++;
     /* Work with the remainging highest-scoring path */
@@ -722,7 +714,7 @@ async function addProgressStep(text) {
 
 async function endProgressStep(message, error = false) {
   const currentStep = progressSteps.value.at(-1);
-  await new Promise((r) => setTimeout(r, 300));
+  await new Promise((r) => setTimeout(r, 100));
   currentStep.message = message;
   currentStep.error = error;
   currentStep.working = false;
