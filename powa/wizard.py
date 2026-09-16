@@ -5,7 +5,7 @@ Global optimization widget
 from __future__ import absolute_import
 
 import json
-from powa.dashboards import MetricGroupDef, Widget
+from powa.dashboards import ContentWidget, MetricGroupDef, Widget
 from powa.framework import AuthHandler
 from powa.sql import (
     HypoIndex,
@@ -153,6 +153,13 @@ class WizardMetricGroup(MetricGroupDef):
         conn = self.connect(server, database=database, remote_access=True)
         data["data"] = resolve_quals(conn, data["data"])
         return data
+
+
+class WizardLink(ContentWidget):
+    title = "Index suggestions"
+
+    def get(self, server, database):
+        self.render_json()
 
 
 class Wizard(Widget):

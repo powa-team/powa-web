@@ -30,7 +30,7 @@ from powa.config import (
     RemoteConfigOverview,
     RepositoryConfigOverview,
 )
-from powa.database import DatabaseOverview, DatabaseSelector
+from powa.database import DatabaseOptimize, DatabaseOverview, DatabaseSelector
 from powa.framework import AuthHandler
 from powa.function import FunctionOverview
 from powa.io import (
@@ -102,6 +102,7 @@ def make_app(**kwargs):
         Overview,
         ServerOverview,
         DatabaseOverview,
+        DatabaseOptimize,
         QueryOverview,
         QualOverview,
         FunctionOverview,
