@@ -93,11 +93,18 @@ class IndexSuggestionHandler(AuthHandler):
                     except Exception:
                         # TODO: stop ignoring the error
                         continue
+
             # To value of a link is the the reduction in cost
         remote_cur.close()
         result = {}
         result["plans"] = hypoplans
         result["inderrors"] = inderrors
+        result["queryurls"] = {
+            row["queryid"]: self.reverse_url(
+                "QueryOverview", srvid, database, row["queryid"]
+            )
+            for row in queries
+        }
         self.render_json(result)
 
 
