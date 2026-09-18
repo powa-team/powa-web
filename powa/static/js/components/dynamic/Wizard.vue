@@ -146,20 +146,18 @@
                       <br />
                       <b>HypoPG is not installed</b>.
                     </v-col>
-                    <template v-else>
+                    <template
+                      v-else-if="indexCheckItems && indexCheckItems[key]"
+                    >
                       <v-col cols="5">
                         <span class="text-medium-emphasis">With values:</span>
                         <div
                           class="nowrap text-body-2 overflow-auto border pa-2 rounded"
                           style="max-height: 100px; max-width: 100%"
                         >
-                          <template
-                            v-if="indexCheckItems && indexCheckItems[key]"
-                          >
-                            <pre
-                              class="sql"
-                            ><code v-html="formatSql(indexCheckItems[key].query)" /></pre>
-                          </template>
+                          <pre
+                            class="sql"
+                          ><code v-html="formatSql(indexCheckItems[key].query)" /></pre>
                         </div>
                       </v-col>
                       <v-col class="align-self-center">
@@ -173,6 +171,18 @@
                         </template>
                       </v-col>
                     </template>
+                    <v-col
+                      v-else-if="
+                        indexCheckErrors && indexCheckErrors[indexDdl(item)]
+                      "
+                      class="d-flex justify-center align-center"
+                    >
+                      <span class="text-error"
+                        >An error happened while checking solution with HypoPG:
+                        <br />
+                        <b>{{ indexCheckErrors[indexDdl(item)] }}</b>
+                      </span>
+                    </v-col>
                   </v-row>
                   <router-link
                     :key="query"
@@ -192,23 +202,6 @@
             </v-list>
           </v-card-text>
         </v-card>
-      </v-col>
-    </v-row>
-    <v-row v-if="indexCheckErrorItems && indexCheckErrorItems.length > 0">
-      <v-col>
-        <v-data-table
-          :headers="indexCheckErrorHeaders"
-          :items="indexCheckErrorItems"
-          :cell-props="getCellProps"
-          density="compact"
-          class="superdense elevation-1"
-          items-per-page="-1"
-        >
-          <template #item.ddl="{ item }">
-            <query-tooltip :value="item.ddl"></query-tooltip>
-          </template>
-          <template #bottom></template>
-        </v-data-table>
       </v-col>
     </v-row>
     <v-row v-if="unoptimizableItems && unoptimizableItems.length > 0">
@@ -269,21 +262,9 @@ const progress = ref(0);
 
 const indexItems = ref(null);
 
-const indexCheckErrorHeaders = ref([
-  {
-    value: "ddl",
-    title: "Hypothetical index creation error",
-    cellClass: "query",
-  },
-  {
-    value: "error",
-    title: "Reason",
-  },
-]);
-const indexCheckErrorItems = ref([]);
-
 // Suggestions validated by HypoPG
 const indexCheckItems = ref(null);
+const indexCheckErrors = ref(null);
 
 const unoptimizableHeaders = ref([
   {
@@ -302,7 +283,7 @@ function optimize() {
   checking.value = true;
   indexItems.value = [];
   indexCheckItems.value = null;
-  indexCheckErrorItems.value = null;
+  indexCheckErrors.value = null;
   unoptimizableItems.value = null;
   indexItems.value = null;
   addProgressStep("Fetching most executed quals");
@@ -738,13 +719,8 @@ async function checkSolution() {
     }
   ).then(async (data) => {
     checking.value = false;
-    indexCheckErrorItems.value = _.map(data.inderrors, (err, ddl) => {
-      return {
-        ddl: ddl,
-        error: err,
-      };
-    });
     indexCheckItems.value = data.plans;
+    indexCheckErrors.value = data.inderrors;
     await endProgressStep();
     progress.value = 100;
   });
