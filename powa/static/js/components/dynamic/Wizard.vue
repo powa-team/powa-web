@@ -77,27 +77,121 @@
   <template v-if="optimized">
     <v-row v-if="indexItems">
       <v-col>
-        <v-data-table
-          v-if="indexItems"
-          :headers="indexHeaders"
-          :items="indexItems"
-          :cell-props="getCellProps"
-          density="compact"
-          class="superdense elevation-1"
-          no-data-text="No qual to optimize !"
-          items-per-page="-1"
+        <v-badge
+          location="right center"
+          :offset-x="-20"
+          :content="indexItems.length"
         >
-          <template #item.ddl="{ item }">
-            <query-tooltip :value="indexDdl(item)"></query-tooltip>
-          </template>
-          <template #item.quals="{ item }">
-            <div v-html="qualRepr(item.node)" />
-          </template>
-          <template #item.nbqueries="{ item }">
-            {{ item.queryids.length }}
-          </template>
-          <template #bottom></template>
-        </v-data-table>
+          <h3>Suggested Indexes</h3>
+        </v-badge>
+        <v-card
+          v-for="item in indexItems"
+          :key="item"
+          border
+          rounded
+          elevation="3"
+          class="mb-6"
+        >
+          <v-card-item class="bg-surface-light mb-4">
+            <v-card-title>
+              <pre class="sql"><code v-html="formatSql(indexDdl(item))" /></pre>
+            </v-card-title>
+          </v-card-item>
+          <v-card-text>
+            <div class="text-medium-emphasis">
+              <v-icon :icon="mdiCheck" class="text-success mr-2"></v-icon>
+              <b>{{ 1 + item.node.contained.length }}</b> predicates that would
+              use this index
+            </div>
+            <div class="text-body-2 ml-6 mt-2" v-html="qualRepr(item.node)" />
+            <v-divider class="my-6" thickness="2"></v-divider>
+            <div class="text-medium-emphasis">
+              <v-icon :icon="mdiCheck" class="text-success mr-2"></v-icon
+              ><b>{{ Object.keys(item.queries).length }}</b> queries would
+              benefit from this index
+            </div>
+            <v-list class="ml-6">
+              <template
+                v-for="([key, query], index) in Object.entries(item.queries)"
+                :key="query"
+              >
+                <v-list-item class="pl-0">
+                  <v-row>
+                    <v-col cols="5">
+                      <span class="text-medium-emphasis">Normalized:</span>
+                      <div
+                        class="nowrap text-body-2 overflow-auto pa-2 mb-2 rounded border"
+                        style="max-height: 100px; max-width: 100%"
+                      >
+                        <pre
+                          class="sql"
+                        ><code v-html="formatSql(query.query)" /></pre>
+                      </div>
+                    </v-col>
+                    <v-col
+                      v-if="checking"
+                      class="d-flex justify-center align-center"
+                    >
+                      <v-icon
+                        :icon="mdiLoading"
+                        class="text-warning spin mr-3"
+                      />
+                      Checking solution wih HypoPG
+                    </v-col>
+                    <v-col
+                      v-else-if="!props.config.has_hypopg"
+                      class="text-medium-emphasis text-warning text-center align-self-center"
+                    >
+                      Could not check solution.
+                      <br />
+                      <b>HypoPG is not installed</b>.
+                    </v-col>
+                    <template v-else>
+                      <v-col cols="5">
+                        <span class="text-medium-emphasis">With values:</span>
+                        <div
+                          class="nowrap text-body-2 overflow-auto border pa-2 rounded"
+                          style="max-height: 100px; max-width: 100%"
+                        >
+                          <template
+                            v-if="indexCheckItems && indexCheckItems[key]"
+                          >
+                            <pre
+                              class="sql"
+                            ><code v-html="formatSql(indexCheckItems[key].query)" /></pre>
+                          </template>
+                        </div>
+                      </v-col>
+                      <v-col class="align-self-center">
+                        <template
+                          v-if="indexCheckItems && indexCheckItems[key]"
+                        >
+                          <span class="text-medium-emphasis"
+                            >Estimated gain for this query:
+                          </span>
+                          <b>{{ indexCheckItems[key].gain_percent }}%</b>
+                        </template>
+                      </v-col>
+                    </template>
+                  </v-row>
+                  <router-link
+                    :key="query"
+                    :to="getUrl(query.url)"
+                    exact-match
+                    class="text-decoration-none text-primary"
+                  >
+                    More details about this query
+                    <v-icon :icon="mdiArrowRight" size="1em"></v-icon>
+                  </router-link>
+                </v-list-item>
+                <v-divider
+                  v-if="index < Object.keys(item.queries).length - 1"
+                  class="my-3"
+                />
+              </template>
+            </v-list>
+          </v-card-text>
+        </v-card>
       </v-col>
     </v-row>
     <v-row v-if="indexCheckErrorItems && indexCheckErrorItems.length > 0">
@@ -112,31 +206,6 @@
         >
           <template #item.ddl="{ item }">
             <query-tooltip :value="item.ddl"></query-tooltip>
-          </template>
-          <template #bottom></template>
-        </v-data-table>
-      </v-col>
-    </v-row>
-    <v-row v-if="indexCheckItems && indexCheckItems.length > 0">
-      <v-col>
-        <v-data-table
-          :headers="indexCheckHeaders"
-          :items="indexCheckItems"
-          :cell-props="getCellProps"
-          density="compact"
-          class="superdense elevation-1"
-          items-per-page="-1"
-        >
-          <template #item.query="{ item }">
-            <router-link :key="item.key" :to="item.queryurl" exact-match>
-              <query-tooltip :value="item.query"></query-tooltip>
-            </router-link>
-          </template>
-          <template #item.used="{ item }">
-            <b v-if="item.gain_percent > 0" class="text-green">✓</b>
-          </template>
-          <template #item.gain_percent="{ item }">
-            {{ item.gain_percent }}%
           </template>
           <template #bottom></template>
         </v-data-table>
@@ -167,11 +236,16 @@ import { onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import * as d3 from "d3";
 import _ from "lodash";
-import QueryTooltip from "@/components/QueryTooltip.vue";
 import { formatSql } from "@/utils/sql";
 import { useDateRangeStore } from "@/stores/dateRange.js";
 import { useDataLoader } from "@/composables/DataLoaderService.js";
-import { mdiAlertCircle, mdiAutoFix, mdiCheck, mdiLoading } from "@mdi/js";
+import {
+  mdiAlertCircle,
+  mdiArrowRight,
+  mdiAutoFix,
+  mdiCheck,
+  mdiLoading,
+} from "@mdi/js";
 
 // eslint-disable-next-line no-unused-vars
 const props = defineProps({
@@ -185,29 +259,14 @@ const props = defineProps({
 // The data source for the given chart
 const { source } = useDataLoader(props.config.type);
 const { from, to, urlSearchParams } = storeToRefs(useDateRangeStore());
+const { getUrl } = useDateRangeStore();
 
 const optimized = ref(false);
 const optimizing = ref(false);
+const checking = ref(false);
 const progressSteps = ref([]);
 const progress = ref(0);
 
-const indexHeaders = ref([
-  {
-    value: "ddl",
-    title: "Index",
-    cellClass: "query",
-  },
-  {
-    value: "quals",
-    title: "Used by",
-    cellClass: "query",
-  },
-  {
-    value: "nbqueries",
-    title: "# Queries boosted",
-    align: "end",
-  },
-]);
 const indexItems = ref(null);
 
 const indexCheckErrorHeaders = ref([
@@ -223,23 +282,7 @@ const indexCheckErrorHeaders = ref([
 ]);
 const indexCheckErrorItems = ref([]);
 
-const indexCheckHeaders = ref([
-  {
-    value: "query",
-    title: "Query",
-    cellClass: "query",
-  },
-  {
-    value: "used",
-    title: "Index used",
-    align: "center",
-  },
-  {
-    value: "gain_percent",
-    title: "Gain",
-    align: "end",
-  },
-]);
+// Suggestions validated by HypoPG
 const indexCheckItems = ref(null);
 
 const unoptimizableHeaders = ref([
@@ -256,6 +299,7 @@ watch(() => [from.value, to.value], optimize);
 function optimize() {
   progressSteps.value = [];
   optimizing.value = true;
+  checking.value = true;
   indexItems.value = [];
   indexCheckItems.value = null;
   indexCheckErrorItems.value = null;
@@ -296,7 +340,6 @@ async function dataLoaded(quals, from_date, to_date) {
       from_date: from_date,
       to_date: to_date,
       queries: qual.queries,
-      queryids: qual.queryids,
       relid: qual.relid,
       relname: qual.relname,
       nspname: qual.nspname,
@@ -513,7 +556,7 @@ async function solve(nodes) {
     const firstPath = _.maxBy(_.toPairs(paths), (pair) => pair[1].score)[1];
     /* Find attnum order */
     let attnums = [];
-    let queryids = [];
+    let queries = {};
 
     // use for (x of xs) here to make sure await works
     for (const node of firstPath.nodes) {
@@ -529,7 +572,7 @@ async function solve(nodes) {
           delete paths[pathid];
         }
       }
-      queryids = _.uniq(queryids.concat(node.queryids));
+      queries = Object.assign(queries, node.queries);
     }
     const ams = _.uniq(
       _.flatten(
@@ -540,7 +583,7 @@ async function solve(nodes) {
       node: firstPath.nodes.slice(-1)[0],
       path: firstPath.nodes,
       attnums: attnums,
-      queryids: queryids,
+      queries: queries,
       ams: ams,
       stub: true,
     });
@@ -586,6 +629,7 @@ function qualRepr(node) {
   if (hasquals) {
     base += _.uniq(node.quals.map((qual) => qual.label)).join(" AND ");
   }
+
   base = formatSql(base);
   const unmanaged = node.trashedQuals
     .map(function (qual, idx) {
@@ -640,8 +684,7 @@ function trashQuals(node) {
 }
 
 function mergeNodes(node1, node2) {
-  node1.queries = _.uniq(node1.queries.concat(node2.queries));
-  node1.queryids = _.uniq(node1.queryids.concat(node2.queryids));
+  node1.queries = Object.assign(node1.queries, node2.queries);
   const quals = _.unionWith(node1.quals, node2.quals, _.isEqual);
   node1.quals = quals;
   qualUpdate(node1);
@@ -649,8 +692,10 @@ function mergeNodes(node1, node2) {
 
 async function checkSolution() {
   addProgressStep("Checking solution with hypopg");
+  checking.value = true;
   if (!props.config.has_hypopg) {
     await endProgressStep("Hypopg is not installed", true);
+    checking.value = false;
     progress.value = 100;
     return;
   }
@@ -671,7 +716,7 @@ async function checkSolution() {
     if (node.ams.length > 0) {
       indexes.push(node);
     }
-    queryids = _.uniq(queryids.concat(index.queryids));
+    queryids = _.uniq(queryids.concat(Object.keys(index.queries)));
   });
   const params = {
     from: from.value.format("YYYY-MM-DD HH:mm:ssZZ"),
@@ -692,15 +737,14 @@ async function checkSolution() {
       },
     }
   ).then(async (data) => {
+    checking.value = false;
     indexCheckErrorItems.value = _.map(data.inderrors, (err, ddl) => {
       return {
         ddl: ddl,
         error: err,
       };
     });
-    indexCheckItems.value = _.map(data.plans, (stats, queryid) => {
-      return { ...stats, queryurl: data.queryurls[queryid] };
-    });
+    indexCheckItems.value = data.plans;
     await endProgressStep();
     progress.value = 100;
   });
