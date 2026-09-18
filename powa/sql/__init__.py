@@ -161,7 +161,6 @@ class ComposedQual(JSONizable):
         qualid=None,
         relid=None,
         queries=None,
-        queryids=None,
     ):
         super(ComposedQual, self).__init__()
         self.qualid = qualid
@@ -174,7 +173,6 @@ class ComposedQual(JSONizable):
         self.table_liverows = table_liverows
         self.relid = relid
         self.queries = queries or []
-        self.queryids = queryids or []
         self._quals = []
 
     def append(self, element):
@@ -243,7 +241,6 @@ def resolve_quals(conn, quallist, attribute="quals"):
             filter_ratio=row["filter_ratio"],
             qualid=row["qualid"],
             queries=row.get("queries"),
-            queryids=row.get("queryids"),
         )
         new_qual_list.append(newqual)
         values = [v for v in row[attribute] if v["relid"] != "0"]

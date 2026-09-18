@@ -127,12 +127,11 @@ class WizardMetricGroup(MetricGroupDef):
             # truncated by the browser, leading to looking for unexisting
             # queryid when processing this data.  To avoid that, simply cast
             # the value to text.
-            "array_agg(cast(queryid AS text)) AS queryids",
+            "jsonb_object_agg(queryid::text, jsonb_build_object('query', query)) AS queries",
             "qualid",
             "quals::jsonb AS quals",
             "occurences",
             "execution_count",
-            "array_agg(query) AS queries",
             "avg_filter",
             "filter_ratio",
         ]
@@ -159,6 +158,14 @@ class WizardMetricGroup(MetricGroupDef):
     def post_process(self, data, server, database, **kwargs):
         conn = self.connect(server, database=database, remote_access=True)
         data["data"] = resolve_quals(conn, data["data"])
+
+        # Supplement queries info with corresponding URLs
+        for row in data["data"]:
+            for id in row.queries:
+                row.queries[id]["url"] = self.reverse_url(
+                    "QueryOverview", server, database, id
+                )
+
         return data
 
 
