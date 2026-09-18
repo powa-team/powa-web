@@ -81,6 +81,7 @@
           location="right center"
           :offset-x="-20"
           :content="indexItems.length"
+          color="success"
         >
           <h3>Suggested Indexes</h3>
         </v-badge>
@@ -206,19 +207,71 @@
     </v-row>
     <v-row v-if="unoptimizableItems && unoptimizableItems.length > 0">
       <v-col>
-        <v-data-table
-          :headers="unoptimizableHeaders"
-          :items="unoptimizableItems"
-          :cell-props="getCellProps"
-          density="compact"
-          class="superdense elevation-1"
-          items-per-page="-1"
+        <v-badge
+          location="right center"
+          :offset-x="-20"
+          :content="unoptimizableItems.length"
+          color="warning"
         >
-          <template #item.quals="{ item }">
-            <div v-html="qualRepr(item)" />
-          </template>
-          <template #bottom></template>
-        </v-data-table>
+          <h3>Unoptimized Quals</h3>
+        </v-badge>
+        <div class="mb-4 text-medium-emphasis">
+          <span class="text-decoration-line-through">xxxxx</span>: does not
+          support common access method
+        </div>
+        <v-card
+          v-for="item in unoptimizableItems"
+          :key="item"
+          border
+          rounded
+          elevation="3"
+          class="mb-6"
+        >
+          <v-card-item class="bg-surface-light mb-4">
+            <v-card-title>
+              <div v-html="qualRepr(item)" />
+            </v-card-title>
+          </v-card-item>
+          <v-card-text>
+            <div class="text-medium-emphasis">
+              Used in <b>{{ Object.keys(item.queries).length }}</b> queries
+            </div>
+            <v-list class="ml-6">
+              <template
+                v-for="([, query], index) in Object.entries(item.queries)"
+                :key="query"
+              >
+                <v-list-item class="pl-0">
+                  <v-row>
+                    <v-col>
+                      <div
+                        class="nowrap text-body-2 overflow-auto pa-2 mb-2 rounded border"
+                        style="max-height: 100px; max-width: 100%"
+                      >
+                        <pre
+                          class="sql"
+                        ><code v-html="formatSql(query.query)" /></pre>
+                      </div>
+                    </v-col>
+                  </v-row>
+                  <router-link
+                    :key="query"
+                    :to="getUrl(query.url)"
+                    exact-match
+                    class="text-decoration-none text-primary"
+                  >
+                    More details about this query
+                    <v-icon :icon="mdiArrowRight" size="1em"></v-icon>
+                  </router-link>
+                </v-list-item>
+                <v-divider
+                  v-if="index < Object.keys(item.queries).length - 1"
+                  class="my-3"
+                />
+              </template>
+            </v-list>
+          </v-card-text>
+        </v-card>
       </v-col>
     </v-row>
   </template>
@@ -266,13 +319,6 @@ const indexItems = ref(null);
 const indexCheckItems = ref(null);
 const indexCheckErrors = ref(null);
 
-const unoptimizableHeaders = ref([
-  {
-    value: "quals",
-    title: "Unoptimized quals",
-    cellClass: "query",
-  },
-]);
 const unoptimizableItems = ref(null);
 
 watch(() => [from.value, to.value], optimize);
@@ -614,16 +660,16 @@ function qualRepr(node) {
   base = formatSql(base);
   const unmanaged = node.trashedQuals
     .map(function (qual, idx) {
-      let part = "<strike>";
+      let part = "<span class='text-decoration-line-through'>";
       let value = qual.label;
       if (idx == 0 && hasquals) {
         value = " AND " + value;
       }
       value = formatSql(value);
-      part += value + "</strike>";
+      part += value + "</span>";
       return part;
     }, node)
-    .join(" AND ");
+    .join("<span class='hljs-keyword'> AND </span>");
   base = "<pre class='sql'><code>• " + base + " " + unmanaged + "</code></pre>";
   base = base + node.contained.map((node) => qualRepr(node)).join("");
   return base;
