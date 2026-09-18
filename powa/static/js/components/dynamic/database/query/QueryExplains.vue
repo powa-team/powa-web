@@ -25,8 +25,10 @@
             {{ Math.round(plan.filter_ratio * 100, 2) }}%
             <br />
             Example plan:
-            <pre class="sql mb-4"><code v-html="formatSql(plan.query)"/></pre>
-            <pre class="sql"><code>{{plan.plan}}</code></pre>
+            <pre
+              class="sql mb-4 bg-surface-light"
+            ><code v-html="formatSql(plan.query)"/></pre>
+            <pre class="sql bg-surface-light"><code>{{plan.plan}}</code></pre>
           </v-col>
         </v-row>
       </template>

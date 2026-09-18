@@ -31,7 +31,7 @@
                         • With access method <em>{{ index.amname }}</em> :
                       </v-list-item-title>
                       <pre
-                        class="sql"
+                        class="sql bg-surface-light"
                       ><code>{{ qual.relname }}.{{ qual.attname }}</code></pre>
                       <template v-if="!qual.distinct_values">Unknown</template>
                       <template v-else>
@@ -61,7 +61,7 @@
                     >
                     :
                     <pre
-                      class="sql"
+                      class="sql bg-surface-light"
                     ><code v-for="(ind, i) in data.hypoplan.indexes" :key="i" v-html="formatSql(ind.ddl)"></code></pre>
                   </template>
                   <template v-else>
@@ -73,13 +73,13 @@
                 <v-col :cols="data.hypoplan.indexes ? 6 : 12">
                   EXPLAIN plan <b>without</b> suggested indexes:
                   <pre
-                    class="sql"
+                    class="sql bg-surface-light"
                   ><code>{{ data.hypoplan.baseplan }}</code></pre>
                 </v-col>
                 <v-col v-if="data.hypoplan.indexes" cols="6">
                   EXPLAIN plan <b>with</b> suggested index
                   <pre
-                    class="sql"
+                    class="sql bg-surface-light"
                   ><code>{{ data.hypoplan.hypoplan }}</code></pre>
                 </v-col>
                 <v-col cols="12">

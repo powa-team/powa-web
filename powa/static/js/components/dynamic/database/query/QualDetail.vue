@@ -13,7 +13,7 @@
     <v-card-text v-if="qual !== undefined">
       <template v-if="qual">
         <pre
-          class="sql"
+          class="sql bg-surface-light"
         ><code v-html="formatSql(qual.where_clause)"></code></pre>
         <v-row>
           <v-col>
@@ -33,7 +33,9 @@
           </v-col>
         </v-row>
         <div v-for="(q, index) in qual.quals" :key="index">
-          <pre class="sql"><code v-html="formatSql(q.label)"></code></pre>
+          <pre
+            class="sql bg-surface-light"
+          ><code v-html="formatSql(q.label)"></code></pre>
           <v-row>
             <v-col>
               <b>Table:</b><br />

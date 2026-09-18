@@ -14,7 +14,9 @@
       <template v-if="stats">
         <v-row>
           <v-col cols="12">
-            <pre class="sql"><code v-html="formatSql(stats.query)"/></pre>
+            <pre
+              class="sql bg-surface-light"
+            ><code v-html="formatSql(stats.query)"/></pre>
           </v-col>
         </v-row>
         <v-row>
