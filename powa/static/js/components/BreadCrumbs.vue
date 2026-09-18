@@ -19,6 +19,7 @@
           v-else
           :to="getUrl(item.href)"
           :disabled="item.href == route.path"
+          color="primary"
         >
           {{ item.text }}
         </v-breadcrumbs-item>
