@@ -16,6 +16,7 @@ module.exports = {
       {
         ignores: [
           "Content",
+          "Copy",
           "Dashboard",
           "Graph",
           "Grid",

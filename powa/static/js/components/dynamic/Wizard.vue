@@ -94,8 +94,26 @@
           class="mb-6"
         >
           <v-card-item class="bg-surface-light mb-4">
-            <v-card-title>
+            <v-card-title class="d-flex">
               <pre class="sql"><code v-html="formatSql(indexDdl(item))" /></pre>
+              <v-tooltip
+                content-class="sql elevation-2"
+                transition="fade"
+                open-delay="200"
+                location="bottom"
+              >
+                <template #activator="{ props: activatorProps }">
+                  <copy
+                    :content="indexDdl(item)"
+                    class="text-medium-emphasis ml-6"
+                    variant="text"
+                    size="x-small"
+                    density="compact"
+                    v-bind="activatorProps"
+                  />
+                </template>
+                Copy
+              </v-tooltip>
             </v-card-title>
           </v-card-item>
           <v-card-text>
@@ -282,6 +300,7 @@ import { onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import * as d3 from "d3";
 import _ from "lodash";
+import Copy from "@/components/Copy.vue";
 import { formatSql } from "@/utils/sql";
 import { useDateRangeStore } from "@/stores/dateRange.js";
 import { useDataLoader } from "@/composables/DataLoaderService.js";
