@@ -647,7 +647,7 @@ function indexDdl(index) {
       (pair) => pair[1]
     )
   );
-  return `CREATE INDEX ON ${relfqn(index.node)} ${am} (${attnames.join(",")})`;
+  return `CREATE INDEX ON ${relfqn(index.node)} ${am} (${attnames.join(",")});`;
 }
 
 function qualRepr(node) {
