@@ -43,6 +43,19 @@
           </div>
         </v-col>
         <v-col v-if="optimized">
+          <v-row v-if="!unoptimizableItems && !indexItems"
+            ><v-col
+              ><v-alert
+                color="success"
+                :icon="mdiPartyPopper"
+                variant="tonal"
+                density="compact"
+                title="Yay!"
+              >
+                No qual require optimization!
+              </v-alert>
+            </v-col>
+          </v-row>
           <v-row v-if="unoptimizableItems && unoptimizableItems.length == 0"
             ><v-col
               ><v-alert
@@ -310,6 +323,7 @@ import {
   mdiAutoFix,
   mdiCheck,
   mdiLoading,
+  mdiPartyPopper,
 } from "@mdi/js";
 
 // eslint-disable-next-line no-unused-vars
