@@ -15,6 +15,8 @@
     >
       <v-btn
         :to="{ path: handlerConfig.homeUrl }"
+        color="primary"
+        variant="text"
         class="mr-2"
         title="Home page"
         exact
@@ -22,13 +24,14 @@
         <img :src="handlerConfig.logoUrl" />&nbsp;<b>PoWA</b>
       </v-btn>
       <template v-if="handlerConfig.currentUser">
-        <v-toolbar-title text class="mr-2 text-body-1">
+        <v-toolbar-title text class="mr-2 text-body-large">
           Server <b>{{ handlerConfig.currentServer }}</b> ({{
             handlerConfig.currentConnection
           }})
         </v-toolbar-title>
         <v-btn
           variant="text"
+          color="primary"
           :to="handlerConfig.configUrl"
           title="Configuration"
         >
@@ -99,11 +102,17 @@
         <login-view v-else-if="servers" :servers="servers"></login-view>
       </v-container>
     </v-main>
-    <v-footer app absolute elevation="2" style="z-index: initial">
+    <v-footer
+      app
+      absolute
+      elevation="2"
+      style="z-index: initial"
+      class="bg-surface-light"
+    >
       <v-container fluid>
-        <v-sheet class="d-flex">
-          <v-sheet>
-            <ul style="margin-bottom: 0; padding-left: 0">
+        <v-sheet class="d-flex" color="transparent">
+          <v-sheet color="transparent">
+            <ul class="ma-0 pa-0">
               <li style="display: inline-block">
                 Version {{ handlerConfig.version }}
               </li>
@@ -114,14 +123,19 @@
                 &copy; 2018-{{ handlerConfig.year }} The PoWA-team
               </li>
               <li style="display: inline-block" class="ml-5">
-                <a href="https://powa.readthedocs.io"
+                <a href="https://powa.readthedocs.io" class="text-primary"
                   >https://powa.readthedocs.io</a
                 >
               </li>
             </ul>
           </v-sheet>
-          <v-sheet class="text-right ms-auto">
-            <a href="https://github.com/powa-team/powa-web/issues"
+          <v-sheet
+            class="text-right ms-auto align-self-center"
+            color="transparent"
+          >
+            <a
+              href="https://github.com/powa-team/powa-web/issues"
+              class="text-primary"
               >Report a bug</a
             >
           </v-sheet>
@@ -303,7 +317,7 @@ function toggleTheme() {
 function checkTheme() {
   const savedTheme = localStorage.getItem("theme");
   if (!_.isNull(savedTheme)) {
-    theme.global.name.value = savedTheme;
+    theme.change(savedTheme);
   } else if (
     window.matchMedia &&
     window.matchMedia("(prefers-color-scheme: dark)").matches

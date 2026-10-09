@@ -8,6 +8,7 @@
           :href="config.url"
           target="_blank"
           title="See the documentation"
+          class="text-primary"
         >
           <v-icon class="pl-2">
             {{ mdiLinkVariant }}
@@ -55,6 +56,7 @@
             v-if="column.urlAttr"
             :key="column.key"
             :to="getUrl(item[column.urlAttr])"
+            class="text-primary"
             exact-match
           >
             <grid-cell :value="item[column.key]" :column="column"></grid-cell>

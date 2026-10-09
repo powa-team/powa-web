@@ -8,6 +8,28 @@
     <link rel="shortcut icon" href="{{static_url('img/favicon/favicon.ico') }}" type="image/x-icon" />
     <meta name="msapplication-TileColor" content="#2b5797">
     <meta name="msapplication-TileImage" content="{{ static_url('img/favicon/mstile-144x144.png') }}">
+    {% if handler.application.settings['debug'] %}
+      <script>
+        function showLoadError() {
+          alert("You're runing the dev version. Please make sure ViteJS server is running.");
+        }
+      </script>
+      <script type="module" src="http://localhost:5173/@vite/client"></script>
+      <script type="module" src="http://localhost:5173/powa/static/js/main.js" onerror="showLoadError()"></script>
+    {% else %}
+      {% for css in manifest('powa/static/js/main.js')['css'] %}
+      <link rel="stylesheet" href="{{static_url("dist/" + css) }}" />
+      {% end %}
+      {% for chunk in manifest('powa/static/js/main.js').get('imports', []) %}
+        {% for css in manifest(chunk).get("css", []) %}
+        <link rel="stylesheet" href="{{static_url("dist/" + css) }}" />
+        {% end %}
+      {% end %}
+      <script type="module" src="{{ static_url("dist/" + manifest('powa/static/js/main.js')['file']) }}"></script>
+      {% for chunk in manifest('powa/static/js/main.js').get('imports', []) %}
+      <script type="modulepreload" src="{{ static_url("dist/" + manifest(chunk)['file']) }}"></script>
+      {% end %}
+    {% end %}
     {% block header %} {% end %}
     <style>
       #mask {
@@ -54,28 +76,6 @@
     <script type="text/messages">
     {% raw to_json(dict(sanitycheck_messages().items())) %}
     </script>
-    {% end %}
-    {% if handler.application.settings['debug'] %}
-      <script>
-        function showLoadError() {
-          alert("You're runing the dev version. Please make sure ViteJS server is running.");
-        }
-      </script>
-      <script type="module" src="http://localhost:5173/@vite/client"></script>
-      <script type="module" src="http://localhost:5173/powa/static/js/main.js" onerror="showLoadError()"></script>
-    {% else %}
-      {% for css in manifest('powa/static/js/main.js')['css'] %}
-      <link rel="stylesheet" href="{{static_url("dist/" + css) }}" />
-      {% end %}
-      {% for chunk in manifest('powa/static/js/main.js')['imports'] %}
-        {% for css in manifest(chunk).get("css", []) %}
-        <link rel="stylesheet" href="{{static_url("dist/" + css) }}" />
-        {% end %}
-      {% end %}
-      <script type="module" src="{{ static_url("dist/" + manifest('powa/static/js/main.js')['file']) }}"></script>
-      {% for chunk in manifest('powa/static/js/main.js')['imports'] %}
-      <script type="modulepreload" src="{{ static_url("dist/" + manifest(chunk)['file']) }}"></script>
-      {% end %}
     {% end %}
   </body>
 </html>

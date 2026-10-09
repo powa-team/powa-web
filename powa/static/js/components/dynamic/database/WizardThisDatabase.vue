@@ -14,7 +14,7 @@
       <v-row>
         <v-col>
           <h4>Perform wizard analysis of this database</h4>
-          <a :href="data.url" class="button radius">Launch</a>
+          <a :href="data.url" class="button radius text-primary">Launch</a>
         </v-col>
       </v-row>
     </v-card-text>

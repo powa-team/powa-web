@@ -35,6 +35,7 @@
           :href="config.url"
           target="_blank"
           title="See the documentation"
+          class="text-primary"
         >
           <v-icon class="pl-2">
             {{ mdiLinkVariant }}

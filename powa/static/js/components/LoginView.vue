@@ -1,7 +1,7 @@
 <template>
   <v-row class="align-center justify-center" fluid>
     <v-col cols="12" sm="8" md="4">
-      <v-card class="elevation-12">
+      <v-card elevation="5">
         <v-toolbar color="primary">
           <v-toolbar-title>Login form</v-toolbar-title>
         </v-toolbar>
