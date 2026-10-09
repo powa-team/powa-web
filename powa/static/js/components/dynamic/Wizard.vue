@@ -43,7 +43,7 @@
           </div>
         </v-col>
         <v-col v-if="optimized">
-          <v-row v-if="!unoptimizableItems && !indexItems"
+          <v-row v-if="!unoptimizedItems && !indexItems"
             ><v-col
               ><v-alert
                 color="success"
@@ -56,7 +56,7 @@
               </v-alert>
             </v-col>
           </v-row>
-          <v-row v-if="unoptimizableItems && unoptimizableItems.length == 0"
+          <v-row v-if="unoptimizedItems && unoptimizedItems.length == 0"
             ><v-col
               ><v-alert
                 color="success"
@@ -64,7 +64,7 @@
                 variant="tonal"
                 density="compact"
               >
-                All quals are optimizable
+                All quals are optimized
               </v-alert>
             </v-col>
           </v-row>
@@ -236,12 +236,12 @@
         </v-card>
       </v-col>
     </v-row>
-    <v-row v-if="unoptimizableItems && unoptimizableItems.length > 0">
+    <v-row v-if="unoptimizedItems && unoptimizedItems.length > 0">
       <v-col>
         <v-badge
           location="right center"
           :offset-x="-20"
-          :content="unoptimizableItems.length"
+          :content="unoptimizedItems.length"
           color="warning"
         >
           <h3>Unoptimized Quals</h3>
@@ -251,7 +251,7 @@
           support common access method
         </div>
         <v-card
-          v-for="item in unoptimizableItems"
+          v-for="item in unoptimizedItems"
           :key="item"
           border
           rounded
@@ -352,7 +352,7 @@ const indexItems = ref(null);
 const indexCheckItems = ref(null);
 const indexCheckErrors = ref(null);
 
-const unoptimizableItems = ref(null);
+const unoptimizedItems = ref(null);
 
 watch(() => [from.value, to.value], optimize);
 
@@ -363,7 +363,7 @@ function optimize() {
   indexItems.value = [];
   indexCheckItems.value = null;
   indexCheckErrors.value = null;
-  unoptimizableItems.value = null;
+  unoptimizedItems.value = null;
   indexItems.value = null;
   addProgressStep("Fetching most executed quals");
   d3.json(`${source.value.config.data_url}?${urlSearchParams.value}`).then(
@@ -426,7 +426,7 @@ async function dataLoaded(quals, from_date, to_date) {
   addProgressStep(`Building links`);
   const result = await computeLinks(nodes);
   await endProgressStep(`(${result[0].length})`);
-  unoptimizableItems.value = result[1];
+  unoptimizedItems.value = result[1];
   await solve(result[0]);
   optimized.value = true;
   await checkSolution();
