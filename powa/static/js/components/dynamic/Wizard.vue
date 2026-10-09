@@ -90,70 +90,30 @@
   <template v-if="optimized">
     <v-row v-if="unoptimizedItems && unoptimizedItems.length > 0">
       <v-col>
-        <v-badge
-          location="right center"
-          :offset-x="-20"
-          :content="unoptimizedItems.length"
-        >
-          <h3>Unoptimized Quals</h3>
-        </v-badge>
-        <div class="mb-4 text-medium-emphasis">
-          <span class="text-decoration-line-through">xxxxx</span>: does not
-          support common access method
+        <h3>Unoptimized Quals</h3>
+        <div class="mb-4">
+          The following
+          <v-badge :content="unoptimizedItems.length" inline> </v-badge>
+          predicates are not optimized.
         </div>
-        <v-card
-          v-for="item in unoptimizedItems"
-          :key="item"
-          border
-          rounded
-          elevation="3"
-          class="mb-6"
-        >
-          <v-card-item class="bg-surface-light mb-4">
-            <v-card-title>
-              <div v-html="qualRepr(item)" />
-            </v-card-title>
-          </v-card-item>
-          <v-card-text>
-            <div class="text-medium-emphasis">
+        <div v-for="item in unoptimizedItems" :key="item" class="pa-1">
+          <div class="d-flex align-center">
+            <div class="bg-surface-light rounded" v-html="qualRepr(item)" />
+            <div class="text-medium-emphasis text-body-medium ml-4">
               Used in <b>{{ Object.keys(item.queries).length }}</b> queries
             </div>
-            <v-list class="ml-6">
-              <template
-                v-for="([, query], index) in Object.entries(item.queries)"
-                :key="query"
-              >
-                <v-list-item class="pl-0">
-                  <v-row>
-                    <v-col>
-                      <div
-                        class="nowrap text-body-2 overflow-auto pa-2 mb-2 rounded border"
-                        style="max-height: 100px; max-width: 100%"
-                      >
-                        <pre
-                          class="sql"
-                        ><code v-html="formatSql(query.query)" /></pre>
-                      </div>
-                    </v-col>
-                  </v-row>
-                  <router-link
-                    :key="query"
-                    :to="getUrl(query.url)"
-                    exact-match
-                    class="text-decoration-none text-primary"
-                  >
-                    More details about this query
-                    <v-icon :icon="mdiArrowRight" size="1em"></v-icon>
-                  </router-link>
-                </v-list-item>
-                <v-divider
-                  v-if="index < Object.keys(item.queries).length - 1"
-                  class="my-3"
-                />
-              </template>
-            </v-list>
-          </v-card-text>
-        </v-card>
+          </div>
+        </div>
+        <v-alert
+          class="mt-4 px-4 py-2 text-medium-emphasis text-body-medium d-inline-block"
+          color="info"
+          variant="tonal"
+        >
+          <v-icon :icon="mdiInformationOutline" class="mr-2"></v-icon>
+          <span class="text-decoration-line-through">Crossed-out</span> quals
+          are not optimizable. They may not support common access method for
+          example.
+        </v-alert>
       </v-col>
     </v-row>
     <v-row v-if="indexItems">
@@ -321,6 +281,7 @@ import {
   mdiArrowRight,
   mdiAutoFix,
   mdiCheck,
+  mdiInformationOutline,
   mdiLoading,
   mdiPartyPopper,
 } from "@mdi/js";
