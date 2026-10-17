@@ -33,7 +33,7 @@
     "moment": "^2.31.0",
     "pinia": "^2.3.1",
     "vite-plugin-vuetify": "^2.0.3",
-    "vue": "^3.3.11",
+    "vue": "^3.5.44",
     "vue-router": "^4.4.0",
     "vuetify": "^3.6.10"
   }
