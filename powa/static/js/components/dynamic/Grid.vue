@@ -27,13 +27,21 @@
             class="pt-0 mt-0"
           ></v-text-field>
         </v-col>
+        <v-col v-if="hasHighlightInfo" sm="6" md="4" xl="3">
+          <v-checkbox
+            v-model="onlyHighlighted"
+            :label="config.highlight_filter_label || 'Only highlighted rows'"
+            density="compact"
+            hide-details
+          ></v-checkbox>
+        </v-col>
         <v-col class="text-right">
           <v-btn size="small" @click="exportAsCsv">Export CSV</v-btn>
         </v-col>
       </v-row>
       <v-data-table
         :headers="headers"
-        :items="data.data"
+        :items="items"
         :footer-props="{
           'items-per-page-options': [25, 50, -1],
         }"
@@ -41,6 +49,7 @@
         :search="search"
         density="compact"
         :cell-props="getCellProps"
+        :row-props="getRowProps"
         class="superdense"
         hover
       >
@@ -103,6 +112,28 @@ const metricGroup = _.uniq(
 const { getUrl } = useDateRangeStore();
 const { loading, source, data } = useDataLoader(metricGroup);
 const search = ref("");
+const onlyHighlighted = ref(false);
+
+// Only offer the filter when the highlight column has known values, e.g. not
+// when the settings come from pg_track_settings and boot_val is unknown.
+const hasHighlightInfo = computed(() => {
+  const key = props.config.highlight_key;
+  return (
+    !!key &&
+    _.some(
+      data.value.data,
+      (item) => item[key] !== null && item[key] !== undefined
+    )
+  );
+});
+
+const items = computed(() => {
+  const key = props.config.highlight_key;
+  if (!key || !onlyHighlighted.value) {
+    return data.value.data;
+  }
+  return _.filter(data.value.data, (item) => item[key] === true);
+});
 
 const fields = computed(() => {
   const metrics = _.map(props.config.metrics, (metric) => {
@@ -164,6 +195,11 @@ const headers = computed(() => {
 
 function getCellProps(data) {
   return { class: data.column.cellClass };
+}
+
+function getRowProps({ item }) {
+  const key = props.config.highlight_key;
+  return key && item[key] === true ? { class: "highlighted-row" } : {};
 }
 
 function formatBool(value) {
@@ -244,6 +280,10 @@ function downloadFile(content, fileName, mimeType) {
 <style lang="scss">
 td a {
   text-decoration: none;
+}
+tr.highlighted-row > td {
+  font-weight: bold;
+  background-color: rgba(var(--v-theme-warning), 0.15);
 }
 td.query a {
   color: inherit;

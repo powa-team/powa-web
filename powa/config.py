@@ -259,9 +259,11 @@ class PgSettingsMetricGroup(MetricGroupDef):
     setting_value = MetricDef(label="Value", type="string")
     setting_unit = MetricDef(label="Unit", type="string")
     category_value = MetricDef(label="Category", type="string")
+    setting_non_default = MetricDef(label="Non-default", type="bool")
     __query = """
              SELECT name as setting_name, setting as setting_value,
-             COALESCE(unit,'') AS setting_unit, category as category_value
+             COALESCE(unit,'') AS setting_unit, category as category_value,
+             setting IS DISTINCT FROM boot_val AS setting_non_default
              FROM pg_settings
              --WHERE name like 'powa%%'
              ORDER BY name"""
@@ -290,7 +292,10 @@ class PgSettingsMetricGroup(MetricGroupDef):
                         SELECT t.name AS setting_name,
                             t.setting AS setting_value,
                             s.unit AS setting_unit,
-                            s.category AS category_value
+                            s.category AS category_value,
+                            -- the boot_val of the monitored server isn't
+                            -- available here, so the status is unknown
+                            NULL::boolean AS setting_non_default
                         FROM {pg_track_settings}.pg_track_settings(now(),
                                                                    %(srvid)s) t
                         LEFT JOIN pg_catalog.pg_settings s
@@ -731,6 +736,8 @@ class RemoteConfigOverview(DashboardPage):
                         }
                     ],
                     metrics=PgSettingsMetricGroup.all(),
+                    highlight_key="setting_non_default",
+                    highlight_filter_label="Only non-default settings",
                 )
             ]
         )
