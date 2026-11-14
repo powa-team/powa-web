@@ -252,7 +252,7 @@ class BaseHandler(RequestHandler, JSONizable):
     def get_powa_version(self, **kwargs):
         version = self.execute(
             """
-            SELECT regexp_replace(extversion, '(dev|beta\d*)', '') AS version
+            SELECT regexp_replace(extversion, '(dev|beta\\d*)', '') AS version
             FROM pg_extension
             WHERE extname = 'powa'
             """,
